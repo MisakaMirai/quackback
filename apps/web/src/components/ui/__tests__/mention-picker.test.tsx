@@ -88,7 +88,7 @@ describe('MentionPicker', () => {
 
   it('shows empty state when items is empty', () => {
     render(<MentionPicker items={[]} command={() => {}} />)
-    expect(screen.getByText(/no people match/i)).toBeInTheDocument()
+    expect(screen.getByText(/没有匹配的成员/)).toBeInTheDocument()
   })
 
   it('renders the first item as selected by default', () => {

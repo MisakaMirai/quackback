@@ -617,8 +617,8 @@ function getSlashMenuItems(
   const items: SlashMenuItem[] = [
     // Text group - always available
     {
-      title: 'Text',
-      description: 'Plain paragraph text',
+      title: '正文',
+      description: '普通段落文本',
       icon: <Type className="size-4" />,
       command: ({ editor, range }) => {
         editor.chain().focus().deleteRange(range).setParagraph().run()
@@ -632,8 +632,8 @@ function getSlashMenuItems(
   if (features.headings) {
     items.push(
       {
-        title: 'Heading 1',
-        description: 'Large section heading',
+        title: '标题 1',
+        description: '大节标题',
         icon: <Heading1 className="size-4" />,
         command: ({ editor, range }) => {
           editor.chain().focus().deleteRange(range).setHeading({ level: 1 }).run()
@@ -642,8 +642,8 @@ function getSlashMenuItems(
         group: 'text',
       },
       {
-        title: 'Heading 2',
-        description: 'Medium section heading',
+        title: '标题 2',
+        description: '中等节标题',
         icon: <Heading2 className="size-4" />,
         command: ({ editor, range }) => {
           editor.chain().focus().deleteRange(range).setHeading({ level: 2 }).run()
@@ -652,8 +652,8 @@ function getSlashMenuItems(
         group: 'text',
       },
       {
-        title: 'Heading 3',
-        description: 'Small section heading',
+        title: '标题 3',
+        description: '小节标题',
         icon: <Heading3 className="size-4" />,
         command: ({ editor, range }) => {
           editor.chain().focus().deleteRange(range).setHeading({ level: 3 }).run()
@@ -667,8 +667,8 @@ function getSlashMenuItems(
   // Lists - always available (part of StarterKit)
   items.push(
     {
-      title: 'Bullet List',
-      description: 'Unordered list',
+      title: '项目符号列表',
+      description: '无序列表',
       icon: <ListBulletIcon className="size-4" />,
       command: ({ editor, range }) => {
         editor.chain().focus().deleteRange(range).toggleBulletList().run()
@@ -677,8 +677,8 @@ function getSlashMenuItems(
       group: 'lists',
     },
     {
-      title: 'Numbered List',
-      description: 'Ordered list',
+      title: '编号列表',
+      description: '有序列表',
       icon: <ListOrdered className="size-4" />,
       command: ({ editor, range }) => {
         editor.chain().focus().deleteRange(range).toggleOrderedList().run()
@@ -691,8 +691,8 @@ function getSlashMenuItems(
   // Task list - conditional
   if (features.taskLists) {
     items.push({
-      title: 'Checklist',
-      description: 'Task list with checkboxes',
+      title: '待办清单',
+      description: '带复选框的任务列表',
       icon: <CheckSquare className="size-4" />,
       command: ({ editor, range }) => {
         editor.chain().focus().deleteRange(range).toggleTaskList().run()
@@ -705,8 +705,8 @@ function getSlashMenuItems(
   // Blockquote - conditional
   if (features.blockquotes) {
     items.push({
-      title: 'Quote',
-      description: 'Blockquote for citations',
+      title: '引用',
+      description: '用于引用的块引用',
       icon: <Quote className="size-4" />,
       command: ({ editor, range }) => {
         editor.chain().focus().deleteRange(range).toggleBlockquote().run()
@@ -719,8 +719,8 @@ function getSlashMenuItems(
   // Horizontal divider - conditional
   if (features.dividers) {
     items.push({
-      title: 'Divider',
-      description: 'Horizontal line separator',
+      title: '分隔线',
+      description: '水平分隔线',
       icon: <Minus className="size-4" />,
       command: ({ editor, range }) => {
         editor.chain().focus().deleteRange(range).setHorizontalRule().run()
@@ -733,8 +733,8 @@ function getSlashMenuItems(
   // Code blocks - conditional
   if (features.codeBlocks) {
     items.push({
-      title: 'Code Block',
-      description: 'Syntax highlighted code',
+      title: '代码块',
+      description: '带语法高亮的代码',
       icon: <Code2 className="size-4" />,
       command: ({ editor, range }) => {
         editor.chain().focus().deleteRange(range).toggleCodeBlock().run()
@@ -747,8 +747,8 @@ function getSlashMenuItems(
   // Images - conditional
   if (features.images && onImageUpload) {
     items.push({
-      title: 'Image',
-      description: 'Upload an image',
+      title: '图片',
+      description: '上传图片',
       icon: <ImagePlus className="size-4" />,
       command: ({ editor, range }) => {
         editor.chain().focus().deleteRange(range).run()
@@ -765,7 +765,7 @@ function getSlashMenuItems(
           } catch (error) {
             console.error('Failed to upload image:', error)
             const { toast } = await import('sonner')
-            toast.error("Couldn't upload image. Try again.")
+            toast.error('无法上传图片，请重试。')
           }
         }
         input.click()
@@ -777,8 +777,8 @@ function getSlashMenuItems(
 
   if (features.videos && onVideoUpload) {
     items.push({
-      title: 'Video',
-      description: 'Upload an MP4, WebM, MOV, or M4V video',
+      title: '视频',
+      description: '上传 MP4、WebM、MOV 或 M4V 视频',
       icon: <VideoIcon className="size-4" />,
       command: ({ editor, range }) => {
         editor.chain().focus().deleteRange(range).run()
@@ -805,7 +805,7 @@ function getSlashMenuItems(
           } catch (error) {
             console.error('Failed to upload video:', error)
             const { toast } = await import('sonner')
-            toast.error("Couldn't upload video. Try again.")
+            toast.error('无法上传视频，请重试。')
           }
         }
         input.click()
@@ -818,8 +818,8 @@ function getSlashMenuItems(
   // Table - conditional
   if (features.tables) {
     items.push({
-      title: 'Table',
-      description: 'Insert a table',
+      title: '表格',
+      description: '插入表格',
       icon: <TableIcon className="size-4" />,
       command: ({ editor, range }) => {
         editor
@@ -838,11 +838,11 @@ function getSlashMenuItems(
   if (features.embeds) {
     items.push({
       title: 'YouTube',
-      description: 'Embed a YouTube video',
+      description: '嵌入 YouTube 视频',
       icon: <YoutubeIcon className="size-4" />,
       command: ({ editor, range }) => {
         editor.chain().focus().deleteRange(range).run()
-        const url = window.prompt('Paste YouTube video URL:')
+        const url = window.prompt('粘贴 YouTube 视频链接：')
         if (url && url.trim()) {
           editor.commands.setYoutubeVideo({
             src: url.trim(),
@@ -951,19 +951,17 @@ export const SlashMenuList = forwardRef<SlashMenuListRef, SlashMenuListProps>(
     if (items.length === 0) {
       return (
         <div className="z-50 w-52 rounded-lg border bg-popover p-2 shadow-lg">
-          <div className="px-2 py-3 text-center text-xs text-muted-foreground">
-            No matching commands
-          </div>
+          <div className="px-2 py-3 text-center text-xs text-muted-foreground">没有匹配的命令</div>
         </div>
       )
     }
 
     const groupedItems = groupSlashItems(items)
     const groupLabels: Record<string, string> = {
-      text: 'Text',
-      lists: 'Lists',
-      blocks: 'Blocks',
-      advanced: 'Advanced',
+      text: '文本',
+      lists: '列表',
+      blocks: '区块',
+      advanced: '高级',
     }
 
     // Calculate global index for selection tracking
@@ -1242,10 +1240,12 @@ export const EmojiSuggestionList = forwardRef<EmojiSuggestionListRef, EmojiSugge
             return (
               <div key={item.name}>
                 {recentCount > 0 && index === 0 && (
-                  <div className="px-2 py-1 text-xs font-medium text-muted-foreground">Recent</div>
+                  <div className="px-2 py-1 text-xs font-medium text-muted-foreground">
+                    最近使用
+                  </div>
                 )}
                 {recentCount > 0 && index === recentCount && (
-                  <div className="px-2 py-1 text-xs font-medium text-muted-foreground">Popular</div>
+                  <div className="px-2 py-1 text-xs font-medium text-muted-foreground">常用</div>
                 )}
                 <button
                   type="button"
@@ -1805,24 +1805,24 @@ const EditorChrome = memo(function EditorChrome({
         <ContextMenuContent className="min-w-[180px]">
           <ContextMenuItem onClick={contextMenuActions.viewImage}>
             <Expand className="mr-3 size-4 text-muted-foreground" />
-            View image
+            查看图片
           </ContextMenuItem>
           <ContextMenuItem onClick={contextMenuActions.downloadImage}>
             <Download className="mr-3 size-4 text-muted-foreground" />
-            Download
+            下载
           </ContextMenuItem>
           <ContextMenuItem onClick={contextMenuActions.copyImage}>
             <Copy className="mr-3 size-4 text-muted-foreground" />
-            Copy to clipboard
+            复制到剪贴板
           </ContextMenuItem>
           <ContextMenuItem onClick={contextMenuActions.copyLink}>
             <Link2 className="mr-3 size-4 text-muted-foreground" />
-            Copy link
+            复制链接
           </ContextMenuItem>
           <ContextMenuSeparator />
           <ContextMenuItem onClick={contextMenuActions.deleteImage}>
             <Trash2 className="mr-3 size-4 text-muted-foreground" />
-            Delete
+            删除
           </ContextMenuItem>
         </ContextMenuContent>
       )}
@@ -2008,7 +2008,7 @@ function handleMediaDrop(
         .catch((err) => {
           console.error('[RichTextEditor] Media drop upload failed:', err)
           void import('sonner').then(({ toast }) =>
-            toast.error(`Couldn't upload ${isVideo ? 'video' : 'image'}. Try again.`)
+            toast.error(`无法上传${isVideo ? '视频' : '图片'}，请重试。`)
           )
         })
     })
@@ -2067,7 +2067,7 @@ function handleMediaPaste(
         .catch((err) => {
           console.error('[RichTextEditor] Media paste upload failed:', err)
           void import('sonner').then(({ toast }) =>
-            toast.error(`Couldn't upload ${isVideo ? 'video' : 'image'}. Try again.`)
+            toast.error(`无法上传${isVideo ? '视频' : '图片'}，请重试。`)
           )
         })
     })
@@ -2189,28 +2189,28 @@ function BubbleMenuContent({ editor, disabled }: BubbleMenuContentProps) {
         onClick={commands.bold}
         disabled={disabled}
         isActive={active.bold}
-        title="Bold (Cmd+B)"
+        title="粗体（Cmd+B）"
       />
       <ToolbarButton
         icon={Italic}
         onClick={commands.italic}
         disabled={disabled}
         isActive={active.italic}
-        title="Italic (Cmd+I)"
+        title="斜体（Cmd+I）"
       />
       <ToolbarButton
         icon={UnderlineIcon}
         onClick={commands.underline}
         disabled={disabled}
         isActive={active.underline}
-        title="Underline (Cmd+U)"
+        title="下划线（Cmd+U）"
       />
       <ToolbarButton
         icon={Strikethrough}
         onClick={commands.strike}
         disabled={disabled}
         isActive={active.strike}
-        title="Strikethrough (Cmd+Shift+S)"
+        title="删除线（Cmd+Shift+S）"
       />
       <ToolbarDivider />
       <ToolbarButton
@@ -2218,7 +2218,7 @@ function BubbleMenuContent({ editor, disabled }: BubbleMenuContentProps) {
         onClick={commands.code}
         disabled={disabled}
         isActive={active.code}
-        title="Inline Code (Cmd+E)"
+        title="行内代码（Cmd+E）"
       />
       <LinkButton editor={editor} disabled={disabled} isActive={active.link} />
       <ToolbarDivider />
@@ -2262,7 +2262,7 @@ function LinkButton({
             setUrl((editor.getAttributes('link').href as string | undefined) || '')
             setIsOpen(true)
           }}
-          title="Insert Link"
+          title="插入链接"
         >
           <LinkIcon className="size-4" />
         </Button>
@@ -2283,7 +2283,7 @@ function LinkButton({
             autoFocus
           />
           <Button size="sm" className="h-8" onClick={applyLink}>
-            {isActive ? 'Update' : 'Add'}
+            {isActive ? '更新' : '添加'}
           </Button>
         </div>
         {isActive && (
@@ -2297,7 +2297,7 @@ function LinkButton({
               setIsOpen(false)
             }}
           >
-            Remove link
+            移除链接
           </Button>
         )}
       </PopoverContent>
@@ -2310,17 +2310,17 @@ const selectBlockType = ({ editor: e }: { editor: Editor }) => {
   if (e.isActive('heading', { level: 1 })) return 'H1'
   if (e.isActive('heading', { level: 2 })) return 'H2'
   if (e.isActive('heading', { level: 3 })) return 'H3'
-  return 'Text'
+  return '正文'
 }
 
 function HeadingDropdown({ editor, disabled }: { editor: Editor; disabled: boolean }) {
   const currentType = useEditorState({ editor, selector: selectBlockType })
 
   const blockTypes = [
-    { label: 'Text', value: 'paragraph', icon: <Type className="size-4" /> },
-    { label: 'Heading 1', value: 'h1', icon: <Heading1 className="size-4" /> },
-    { label: 'Heading 2', value: 'h2', icon: <Heading2 className="size-4" /> },
-    { label: 'Heading 3', value: 'h3', icon: <Heading3 className="size-4" /> },
+    { label: '正文', value: 'paragraph', icon: <Type className="size-4" /> },
+    { label: '标题 1', value: 'h1', icon: <Heading1 className="size-4" /> },
+    { label: '标题 2', value: 'h2', icon: <Heading2 className="size-4" /> },
+    { label: '标题 3', value: 'h3', icon: <Heading3 className="size-4" /> },
   ]
 
   const handleSelect = (value: string) => {
@@ -2389,14 +2389,14 @@ function TableToolbar({ editor, disabled }: TableToolbarProps) {
         icon={ArrowUp}
         onClick={() => editor.chain().focus().addRowBefore().run()}
         disabled={disabled}
-        title="Add row above"
+        title="在上方添加行"
       />
       {/* Add row below */}
       <ToolbarButton
         icon={ArrowDown}
         onClick={() => editor.chain().focus().addRowAfter().run()}
         disabled={disabled}
-        title="Add row below"
+        title="在下方添加行"
       />
       <ToolbarDivider />
       {/* Add column left */}
@@ -2404,14 +2404,14 @@ function TableToolbar({ editor, disabled }: TableToolbarProps) {
         icon={ArrowLeft}
         onClick={() => editor.chain().focus().addColumnBefore().run()}
         disabled={disabled}
-        title="Add column left"
+        title="在左侧添加列"
       />
       {/* Add column right */}
       <ToolbarButton
         icon={ArrowRight}
         onClick={() => editor.chain().focus().addColumnAfter().run()}
         disabled={disabled}
-        title="Add column right"
+        title="在右侧添加列"
       />
       <ToolbarDivider />
       {/* Delete row */}
@@ -2433,19 +2433,19 @@ function TableToolbar({ editor, disabled }: TableToolbarProps) {
             onClick={() => editor.chain().focus().deleteRow().run()}
             className="gap-2"
           >
-            Delete row
+            删除行
           </DropdownMenuItem>
           <DropdownMenuItem
             onClick={() => editor.chain().focus().deleteColumn().run()}
             className="gap-2"
           >
-            Delete column
+            删除列
           </DropdownMenuItem>
           <DropdownMenuItem
             onClick={() => editor.chain().focus().deleteTable().run()}
             className="gap-2 text-destructive focus:text-destructive"
           >
-            Delete table
+            删除表格
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -2542,43 +2542,43 @@ function ImageToolbar({ editor, disabled }: ImageToolbarProps) {
     <div
       className="flex items-center gap-0.5 rounded-lg border bg-popover p-1 shadow-md"
       role="toolbar"
-      aria-label="Image options"
+      aria-label="图片选项"
     >
       <ToolbarButton
         icon={Expand}
         onClick={viewImage}
         disabled={disabled}
-        title="View image"
-        aria-label="View image in new tab"
+        title="查看图片"
+        aria-label="在新标签页查看图片"
       />
       <ToolbarButton
         icon={Download}
         onClick={downloadImage}
         disabled={disabled}
-        title="Download"
-        aria-label="Download image"
+        title="下载"
+        aria-label="下载图片"
       />
       <ToolbarButton
         icon={Copy}
         onClick={copyImage}
         disabled={disabled}
-        title="Copy to clipboard"
-        aria-label="Copy image to clipboard"
+        title="复制到剪贴板"
+        aria-label="复制图片到剪贴板"
       />
       <ToolbarButton
         icon={Link2}
         onClick={copyLink}
         disabled={disabled}
-        title="Copy link"
-        aria-label="Copy image link"
+        title="复制链接"
+        aria-label="复制图片链接"
       />
       <ToolbarDivider />
       <ToolbarButton
         icon={Trash2}
         onClick={deleteImage}
         disabled={disabled}
-        title="Delete"
-        aria-label="Delete image"
+        title="删除"
+        aria-label="删除图片"
       />
     </div>
   )
@@ -2674,7 +2674,7 @@ function MenuBar({
       } catch (error) {
         console.error('Failed to upload image:', error)
         const { toast } = await import('sonner')
-        toast.error("Couldn't upload image. Try again.")
+        toast.error('无法上传图片，请重试。')
       }
     }
     input.click()
@@ -2706,7 +2706,7 @@ function MenuBar({
       } catch (error) {
         console.error('Failed to upload video:', error)
         const { toast } = await import('sonner')
-        toast.error("Couldn't upload video. Try again.")
+        toast.error('无法上传视频，请重试。')
       }
     }
     input.click()
@@ -2733,7 +2733,7 @@ function MenuBar({
             onClick={commands.heading1}
             disabled={disabled}
             isActive={active.heading1}
-            title="Heading 1"
+            title="标题 1"
           />
           <ToolbarButton
             variant={btn}
@@ -2741,7 +2741,7 @@ function MenuBar({
             onClick={commands.heading2}
             disabled={disabled}
             isActive={active.heading2}
-            title="Heading 2"
+            title="标题 2"
           />
           <ToolbarButton
             variant={btn}
@@ -2749,7 +2749,7 @@ function MenuBar({
             onClick={commands.heading3}
             disabled={disabled}
             isActive={active.heading3}
-            title="Heading 3"
+            title="标题 3"
           />
           <ToolbarDivider />
         </>
@@ -2762,7 +2762,7 @@ function MenuBar({
         onClick={commands.bold}
         disabled={disabled}
         isActive={active.bold}
-        title="Bold"
+        title="粗体"
       />
       <ToolbarButton
         variant={btn}
@@ -2770,7 +2770,7 @@ function MenuBar({
         onClick={commands.italic}
         disabled={disabled}
         isActive={active.italic}
-        title="Italic"
+        title="斜体"
       />
       <ToolbarDivider />
 
@@ -2781,7 +2781,7 @@ function MenuBar({
         onClick={commands.bulletList}
         disabled={disabled}
         isActive={active.bulletList}
-        title="Bullet List"
+        title="项目符号列表"
       />
       <ToolbarButton
         variant={btn}
@@ -2789,7 +2789,7 @@ function MenuBar({
         onClick={commands.orderedList}
         disabled={disabled}
         isActive={active.orderedList}
-        title="Ordered List"
+        title="编号列表"
       />
       <ToolbarDivider />
 
@@ -2800,7 +2800,7 @@ function MenuBar({
         onClick={setLink}
         disabled={disabled}
         isActive={active.link}
-        title="Insert Link"
+        title="插入链接"
       />
 
       {/* Code block button */}
@@ -2811,7 +2811,7 @@ function MenuBar({
           onClick={commands.codeBlock}
           disabled={disabled}
           isActive={active.codeBlock}
-          title="Code Block"
+          title="代码块"
         />
       )}
 
@@ -2822,7 +2822,7 @@ function MenuBar({
           icon={ImagePlus}
           onClick={insertImage}
           disabled={disabled}
-          title="Insert Image"
+          title="插入图片"
         />
       )}
 
@@ -2832,7 +2832,7 @@ function MenuBar({
           icon={VideoIcon}
           onClick={insertVideo}
           disabled={disabled}
-          title="Insert Video"
+          title="插入视频"
         />
       )}
 
@@ -2846,14 +2846,14 @@ function MenuBar({
         icon={ArrowUturnLeftIcon}
         onClick={commands.undo}
         disabled={disabled || !active.canUndo}
-        title="Undo"
+        title="撤销"
       />
       <ToolbarButton
         variant={btn}
         icon={ArrowUturnRightIcon}
         onClick={commands.redo}
         disabled={disabled || !active.canRedo}
-        title="Redo"
+        title="重做"
       />
     </div>
   )

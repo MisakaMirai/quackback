@@ -4,12 +4,12 @@ import { cn } from '@/lib/shared/utils'
 /** "Alice", "Alice and Bob", "Alice, Bob and Carol", "Alice, Bob and 5 more". */
 function reactorTooltip(reactors: string[] | undefined, count: number): string {
   const names = reactors ?? []
-  if (names.length === 0) return count === 1 ? '1 reaction' : `${count} reactions`
+  if (names.length === 0) return count === 1 ? '1 条回应' : `${count} 条回应`
   const shown = names.slice(0, 8)
   const hidden = count - shown.length
-  if (hidden > 0) return `${shown.join(', ')} and ${hidden} more`
+  if (hidden > 0) return `${shown.join('、')} 等 ${hidden} 人`
   if (shown.length === 1) return shown[0]
-  return `${shown.slice(0, -1).join(', ')} and ${shown[shown.length - 1]}`
+  return `${shown.slice(0, -1).join('、')}和${shown[shown.length - 1]}`
 }
 
 /**

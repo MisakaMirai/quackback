@@ -60,56 +60,42 @@ export type AuthBlockCode =
   | 'handoff_failed'
 
 export const AUTH_BLOCK_MESSAGES: Record<AuthBlockCode, string> = {
-  password_method_not_allowed:
-    "Password sign-in isn't enabled for this workspace. Try magic-link or SSO instead.",
-  magic_link_method_not_allowed: "Magic-link sign-in isn't enabled for this workspace.",
-  oauth_method_not_allowed: "That sign-in provider isn't enabled for this workspace.",
-  auth_method_blocked: "That sign-in method isn't allowed for your account.",
-  rate_limited: 'Too many sign-in attempts. Please wait a moment and try again.',
-  reserved_email_domain:
-    'That email domain is reserved and cannot be used to sign in. Use your own email address.',
-  verified_domain_requires_sso:
-    'Your email is on a domain that requires single sign-on. Use the SSO option to continue.',
-  require_two_factor: 'Two-factor authentication is required. Please verify your second factor.',
-  token_expired: 'Your login link has expired. Please request a new one.',
-  invalid_token: 'Your login link is invalid or has been tampered with. Please try again.',
-  signup_disabled:
-    "Your account isn't pre-provisioned for SSO. Ask an administrator to invite you first.",
-  signup_not_allowed:
-    "This workspace isn't accepting new accounts. Ask an admin to invite you, then sign in with the account they invite.",
-  OAUTH_CALLBACK_ERROR:
-    'Sign-in failed. Your identity provider rejected the request — check the app configuration in your IdP and try again.',
-  oauth_signin_error:
-    'Sign-in failed. Your identity provider rejected the request — check the app configuration in your IdP and try again.',
-  not_team_member:
-    "This account doesn't have team access. Team membership is by invitation only. Please contact your administrator.",
+  password_method_not_allowed: '此工作区未启用密码登录。请改用邮件登录链接或 SSO。',
+  magic_link_method_not_allowed: '此工作区未启用邮件登录链接。',
+  oauth_method_not_allowed: '此工作区未启用该登录提供商。',
+  auth_method_blocked: '你的账户不允许使用该登录方式。',
+  rate_limited: '登录尝试次数过多，请稍候再试。',
+  reserved_email_domain: '该邮箱域名已被保留，不能用于登录。请使用你自己的邮箱地址。',
+  verified_domain_requires_sso: '你的邮箱所在域名要求使用单点登录。请选择 SSO 继续。',
+  require_two_factor: '需要两步验证，请验证你的第二重身份。',
+  token_expired: '你的登录链接已过期，请重新获取。',
+  invalid_token: '你的登录链接无效或已被篡改，请重试。',
+  signup_disabled: '你的账户尚未为 SSO 预先开通。请先让管理员邀请你。',
+  signup_not_allowed: '此工作区目前不接受新账户。请让管理员邀请你，然后使用受邀账户登录。',
+  OAUTH_CALLBACK_ERROR: '登录失败，你的身份提供商拒绝了该请求。请检查 IdP 中的应用配置后重试。',
+  oauth_signin_error: '登录失败，你的身份提供商拒绝了该请求。请检查 IdP 中的应用配置后重试。',
+  not_team_member: '此账户没有团队访问权限。团队成员仅限受邀加入，请联系管理员。',
   account_not_linked:
-    'An account with this email already exists. Sign in with your original method (for example an emailed sign-in link) to confirm it, and your SSO login will be connected.',
+    '该邮箱已有账户。请用你原来的方式登录（例如邮件登录链接）以确认身份，之后 SSO 登录会关联到此账户。',
   "email_doesn't_match":
-    'The identity provider returned a different email than your account. Sign in with an IdP account that uses the same email address.',
-  email_does_not_match:
-    'The identity provider returned a different email than your account. Sign in with an IdP account that uses the same email address.',
+    '身份提供商返回的邮箱与你的账户不一致。请使用相同邮箱地址的 IdP 账户登录。',
+  email_does_not_match: '身份提供商返回的邮箱与你的账户不一致。请使用相同邮箱地址的 IdP 账户登录。',
   account_already_linked_to_different_user:
-    'That identity is already connected to a different account. Sign in with a different IdP account, or contact your administrator.',
-  unable_to_link_account: 'Something went wrong while connecting your sign-in. Please try again.',
-  email_is_missing:
-    "Your identity provider didn't share an email address. Ask your administrator to enable the email scope for this app.",
+    '该身份已关联到其他账户。请使用其他 IdP 账户登录，或联系管理员。',
+  unable_to_link_account: '连接登录时出错，请重试。',
+  email_is_missing: '你的身份提供商未提供邮箱地址。请让管理员为此应用启用邮箱范围。',
   user_info_is_missing:
-    "Your identity provider didn't share a usable profile. Ask your administrator to release an email address, or to map the claim that carries it.",
-  email_not_found:
-    "Your identity provider didn't share an email address. Ask your administrator to enable the email scope for this app.",
-  state_mismatch: 'That sign-in attempt expired or was already used. Please try again.',
-  please_restart_the_process: 'That sign-in attempt expired or was already used. Please try again.',
-  oauth_code_verification_failed:
-    "The sign-in couldn't be verified with your identity provider. Please try again.",
-  invalid_code: "The sign-in couldn't be verified with your identity provider. Please try again.",
-  no_code: "The sign-in couldn't be verified with your identity provider. Please try again.",
-  unable_to_create_user: 'Something went wrong creating your account. Please try again.',
+    '你的身份提供商未提供可用的个人资料。请让管理员释放邮箱地址，或映射包含邮箱的声明。',
+  email_not_found: '你的身份提供商未提供邮箱地址。请让管理员为此应用启用邮箱范围。',
+  state_mismatch: '该登录尝试已过期或已被使用，请重试。',
+  please_restart_the_process: '该登录尝试已过期或已被使用，请重试。',
+  oauth_code_verification_failed: '无法通过你的身份提供商验证此次登录，请重试。',
+  invalid_code: '无法通过你的身份提供商验证此次登录，请重试。',
+  no_code: '无法通过你的身份提供商验证此次登录，请重试。',
+  unable_to_create_user: '创建账户时出错，请重试。',
   failed_to_create_user:
-    "We couldn't create an account for that link. It may have expired, or this workspace isn't accepting new accounts. Ask an admin to invite you, then use the link they send.",
-  unable_to_create_session: 'Something went wrong signing you in. Please try again.',
-  oauth_provider_not_found:
-    "That sign-in provider isn't available right now. It may have been disabled by an administrator.",
-  handoff_failed:
-    'That workspace handoff expired or was already used. Sign in here, or reopen the workspace from Quackback.',
+    '无法通过该链接创建账户。链接可能已过期，或此工作区不接受新账户。请让管理员邀请你，然后使用其发送的链接。',
+  unable_to_create_session: '登录时出错，请重试。',
+  oauth_provider_not_found: '该登录提供商当前不可用，可能已被管理员禁用。',
+  handoff_failed: '该工作区交接已过期或已被使用。请在此登录，或从 Quackback 重新打开工作区。',
 }

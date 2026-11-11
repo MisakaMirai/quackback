@@ -109,10 +109,10 @@ function RateView({ token, linkedRating }: { token: string; linkedRating?: numbe
 
         <div className="text-center space-y-2">
           <h1 className="text-xl font-semibold text-foreground">
-            {recorded ? 'Thanks for the feedback' : 'How did we do?'}
+            {recorded ? '感谢你的反馈' : '我们做得怎么样？'}
           </h1>
           <p className="text-sm text-muted-foreground">
-            {recorded ? 'Your rating has been recorded.' : 'Tap a face to confirm your rating.'}
+            {recorded ? '你的评分已记录。' : '点击表情确认你的评分。'}
           </p>
         </div>
 
@@ -127,7 +127,7 @@ function RateView({ token, linkedRating }: { token: string; linkedRating?: numbe
                     type="button"
                     disabled={submitting}
                     onClick={() => rate(rating)}
-                    aria-label={`Rate ${rating} of 5`}
+                    aria-label={`评分 ${rating} 分（满分 5 分）`}
                     className={cn(
                       'flex h-12 w-12 items-center justify-center rounded-full text-2xl transition-transform hover:scale-110 disabled:opacity-40',
                       preselected === rating ? 'bg-primary/10 ring-2 ring-ring' : 'hover:bg-muted'
@@ -139,9 +139,7 @@ function RateView({ token, linkedRating }: { token: string; linkedRating?: numbe
               })}
             </div>
             {rateError && (
-              <p className="text-center text-sm text-red-600 dark:text-red-400">
-                Something went wrong. Please try again.
-              </p>
+              <p className="text-center text-sm text-red-600 dark:text-red-400">出错了，请重试。</p>
             )}
           </div>
         )}
@@ -152,13 +150,11 @@ function RateView({ token, linkedRating }: { token: string; linkedRating?: numbe
               value={comment}
               onChange={(e) => setComment(e.target.value)}
               maxLength={2000}
-              placeholder="Anything you'd like to add? (optional)"
+              placeholder="还有什么想补充的吗？（可选）"
               className="min-h-24"
             />
             {commentError && (
-              <p className="text-center text-sm text-red-600 dark:text-red-400">
-                Something went wrong. Please try again.
-              </p>
+              <p className="text-center text-sm text-red-600 dark:text-red-400">出错了，请重试。</p>
             )}
             <div className="flex justify-center">
               <Button
@@ -166,16 +162,14 @@ function RateView({ token, linkedRating }: { token: string; linkedRating?: numbe
                 onClick={submitComment}
                 disabled={!comment.trim() || submitting}
               >
-                {submitting ? 'Sending…' : 'Send comment'}
+                {submitting ? '发送中…' : '发送评论'}
               </Button>
             </div>
           </div>
         )}
 
         {commentSaved && (
-          <p className="text-center text-sm text-muted-foreground">
-            Thanks, your comment has been added.
-          </p>
+          <p className="text-center text-sm text-muted-foreground">谢谢，你的评论已添加。</p>
         )}
       </div>
     </div>
@@ -207,14 +201,14 @@ function getErrorContent(error: string): { title: string; message: string } {
   switch (error) {
     case 'missing':
       return {
-        title: 'Missing Link',
-        message: 'This link is missing some information. Please use the link from your email.',
+        title: '链接不完整',
+        message: '此链接缺少部分信息，请使用邮件中的链接。',
       }
     case 'invalid':
     default:
       return {
-        title: 'Link Expired',
-        message: 'This rating link has expired or is no longer valid.',
+        title: '链接已过期',
+        message: '此评分链接已过期或不再有效。',
       }
   }
 }

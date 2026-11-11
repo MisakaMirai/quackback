@@ -76,7 +76,7 @@ describe('EmojiSuggestionList', () => {
 
   it('labels Recent then Popular when recentCount is set (bare `:` )', () => {
     render(<EmojiSuggestionList items={items} command={() => {}} recentCount={1} />)
-    expect(screen.getByText('Recent')).toBeInTheDocument()
-    expect(screen.getByText('Popular')).toBeInTheDocument()
+    expect(screen.getByText('最近使用')).toBeInTheDocument()
+    expect(screen.getByText('常用')).toBeInTheDocument()
   })
 })

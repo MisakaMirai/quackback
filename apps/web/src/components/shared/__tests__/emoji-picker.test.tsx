@@ -14,7 +14,7 @@ describe('EmojiPicker', () => {
 
   it('includes the fingers-crossed glyph in the popular grid', async () => {
     render(<EmojiPicker onSelect={() => {}} />)
-    fireEvent.click(screen.getByLabelText('Insert emoji'))
+    fireEvent.click(screen.getByLabelText('插入表情'))
     expect(await screen.findByText('🤞')).toBeInTheDocument()
   })
 
@@ -22,16 +22,16 @@ describe('EmojiPicker', () => {
     recordRecentEmoji('🤞')
     recordRecentEmoji('🎉')
     render(<EmojiPicker onSelect={() => {}} />)
-    fireEvent.click(screen.getByLabelText('Insert emoji'))
-    expect(await screen.findByText('Recent')).toBeInTheDocument()
-    expect(screen.getByText('Popular')).toBeInTheDocument()
+    fireEvent.click(screen.getByLabelText('插入表情'))
+    expect(await screen.findByText('最近使用')).toBeInTheDocument()
+    expect(screen.getByText('常用')).toBeInTheDocument()
     expect(screen.getAllByText('🤞').length).toBeGreaterThanOrEqual(1)
   })
 
   it('records a pick as recent and invokes onSelect', async () => {
     const onSelect = vi.fn()
     render(<EmojiPicker onSelect={onSelect} />)
-    fireEvent.click(screen.getByLabelText('Insert emoji'))
+    fireEvent.click(screen.getByLabelText('插入表情'))
     fireEvent.click(await screen.findByText('🤞'))
     expect(onSelect).toHaveBeenCalledWith('🤞')
     expect(JSON.parse(window.localStorage.getItem('quackback:emoji-recent')!)).toEqual(['🤞'])

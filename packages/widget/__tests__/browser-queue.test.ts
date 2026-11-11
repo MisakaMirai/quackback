@@ -175,12 +175,12 @@ describe('browser-queue', () => {
     await import('../src/browser-queue')
     // Let the deferred fallback fire first.
     await new Promise((r) => setTimeout(r, 0))
-    expect(document.querySelector('button[aria-label="Open feedback widget"]')).not.toBeNull()
+    expect(document.querySelector('button[aria-label="打开反馈小组件"]')).not.toBeNull()
 
     // Host's explicit init must destroy + rebuild with the new options.
     window.Quackback!('init', { launcher: false, placement: 'left' })
 
-    expect(document.querySelector('button[aria-label="Open feedback widget"]')).toBeNull()
+    expect(document.querySelector('button[aria-label="打开反馈小组件"]')).toBeNull()
     const styles = document.getElementById('quackback-widget-styles')?.textContent ?? ''
     expect(styles).toContain('left:24px')
     expect(styles).not.toContain('right:24px')
@@ -201,7 +201,7 @@ describe('browser-queue', () => {
     window.Quackback!('init', { launcher: false, placement: 'left' })
     await new Promise((r) => setTimeout(r, 0))
 
-    expect(document.querySelector('button[aria-label="Open feedback widget"]')).toBeNull()
+    expect(document.querySelector('button[aria-label="打开反馈小组件"]')).toBeNull()
     expect(document.querySelector('.quackback-panel')).not.toBeNull()
     const styles = document.getElementById('quackback-widget-styles')?.textContent ?? ''
     expect(styles).toContain('left:24px')

@@ -33,8 +33,8 @@ afterEach(cleanup)
 it('keeps the invitation page to the workspace, the inviter and the one action', async () => {
   const Page = (Route as unknown as { options: { component: ComponentType } }).options.component
   render(<Page />)
-  expect(await screen.findByText('Sam invited you to join Acme.')).toBeInTheDocument()
-  expect(screen.getByRole('button', { name: 'Accept invitation' })).toBeInTheDocument()
+  expect(await screen.findByText('Sam 邀请你加入 Acme。')).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: '接受邀请' })).toBeInTheDocument()
   expect(screen.queryByText('AI-powered insights')).toBeNull()
   expect(screen.queryByText('24 integrations')).toBeNull()
 })

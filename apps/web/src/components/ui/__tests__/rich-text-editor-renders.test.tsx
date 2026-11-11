@@ -104,7 +104,7 @@ describe('RichTextEditor mount', () => {
 
     expect(dom.textContent).toBe('Hello')
     // Nothing was done to the document, so there is nothing to undo.
-    expect(toolbarButton('Undo').disabled).toBe(true)
+    expect(toolbarButton('撤销').disabled).toBe(true)
     expect(onDocumentChange).not.toHaveBeenCalled()
   })
 
@@ -162,7 +162,7 @@ describe('RichTextEditor typing', () => {
     // The first keystroke makes Undo available: one toolbar button changes.
     buttonRenders.count = 0
     await user.type(dom, 'a')
-    await waitFor(() => expect(toolbarButton('Undo').disabled).toBe(false))
+    await waitFor(() => expect(toolbarButton('撤销').disabled).toBe(false))
     expect(buttonRenders.count).toBe(1)
 
     // Bold turns on in the toolbar and in the bubble menu, nothing else.
@@ -170,7 +170,7 @@ describe('RichTextEditor typing', () => {
     act(() => {
       editor.commands.toggleBold()
     })
-    await waitFor(() => expect(isActive('Bold')).toBe(true))
+    await waitFor(() => expect(isActive('粗体')).toBe(true))
     expect(buttonRenders.count).toBe(2)
   })
 
@@ -201,23 +201,23 @@ describe('RichTextEditor typing', () => {
     const user = userEvent.setup()
     await user.click(dom)
 
-    expect(toolbarButton('Undo').disabled).toBe(true)
+    expect(toolbarButton('撤销').disabled).toBe(true)
     await user.type(dom, 'plain')
-    await waitFor(() => expect(toolbarButton('Undo').disabled).toBe(false))
+    await waitFor(() => expect(toolbarButton('撤销').disabled).toBe(false))
 
-    expect(isActive('Bold')).toBe(false)
-    await user.click(toolbarButton('Bold'))
-    await waitFor(() => expect(isActive('Bold')).toBe(true))
-    await user.click(toolbarButton('Bold'))
-    await waitFor(() => expect(isActive('Bold')).toBe(false))
+    expect(isActive('粗体')).toBe(false)
+    await user.click(toolbarButton('粗体'))
+    await waitFor(() => expect(isActive('粗体')).toBe(true))
+    await user.click(toolbarButton('粗体'))
+    await waitFor(() => expect(isActive('粗体')).toBe(false))
 
-    await user.click(toolbarButton('Bullet List'))
-    await waitFor(() => expect(isActive('Bullet List')).toBe(true))
+    await user.click(toolbarButton('项目符号列表'))
+    await waitFor(() => expect(isActive('项目符号列表')).toBe(true))
     act(() => {
       editor.commands.undo()
     })
-    await waitFor(() => expect(isActive('Bullet List')).toBe(false))
-    await waitFor(() => expect(toolbarButton('Redo').disabled).toBe(false))
+    await waitFor(() => expect(isActive('项目符号列表')).toBe(false))
+    await waitFor(() => expect(toolbarButton('重做').disabled).toBe(false))
   })
 
   it('names the block under the selection in the bubble menu', async () => {
@@ -226,8 +226,8 @@ describe('RichTextEditor typing', () => {
     const user = userEvent.setup()
     await user.click(dom)
     await user.type(dom, 'Title')
-    await user.click(toolbarButton('Heading 1'))
-    await waitFor(() => expect(isActive('Heading 1')).toBe(true))
+    await user.click(toolbarButton('标题 1'))
+    await waitFor(() => expect(isActive('标题 1')).toBe(true))
 
     act(() => {
       editor.commands.setTextSelection({ from: 1, to: 4 })
@@ -236,7 +236,7 @@ describe('RichTextEditor typing', () => {
       () => {
         // The bubble's own Bold button, named with its shortcut.
         const menu =
-          document.body.querySelector<HTMLElement>('[title="Bold (Cmd+B)"]')?.parentElement
+          document.body.querySelector<HTMLElement>('[title="粗体（Cmd+B）"]')?.parentElement
         expect(menu).toBeTruthy()
         return menu!
       },

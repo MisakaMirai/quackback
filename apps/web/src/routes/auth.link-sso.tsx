@@ -80,19 +80,18 @@ function LinkSsoPage() {
         {failed ? (
           <>
             <ExclamationTriangleIcon className="h-12 w-12 text-amber-500 mx-auto" />
-            <p className="text-foreground font-medium">You&apos;re signed in</p>
+            <p className="text-foreground font-medium">你已登录</p>
             <p className="text-sm text-muted-foreground">
-              We couldn&apos;t connect single sign-on automatically, but your email is confirmed —
-              the next time you sign in with SSO it will be linked to this account.
+              我们无法自动连接单点登录，但你的邮箱已确认。下次使用 SSO 登录时，它会关联到此账户。
             </p>
             <a href={destination} className="text-sm font-medium text-primary hover:underline">
-              Continue
+              继续
             </a>
           </>
         ) : (
           <>
             <ArrowPathIcon className="h-12 w-12 animate-spin text-primary mx-auto" />
-            <p className="text-muted-foreground">Connecting single sign-on…</p>
+            <p className="text-muted-foreground">正在连接单点登录…</p>
           </>
         )}
       </div>

@@ -32,7 +32,7 @@ const searchSchema = z.object({
   dateFrom: z
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/)
-    .refine((s) => !Number.isNaN(new Date(s).getTime()), 'Invalid calendar date')
+    .refine((s) => !Number.isNaN(new Date(s).getTime()), '日期无效')
     .optional(),
   responded: z.enum(['responded', 'unresponded']).optional(),
   // Team-only filters (rendered only for post.view_private holders; the server
@@ -122,8 +122,8 @@ export const Route = createFileRoute('/_portal/')({
   head: ({ loaderData }) => {
     if (!loaderData) return {}
     const { workspaceName, baseUrl } = loaderData
-    const title = `Feedback - ${workspaceName}`
-    const description = `Submit and vote on feature requests for ${workspaceName}. Help shape what gets built next.`
+    const title = `反馈 - ${workspaceName}`
+    const description = `为 ${workspaceName} 提交功能建议并投票，帮助决定接下来要做什么。`
     return {
       meta: [
         { title },

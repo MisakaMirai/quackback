@@ -94,7 +94,7 @@ function PortalInvitePage() {
           href="/"
           className="mt-6 inline-block text-sm font-medium text-primary hover:underline underline-offset-4"
         >
-          Go to portal
+          前往门户
         </a>
       </Card>
     </PageShell>
@@ -108,38 +108,38 @@ function getMessage(
   switch (status) {
     case 'canceled':
       return {
-        title: 'Invite revoked',
-        body: 'This invitation has been revoked. Please ask the workspace admin to send a new one.',
+        title: '邀请已撤销',
+        body: '此邀请已被撤销，请联系工作区管理员重新发送。',
       }
     case 'expired':
       return {
-        title: 'Invite expired',
-        body: 'This invitation has expired. Please ask the workspace admin to resend it.',
+        title: '邀请已过期',
+        body: '此邀请已过期，请联系工作区管理员重新发送。',
       }
     case 'mismatch':
       return {
-        title: 'Wrong account',
-        body: 'This invite was sent to a different email address. Please sign in with the address it was sent to, then open the link again.',
+        title: '账户不匹配',
+        body: '此邀请发送到了其他邮箱地址。请使用收到邀请的邮箱登录，然后重新打开链接。',
       }
     case 'email_not_verified':
       return {
-        title: 'Verify your email first',
-        body: 'Your email address needs to be verified before you can accept this invitation. Please check your inbox for a verification email, then try the invite link again.',
+        title: '请先验证邮箱',
+        body: '在接受此邀请前，你需要先验证邮箱地址。请查看收件箱中的验证邮件，然后重新打开邀请链接。',
       }
     case 'not_found':
       return {
-        title: 'Invite not found',
-        body: 'This invitation could not be found. It may have already been used or does not exist.',
+        title: '未找到邀请',
+        body: '找不到此邀请，它可能已被使用或不存在。',
       }
     case 'error':
       return {
-        title: 'Something went wrong',
-        body: 'An unexpected error occurred. Please try again later or contact the workspace admin.',
+        title: '出错了',
+        body: '发生了意外错误，请稍后重试或联系工作区管理员。',
       }
     default:
       return {
-        title: 'Invite not found',
-        body: 'This invitation could not be found.',
+        title: '未找到邀请',
+        body: '找不到此邀请。',
       }
   }
 }

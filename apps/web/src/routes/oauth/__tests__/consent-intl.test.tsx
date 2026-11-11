@@ -69,7 +69,7 @@ function mockRequests() {
 }
 
 async function authorizedScopes(request: ReturnType<typeof mockRequests>): Promise<string[]> {
-  fireEvent.click(screen.getByRole('button', { name: 'Authorize' }))
+  fireEvent.click(screen.getByRole('button', { name: '授权' }))
   await waitFor(() => {
     expect(request).toHaveBeenCalledWith('/api/auth/oauth2/consent', expect.any(Object))
   })
@@ -80,7 +80,7 @@ async function authorizedScopes(request: ReturnType<typeof mockRequests>): Promi
 }
 
 function openDetail() {
-  fireEvent.click(screen.getByRole('button', { name: /Choose what .* can access/ }))
+  fireEvent.click(screen.getByRole('button', { name: /选择 .* 可以访问的内容/ }))
 }
 
 describe('standalone MCP consent intl', () => {
@@ -88,11 +88,11 @@ describe('standalone MCP consent intl', () => {
     mockRequests()
     await renderConsent()
 
-    expect(screen.getByRole('radio', { name: /Full access/ })).toBeChecked()
-    expect(screen.getByRole('radio', { name: /Read only/ })).not.toBeChecked()
-    expect(screen.queryByRole('radio', { name: /Custom/ })).not.toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: /完全访问/ })).toBeChecked()
+    expect(screen.getByRole('radio', { name: /只读/ })).not.toBeChecked()
+    expect(screen.queryByRole('radio', { name: /自定义/ })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Settings: Read' })).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Authorize' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: '授权' })).toBeEnabled()
   })
 
   it('renders the real capability picker without an ancestor provider', async () => {
@@ -112,7 +112,7 @@ describe('standalone MCP consent intl', () => {
     openDetail()
 
     expect(screen.getByRole('button', { name: 'Settings: Read' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Authorize' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: '授权' })).toBeEnabled()
   })
 
   it('grants every capability when authorized as it opens', async () => {
@@ -129,7 +129,7 @@ describe('standalone MCP consent intl', () => {
     const request = mockRequests()
     await renderConsent('en')
 
-    fireEvent.click(screen.getByRole('radio', { name: /Read only/ }))
+    fireEvent.click(screen.getByRole('radio', { name: /只读/ }))
     const scopes = await authorizedScopes(request)
     expect(scopes).toContain('read:feedback')
     expect(scopes.filter((scope) => scope.startsWith('write:'))).toEqual([])
@@ -141,7 +141,7 @@ describe('standalone MCP consent intl', () => {
     openDetail()
 
     fireEvent.click(screen.getByRole('button', { name: 'Settings: Read' }))
-    expect(screen.getByRole('radio', { name: /Custom/ })).toBeChecked()
+    expect(screen.getByRole('radio', { name: /自定义/ })).toBeChecked()
 
     const scopes = await authorizedScopes(request)
     expect(scopes).toContain('read:settings')
@@ -163,14 +163,14 @@ describe('standalone MCP consent intl', () => {
     ]) {
       fireEvent.click(screen.getByRole('button', { name }))
     }
-    expect(screen.getByRole('button', { name: 'Authorize' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: '授权' })).toBeDisabled()
   })
 
   it('can deny access after client information loads', async () => {
     const request = mockRequests()
     await renderConsent('en')
 
-    fireEvent.click(screen.getByRole('button', { name: 'Deny' }))
+    fireEvent.click(screen.getByRole('button', { name: '拒绝' }))
 
     await waitFor(() => {
       expect(request).toHaveBeenCalledWith('/api/auth/oauth2/consent', expect.any(Object))

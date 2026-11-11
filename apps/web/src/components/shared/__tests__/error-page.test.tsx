@@ -66,7 +66,7 @@ describe('DefaultErrorPage', () => {
   it('shows a friendly permission notice for authorization errors', () => {
     render(<DefaultErrorPage error={new Error('Access denied: Requires [admin], got member')} />)
 
-    expect(screen.getByText(/don't have access/i)).toBeInTheDocument()
+    expect(screen.getByText(/没有访问权限/)).toBeInTheDocument()
     // The raw role-gate jargon must never reach the user.
     expect(screen.queryByText(/Requires \[admin\]/)).toBeNull()
     expect(screen.queryByText(/Technical details/i)).toBeNull()
@@ -128,7 +128,7 @@ describe('DefaultErrorPage', () => {
     expect(screen.queryByText(/Something went wrong/i)).toBeNull()
     expect(screen.queryByText(/Technical details/i)).toBeNull()
     expect(
-      screen.getByRole('heading', { name: 'The audit log is available from the Enterprise plan' })
+      screen.getByRole('heading', { name: 'The audit log 从 Enterprise 套餐起提供' })
     ).toBeInTheDocument()
     expect(screen.getByText(/The audit log is an Enterprise feature/)).toBeInTheDocument()
   })
@@ -140,7 +140,7 @@ describe('DefaultErrorPage', () => {
       />
     )
 
-    expect(screen.getByRole('heading', { name: 'This is a plan feature' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '这是套餐功能' })).toBeInTheDocument()
   })
 })
 

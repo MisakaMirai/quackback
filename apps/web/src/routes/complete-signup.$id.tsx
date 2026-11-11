@@ -13,15 +13,11 @@ import {
 } from '@/lib/server/functions/invitations'
 
 const ERROR_MESSAGES: Record<string, string> = {
-  INVALID_TOKEN:
-    'This invitation link is invalid. It may have already been used. Please ask your administrator to resend the invitation.',
-  EXPIRED_TOKEN:
-    'This invitation link has expired. Please ask your administrator to resend the invitation.',
-  failed_to_create_user:
-    "We couldn't create your account. Please try again or contact your administrator.",
-  new_user_signup_disabled:
-    'New account creation is currently disabled. Please contact your administrator.',
-  failed_to_create_session: "We couldn't sign you in. Please try again.",
+  INVALID_TOKEN: '此邀请链接无效，可能已被使用。请联系管理员重新发送邀请。',
+  EXPIRED_TOKEN: '此邀请链接已过期，请联系管理员重新发送邀请。',
+  failed_to_create_user: '无法创建你的账户，请重试或联系管理员。',
+  new_user_signup_disabled: '当前已关闭新账户创建，请联系管理员。',
+  failed_to_create_session: '无法为你登录，请重试。',
 }
 
 export interface InviteBranding {
@@ -55,7 +51,7 @@ export const Route = createFileRoute('/complete-signup/$id')({
       return { state: 'welcome' as const, ...data, branding }
     } catch (err) {
       if (isRedirect(err)) throw err
-      const message = err instanceof Error ? err.message : 'Failed to load invitation'
+      const message = err instanceof Error ? err.message : '无法加载邀请'
       return { state: 'error' as const, error: message, branding }
     }
   },
@@ -71,9 +67,7 @@ function AcceptInvitationPage() {
   // If the loader succeeded (state='welcome'), a stale ?error= from a previous
   // redirect attempt (e.g. Outlook Safe Links) should not override the valid invitation.
   if (errorCode && data.state !== 'welcome') {
-    const message =
-      ERROR_MESSAGES[errorCode] ??
-      'Something went wrong with the invitation link. Please ask your administrator to resend the invitation.'
+    const message = ERROR_MESSAGES[errorCode] ?? '邀请链接出现问题，请联系管理员重新发送邀请。'
     return (
       <PageShell>
         <ErrorContent error={message} invitationId={id} errorKind="token" branding={branding} />
@@ -167,21 +161,21 @@ function NotAuthenticatedContent({
     >
       <WorkspaceIdentity branding={branding} />
       <div className="mt-6 mb-6 h-px bg-border/50" />
-      <h1 className="text-2xl font-bold tracking-tight">You're invited!</h1>
+      <h1 className="text-2xl font-bold tracking-tight">你收到了邀请！</h1>
       <p className="mt-2 text-muted-foreground">
         {branding.inviterName
-          ? `${branding.inviterName} invited you to join the team. Sign in to get started.`
-          : 'Sign in to accept your invitation and get started with your team.'}
+          ? `${branding.inviterName} 邀请你加入团队，请登录后开始使用。`
+          : '登录以接受邀请，并与团队一起开始使用。'}
       </p>
       <div className="mt-6 flex flex-col gap-3">
         <a href={`/auth/login?callbackUrl=/complete-signup/${invitationId}`}>
-          <Button className="w-full h-11">Sign in</Button>
+          <Button className="w-full h-11">登录</Button>
         </a>
         <a
           href="/"
           className="text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
-          Go to Home
+          返回首页
         </a>
       </div>
     </div>
@@ -217,11 +211,11 @@ function WelcomeContent({
     const trimmedName = name.trim()
 
     if (trimmedName.length < 2) {
-      setError('Please enter your name (at least 2 characters)')
+      setError('请输入你的姓名（至少 2 个字符）')
       return
     }
     if (!skipPassword && password && password.length < 8) {
-      setError('Password must be at least 8 characters')
+      setError('密码至少需要 8 个字符')
       return
     }
 
@@ -237,7 +231,7 @@ function WelcomeContent({
 
       window.location.href = '/admin'
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to accept invitation'
+      const message = err instanceof Error ? err.message : '接受邀请失败'
       if (message.includes('already been accepted')) {
         window.location.href = '/admin'
         return
@@ -259,11 +253,9 @@ function WelcomeContent({
         <WorkspaceIdentity branding={branding} />
         <div className="mt-6 mb-6 h-px bg-border/50" />
         <div className="mb-6 text-center">
-          <h1 className="text-2xl font-bold tracking-tight">Welcome!</h1>
+          <h1 className="text-2xl font-bold tracking-tight">欢迎！</h1>
           <p className="mt-2 text-muted-foreground">
-            {invite.inviterName
-              ? `Invited by ${invite.inviterName}`
-              : 'Complete your account setup to get started'}
+            {invite.inviterName ? `由 ${invite.inviterName} 邀请` : '完成账户设置即可开始使用'}
           </p>
         </div>
 
@@ -281,7 +273,7 @@ function WelcomeContent({
 
           <div className="space-y-2">
             <label htmlFor="name" className="text-sm font-medium">
-              Your name
+              你的姓名
             </label>
             <Input
               id="name"
@@ -289,7 +281,7 @@ function WelcomeContent({
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
-              placeholder="Jane Doe"
+              placeholder="张三"
               autoComplete="name"
               autoFocus
               disabled={isLoading}
@@ -300,14 +292,14 @@ function WelcomeContent({
           {passwordEnabled && (
             <div className="space-y-2">
               <label htmlFor="password" className="text-sm font-medium">
-                Set a password <span className="text-muted-foreground font-normal">(optional)</span>
+                设置密码 <span className="text-muted-foreground font-normal">（可选）</span>
               </label>
               <Input
                 id="password"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="At least 8 characters"
+                placeholder="至少 8 个字符"
                 autoComplete="new-password"
                 disabled={isLoading}
                 className="h-11"
@@ -320,7 +312,7 @@ function WelcomeContent({
             disabled={isLoading || name.trim().length < 2}
             className="w-full h-11"
           >
-            {isLoading ? <ArrowPathIcon className="h-4 w-4 animate-spin" /> : 'Get started'}
+            {isLoading ? <ArrowPathIcon className="h-4 w-4 animate-spin" /> : '开始使用'}
           </Button>
 
           {passwordEnabled && (
@@ -331,7 +323,7 @@ function WelcomeContent({
               disabled={isLoading}
               className="w-full text-muted-foreground"
             >
-              Skip password setup
+              跳过密码设置
             </Button>
           )}
         </form>
@@ -374,22 +366,20 @@ function ErrorContent({
       {retrying ? (
         <div>
           <Spinner size="xl" className="border-primary mx-auto" />
-          <p className="mt-4 text-muted-foreground">Retrying...</p>
+          <p className="mt-4 text-muted-foreground">正在重试…</p>
         </div>
       ) : (
         <div>
-          <div className="text-destructive text-xl font-medium tracking-tight">
-            Unable to accept invitation
-          </div>
+          <div className="text-destructive text-xl font-medium tracking-tight">无法接受邀请</div>
           <p className="mt-2 text-muted-foreground">{error}</p>
           <div className="mt-6 flex flex-col gap-3">
             {kind === 'already-accepted' ? (
               <a href="/admin">
-                <Button className="w-full h-11">Go to Dashboard</Button>
+                <Button className="w-full h-11">前往控制台</Button>
               </a>
             ) : kind === 'token' ? (
               <a href={`/auth/login?callbackUrl=/complete-signup/${invitationId}`}>
-                <Button className="w-full h-11">Sign in</Button>
+                <Button className="w-full h-11">登录</Button>
               </a>
             ) : (
               <Button
@@ -399,14 +389,14 @@ function ErrorContent({
                   window.location.reload()
                 }}
               >
-                Try Again
+                重试
               </Button>
             )}
             <a
               href="/"
               className="text-sm text-muted-foreground hover:text-foreground transition-colors"
             >
-              Go to Home
+              返回首页
             </a>
           </div>
         </div>

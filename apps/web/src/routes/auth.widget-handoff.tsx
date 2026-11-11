@@ -371,11 +371,11 @@ function WidgetHandoffErrorPage() {
   return (
     <PageShell>
       <Card>
-        <h1 className="text-xl font-semibold tracking-tight">Sign-in link expired</h1>
+        <h1 className="text-xl font-semibold tracking-tight">登录链接已过期</h1>
         <p className="mt-2 text-sm text-muted-foreground">
           {data.status === 'error'
-            ? 'Something went wrong while processing your sign-in link. Please reopen the widget and try again.'
-            : 'This sign-in link has expired or has already been used. Please reopen the widget to get a new link.'}
+            ? '处理登录链接时出错，请重新打开小组件后重试。'
+            : '此登录链接已过期或已被使用，请重新打开小组件获取新链接。'}
         </p>
       </Card>
     </PageShell>

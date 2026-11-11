@@ -93,7 +93,7 @@ export function createLauncher(opts: LauncherOptions): LauncherHandle {
     transition:
       'opacity 450ms ease, transform 200ms ease, box-shadow 200ms ease, background-color 200ms ease, color 200ms ease',
   })
-  btn.setAttribute('aria-label', 'Open feedback widget')
+  btn.setAttribute('aria-label', '打开反馈小组件')
   btn.setAttribute('aria-expanded', 'false')
 
   const wrapper = document.createElement('div')
@@ -204,7 +204,7 @@ export function createLauncher(opts: LauncherOptions): LauncherHandle {
   bubbleText.addEventListener('click', () => opts.onClick())
   const bubbleClose = document.createElement('button')
   bubbleClose.type = 'button'
-  bubbleClose.setAttribute('aria-label', 'Dismiss')
+  bubbleClose.setAttribute('aria-label', '关闭')
   bubbleClose.textContent = '×'
   Object.assign(bubbleClose.style, {
     flexShrink: '0',
@@ -258,10 +258,7 @@ export function createLauncher(opts: LauncherOptions): LauncherHandle {
     setOpen(open) {
       isOpen = open
       btn.setAttribute('aria-expanded', open ? 'true' : 'false')
-      btn.setAttribute(
-        'aria-label',
-        open ? 'Close feedback widget' : labelText || 'Open feedback widget'
-      )
+      btn.setAttribute('aria-label', open ? '关闭反馈小组件' : labelText || '打开反馈小组件')
       iconMessenger.style.opacity = open ? '0' : '1'
       iconMessenger.style.transform = open ? 'rotate(90deg)' : 'rotate(0deg)'
       iconClose.style.opacity = open ? '1' : '0'
@@ -300,7 +297,7 @@ export function createLauncher(opts: LauncherOptions): LauncherHandle {
       btn.style.borderRadius = show ? '24px' : '50%'
       btn.style.padding = show ? '0 16px 0 10px' : '0'
       btn.style.gap = show ? '8px' : '0'
-      if (!isOpen) btn.setAttribute('aria-label', labelText || 'Open feedback widget')
+      if (!isOpen) btn.setAttribute('aria-label', labelText || '打开反馈小组件')
     },
     setPlacement(side) {
       btn.style.left = side === 'left' ? edge : ''

@@ -62,20 +62,20 @@ export const INTEGRATION_UI: Record<string, IntegrationUiManifest> = {
     icon: AsanaIcon,
     displayName: 'Asana',
     actionVerb: 'Archive',
-    itemNoun: 'task',
+    itemNoun: '任务',
     badge: 'bg-rose-100 dark:bg-rose-900/80 text-[#F06A6A] dark:text-[#F5A3A3]',
   },
   azure_devops: {
     icon: AzureDevOpsIcon,
     displayName: 'Azure DevOps',
     actionVerb: 'Close',
-    itemNoun: 'work item',
+    itemNoun: '工作项',
   },
   clickup: {
     icon: ClickUpIcon,
     displayName: 'ClickUp',
     actionVerb: 'Close',
-    itemNoun: 'task',
+    itemNoun: '任务',
   },
   discord: {
     icon: DiscordIcon,
@@ -91,7 +91,7 @@ export const INTEGRATION_UI: Record<string, IntegrationUiManifest> = {
     icon: GitHubIcon,
     displayName: 'GitHub',
     actionVerb: 'Close',
-    itemNoun: 'issue',
+    itemNoun: '问题',
     formatExternalId: (id) => `#${id}`,
     badge: 'bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300',
   },
@@ -99,7 +99,7 @@ export const INTEGRATION_UI: Record<string, IntegrationUiManifest> = {
     icon: GitLabIcon,
     displayName: 'GitLab',
     actionVerb: 'Close',
-    itemNoun: 'issue',
+    itemNoun: '问题',
     badge: 'bg-orange-100 dark:bg-orange-900/80 text-[#FC6D26] dark:text-[#FEA876]',
   },
   hubspot: {
@@ -116,14 +116,14 @@ export const INTEGRATION_UI: Record<string, IntegrationUiManifest> = {
     icon: JiraIcon,
     displayName: 'Jira',
     actionVerb: 'Close',
-    itemNoun: 'issue',
+    itemNoun: '问题',
     badge: 'bg-blue-100 dark:bg-blue-900/80 text-[#0052CC] dark:text-[#669EFF]',
   },
   linear: {
     icon: LinearIcon,
     displayName: 'Linear',
     actionVerb: 'Archive',
-    itemNoun: 'issue',
+    itemNoun: '问题',
     badge: 'bg-violet-100 dark:bg-violet-900/80 text-[#5E6AD2] dark:text-[#9B9FE8]',
   },
   make: { icon: MakeIcon, displayName: 'Make' },
@@ -131,7 +131,7 @@ export const INTEGRATION_UI: Record<string, IntegrationUiManifest> = {
     icon: MondayIcon,
     displayName: 'Monday',
     actionVerb: 'Archive',
-    itemNoun: 'item',
+    itemNoun: '事项',
     badge: 'bg-yellow-100 dark:bg-yellow-900/80 text-[#FFCC00] dark:text-[#FFE066]',
   },
   n8n: { icon: N8nIcon, displayName: 'n8n' },
@@ -139,7 +139,7 @@ export const INTEGRATION_UI: Record<string, IntegrationUiManifest> = {
     icon: NotionIcon,
     displayName: 'Notion',
     actionVerb: 'Archive',
-    itemNoun: 'page',
+    itemNoun: '页面',
     badge: 'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300',
   },
   ntfy: { icon: NtfyIcon, displayName: 'ntfy' },
@@ -152,7 +152,7 @@ export const INTEGRATION_UI: Record<string, IntegrationUiManifest> = {
     icon: ShortcutIcon,
     displayName: 'Shortcut',
     actionVerb: 'Archive',
-    itemNoun: 'story',
+    itemNoun: '故事',
   },
   slack: {
     icon: SlackIcon,
@@ -173,7 +173,7 @@ export const INTEGRATION_UI: Record<string, IntegrationUiManifest> = {
     icon: TrelloIcon,
     displayName: 'Trello',
     actionVerb: 'Archive',
-    itemNoun: 'task',
+    itemNoun: '任务',
   },
   zapier: { icon: ZapierIcon, displayName: 'Zapier' },
   zendesk: {
@@ -200,7 +200,7 @@ export function getIntegrationActionVerb(type: string): string {
 
 /** Item noun (issue/task/story/…) for a tracker; defaults to issue. */
 export function getIntegrationItemNoun(type: string): string {
-  return INTEGRATION_UI[type]?.itemNoun ?? 'issue'
+  return INTEGRATION_UI[type]?.itemNoun ?? '问题'
 }
 
 /** Format an external id for display (e.g. GitHub → "#42"); identity by default. */

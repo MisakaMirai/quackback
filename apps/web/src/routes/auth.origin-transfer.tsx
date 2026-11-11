@@ -51,7 +51,7 @@ function OriginTransferContinue({ to }: { to: string }) {
   return (
     <main className="flex min-h-screen items-center justify-center bg-background px-4">
       <meta httpEquiv="refresh" content={`0;url=${encodeURI(to)}`} />
-      <p className="text-sm text-muted-foreground">Continuing on this address…</p>
+      <p className="text-sm text-muted-foreground">正在此地址继续…</p>
       <script
         dangerouslySetInnerHTML={{ __html: `window.location.replace(${JSON.stringify(to)})` }}
       />
@@ -63,16 +63,15 @@ function OriginTransferError() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-background px-4">
       <section className="w-full max-w-md rounded-xl border bg-card p-6 text-center shadow-sm">
-        <h1 className="text-xl font-semibold">Session transfer expired</h1>
+        <h1 className="text-xl font-semibold">会话转移已过期</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Sign in at this workspace address to continue. The old address cannot restore this
-          session.
+          请在此工作区地址登录以继续。旧地址无法恢复此会话。
         </p>
         <Link
           to="/auth/login"
           className="mt-5 inline-flex h-10 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground"
         >
-          Sign in
+          登录
         </Link>
       </section>
     </main>

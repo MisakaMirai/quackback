@@ -15,7 +15,7 @@ export const Route = createFileRoute('/_portal/settings/profile')({
     const { session, queryClient } = context
 
     if (!session?.user) {
-      throw new Error('User not authenticated')
+      throw new Error('用户未登录')
     }
 
     // Pre-fetch user profile and the email-change widget's own state

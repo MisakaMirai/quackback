@@ -43,11 +43,11 @@ export function useApprovePost(postId?: PostId) {
   return useMutation({
     mutationFn: (id: string) => approvePostFn({ data: { postId: id } }),
     onSuccess: (_data, id) => {
-      toast.success('Post approved')
+      toast.success('帖子已通过')
       invalidateModerationSurfaces(queryClient, (postId ?? id) as PostId)
     },
     onError: (error, id) => {
-      showModerationError(error, 'Failed to approve post')
+      showModerationError(error, '通过帖子失败')
       invalidateModerationSurfaces(queryClient, (postId ?? id) as PostId)
     },
   })
@@ -59,11 +59,11 @@ export function useRejectPost(postId?: PostId) {
     mutationFn: (vars: { postId: string; reason?: string }) =>
       rejectPostFn({ data: { postId: vars.postId, reason: vars.reason } }),
     onSuccess: (_data, vars) => {
-      toast.success('Post rejected')
+      toast.success('帖子已拒绝')
       invalidateModerationSurfaces(queryClient, (postId ?? vars.postId) as PostId)
     },
     onError: (error, vars) => {
-      showModerationError(error, 'Failed to reject post')
+      showModerationError(error, '拒绝帖子失败')
       invalidateModerationSurfaces(queryClient, (postId ?? vars.postId) as PostId)
     },
   })
@@ -74,11 +74,11 @@ export function useApproveComment(postId?: PostId) {
   return useMutation({
     mutationFn: (commentId: string) => approveCommentFn({ data: { commentId } }),
     onSuccess: () => {
-      toast.success('Comment approved')
+      toast.success('评论已通过')
       invalidateModerationSurfaces(queryClient, postId)
     },
     onError: (error) => {
-      showModerationError(error, 'Failed to approve comment')
+      showModerationError(error, '通过评论失败')
       invalidateModerationSurfaces(queryClient, postId)
     },
   })
@@ -90,11 +90,11 @@ export function useRejectComment(postId?: PostId) {
     mutationFn: (vars: { commentId: string; reason?: string }) =>
       rejectCommentFn({ data: { commentId: vars.commentId, reason: vars.reason } }),
     onSuccess: () => {
-      toast.success('Comment rejected')
+      toast.success('评论已拒绝')
       invalidateModerationSurfaces(queryClient, postId)
     },
     onError: (error) => {
-      showModerationError(error, 'Failed to reject comment')
+      showModerationError(error, '拒绝评论失败')
       invalidateModerationSurfaces(queryClient, postId)
     },
   })

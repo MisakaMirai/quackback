@@ -25,12 +25,12 @@ describe('describeEntitlementUpgrade', () => {
     expect(describeEntitlementUpgrade('auditLog')).toMatchObject({
       requiredPlan: 'enterprise',
       requiredPlanName: 'Enterprise',
-      headline: 'The audit log is available from the Enterprise plan',
-      body: 'The audit log is an Enterprise feature. Upgrade to Enterprise to enable it.',
+      headline: 'The audit log 从 Enterprise 套餐起提供',
+      body: 'The audit log 从 Enterprise 套餐起提供。升级到 Enterprise 即可启用。',
     })
     expect(describeEntitlementUpgrade('webhooks')).toMatchObject({
-      headline: 'Webhooks are available from the Pro plan',
-      body: 'Webhooks are a Pro feature. Upgrade to Pro to enable them.',
+      headline: 'Webhooks 从 Pro 套餐起提供',
+      body: 'Webhooks 从 Pro 套餐起提供。升级到 Pro 即可启用。',
     })
     expect(describeEntitlementUpgrade('sso').requiredPlan).toBe('enterprise')
     expect(describeEntitlementUpgrade('customDomain').requiredPlan).toBe('pro')
@@ -45,13 +45,13 @@ describe('describeEntitlementUpgrade for a feature every plan includes', () => {
   it('never offers the Free plan as an upgrade; a withheld feature points to support', () => {
     const description = describeEntitlementUpgrade('aiDrafts')
     expect(description.requiredPlan).toBeNull()
-    expect(description.body).toMatch(/Contact us/)
+    expect(description.body).toMatch(/联系我们/)
   })
 
   it('treats the REST API the same way, since Free includes it', () => {
     const description = describeEntitlementUpgrade('apiAccess')
     expect(description.requiredPlan).toBeNull()
-    expect(description.body).toMatch(/Contact us/)
+    expect(description.body).toMatch(/联系我们/)
   })
 })
 
@@ -95,15 +95,15 @@ describe('describePlanUpgrade', () => {
   it('builds the same sentence shape for a named feature', () => {
     expect(describePlanUpgrade('Data export', 'business')).toMatchObject({
       requiredPlan: 'business',
-      headline: 'Data export is available from the Business plan',
-      body: 'Data export is a Business feature. Upgrade to Business to enable it.',
+      headline: 'Data export 从 Business 套餐起提供',
+      body: 'Data export 从 Business 套餐起提供。升级到 Business 即可启用。',
     })
   })
 
   it('takes a plural verb when asked', () => {
     expect(describePlanUpgrade('Integrations', 'business', { plural: true })).toMatchObject({
-      headline: 'Integrations are available from the Business plan',
-      body: 'Integrations are a Business feature. Upgrade to Business to enable them.',
+      headline: 'Integrations 从 Business 套餐起提供',
+      body: 'Integrations 从 Business 套餐起提供。升级到 Business 即可启用。',
     })
   })
 })
@@ -131,7 +131,7 @@ describe('describePlanRefusal', () => {
     ).toMatchObject({
       feature: 'Custom CSS',
       requiredPlan: 'business',
-      headline: 'Custom CSS is available from the Business plan',
+      headline: 'Custom CSS 从 Business 套餐起提供',
     })
   })
 
@@ -143,15 +143,15 @@ describe('describePlanRefusal', () => {
 
 describe('upgradeLead', () => {
   it('names both ends of the move when the current plan is known', () => {
-    expect(upgradeLead('Free', 'Business')).toBe('Upgrade from Free to Business to unlock:')
-    expect(upgradeLead(null, 'Business')).toBe('Upgrade to Business to unlock:')
-    expect(upgradeLead('Business', 'Business')).toBe('Upgrade to Business to unlock:')
-    expect(upgradeLead('Free', null)).toBe('Upgrade your plan to unlock:')
+    expect(upgradeLead('Free', 'Business')).toBe('从 Free 升级到 Business 以解锁：')
+    expect(upgradeLead(null, 'Business')).toBe('升级到 Business 以解锁：')
+    expect(upgradeLead('Business', 'Business')).toBe('升级到 Business 以解锁：')
+    expect(upgradeLead('Free', null)).toBe('升级套餐以解锁：')
   })
 
   it('acknowledges a running trial', () => {
     expect(upgradeLead('Pro', 'Business', { trialActive: true })).toBe(
-      "You're trialing Pro. Upgrade to Business to unlock:"
+      '你正在试用 Pro。升级到 Business 以解锁：'
     )
   })
 })

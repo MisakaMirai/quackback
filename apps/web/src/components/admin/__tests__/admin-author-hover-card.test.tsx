@@ -107,8 +107,8 @@ describe('AdminAuthorHoverCard', () => {
     expect(body).toHaveTextContent('Growth')
     expect(body).toHaveTextContent('Beta cohort')
     expect(body).toHaveTextContent('High MRR')
-    expect(body).toHaveTextContent('Votes')
-    expect(body).toHaveTextContent('Open full profile')
+    expect(body).toHaveTextContent('投票')
+    expect(body).toHaveTextContent('打开完整个人资料')
     expect(body.querySelector('svg')) // verified icon
   })
 
@@ -145,7 +145,7 @@ describe('AdminAuthorHoverCard', () => {
     )
     fireEvent.mouseEnter(screen.getByText('Ada Lovelace'))
     const body = await screen.findByTestId('admin-author-hover-card-body')
-    expect(body).toHaveTextContent('Blocked')
+    expect(body).toHaveTextContent('已拉黑')
   })
 
   it('shows no card body when the public profile resolves null', async () => {
@@ -195,8 +195,8 @@ describe('AdminAuthorHoverCard', () => {
     const body = await screen.findByTestId('admin-author-hover-card-body')
     expect(getProfileTeamContextFn).not.toHaveBeenCalled()
     expect(body).not.toHaveTextContent('ada@example.com')
-    expect(body).not.toHaveTextContent('Open full profile')
-    expect(body).not.toHaveTextContent('Company')
+    expect(body).not.toHaveTextContent('打开完整个人资料')
+    expect(body).not.toHaveTextContent('公司')
   })
 
   it('falls back to the public profile when the caller lacks people.view', () => {

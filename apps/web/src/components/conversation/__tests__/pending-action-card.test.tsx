@@ -75,8 +75,8 @@ describe('<PendingActionCard>', () => {
     renderCard()
 
     expect(screen.getByText('Close conversation: resolved')).toBeInTheDocument()
-    expect(await screen.findByRole('button', { name: /approve/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /reject/i })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: /通过/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /拒绝/ })).toBeInTheDocument()
   })
 
   it('renders the terminal label instead of buttons once the row is decided', async () => {
@@ -84,9 +84,9 @@ describe('<PendingActionCard>', () => {
 
     renderCard()
 
-    expect(await screen.findByText('Expired')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /approve/i })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /reject/i })).not.toBeInTheDocument()
+    expect(await screen.findByText('已过期')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /通过/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /拒绝/ })).not.toBeInTheDocument()
   })
 
   it('approving calls the server fn and swaps to the executed terminal state', async () => {
@@ -94,7 +94,7 @@ describe('<PendingActionCard>', () => {
     approveAssistantActionFn.mockResolvedValue(pendingRow({ status: 'executed' }))
 
     renderCard()
-    const approveButton = await screen.findByRole('button', { name: /approve/i })
+    const approveButton = await screen.findByRole('button', { name: /通过/ })
     await userEvent.click(approveButton)
 
     await waitFor(() =>
@@ -103,7 +103,7 @@ describe('<PendingActionCard>', () => {
         data: { pendingActionId: 'assistant_action_1', contentHash: 'digest-1' },
       })
     )
-    expect(await screen.findByText('Approved and executed')).toBeInTheDocument()
+    expect(await screen.findByText('已通过并执行')).toBeInTheDocument()
   })
 
   it('rejecting calls the server fn and swaps to the rejected terminal state', async () => {
@@ -111,7 +111,7 @@ describe('<PendingActionCard>', () => {
     rejectAssistantActionFn.mockResolvedValue(pendingRow({ status: 'rejected' }))
 
     renderCard()
-    const rejectButton = await screen.findByRole('button', { name: /reject/i })
+    const rejectButton = await screen.findByRole('button', { name: /拒绝/ })
     await userEvent.click(rejectButton)
 
     await waitFor(() =>
@@ -120,7 +120,7 @@ describe('<PendingActionCard>', () => {
         data: { pendingActionId: 'assistant_action_1', contentHash: 'digest-1' },
       })
     )
-    expect(await screen.findByText('Rejected')).toBeInTheDocument()
+    expect(await screen.findByText('已拒绝')).toBeInTheDocument()
   })
 
   it('shows the server error inline when the approver lacks the permission (403)', async () => {
@@ -130,14 +130,14 @@ describe('<PendingActionCard>', () => {
     )
 
     renderCard()
-    const approveButton = await screen.findByRole('button', { name: /approve/i })
+    const approveButton = await screen.findByRole('button', { name: /通过/ })
     await userEvent.click(approveButton)
 
     expect(
       await screen.findByText(/requires the 'conversation.set_status' permission/)
     ).toBeInTheDocument()
     // Still proposed (server refused the decision) — buttons stay usable.
-    expect(screen.getByRole('button', { name: /approve/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /通过/ })).toBeInTheDocument()
   })
 
   it('shows the server error inline when the proposal was already decided (409)', async () => {
@@ -147,7 +147,7 @@ describe('<PendingActionCard>', () => {
     )
 
     renderCard()
-    const approveButton = await screen.findByRole('button', { name: /approve/i })
+    const approveButton = await screen.findByRole('button', { name: /通过/ })
     await userEvent.click(approveButton)
 
     expect(await screen.findByText(/already decided or has expired/)).toBeInTheDocument()

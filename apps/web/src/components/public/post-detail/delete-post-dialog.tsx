@@ -176,19 +176,19 @@ export function DeletePostDialog({
                     {Icon && <Icon className="h-4 w-4 shrink-0" />}
                     <span>
                       {!link.integrationActive
-                        ? `${name} ${noun} (disconnected)`
+                        ? `${name} ${noun}（已断开）`
                         : !link.syncManaged
-                          ? `${name} ${noun} (reference only)`
-                          : `Review ${name} ${noun} for ${verb.toLowerCase() === 'close' ? 'closing' : 'archiving'}`}
+                          ? `${name} ${noun}（仅供参考）`
+                          : `检查 ${name} ${noun}，准备${verb.toLowerCase() === 'close' ? '关闭' : '归档'}`}
                     </span>
                   </Label>
                   <p className="text-xs text-muted-foreground mt-0.5 ml-6">
                     <code className="rounded bg-muted px-1 py-0.5 text-[11px]">{displayId}</code>
                     {!link.integrationActive
-                      ? `: integration disconnected, cannot ${verb.toLowerCase()}.`
+                      ? `：集成已断开，无法${verb.toLowerCase() === 'close' ? '关闭' : '归档'}。`
                       : !link.syncManaged
-                        ? `: manage this item directly on ${name}.`
-                        : ' will be added to sync history for manual review.'}
+                        ? `：请直接在 ${name} 中管理此项。`
+                        : '将添加到同步历史，等待人工审核。'}
                   </p>
                 </div>
               </div>

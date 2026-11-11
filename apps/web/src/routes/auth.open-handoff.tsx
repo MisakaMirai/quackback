@@ -49,7 +49,7 @@ function HandoffContinue({ to }: { to: string }) {
   return (
     <main className="flex min-h-screen items-center justify-center bg-background px-4">
       <meta httpEquiv="refresh" content={`0;url=${encodeURI(to)}`} />
-      <p className="text-sm text-muted-foreground">Opening your workspace…</p>
+      <p className="text-sm text-muted-foreground">正在打开你的工作区…</p>
       <script
         dangerouslySetInnerHTML={{ __html: `window.location.replace(${JSON.stringify(to)})` }}
       />
@@ -61,15 +61,15 @@ function OpenHandoffError() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-background px-4">
       <section className="w-full max-w-md rounded-xl border bg-card p-6 text-center shadow-sm">
-        <h1 className="text-xl font-semibold">This sign-in link is no longer valid</h1>
+        <h1 className="text-xl font-semibold">此登录链接已失效</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          It may have been used already or expired. Open the workspace again from the control plane.
+          它可能已被使用或已过期，请从控制台重新打开工作区。
         </p>
         <Link
           to="/auth/login"
           className="mt-5 inline-flex h-10 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground"
         >
-          Sign in
+          登录
         </Link>
       </section>
     </main>

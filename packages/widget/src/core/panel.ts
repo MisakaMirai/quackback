@@ -37,7 +37,7 @@ const FRAME_TITLE: Record<string, string> = {
 
 function frameTitle(locale: string | undefined): string {
   const tag = (locale ?? '').toLowerCase()
-  return FRAME_TITLE[tag] ?? FRAME_TITLE[tag.split('-')[0]!] ?? 'Help'
+  return FRAME_TITLE[tag] ?? FRAME_TITLE[tag.split('-')[0]!] ?? '帮助'
 }
 
 export function createPanel(opts: PanelOptions): PanelHandle {

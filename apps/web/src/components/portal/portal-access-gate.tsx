@@ -201,7 +201,7 @@ function DecorativeBackdrop({
             {/* Faux submission box */}
             <div className="rounded-lg border border-border/40 bg-card p-4">
               <div className="flex h-9 items-center rounded-md border border-border/50 bg-muted/30 px-3 text-sm text-muted-foreground/50">
-                Suggest a feature or report a bug…
+                提出功能建议或报告问题…
               </div>
             </div>
 
@@ -223,11 +223,11 @@ function DecorativeBackdrop({
               <div className="flex items-center gap-2">
                 <div className="inline-flex items-center gap-1.5 rounded-md border border-border/50 px-3 py-1.5 text-sm text-muted-foreground">
                   <MagnifyingGlassIcon className="h-4 w-4" />
-                  <span className="hidden sm:inline">Search</span>
+                  <span className="hidden sm:inline">搜索</span>
                 </div>
                 <div className="inline-flex items-center gap-1.5 rounded-md border border-border/50 px-3 py-1.5 text-sm text-muted-foreground">
                   <FunnelIcon className="h-4 w-4" />
-                  <span className="hidden sm:inline">Filter</span>
+                  <span className="hidden sm:inline">筛选</span>
                 </div>
               </div>
             </div>
@@ -294,7 +294,7 @@ function DecorativeBackdrop({
           <div className="hidden w-64 shrink-0 lg:block">
             <div className="overflow-hidden rounded-lg border border-border/50 bg-card shadow-sm">
               <div className="px-4 pb-3 pt-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Boards
+                板块
               </div>
               <div className="space-y-1 px-4 pb-4">
                 {MOCK_BOARDS.map((board, i) => (

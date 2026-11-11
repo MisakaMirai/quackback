@@ -33,7 +33,7 @@ export const Route = createFileRoute('/_portal/u/$principalId')({
   head: ({ loaderData }) => {
     if (!loaderData) return {}
     const { profile, workspaceName, baseUrl } = loaderData
-    const title = `${profile.displayName || 'Profile'} - ${workspaceName}`
+    const title = `${profile.displayName || '个人主页'} - ${workspaceName}`
     const canonicalUrl = baseUrl ? `${baseUrl}/u/${profile.principalId}` : ''
     return {
       meta: [
@@ -167,7 +167,7 @@ function PublicProfilePage() {
                   <span className="text-muted-foreground">
                     {' '}
                     ·{' '}
-                    {(teamContext.company.mrrCents / 100).toLocaleString('en-US', {
+                    {intl.formatNumber(teamContext.company.mrrCents / 100, {
                       style: 'currency',
                       currency: 'USD',
                       maximumFractionDigits: 0,

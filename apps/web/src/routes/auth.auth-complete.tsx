@@ -61,25 +61,25 @@ function AuthCompletePage() {
         {status === 'broadcasting' && (
           <>
             <ArrowPathIcon className="h-12 w-12 animate-spin text-primary mx-auto" />
-            <p className="text-muted-foreground">Completing sign in...</p>
+            <p className="text-muted-foreground">正在完成登录…</p>
           </>
         )}
         {status === 'success' && (
           <>
             <CheckCircleIcon className="h-12 w-12 text-green-500 mx-auto" />
-            <p className="text-foreground font-medium">Signed in successfully!</p>
-            <p className="text-sm text-muted-foreground">This window will close automatically.</p>
+            <p className="text-foreground font-medium">登录成功！</p>
+            <p className="text-sm text-muted-foreground">此窗口将自动关闭。</p>
           </>
         )}
         {status === 'error' && (
           <>
             <ExclamationTriangleIcon className="h-12 w-12 text-amber-500 mx-auto" />
-            <p className="text-foreground font-medium">Sign-in didn&apos;t complete</p>
+            <p className="text-foreground font-medium">登录未完成</p>
             <p className="text-sm text-muted-foreground">
               {AUTH_BLOCK_MESSAGES[error as keyof typeof AUTH_BLOCK_MESSAGES] ??
-                'Sign-in failed. Return to the original window and try again.'}
+                '登录失败，请返回原窗口重试。'}
             </p>
-            <p className="text-sm text-muted-foreground">This window will close automatically.</p>
+            <p className="text-sm text-muted-foreground">此窗口将自动关闭。</p>
           </>
         )}
       </div>

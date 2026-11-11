@@ -219,7 +219,7 @@ export function HelpCenterCompactSearch() {
   return (
     <Button variant="outline" size="sm" className="gap-2 text-muted-foreground" disabled>
       <MagnifyingGlassIcon className="h-4 w-4" />
-      <span className="hidden sm:inline">Search...</span>
+      <span className="hidden sm:inline">搜索…</span>
     </Button>
   )
 }

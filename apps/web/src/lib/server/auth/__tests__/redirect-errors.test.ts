@@ -35,7 +35,7 @@ describe('detectAuthBlockRedirect', () => {
     })
     expect(err).toBeInstanceOf(AuthBlockedError)
     expect(err?.code).toBe('password_method_not_allowed')
-    expect(err?.message).toMatch(/Password sign-in isn't enabled/i)
+    expect(err?.message).toMatch(/此工作区未启用密码登录/)
   })
 
   it('also fires for the portal login path', () => {
@@ -44,7 +44,7 @@ describe('detectAuthBlockRedirect', () => {
       url: 'https://t.example/auth/login?error=rate_limited',
     })
     expect(err?.code).toBe('rate_limited')
-    expect(err?.message).toMatch(/too many sign-in attempts/i)
+    expect(err?.message).toMatch(/登录尝试次数过多/)
   })
 
   it('detects a block on the canonical /?auth=signin&error=<code> destination', () => {
@@ -54,7 +54,7 @@ describe('detectAuthBlockRedirect', () => {
     })
     expect(err).toBeInstanceOf(AuthBlockedError)
     expect(err?.code).toBe('verified_domain_requires_sso')
-    expect(err?.message).toMatch(/single sign-on/i)
+    expect(err?.message).toMatch(/单点登录/)
   })
 
   it('returns null for a plain / with no error param', () => {
@@ -87,9 +87,9 @@ describe('detectAuthBlockRedirect', () => {
  */
 describe('detectAuthBlockRedirect — the codes Better-Auth actually emits', () => {
   it.each([
-    ['failed_to_create_user', /couldn't create an account/i],
-    ['unable_to_create_user', /went wrong creating your account/i],
-    ['unable_to_create_session', /went wrong signing you in/i],
+    ['failed_to_create_user', /无法通过该链接创建账户/],
+    ['unable_to_create_user', /创建账户时出错/],
+    ['unable_to_create_session', /登录时出错/],
   ])('renders a reason for %s', (code, expected) => {
     const err = detectAuthBlockRedirect({
       redirected: true,
@@ -114,13 +114,13 @@ describe('AUTH_BLOCK_MESSAGES', () => {
   })
 
   it('explains Better-Auth user_info_is_missing for both missing profile and mapped email', () => {
-    expect(AUTH_BLOCK_MESSAGES.user_info_is_missing).toMatch(/usable profile/i)
-    expect(AUTH_BLOCK_MESSAGES.user_info_is_missing).toMatch(/email/i)
-    expect(AUTH_BLOCK_MESSAGES.user_info_is_missing).toMatch(/map/i)
+    expect(AUTH_BLOCK_MESSAGES.user_info_is_missing).toMatch(/可用的个人资料/)
+    expect(AUTH_BLOCK_MESSAGES.user_info_is_missing).toMatch(/邮箱/)
+    expect(AUTH_BLOCK_MESSAGES.user_info_is_missing).toMatch(/映射/)
   })
 
   it('keeps both email-mismatch spellings after the 1.7 rename', () => {
-    expect(AUTH_BLOCK_MESSAGES.email_does_not_match).toMatch(/different email/i)
+    expect(AUTH_BLOCK_MESSAGES.email_does_not_match).toMatch(/邮箱与你的账户不一致/)
     expect(AUTH_BLOCK_MESSAGES["email_doesn't_match"]).toBe(
       AUTH_BLOCK_MESSAGES.email_does_not_match
     )

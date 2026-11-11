@@ -14,11 +14,11 @@ import { usePendingActionDecision } from '@/lib/client/hooks/use-pending-action-
 /** Terminal-status copy — shown in place of the buttons once a proposal is no
  *  longer decidable. 'proposed' isn't here: that state renders the buttons. */
 const TERMINAL_LABEL: Record<string, string> = {
-  approved: 'Approved',
-  executed: 'Approved and executed',
-  rejected: 'Rejected',
-  expired: 'Expired',
-  failed: 'Failed',
+  approved: '已通过',
+  executed: '已通过并执行',
+  rejected: '已拒绝',
+  expired: '已过期',
+  failed: '失败',
 }
 
 export interface PendingActionCardProps {
@@ -61,9 +61,9 @@ export function PendingActionCard({ pendingActionId, summary }: PendingActionCar
         </dl>
       )}
       {isLoading ? (
-        <span className="text-[11px] text-muted-foreground">Checking status…</span>
+        <span className="text-[11px] text-muted-foreground">正在检查状态…</span>
       ) : isError ? (
-        <span className="text-[11px] text-muted-foreground">Couldn't load the current status</span>
+        <span className="text-[11px] text-muted-foreground">无法加载当前状态</span>
       ) : data?.status === 'proposed' ? (
         <div className="flex items-center gap-2">
           <button
@@ -72,7 +72,7 @@ export function PendingActionCard({ pendingActionId, summary }: PendingActionCar
             disabled={busy}
             className="inline-flex items-center gap-1 rounded-md bg-primary px-2 py-1 text-[11px] font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
           >
-            <CheckIcon className="h-3.5 w-3.5" /> Approve
+            <CheckIcon className="h-3.5 w-3.5" /> 通过
           </button>
           <button
             type="button"
@@ -80,12 +80,12 @@ export function PendingActionCard({ pendingActionId, summary }: PendingActionCar
             disabled={busy}
             className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-[11px] font-medium text-foreground transition-colors hover:bg-muted disabled:opacity-50"
           >
-            <XMarkIcon className="h-3.5 w-3.5" /> Reject
+            <XMarkIcon className="h-3.5 w-3.5" /> 拒绝
           </button>
         </div>
       ) : (
         <span className="text-[11px] font-medium text-muted-foreground">
-          {data ? (TERMINAL_LABEL[data.status] ?? data.status) : 'Unable to load status'}
+          {data ? (TERMINAL_LABEL[data.status] ?? data.status) : '无法加载状态'}
         </span>
       )}
       {inlineError && <span className="text-[11px] text-destructive">{inlineError}</span>}

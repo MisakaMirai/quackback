@@ -280,10 +280,10 @@ export function bubbleContentTextClass(
 /** A thin "New" divider rendered immediately above the first unread message. */
 export function UnreadDivider() {
   return (
-    <div className="my-1.5 flex items-center gap-2" role="separator" aria-label="New messages">
+    <div className="my-1.5 flex items-center gap-2" role="separator" aria-label="新消息">
       <span className="h-px flex-1 bg-primary/30" />
       <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-primary">
-        New
+        新
       </span>
       <span className="h-px flex-1 bg-primary/30" />
     </div>
@@ -446,7 +446,7 @@ function MessageEditForm({
         borderless
         minHeight="2.5rem"
         autofocus="end"
-        placeholder="Edit message"
+        placeholder="编辑消息"
         className="max-h-64 overflow-y-auto"
         onDocumentChange={(document) => {
           const doc = document.json() as TiptapContent
@@ -464,7 +464,7 @@ function MessageEditForm({
           disabled={saving}
           className="rounded-md px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-50"
         >
-          Cancel
+          取消
         </button>
         <button
           type="button"
@@ -472,7 +472,7 @@ function MessageEditForm({
           disabled={saving || (empty && !hasAttachments)}
           className="rounded-md bg-primary px-2.5 py-1 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
         >
-          {saving ? 'Saving…' : 'Save changes'}
+          {saving ? '保存中…' : '保存修改'}
         </button>
       </div>
     </div>
@@ -527,7 +527,7 @@ export const AgentMessageBubble = memo(function AgentMessageBubble({
   // through `NoteContent` instead of the reply renderer.
   const isNote = message.isInternal
   const isAgent = message.senderType === 'agent'
-  const authorName = message.author?.displayName ?? (isAgent ? 'Agent' : 'Visitor')
+  const authorName = message.author?.displayName ?? (isAgent ? '客服' : '访客')
   const isFlagged = message.flaggedAt !== null
   const toolbarPinned = emojiOpen || menuOpen
   // Agent replies, assistant turns, and notes all sit on the agent's side of
@@ -658,8 +658,8 @@ export const AgentMessageBubble = memo(function AgentMessageBubble({
                           className="mt-0.5 text-[11px] text-muted-foreground/60 underline decoration-dotted underline-offset-2 transition-colors hover:text-foreground"
                         >
                           {translation.showingOriginal
-                            ? 'Show translation'
-                            : `${translation.label} · Show original`}
+                            ? '显示翻译'
+                            : `${translation.label} · 显示原文`}
                         </button>
                       )}
                     </>
@@ -687,7 +687,7 @@ export const AgentMessageBubble = memo(function AgentMessageBubble({
                     <button
                       type="button"
                       className="flex size-7 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                      aria-label="Add reaction"
+                      aria-label="添加回应"
                     >
                       <FaceSmileIcon className="h-4 w-4" />
                     </button>
@@ -700,7 +700,7 @@ export const AgentMessageBubble = memo(function AgentMessageBubble({
                           <button
                             key={emoji}
                             type="button"
-                            aria-label={`React with ${emoji}`}
+                            aria-label={`用 ${emoji} 回应`}
                             aria-pressed={has}
                             onClick={() => {
                               onToggleReaction(message.id, emoji, has)
@@ -726,7 +726,7 @@ export const AgentMessageBubble = memo(function AgentMessageBubble({
                     'flex size-7 items-center justify-center rounded transition-colors hover:bg-muted',
                     isFlagged ? 'text-amber-500' : 'text-muted-foreground hover:text-foreground'
                   )}
-                  aria-label={isFlagged ? 'Remove flag' : 'Flag message'}
+                  aria-label={isFlagged ? '取消标记' : '标记消息'}
                   aria-pressed={isFlagged}
                 >
                   {isFlagged ? (
@@ -741,23 +741,23 @@ export const AgentMessageBubble = memo(function AgentMessageBubble({
                     <button
                       type="button"
                       className="flex size-7 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                      aria-label="More actions"
+                      aria-label="更多操作"
                     >
                       <EllipsisVerticalIcon className="h-4 w-4" />
                     </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem onClick={() => onMarkUnread(message.id)}>
-                      <EnvelopeIcon className="h-4 w-4" /> Mark unread
+                      <EnvelopeIcon className="h-4 w-4" /> 标记为未读
                     </DropdownMenuItem>
                     {canEdit && onEdit && (
                       <DropdownMenuItem onClick={() => setEditing(true)}>
-                        <PencilIcon className="h-4 w-4" /> Edit message
+                        <PencilIcon className="h-4 w-4" /> 编辑消息
                       </DropdownMenuItem>
                     )}
                     {canDelete && (
                       <DropdownMenuItem variant="destructive" onClick={() => onDelete(message.id)}>
-                        <TrashIcon className="h-4 w-4" /> Delete
+                        <TrashIcon className="h-4 w-4" /> 删除
                       </DropdownMenuItem>
                     )}
                     {showTrackActions && (
@@ -765,12 +765,12 @@ export const AgentMessageBubble = memo(function AgentMessageBubble({
                         <DropdownMenuSeparator />
                         {onSharePost && (
                           <DropdownMenuItem onClick={() => onSharePost(message)}>
-                            <ChatBubbleLeftRightIcon className="h-4 w-4" /> Share a post…
+                            <ChatBubbleLeftRightIcon className="h-4 w-4" /> 分享帖子…
                           </DropdownMenuItem>
                         )}
                         {onTrackAsPost && (
                           <DropdownMenuItem onClick={() => onTrackAsPost(message)}>
-                            <AdjustmentsHorizontalIcon className="h-4 w-4" /> Track as feedback…
+                            <AdjustmentsHorizontalIcon className="h-4 w-4" /> 转为反馈…
                           </DropdownMenuItem>
                         )}
                       </>
@@ -799,14 +799,14 @@ export const AgentMessageBubble = memo(function AgentMessageBubble({
         {isNote && suggestion && onTrackSuggestion && (
           <div className="flex max-w-[85%] flex-wrap items-center gap-2 rounded-md border border-amber-400/30 bg-amber-400/10 px-2 py-1.5">
             <span className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-700 dark:text-amber-300">
-              <LightBulbIcon className="h-3.5 w-3.5" /> AI suggests tracking this as a post
+              <LightBulbIcon className="h-3.5 w-3.5" /> AI 建议将其转为帖子
             </span>
             <button
               type="button"
               onClick={() => onTrackSuggestion(message)}
               className="ml-auto inline-flex items-center gap-1 rounded-md bg-primary px-2 py-1 text-[11px] font-medium text-primary-foreground transition-colors hover:bg-primary/90"
             >
-              <ArrowTopRightOnSquareIcon className="h-3.5 w-3.5" /> Track as feedback
+              <ArrowTopRightOnSquareIcon className="h-3.5 w-3.5" /> 转为反馈
             </button>
           </div>
         )}
@@ -850,14 +850,14 @@ export const AgentMessageBubble = memo(function AgentMessageBubble({
           </span>
           {isNote && (
             <span className="inline-flex shrink-0 items-center gap-1 rounded bg-amber-400/15 px-1.5 py-0.5 text-[11px] font-medium text-amber-700 dark:text-amber-300">
-              <PencilSquareIcon className="h-3 w-3" /> Internal note
+              <PencilSquareIcon className="h-3 w-3" /> 内部备注
             </span>
           )}
           {message.viaEmail && (
             <EnvelopeIcon
               className="h-3 w-3 shrink-0"
-              aria-label="Received by email"
-              title="Received by email"
+              aria-label="通过邮件收到"
+              title="通过邮件收到"
             />
           )}
           {/* Pair-thread provenance (convergence Phase 2): a legacy
@@ -865,7 +865,7 @@ export const AgentMessageBubble = memo(function AgentMessageBubble({
               not a chip — it answers "why does this read differently", nothing
               more. */}
           {ticketProvenance && message.ticketId && !isNote && (
-            <span className="shrink-0">· via ticket thread</span>
+            <span className="shrink-0">· 来自工单会话</span>
           )}
           <MessageTime iso={message.createdAt} />
           {message.editedAt && <EditedAt iso={message.editedAt} />}
@@ -884,8 +884,8 @@ export const AgentMessageBubble = memo(function AgentMessageBubble({
           {isFlagged && (
             <BookmarkSolidIcon
               className="h-3.5 w-3.5 shrink-0 text-amber-500"
-              aria-label="Flagged"
-              title="Flagged"
+              aria-label="已标记"
+              title="已标记"
             />
           )}
         </div>

@@ -82,12 +82,12 @@ describe('AgentMessageBubble — edited mark', () => {
         })}
       />
     )
-    fireEvent.click(screen.getByLabelText('More actions'))
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Edit message' }))
+    fireEvent.click(screen.getByLabelText('更多操作'))
+    fireEvent.click(screen.getByRole('menuitem', { name: '编辑消息' }))
     expect(screen.getByTestId('message-edit-form')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Save changes' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    expect(screen.getByRole('button', { name: '保存修改' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '取消' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: '取消' }))
     expect(screen.queryByTestId('message-edit-form')).not.toBeInTheDocument()
     expect(screen.getByText('Hello there')).toBeInTheDocument()
   })
@@ -160,12 +160,12 @@ describe('canDeleteAgentMessage', () => {
 
   it('hides Delete in the menu unless allowed', () => {
     const { unmount } = render(<AgentMessageBubble message={own} />)
-    fireEvent.click(screen.getByLabelText('More actions'))
-    expect(screen.queryByRole('menuitem', { name: 'Delete' })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByLabelText('更多操作'))
+    expect(screen.queryByRole('menuitem', { name: '删除' })).not.toBeInTheDocument()
     unmount()
     render(<AgentMessageBubble message={own} canDelete />)
-    fireEvent.click(screen.getByLabelText('More actions'))
-    expect(screen.getByRole('menuitem', { name: 'Delete' })).toBeInTheDocument()
+    fireEvent.click(screen.getByLabelText('更多操作'))
+    expect(screen.getByRole('menuitem', { name: '删除' })).toBeInTheDocument()
   })
 })
 
@@ -174,7 +174,7 @@ describe('AgentMessageBubble — inbox translation (P2-D.1)', () => {
     render(<AgentMessageBubble message={baseMessage()} />)
     expect(screen.getByText('Bonjour, mon colis est en retard.')).toBeInTheDocument()
     expect(screen.queryByText(/Translated from/)).not.toBeInTheDocument()
-    expect(screen.queryByText(/Show original/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/显示原文/)).not.toBeInTheDocument()
   })
 
   it('shows the translated text by default with a "Translated from … Show original" toggle', () => {
@@ -193,7 +193,7 @@ describe('AgentMessageBubble — inbox translation (P2-D.1)', () => {
     )
     expect(screen.getByText('Hello, my package is late.')).toBeInTheDocument()
     expect(screen.queryByText('Bonjour, mon colis est en retard.')).not.toBeInTheDocument()
-    expect(screen.getByText('Translated from French · Show original')).toBeInTheDocument()
+    expect(screen.getByText('Translated from French · 显示原文')).toBeInTheDocument()
   })
 
   it('clicking the toggle calls onToggleOriginal', () => {
@@ -212,7 +212,7 @@ describe('AgentMessageBubble — inbox translation (P2-D.1)', () => {
         }}
       />
     )
-    fireEvent.click(screen.getByText('Translated from French · Show original'))
+    fireEvent.click(screen.getByText('Translated from French · 显示原文'))
     expect(toggled).toBe(true)
   })
 
@@ -231,7 +231,7 @@ describe('AgentMessageBubble — inbox translation (P2-D.1)', () => {
     )
     expect(screen.getByText('Bonjour, mon colis est en retard.')).toBeInTheDocument()
     expect(screen.queryByText('Hello, my package is late.')).not.toBeInTheDocument()
-    expect(screen.getByText('Show translation')).toBeInTheDocument()
+    expect(screen.getByText('显示翻译')).toBeInTheDocument()
   })
 
   it('renders an outgoing translated reply\'s "Translated to …" toggle', () => {
@@ -248,7 +248,7 @@ describe('AgentMessageBubble — inbox translation (P2-D.1)', () => {
       />
     )
     expect(screen.getByText('Bonjour, comment puis-je aider?')).toBeInTheDocument()
-    expect(screen.getByText('Translated to French · Show original')).toBeInTheDocument()
+    expect(screen.getByText('Translated to French · 显示原文')).toBeInTheDocument()
   })
 })
 
@@ -378,12 +378,12 @@ describe('AgentMessageBubble — pair-thread provenance (convergence Phase 2)', 
         ticketProvenance
       />
     )
-    expect(screen.getByText('· via ticket thread')).toBeInTheDocument()
+    expect(screen.getByText('· 来自工单会话')).toBeInTheDocument()
   })
 
   it('never labels a conversation-parented row, even in a pair view', () => {
     render(<AgentMessageBubble message={baseMessage()} ticketProvenance />)
-    expect(screen.queryByText(/via ticket thread/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/来自工单会话/)).not.toBeInTheDocument()
   })
 
   it('never labels without the pair-view flag (a standalone ticket thread stays clean)', () => {
@@ -395,7 +395,7 @@ describe('AgentMessageBubble — pair-thread provenance (convergence Phase 2)', 
         })}
       />
     )
-    expect(screen.queryByText(/via ticket thread/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/来自工单会话/)).not.toBeInTheDocument()
   })
 
   it('never labels an internal note (its own "Internal note" marker says what it is)', () => {
@@ -410,8 +410,8 @@ describe('AgentMessageBubble — pair-thread provenance (convergence Phase 2)', 
         ticketProvenance
       />
     )
-    expect(screen.getByText('Internal note')).toBeInTheDocument()
-    expect(screen.queryByText(/via ticket thread/)).not.toBeInTheDocument()
+    expect(screen.getByText('内部备注')).toBeInTheDocument()
+    expect(screen.queryByText(/来自工单会话/)).not.toBeInTheDocument()
   })
 })
 

@@ -88,7 +88,7 @@ export const EmojiPicker = memo(function EmojiPicker({
             'flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted',
             className
           )}
-          aria-label="Insert emoji"
+          aria-label="插入表情"
         >
           <FaceSmileIcon className="h-4 w-4" />
         </button>
@@ -96,7 +96,7 @@ export const EmojiPicker = memo(function EmojiPicker({
       <PopoverContent align="start" className="w-auto p-1.5">
         {recentRow.length > 0 && (
           <div className="mb-1">
-            <div className="px-0.5 pb-0.5 text-xs font-medium text-muted-foreground">Recent</div>
+            <div className="px-0.5 pb-0.5 text-xs font-medium text-muted-foreground">最近使用</div>
             <div className="grid grid-cols-8 gap-0.5">
               {recentRow.map((emoji) => (
                 <EmojiCell key={`recent-${emoji}`} emoji={emoji} onPick={pick} />
@@ -106,7 +106,7 @@ export const EmojiPicker = memo(function EmojiPicker({
         )}
         <div>
           {recentRow.length > 0 && (
-            <div className="px-0.5 pb-0.5 text-xs font-medium text-muted-foreground">Popular</div>
+            <div className="px-0.5 pb-0.5 text-xs font-medium text-muted-foreground">常用</div>
           )}
           <div className="grid grid-cols-8 gap-0.5">
             {popular.map((emoji) => (

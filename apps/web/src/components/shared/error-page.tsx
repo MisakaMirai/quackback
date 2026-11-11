@@ -96,7 +96,7 @@ export function errorMessage(error: unknown): string {
   ) {
     return error.message
   }
-  return 'An unexpected error occurred'
+  return '发生了意外错误'
 }
 
 export function toError(error: unknown): Error {
@@ -131,25 +131,24 @@ export function PermissionDeniedPage({ fullPage = true }: { fullPage?: boolean }
 
   return (
     <FriendlyShell fullPage={fullPage}>
-      <h1 className="text-2xl font-semibold tracking-tight">You don&apos;t have access</h1>
+      <h1 className="text-2xl font-semibold tracking-tight">你没有访问权限</h1>
       <p className="mt-2 text-sm text-muted-foreground">
-        Only people with the right permissions can open this page. Ask a workspace admin if you need
-        access.
+        只有拥有相应权限的人才能打开此页面。如需访问，请联系工作区管理员。
       </p>
 
       <div className="mt-6 flex items-center justify-center gap-3">
         {isAdminArea ? (
           <>
             <Button asChild>
-              <a href="/admin/feedback">Back to Feedback</a>
+              <a href="/admin/feedback">返回反馈</a>
             </Button>
             <Button variant="outline" asChild>
-              <a href="/">View public board</a>
+              <a href="/">查看公开板块</a>
             </Button>
           </>
         ) : (
           <Button variant="outline" asChild>
-            <a href="/">Go home</a>
+            <a href="/">返回首页</a>
           </Button>
         )}
       </div>
@@ -168,10 +167,10 @@ export function EntitlementRequiredPage({
   const isAdminArea = typeof window !== 'undefined' && window.location.pathname.startsWith('/admin')
   const refusal = describePlanRefusal(error, {
     entitlement: null,
-    feature: 'This feature',
+    feature: '此功能',
     requiredPlan: null,
     requiredPlanName: null,
-    headline: 'This is a plan feature',
+    headline: '这是套餐功能',
     body: normalized.message,
   })
 
@@ -183,12 +182,12 @@ export function EntitlementRequiredPage({
         {isAdminArea ? (
           <Button asChild>
             <a href="/admin/settings/billing">
-              {refusal.requiredPlanName ? `Upgrade to ${refusal.requiredPlanName}` : 'See plans'}
+              {refusal.requiredPlanName ? `升级到 ${refusal.requiredPlanName}` : '查看套餐'}
             </a>
           </Button>
         ) : null}
         <Button variant="outline" asChild>
-          <a href={isAdminArea ? '/admin/settings' : '/'}>Go back</a>
+          <a href={isAdminArea ? '/admin/settings' : '/'}>返回</a>
         </Button>
       </div>
     </FriendlyShell>

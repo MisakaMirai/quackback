@@ -141,14 +141,14 @@ export function AdminAuthorHoverCard({
               <div className="min-w-0 flex-1">
                 <div className="flex min-w-0 items-center gap-1.5">
                   <span className="min-w-0 truncate text-sm font-medium text-foreground">
-                    {profile.displayName || displayName || 'Anonymous'}
+                    {profile.displayName || displayName || '匿名'}
                   </span>
                   {teamQuery.data?.emailVerified && (
                     <CheckCircleIcon className="size-3.5 shrink-0 text-primary" />
                   )}
                   {teamQuery.data?.blocked && (
                     <Badge variant="destructive" size="sm" className="shrink-0">
-                      Blocked
+                      已拉黑
                     </Badge>
                   )}
                 </div>
@@ -168,9 +168,9 @@ export function AdminAuthorHoverCard({
             />
 
             <div className="mt-3 flex items-center border-t border-border/50 pt-2.5">
-              <CardStat value={profile.postCount} label="Posts" />
-              <CardStat value={profile.commentCount} label="Comments" />
-              <CardStat value={profile.voteCount} label="Votes" />
+              <CardStat value={profile.postCount} label="帖子" />
+              <CardStat value={profile.commentCount} label="评论" />
+              <CardStat value={profile.voteCount} label="投票" />
             </div>
 
             {canViewPeople && (
@@ -179,7 +179,7 @@ export function AdminAuthorHoverCard({
                 onClick={goToProfile}
                 className="mt-3 flex w-full items-center justify-between border-t border-border/50 pt-2.5 text-primary"
               >
-                <span className="text-xs font-medium">Open full profile</span>
+                <span className="text-xs font-medium">打开完整个人资料</span>
                 <ArrowRightIcon className="size-3.5" />
               </button>
             )}
@@ -218,7 +218,7 @@ function TeamInfoRows({
   return (
     <div className="mt-3 flex flex-col gap-[5px] border-t border-border/50 pt-2.5 text-xs leading-4">
       <div className="flex items-center justify-between gap-2">
-        <span className="shrink-0 text-muted-foreground">Company</span>
+        <span className="shrink-0 text-muted-foreground">公司</span>
         <span className="min-w-0 truncate font-medium">
           {team.company ? (
             <>
@@ -236,14 +236,14 @@ function TeamInfoRows({
         </span>
       </div>
       <div className="flex items-center justify-between gap-2">
-        <span className="shrink-0 text-muted-foreground">Last seen</span>
+        <span className="shrink-0 text-muted-foreground">最后活跃</span>
         <span className="min-w-0 truncate">
           {team.lastSeenAt ? <TimeAgo date={team.lastSeenAt} /> : '-'}
         </span>
       </div>
       {segments.length > 0 && (
         <div className="flex items-center justify-between gap-2">
-          <span className="shrink-0 text-muted-foreground">Segments</span>
+          <span className="shrink-0 text-muted-foreground">分群</span>
           <span className="flex min-w-0 items-center justify-end gap-1 overflow-hidden">
             {visible.map((seg) => (
               <span

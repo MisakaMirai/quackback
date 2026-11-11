@@ -110,14 +110,14 @@ export function VotersAvatarStack({
 
   function handleProxyVote(principalId: string) {
     if (voters?.some((v) => v.principalId === principalId)) {
-      toast.info('This user has already voted')
+      toast.info('该用户已投过票')
       setAddVoterOpen(false)
       return
     }
     proxyVote.mutate(principalId as PrincipalId, {
       onSuccess: (data) => {
         if (!data.voted) {
-          toast.info('This user has already voted')
+          toast.info('该用户已投过票')
         }
         onVotersInvalidate?.()
         setAddVoterOpen(false)
@@ -129,7 +129,7 @@ export function VotersAvatarStack({
     if (!newName.trim()) return
     const trimmedEmail = newEmail.trim()
     if (trimmedEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
-      setFormError('Invalid email address')
+      setFormError('邮箱地址无效')
       return
     }
     setFormError(null)
@@ -140,7 +140,7 @@ export function VotersAvatarStack({
       })
       handleProxyVote(result.principalId)
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Failed to create user'
+      const msg = err instanceof Error ? err.message : '创建用户失败'
       setFormError(msg)
     }
   }
@@ -172,7 +172,7 @@ export function VotersAvatarStack({
           )}
         </button>
       ) : (
-        <span className="text-xs text-muted-foreground/50 italic">No voters yet</span>
+        <span className="text-xs text-muted-foreground/50 italic">还没有投票者</span>
       )}
 
       <VotersModal
@@ -198,7 +198,7 @@ export function VotersAvatarStack({
               )}
             >
               <PlusIcon className="h-3 w-3" />
-              <span>Add voter</span>
+              <span>添加投票者</span>
             </button>
           </PopoverTrigger>
           <PopoverContent className="w-64 p-0" align="end" sideOffset={4}>
@@ -211,7 +211,7 @@ export function VotersAvatarStack({
                     type="text"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Search members..."
+                    placeholder="搜索成员…"
                     className="flex-1 text-[13px] bg-transparent border-0 outline-none placeholder:text-muted-foreground/50"
                   />
                 </div>
@@ -220,9 +220,7 @@ export function VotersAvatarStack({
                   onWheel={(e) => e.stopPropagation()}
                 >
                   {filteredSearchResults.length === 0 ? (
-                    <p className="text-xs text-muted-foreground/60 text-center py-4">
-                      No members found
-                    </p>
+                    <p className="text-xs text-muted-foreground/60 text-center py-4">未找到成员</p>
                   ) : (
                     filteredSearchResults.map((member) => (
                       <button
@@ -243,7 +241,7 @@ export function VotersAvatarStack({
                           className="h-5 w-5 text-xs shrink-0"
                         />
                         <div className="min-w-0 flex-1">
-                          <div className="font-medium truncate">{member.name || 'Unnamed'}</div>
+                          <div className="font-medium truncate">{member.name || '未命名'}</div>
                           {member.email && (
                             <div className="text-muted-foreground/60 truncate">{member.email}</div>
                           )}
@@ -260,7 +258,7 @@ export function VotersAvatarStack({
                       className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-left text-[13px] text-muted-foreground hover:bg-muted/60 hover:text-foreground transition-colors"
                     >
                       <PlusIcon className="size-4" />
-                      New user
+                      新建用户
                     </button>
                   </div>
                 )}
@@ -278,7 +276,7 @@ export function VotersAvatarStack({
                   >
                     <ArrowLeftIcon className="h-3.5 w-3.5" />
                   </button>
-                  <span className="text-xs font-medium">New user</span>
+                  <span className="text-xs font-medium">新建用户</span>
                 </div>
                 <div className="space-y-2">
                   <input
@@ -286,7 +284,7 @@ export function VotersAvatarStack({
                     type="text"
                     value={newName}
                     onChange={(e) => setNewName(e.target.value)}
-                    placeholder="Name"
+                    placeholder="姓名"
                     className="w-full text-xs px-2.5 py-1.5 rounded-md border border-border/50 bg-transparent outline-none placeholder:text-muted-foreground/50 focus:border-border"
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') {
@@ -299,7 +297,7 @@ export function VotersAvatarStack({
                     type="email"
                     value={newEmail}
                     onChange={(e) => setNewEmail(e.target.value)}
-                    placeholder="Email (optional)"
+                    placeholder="邮箱（可选）"
                     className="w-full text-xs px-2.5 py-1.5 rounded-md border border-border/50 bg-transparent outline-none placeholder:text-muted-foreground/50 focus:border-border"
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') {
@@ -320,7 +318,7 @@ export function VotersAvatarStack({
                     'disabled:opacity-50 disabled:cursor-not-allowed'
                   )}
                 >
-                  {createUser.isPending ? 'Creating...' : 'Create & add vote'}
+                  {createUser.isPending ? '创建中…' : '创建并投票'}
                 </button>
               </div>
             )}

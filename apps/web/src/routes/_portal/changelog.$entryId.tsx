@@ -33,8 +33,8 @@ export const Route = createFileRoute('/_portal/changelog/$entryId')({
   head: ({ loaderData }) => {
     if (!loaderData) return {}
     const { entryTitle, entryId, workspaceName, baseUrl } = loaderData
-    const title = `${entryTitle} - ${workspaceName} Changelog`
-    const description = `${entryTitle}. A product update from ${workspaceName}.`
+    const title = `${entryTitle} - ${workspaceName} 更新日志`
+    const description = `${entryTitle}。来自 ${workspaceName} 的产品更新。`
     const canonicalUrl = baseUrl ? `${baseUrl}/changelog/${entryId}` : ''
     return {
       meta: [

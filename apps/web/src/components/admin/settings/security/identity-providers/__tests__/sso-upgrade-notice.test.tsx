@@ -7,7 +7,7 @@ describe('SsoUpgradeNotice', () => {
   it('names Enterprise as the cheapest plan that grants SSO', () => {
     expect(ssoUpgradePlanName()).toBe('Enterprise')
     expect(describeEntitlementUpgrade('sso').body).toMatch(
-      /Single sign-on is an Enterprise feature/
+      /Single sign-on 从 Enterprise 套餐起提供/
     )
   })
 })

@@ -152,7 +152,7 @@ describe('launcher label', () => {
     l.setLabel('Chat with us')
     expect(l.el.getAttribute('aria-label')).toBe('Chat with us')
     l.setLabel(null)
-    expect(l.el.getAttribute('aria-label')).toBe('Open feedback widget')
+    expect(l.el.getAttribute('aria-label')).toBe('打开反馈小组件')
   })
 
   it('clearing the label returns to the icon-only circle', () => {

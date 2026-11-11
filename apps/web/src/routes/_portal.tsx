@@ -285,7 +285,7 @@ export const Route = createFileRoute('/_portal')({
     if (loaderData?.gate) {
       return {
         meta: [
-          { title: `Sign in · ${loaderData.gate.workspaceName}` },
+          { title: `登录 · ${loaderData.gate.workspaceName}` },
           { name: 'robots', content: 'noindex, nofollow' },
         ],
         links: [{ rel: 'icon', href: loaderData.gate.logoUrl || '/logo.png' }],
@@ -297,7 +297,7 @@ export const Route = createFileRoute('/_portal')({
       loaderData?.faviconData?.url || loaderData?.brandingData?.logoUrl || '/logo.png'
 
     const workspaceName = loaderData?.workspaceName ?? 'Quackback'
-    const description = `Share feedback, vote on feature requests, and track the ${workspaceName} roadmap.`
+    const description = `分享反馈、为功能建议投票，并跟踪 ${workspaceName} 的路线图。`
     // Social share image: workspace logo, then the bundled default.
     const ogImageUrl = resolvePortalOgImageUrl(loaderData?.brandingData, loaderData?.baseUrl)
 

@@ -1,16 +1,16 @@
 export const VOTE_THRESHOLDS = [
-  { value: 5, label: '5+ votes' },
-  { value: 10, label: '10+ votes' },
-  { value: 25, label: '25+ votes' },
-  { value: 50, label: '50+ votes' },
-  { value: 100, label: '100+ votes' },
+  { value: 5, label: '5+ 票' },
+  { value: 10, label: '10+ 票' },
+  { value: 25, label: '25+ 票' },
+  { value: 50, label: '50+ 票' },
+  { value: 100, label: '100+ 票' },
 ] as const
 
 export const DATE_PRESETS = [
-  { value: 'today', label: 'Today', daysAgo: 0 },
-  { value: '7days', label: 'Last 7 days', daysAgo: 7 },
-  { value: '30days', label: 'Last 30 days', daysAgo: 30 },
-  { value: '90days', label: 'Last 90 days', daysAgo: 90 },
+  { value: 'today', label: '今天', daysAgo: 0 },
+  { value: '7days', label: '最近 7 天', daysAgo: 7 },
+  { value: '30days', label: '最近 30 天', daysAgo: 30 },
+  { value: '90days', label: '最近 90 天', daysAgo: 90 },
 ] as const
 
 export type DatePresetValue = (typeof DATE_PRESETS)[number]['value']

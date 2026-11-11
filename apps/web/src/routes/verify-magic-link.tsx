@@ -28,14 +28,13 @@ function VerifyMagicLinkPage() {
     return (
       <PageShell>
         <Card>
-          <div className="text-destructive text-xl font-medium tracking-tight">Invalid link</div>
+          <div className="text-destructive text-xl font-medium tracking-tight">链接无效</div>
           <p className="mt-2 text-muted-foreground">
-            This verification link is invalid or incomplete. Please check the link in your email and
-            try again.
+            此验证链接无效或不完整，请检查邮件中的链接后重试。
           </p>
           <a href="/" className="mt-6 block">
             <Button variant="outline" className="w-full h-11">
-              Go to Home
+              返回首页
             </Button>
           </a>
         </Card>
@@ -101,28 +100,28 @@ function InvitationVerifyPage({
           <>
             <WorkspaceIdentity branding={branding} />
             <div className="mt-6 mb-6 h-px bg-border/50" />
-            <h1 className="text-2xl font-bold tracking-tight">You're invited!</h1>
+            <h1 className="text-2xl font-bold tracking-tight">你收到了邀请！</h1>
             <p className="mt-2 text-muted-foreground">
               {branding.inviterName
-                ? `${branding.inviterName} invited you to join ${branding.workspaceName}.`
-                : `You've been invited to join ${branding.workspaceName}.`}
+                ? `${branding.inviterName} 邀请你加入 ${branding.workspaceName}。`
+                : `你受邀加入 ${branding.workspaceName}。`}
             </p>
           </>
         ) : (
           <>
             <div className="h-8" />
-            <h1 className="text-2xl font-bold tracking-tight">You're invited!</h1>
-            <p className="mt-2 text-muted-foreground">Loading invitation details...</p>
+            <h1 className="text-2xl font-bold tracking-tight">你收到了邀请！</h1>
+            <p className="mt-2 text-muted-foreground">正在加载邀请详情…</p>
           </>
         )}
         <Button onClick={handleAccept} disabled={isLoading} className="mt-6 w-full h-11">
           {isLoading ? (
             <>
               <ArrowPathIcon className="mr-2 h-4 w-4 animate-spin" />
-              Setting up...
+              正在设置…
             </>
           ) : (
-            'Accept invitation'
+            '接受邀请'
           )}
         </Button>
       </Card>
@@ -187,7 +186,7 @@ function GenericVerifyPage({
   const continueLink = (
     <a href={fallbackHref} className="mt-6 inline-block">
       <Button variant="outline" className="h-11">
-        Continue
+        继续
       </Button>
     </a>
   )
@@ -197,9 +196,9 @@ function GenericVerifyPage({
       <Card>
         <div className="flex items-center justify-center gap-2">
           <ArrowPathIcon className="h-5 w-5 animate-spin text-primary" aria-hidden />
-          <h1 className="text-2xl font-bold tracking-tight">Signing you in&hellip;</h1>
+          <h1 className="text-2xl font-bold tracking-tight">正在为你登录…</h1>
         </div>
-        <p className="mt-2 text-muted-foreground">Hang tight, this only takes a moment.</p>
+        <p className="mt-2 text-muted-foreground">请稍候，马上就好。</p>
         {showContinue && continueLink}
         <noscript>{continueLink}</noscript>
       </Card>

@@ -204,7 +204,7 @@ function CollectionPage() {
           />
           <JsonLd
             data={buildBreadcrumbJsonLd([
-              { name: 'Help Center', url: resolvedBaseUrl || '/' },
+              { name: '帮助中心', url: resolvedBaseUrl || '/' },
               {
                 name: category.name,
                 url: `${resolvedBaseUrl}${collectionHref}`,

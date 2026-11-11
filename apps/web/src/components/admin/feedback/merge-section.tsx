@@ -66,9 +66,9 @@ export function MergedPostsList({ postId, mergedPosts: initialMergedPosts }: Mer
     try {
       await unmerge.mutateAsync(confirmUnmergeId)
       queryClient.invalidateQueries({ queryKey: ['merged-posts', postId] })
-      toast.success('Post unmerged successfully')
+      toast.success('帖子已取消合并')
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to unmerge post')
+      toast.error(err instanceof Error ? err.message : '取消合并帖子失败')
     } finally {
       setConfirmUnmergeId(null)
     }
@@ -77,7 +77,7 @@ export function MergedPostsList({ postId, mergedPosts: initialMergedPosts }: Mer
   return (
     <div className="border-t border-border/40 px-6 py-4">
       <h3 className="text-sm font-medium text-foreground mb-3">
-        Merged Feedback ({mergedPosts.length})
+        已合并的反馈（{mergedPosts.length}）
       </h3>
       <div className="space-y-2">
         {mergedPosts.map((merged) => (
@@ -88,8 +88,7 @@ export function MergedPostsList({ postId, mergedPosts: initialMergedPosts }: Mer
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-foreground truncate">{merged.title}</p>
               <p className="text-xs text-muted-foreground mt-0.5">
-                {merged.voteCount} vote{merged.voteCount !== 1 ? 's' : ''}
-                {merged.authorName ? ` · by ${merged.authorName}` : ''}
+                {merged.voteCount} 票{merged.authorName ? ` · 来自 ${merged.authorName}` : ''}
               </p>
             </div>
             <Button
@@ -99,7 +98,7 @@ export function MergedPostsList({ postId, mergedPosts: initialMergedPosts }: Mer
               disabled={unmerge.isPending}
               className="shrink-0"
             >
-              Unmerge
+              取消合并
             </Button>
           </div>
         ))}
@@ -111,22 +110,22 @@ export function MergedPostsList({ postId, mergedPosts: initialMergedPosts }: Mer
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Unmerge this post?</AlertDialogTitle>
+            <AlertDialogTitle>取消合并此帖子？</AlertDialogTitle>
             <AlertDialogDescription>
               {confirmTarget ? (
                 <>
-                  <span className="font-medium text-foreground">{confirmTarget.title}</span> will be
-                  restored as independent feedback. Its votes will no longer count toward this post.
+                  <span className="font-medium text-foreground">{confirmTarget.title}</span>{' '}
+                  将恢复为独立反馈，其票数不再计入此帖子。
                 </>
               ) : (
-                'This post will be restored as independent feedback.'
+                '此帖子将恢复为独立反馈。'
               )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={unmerge.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={unmerge.isPending}>取消</AlertDialogCancel>
             <AlertDialogAction onClick={handleUnmerge} disabled={unmerge.isPending}>
-              {unmerge.isPending ? 'Unmerging...' : 'Unmerge'}
+              {unmerge.isPending ? '正在取消合并…' : '取消合并'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -180,10 +179,10 @@ export function MergeIntoDialog({ postId, postTitle, open, onOpenChange }: Merge
         canonicalPostId: confirmTarget.id as PostId,
       })
       queryClient.invalidateQueries({ queryKey: ['merged-posts'] })
-      toast.success('Post merged successfully')
+      toast.success('帖子已合并')
       onOpenChange(false)
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to merge post')
+      toast.error(err instanceof Error ? err.message : '合并帖子失败')
     } finally {
       setMergingId(null)
       setConfirmTarget(null)
@@ -195,14 +194,14 @@ export function MergeIntoDialog({ postId, postTitle, open, onOpenChange }: Merge
       <Dialog open={open && !confirmTarget} onOpenChange={onOpenChange}>
         <DialogContent className="sm:max-w-lg p-0 gap-0">
           <DialogHeader className="px-5 pt-5 pb-3">
-            <DialogTitle className="text-base">Merge into another</DialogTitle>
-            <DialogDescription>Select the post to merge this feedback into.</DialogDescription>
+            <DialogTitle className="text-base">合并到其他帖子</DialogTitle>
+            <DialogDescription>选择要合并此反馈的目标帖子。</DialogDescription>
           </DialogHeader>
 
           <div className="px-5 pb-3">
             <Input
               type="text"
-              placeholder="Search for similar feedback..."
+              placeholder="搜索相似反馈…"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               autoFocus
@@ -211,7 +210,7 @@ export function MergeIntoDialog({ postId, postTitle, open, onOpenChange }: Merge
 
           <div className="min-h-[200px] max-h-[400px] overflow-y-auto border-t border-border/50">
             {isLoading && searchQuery.length >= 3 && (
-              <p className="text-sm text-muted-foreground py-6 text-center">Searching...</p>
+              <p className="text-sm text-muted-foreground py-6 text-center">搜索中…</p>
             )}
 
             {suggestions && suggestions.length > 0 && (
@@ -248,10 +247,10 @@ export function MergeIntoDialog({ postId, postTitle, open, onOpenChange }: Merge
                       <div className="flex items-center gap-2 text-xs text-muted-foreground">
                         <span className="text-muted-foreground/60">
                           {suggestion.matchStrength === 'strong'
-                            ? 'Strong match'
+                            ? '高度匹配'
                             : suggestion.matchStrength === 'good'
-                              ? 'Good match'
-                              : 'Possible match'}
+                              ? '较匹配'
+                              : '可能匹配'}
                         </span>
                       </div>
                     </div>
@@ -261,14 +260,12 @@ export function MergeIntoDialog({ postId, postTitle, open, onOpenChange }: Merge
             )}
 
             {suggestions && suggestions.length === 0 && searchQuery.length >= 3 && !isLoading && (
-              <p className="text-sm text-muted-foreground py-6 text-center">
-                No similar feedback found.
-              </p>
+              <p className="text-sm text-muted-foreground py-6 text-center">未找到相似反馈。</p>
             )}
 
             {searchQuery.length < 3 && !isLoading && (
               <p className="text-sm text-muted-foreground py-6 text-center">
-                Type at least 3 characters to search.
+                至少输入 3 个字符开始搜索。
               </p>
             )}
           </div>
@@ -279,10 +276,10 @@ export function MergeIntoDialog({ postId, postTitle, open, onOpenChange }: Merge
       <AlertDialog open={!!confirmTarget} onOpenChange={(o) => !o && setConfirmTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Merge this post?</AlertDialogTitle>
+            <AlertDialogTitle>合并此帖子？</AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div className="space-y-3">
-                <p>This post will be merged into the selected post. Votes will be combined.</p>
+                <p>此帖子将合并到所选帖子，票数会合并计算。</p>
                 <div className="flex items-center gap-2 rounded-lg bg-muted/50 p-3 text-sm overflow-hidden">
                   <span className="truncate flex-1 min-w-0 font-medium text-foreground">
                     {postTitle}
@@ -296,9 +293,9 @@ export function MergeIntoDialog({ postId, postTitle, open, onOpenChange }: Merge
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={merge.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={merge.isPending}>取消</AlertDialogCancel>
             <AlertDialogAction onClick={handleMerge} disabled={merge.isPending}>
-              {mergingId ? 'Merging...' : 'Merge'}
+              {mergingId ? '正在合并…' : '合并'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -405,10 +402,10 @@ export function MergeOthersDialog({
       queryClient.invalidateQueries({ queryKey: ['merged-posts'] })
       queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
       queryClient.invalidateQueries({ queryKey: ['merge-suggestions'] })
-      toast.success(`Merged ${selectedIds.size} post${selectedIds.size > 1 ? 's' : ''}`)
+      toast.success(`已合并 ${selectedIds.size} 个帖子`)
       onOpenChange(false)
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to merge posts')
+      toast.error(err instanceof Error ? err.message : '合并帖子失败')
     } finally {
       setIsMerging(false)
     }
@@ -421,17 +418,16 @@ export function MergeOthersDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg p-0 gap-0">
         <DialogHeader className="px-5 pt-5 pb-3">
-          <DialogTitle className="text-base">Merge into this</DialogTitle>
+          <DialogTitle className="text-base">合并到此帖子</DialogTitle>
           <DialogDescription>
-            Select posts to merge into &ldquo;{postTitle}&rdquo;. Votes and comments will be
-            combined.
+            选择要合并到“{postTitle}”的帖子。票数和评论会合并计算。
           </DialogDescription>
         </DialogHeader>
 
         <div className="px-5 pb-3">
           <Input
             type="text"
-            placeholder="Search for similar feedback..."
+            placeholder="搜索相似反馈…"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             autoFocus
@@ -443,7 +439,7 @@ export function MergeOthersDialog({
           {hasAiSuggestions && (
             <>
               <div className="px-4 py-2 text-xs font-medium text-muted-foreground/60 uppercase tracking-wider bg-muted/20">
-                AI Suggested
+                AI 推荐
               </div>
               <div className="divide-y divide-border/50">
                 {aiPosts.map((post) => (
@@ -464,14 +460,14 @@ export function MergeOthersDialog({
 
           {/* Search results section */}
           {isLoading && searchQuery.length >= 3 && (
-            <p className="text-sm text-muted-foreground py-6 text-center">Searching...</p>
+            <p className="text-sm text-muted-foreground py-6 text-center">搜索中…</p>
           )}
 
           {hasSearchResults && (
             <>
               {(hasAiSuggestions || searchQuery.length >= 3) && (
                 <div className="px-4 py-2 text-xs font-medium text-muted-foreground/60 uppercase tracking-wider bg-muted/20">
-                  Search results
+                  搜索结果
                 </div>
               )}
               <div className="divide-y divide-border/50">
@@ -483,10 +479,10 @@ export function MergeOthersDialog({
                     status={post.status}
                     subtitle={
                       post.matchStrength === 'strong'
-                        ? 'Strong match'
+                        ? '高度匹配'
                         : post.matchStrength === 'good'
-                          ? 'Good match'
-                          : 'Possible match'
+                          ? '较匹配'
+                          : '可能匹配'
                     }
                     selected={selectedIds.has(post.id)}
                     disabled={isMerging}
@@ -498,14 +494,12 @@ export function MergeOthersDialog({
           )}
 
           {!hasAiSuggestions && !hasSearchResults && searchQuery.length >= 3 && !isLoading && (
-            <p className="text-sm text-muted-foreground py-6 text-center">
-              No similar feedback found.
-            </p>
+            <p className="text-sm text-muted-foreground py-6 text-center">未找到相似反馈。</p>
           )}
 
           {!hasAiSuggestions && searchQuery.length < 3 && !isLoading && (
             <p className="text-sm text-muted-foreground py-6 text-center">
-              Type at least 3 characters to search.
+              至少输入 3 个字符开始搜索。
             </p>
           )}
         </div>
@@ -518,14 +512,14 @@ export function MergeOthersDialog({
             onClick={() => onOpenChange(false)}
             disabled={isMerging}
           >
-            Cancel
+            取消
           </Button>
           <Button size="sm" onClick={handleMerge} disabled={selectedIds.size === 0 || isMerging}>
             {isMerging
-              ? 'Merging...'
+              ? '正在合并…'
               : selectedIds.size === 0
-                ? 'Select posts to merge'
-                : `Merge ${selectedIds.size} post${selectedIds.size > 1 ? 's' : ''}`}
+                ? '选择要合并的帖子'
+                : `合并 ${selectedIds.size} 个帖子`}
           </Button>
         </div>
       </DialogContent>
@@ -594,7 +588,7 @@ export function MergeInfoBanner({ mergeInfo, onNavigateToPost }: MergeInfoBanner
   return (
     <div className="mx-6 mt-4 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/40">
       <p className="text-sm text-amber-800 dark:text-amber-200">
-        This feedback has been merged into{' '}
+        此反馈已合并到{' '}
         <button
           type="button"
           onClick={() => onNavigateToPost?.(mergeInfo.canonicalPostId)}

@@ -46,9 +46,9 @@ interface VotersModalProps {
 }
 
 const SUBSCRIPTION_LABELS: Record<SubscriptionLevel, string> = {
-  all: 'All activity',
-  status_only: 'Status only',
-  none: 'Not subscribed',
+  all: '所有动态',
+  status_only: '仅状态变更',
+  none: '未订阅',
 }
 
 export function VotersModal({
@@ -109,7 +109,7 @@ export function VotersModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Voters ({voteCount})</DialogTitle>
+          <DialogTitle>投票者（{voteCount}）</DialogTitle>
         </DialogHeader>
         <div className="max-h-[400px] overflow-y-auto -mx-6 px-6">
           {isLoading ? (
@@ -137,7 +137,7 @@ export function VotersModal({
                     />
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-medium text-foreground truncate">
-                        {voter.displayName || voter.email || 'Anonymous'}
+                        {voter.displayName || voter.email || '匿名'}
                       </p>
                       <VoterSourceLine voter={voter} />
                     </div>
@@ -154,7 +154,7 @@ export function VotersModal({
                             disabled={
                               removeVote.isPending && removeVote.variables === voter.principalId
                             }
-                            aria-label="Remove vote"
+                            aria-label="移除投票"
                           >
                             <XMarkIcon className="h-3.5 w-3.5" />
                           </button>
@@ -182,14 +182,14 @@ export function VotersModal({
               })}
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground text-center py-4">No voters yet</p>
+            <p className="text-sm text-muted-foreground text-center py-4">还没有投票者</p>
           )}
         </div>
         {summary && summary.total > 0 && (
           <div className="border-t pt-3 -mx-6 px-6 text-xs text-muted-foreground">
-            {summary.statusCount} of {summary.total} voters notified on status change
+            {summary.statusCount}/{summary.total} 位投票者会在状态变更时收到通知
             {' · '}
-            {summary.commentCount} on comments
+            {summary.commentCount} 位会在有新评论时收到通知
           </div>
         )}
       </DialogContent>
@@ -264,7 +264,7 @@ function VoterSourceLine({
 
   // Proxy votes: "{time} · Added by {admin}"
   if (voter.sourceType === 'proxy') {
-    const label = voter.addedByName ? `Added by ${voter.addedByName}` : 'Added manually'
+    const label = voter.addedByName ? `由 ${voter.addedByName} 添加` : '手动添加'
     return (
       <p className="text-xs text-muted-foreground">
         {time}
@@ -288,7 +288,7 @@ function VoterSourceLine({
           className="inline-flex items-center gap-1 hover:text-foreground transition-colors"
         >
           <SourceTypeIcon sourceType={voter.sourceType} size="xs" />
-          <span>via {platformName}</span>
+          <span>通过 {platformName}</span>
           <ArrowTopRightOnSquareIcon className="h-3 w-3" />
         </a>
       </p>
@@ -303,7 +303,7 @@ function VoterSourceLine({
         {time}
         {separator}
         <SourceTypeIcon sourceType={voter.sourceType} size="xs" />
-        <span>via {platformName}</span>
+        <span>通过 {platformName}</span>
       </p>
     )
   }

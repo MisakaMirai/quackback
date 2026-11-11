@@ -124,7 +124,7 @@ export const Route = createFileRoute('/_portal/b/$slug/posts/$postId')({
     if (!loaderData) return {}
     const { postTitle, boardName, slug, postId, baseUrl } = loaderData
     const title = `${postTitle} - ${boardName}`
-    const description = `${postTitle}. Vote and comment on this ${boardName} post.`
+    const description = `${postTitle}。为这个 ${boardName} 帖子投票并评论。`
     const canonicalUrl = baseUrl ? `${baseUrl}/b/${slug}/posts/${postId}` : ''
     return {
       meta: [

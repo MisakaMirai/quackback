@@ -39,7 +39,7 @@ export const MentionPicker = forwardRef<MentionPickerHandle, MentionPickerProps>
     const settings = useWorkspaceSettings()
     const branding = settings?.brandingData
     const teamBadgeLogoUrl = branding?.logoUrl ?? null
-    const teamBadgeLabel = branding?.name ?? settings?.name ?? 'Team'
+    const teamBadgeLabel = branding?.name ?? settings?.name ?? '团队'
 
     const updateSelected = (next: number) => {
       selectedRef.current = next
@@ -73,7 +73,7 @@ export const MentionPicker = forwardRef<MentionPickerHandle, MentionPickerProps>
     return (
       <div className="mention-picker">
         {items.length === 0 ? (
-          <div className="mention-picker__empty">No people match.</div>
+          <div className="mention-picker__empty">没有匹配的成员。</div>
         ) : (
           <ScrollArea className="mention-picker__scroll">
             <div role="listbox" ref={listRef} className="mention-picker__list">

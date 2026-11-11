@@ -107,7 +107,7 @@ export const Route = createFileRoute('/_portal/hc/')({
       categories,
       popularArticles,
       helpCenterConfig: helpCenterConfig ?? null,
-      workspaceName: settings?.name ?? 'Help Center',
+      workspaceName: settings?.name ?? '帮助中心',
       logoUrl: resolvePortalOgImageUrl(
         { logoUrl: settings?.brandingData?.logoUrl },
         context.baseUrl

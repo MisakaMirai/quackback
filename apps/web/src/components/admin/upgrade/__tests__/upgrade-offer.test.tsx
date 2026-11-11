@@ -117,9 +117,9 @@ describe('UpgradeOffer', () => {
   it('names the feature, both plans, the unlock list and the price on the first paint', () => {
     renderOffer(onPro)
     expect(
-      screen.getByRole('heading', { name: 'The audit log is available from the Enterprise plan' })
+      screen.getByRole('heading', { name: 'The audit log 从 Enterprise 套餐起提供' })
     ).toBeTruthy()
-    expect(screen.getByText('Upgrade from Business to Enterprise to unlock:')).toBeTruthy()
+    expect(screen.getByText('从 Business 升级到 Enterprise 以解锁：')).toBeTruthy()
     expect(screen.getByText('Audit log')).toBeTruthy()
     expect(screen.getByText('SSO')).toBeTruthy()
     expect(screen.queryByText(/Plus everything in/)).toBeNull()
@@ -146,7 +146,7 @@ describe('UpgradeOffer', () => {
 
   it('folds in the plans between the current one and the target', () => {
     renderOffer({ ...onFree, trialEligible: false })
-    expect(screen.getByText('Upgrade from Free to Enterprise to unlock:')).toBeTruthy()
+    expect(screen.getByText('从 Free 升级到 Enterprise 以解锁：')).toBeTruthy()
     expect(screen.getByText('Plus everything in Pro:')).toBeTruthy()
     expect(screen.getByText(/Custom domain · API, MCP & webhooks/)).toBeTruthy()
     expect(screen.getByText('Plus everything in Business:')).toBeTruthy()
@@ -181,13 +181,13 @@ describe('UpgradeOffer', () => {
       { currentPlan: 'pro', currentPlanName: 'Pro', trialActive: true, trialEligible: false },
       { entitlement: 'workflows' }
     )
-    expect(screen.getByText("You're trialing Pro. Upgrade to Business to unlock:")).toBeTruthy()
+    expect(screen.getByText('你正在试用 Pro。升级到 Business 以解锁：')).toBeTruthy()
     expect(screen.getByRole('link', { name: 'Upgrade to Business' })).toBeTruthy()
   })
 
   it('uses plan-only copy when the current plan is unknown', () => {
     renderOffer(null)
-    expect(screen.getByText('Upgrade to Enterprise to unlock:')).toBeTruthy()
+    expect(screen.getByText('升级到 Enterprise 以解锁：')).toBeTruthy()
     expect(screen.getByRole('link', { name: 'Upgrade to Enterprise' })).toBeTruthy()
   })
 
@@ -209,7 +209,9 @@ describe('UpgradeOffer', () => {
         <UpgradeOffer description={describeEntitlementUpgrade('auditLog')} />
       </QueryClientProvider>
     )
-    expect(screen.getByText(/The audit log is an Enterprise feature/)).toBeTruthy()
+    expect(
+      screen.getByText('The audit log 从 Enterprise 套餐起提供。升级到 Enterprise 即可启用。')
+    ).toBeTruthy()
     expect(screen.getByRole('link', { name: 'View & compare plans' })).toHaveAttribute(
       'href',
       '/admin/settings/billing'
@@ -221,9 +223,11 @@ describe('UpgradeOffer', () => {
     routerState.billingEnabled = false
     renderOffer(onPro)
     expect(
-      screen.getByRole('heading', { name: 'The audit log is available from the Enterprise plan' })
+      screen.getByRole('heading', { name: 'The audit log 从 Enterprise 套餐起提供' })
     ).toBeTruthy()
-    expect(screen.getByText(/The audit log is an Enterprise feature/)).toBeTruthy()
+    expect(
+      screen.getByText('The audit log 从 Enterprise 套餐起提供。升级到 Enterprise 即可启用。')
+    ).toBeTruthy()
     expect(document.querySelector('form')).toBeNull()
     expect(screen.queryByRole('link')).toBeNull()
   })

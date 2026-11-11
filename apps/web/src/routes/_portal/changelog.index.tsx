@@ -20,8 +20,8 @@ export const Route = createFileRoute('/_portal/changelog/')({
   head: ({ loaderData }) => {
     if (!loaderData) return {}
     const { workspaceName, baseUrl } = loaderData
-    const title = `Changelog - ${workspaceName}`
-    const description = `Stay up to date with the latest ${workspaceName} product updates and shipped features.`
+    const title = `更新日志 - ${workspaceName}`
+    const description = `了解 ${workspaceName} 的最新产品更新和已发布功能。`
     const canonicalUrl = baseUrl ? `${baseUrl}/changelog` : ''
     return {
       meta: [

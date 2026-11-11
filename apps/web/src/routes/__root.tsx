@@ -120,7 +120,7 @@ export const Route = createRootRouteWithContext<RouterContext>()({
       },
       {
         name: 'description',
-        content: 'Open-source customer feedback platform',
+        content: '开源客户反馈平台',
       },
       {
         property: 'og:type',

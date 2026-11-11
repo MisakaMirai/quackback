@@ -87,7 +87,7 @@ function useClientInfo(clientId: string) {
 
 function joinWords(words: string[]): string {
   if (words.length <= 1) return words.join('')
-  return `${words.slice(0, -1).join(', ')} and ${words[words.length - 1]}`
+  return `${words.slice(0, -1).join('、')}和${words[words.length - 1]}`
 }
 
 /** One sentence saying what the current selection lets the client do. */
@@ -97,24 +97,24 @@ function accessSummary(
   levels: DomainAccessLevels
 ): string {
   if (preset === 'full') {
-    return `${clientName} can read and make changes across your workspace, including settings, up to what your role allows.`
+    return `根据你的角色权限，${clientName} 可以读取并修改你的工作区，包括设置。`
   }
   if (preset === 'read') {
-    return `${clientName} can search and read. It cannot post, reply, publish or change settings.`
+    return `${clientName} 可以搜索和读取，但不能发帖、回复、发布或修改设置。`
   }
   const writes = ACCESS_DOMAINS.filter((d) => ['read_write', 'write'].includes(levels[d.domain]))
   const reads = ACCESS_DOMAINS.filter((d) => levels[d.domain] === 'read')
-  if (writes.length + reads.length === 0) return 'Select at least one area to continue.'
+  if (writes.length + reads.length === 0) return '请至少选择一个区域以继续。'
   const parts: string[] = []
   if (writes.length > 0) {
-    parts.push(`${clientName} can change ${joinWords(writes.map((d) => d.label))}.`)
+    parts.push(`${clientName} 可以修改${joinWords(writes.map((d) => d.label))}。`)
   }
   if (reads.length > 0) {
     parts.push(
-      `${writes.length > 0 ? 'It' : clientName} can only read ${joinWords(reads.map((d) => d.label))}.`
+      `${writes.length > 0 ? '它' : clientName}只能读取${joinWords(reads.map((d) => d.label))}。`
     )
   }
-  return parts.join(' ')
+  return parts.join('')
 }
 
 function AccessChoice({
@@ -156,7 +156,7 @@ function AccessChoice({
         <span className="flex items-center gap-2 text-sm font-medium">
           {title}
           {recommended && (
-            <span className="text-[11px] font-medium text-muted-foreground">Recommended</span>
+            <span className="text-[11px] font-medium text-muted-foreground">推荐</span>
           )}
         </span>
         <span className="block text-xs text-muted-foreground">{description}</span>
@@ -188,7 +188,7 @@ function ConsentPage() {
   const [submitting, setSubmitting] = useState<'accept' | 'deny' | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  const clientName = client?.client_name || 'An application'
+  const clientName = client?.client_name || '某个应用'
   const clientDomain = (() => {
     if (!client?.client_uri || !isSafeUrl(client.client_uri)) return null
     try {
@@ -234,7 +234,7 @@ function ConsentPage() {
       }
     } catch {
       setSubmitting(null)
-      setError('Something went wrong. Please try again.')
+      setError('出错了，请重试。')
     }
   }
 
@@ -270,9 +270,7 @@ function ConsentPage() {
 
           <h1 className="text-xl font-semibold">{clientName}</h1>
 
-          <p className="text-sm text-muted-foreground">
-            wants to access {workspaceName ?? 'your account'}
-          </p>
+          <p className="text-sm text-muted-foreground">请求访问 {workspaceName ?? '你的账户'}</p>
 
           {clientDomain && (
             <p className="text-xs text-muted-foreground/70">
@@ -294,12 +292,12 @@ function ConsentPage() {
         </div>
 
         <div className="space-y-3">
-          <div role="radiogroup" aria-label="Access level" className="space-y-2">
+          <div role="radiogroup" aria-label="访问级别" className="space-y-2">
             <AccessChoice
               value="full"
               selected={preset === 'full'}
-              title="Full access"
-              description="Read and make changes, up to what your role allows"
+              title="完全访问"
+              description="根据你的角色权限读取和修改内容"
               recommended
               disabled={submitting !== null}
               onSelect={() => setLevels(consentPresetLevels('full'))}
@@ -307,8 +305,8 @@ function ConsentPage() {
             <AccessChoice
               value="read"
               selected={preset === 'read'}
-              title="Read only"
-              description="Search and look things up. No changes."
+              title="只读"
+              description="搜索和查看内容，不做任何修改。"
               disabled={submitting !== null}
               onSelect={() => setLevels(consentPresetLevels('read'))}
             />
@@ -316,8 +314,8 @@ function ConsentPage() {
               <AccessChoice
                 value="custom"
                 selected
-                title="Custom"
-                description="Your own selection below"
+                title="自定义"
+                description="在下方自行选择"
                 disabled={submitting !== null}
                 onSelect={() => {}}
               />
@@ -335,7 +333,7 @@ function ConsentPage() {
               className={cn('h-3.5 w-3.5 transition-transform', showDetail && 'rotate-90')}
               aria-hidden
             />
-            Choose what {clientName} can access
+            选择 {clientName} 可以访问的内容
           </button>
 
           {showDetail && (
@@ -351,16 +349,16 @@ function ConsentPage() {
               />
               <div className="flex items-center justify-between px-4 py-3 border-t border-border/30">
                 <div className="min-w-0 pr-4">
-                  <p className="text-sm font-medium">Stay signed in</p>
+                  <p className="text-sm font-medium">保持登录状态</p>
                   <p className="text-xs text-muted-foreground">
-                    Let {clientName} refresh access without asking again
+                    允许 {clientName} 刷新访问权限而无需再次询问
                   </p>
                 </div>
                 <Switch
                   checked={offlineAccess}
                   onCheckedChange={setOfflineAccess}
                   disabled={submitting !== null}
-                  aria-label="Stay signed in"
+                  aria-label="保持登录状态"
                 />
               </div>
             </div>
@@ -386,7 +384,7 @@ function ConsentPage() {
               disabled={submitting !== null}
               onClick={() => handleConsent(false)}
             >
-              {submitting === 'deny' ? 'Denying...' : 'Deny'}
+              {submitting === 'deny' ? '正在拒绝…' : '拒绝'}
             </Button>
             <Button
               size="lg"
@@ -394,15 +392,13 @@ function ConsentPage() {
               disabled={submitting !== null || !canAuthorize}
               onClick={() => handleConsent(true)}
             >
-              {submitting === 'accept' ? 'Authorizing...' : 'Authorize'}
+              {submitting === 'accept' ? '正在授权…' : '授权'}
             </Button>
           </div>
 
           <div className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground/60">
             <ShieldCheck className="h-3.5 w-3.5 shrink-0" />
-            <p>
-              {signedInAs ? `Signed in as ${signedInAs}. ` : ''}Revoke any time in account settings
-            </p>
+            <p>{signedInAs ? `已登录为 ${signedInAs}。` : ''}可随时在账户设置中撤销</p>
           </div>
 
           {(() => {
@@ -411,7 +407,7 @@ function ConsentPage() {
             if (!hasTos && !hasPolicy) return null
             return (
               <p className="text-center text-xs text-muted-foreground/60">
-                {'By authorizing, you agree to '}
+                {'授权即表示你同意'}
                 {hasTos && (
                   <a
                     href={client.tos_uri!}
@@ -419,10 +415,10 @@ function ConsentPage() {
                     rel="noopener noreferrer"
                     className="underline hover:text-muted-foreground transition-colors"
                   >
-                    Terms of Service
+                    服务条款
                   </a>
                 )}
-                {hasTos && hasPolicy && ' and '}
+                {hasTos && hasPolicy && '和'}
                 {hasPolicy && (
                   <a
                     href={client.policy_uri!}
@@ -430,7 +426,7 @@ function ConsentPage() {
                     rel="noopener noreferrer"
                     className="underline hover:text-muted-foreground transition-colors"
                   >
-                    Privacy Policy
+                    隐私政策
                   </a>
                 )}
                 .

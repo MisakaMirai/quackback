@@ -26,15 +26,14 @@ export function describeEntitlementUpgrade(key: EntitlementKey): UpgradeDescript
   // still lacks was withheld, which only support can change.
   const cheapest = minimumPlanFor(key)
   const plan = cheapest && cheapest.id !== 'free' ? cheapest : null
-  const verb = definition.plural ? 'are' : 'is'
   if (!plan) {
     return {
       entitlement: key,
       feature: definition.friendly,
       requiredPlan: null,
       requiredPlanName: null,
-      headline: `${definition.friendly} ${verb} not included in your plan`,
-      body: `${definition.friendly} ${verb} not included in your plan. Contact us to add ${definition.plural ? 'them' : 'it'}.`,
+      headline: `${definition.friendly} 不包含在你的套餐中`,
+      body: `${definition.friendly} 不包含在你的套餐中。请联系我们添加。`,
     }
   }
   return {
@@ -42,8 +41,8 @@ export function describeEntitlementUpgrade(key: EntitlementKey): UpgradeDescript
     feature: definition.friendly,
     requiredPlan: plan.id,
     requiredPlanName: plan.name,
-    headline: `${definition.friendly} ${verb} available from the ${plan.name} plan`,
-    body: `${definition.friendly} ${verb} ${plan.article} ${plan.name} feature. Upgrade to ${plan.name} to enable ${definition.plural ? 'them' : 'it'}.`,
+    headline: `${definition.friendly} 从 ${plan.name} 套餐起提供`,
+    body: `${definition.friendly} 从 ${plan.name} 套餐起提供。升级到 ${plan.name} 即可启用。`,
   }
 }
 
@@ -54,17 +53,16 @@ export function describeEntitlementUpgrade(key: EntitlementKey): UpgradeDescript
 export function describePlanUpgrade(
   feature: string,
   requiredPlan: PlanId,
-  options: { plural?: boolean } = {}
+  _options: { plural?: boolean } = {}
 ): UpgradeDescription {
   const plan = PLAN_CATALOGUE[requiredPlan]
-  const verb = options.plural ? 'are' : 'is'
   return {
     entitlement: null,
     feature,
     requiredPlan,
     requiredPlanName: plan.name,
-    headline: `${feature} ${verb} available from the ${plan.name} plan`,
-    body: `${feature} ${verb} ${plan.article} ${plan.name} feature. Upgrade to ${plan.name} to enable ${options.plural ? 'them' : 'it'}.`,
+    headline: `${feature} 从 ${plan.name} 套餐起提供`,
+    body: `${feature} 从 ${plan.name} 套餐起提供。升级到 ${plan.name} 即可启用。`,
   }
 }
 
@@ -74,13 +72,13 @@ export function upgradeLead(
   requiredPlanName: string | null | undefined,
   options: { trialActive?: boolean } = {}
 ): string {
-  if (!requiredPlanName) return 'Upgrade your plan to unlock:'
+  if (!requiredPlanName) return '升级套餐以解锁：'
   if (currentPlanName && currentPlanName !== requiredPlanName) {
     return options.trialActive
-      ? `You're trialing ${currentPlanName}. Upgrade to ${requiredPlanName} to unlock:`
-      : `Upgrade from ${currentPlanName} to ${requiredPlanName} to unlock:`
+      ? `你正在试用 ${currentPlanName}。升级到 ${requiredPlanName} 以解锁：`
+      : `从 ${currentPlanName} 升级到 ${requiredPlanName} 以解锁：`
   }
-  return `Upgrade to ${requiredPlanName} to unlock:`
+  return `升级到 ${requiredPlanName} 以解锁：`
 }
 
 export type UnlockedHighlights = {
