@@ -2262,5 +2262,22 @@
   "portal.feedback.list.searchWidenedMost": "No post has all your words. Showing posts with most of them.",
   "portal.feedback.list.searchWidenedSimilar": "No exact matches. Showing posts with a similar spelling.",
   "settings.labs.empty.title": "No experiments right now",
-  "settings.labs.empty.description": "Features you can try before they ship show up here."
+  "settings.labs.empty.description": "Features you can try before they ship show up here.",
+  "ui.editor.embed.remove": "Remove embed",
+  "ui.editor.video.remove": "Remove video",
+  "portal.post.noStatus": "No status",
+  "portal.filter.removeAria": "Remove {label} {value} filter",
+  "portal.postCard.vote.ariaCount": "{count, plural, one {# vote} other {# votes}}",
+  "portal.mention.teamMemberAria": "{label} Member",
+  "portal.mention.joined": "Joined {date}",
+  "portal.moderation.pending": "Pending review",
+  "portal.moderation.hiddenFromCustomers": "Customers cannot see this {noun} yet.",
+  "portal.moderation.noun.post": "post",
+  "portal.moderation.noun.comment": "comment",
+  "portal.settings.notifications.tips.title": "Setup tips",
+  "portal.settings.notifications.tips.description": "Emails with the next step while you set up this workspace.",
+  "portal.settings.notifications.tips.aria": "Setup tips by email",
+  "widget.tickets.blockCard.createFailed": "Failed to create ticket",
+  "common.a11y.clear": "Clear",
+  "common.a11y.breadcrumb": "Breadcrumb"
 }

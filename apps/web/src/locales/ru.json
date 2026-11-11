@@ -2262,5 +2262,22 @@
   "portal.feedback.list.searchWidenedMost": "Ни одно предложение не содержит все ваши слова. Показаны предложения с большинством из них.",
   "portal.feedback.list.searchWidenedSimilar": "Точных совпадений нет. Показаны предложения с похожим написанием.",
   "settings.labs.empty.title": "Сейчас экспериментов нет",
-  "settings.labs.empty.description": "Здесь появляются функции, которые можно попробовать до выхода."
+  "settings.labs.empty.description": "Здесь появляются функции, которые можно попробовать до выхода.",
+  "ui.editor.embed.remove": "Удалить встраивание",
+  "ui.editor.video.remove": "Удалить видео",
+  "portal.post.noStatus": "Без статуса",
+  "portal.filter.removeAria": "Удалить фильтр {label} {value}",
+  "portal.postCard.vote.ariaCount": "{count, plural, one {# голос} few {# голоса} many {# голосов} other {# голоса}}",
+  "portal.mention.teamMemberAria": "Участник {label}",
+  "portal.mention.joined": "Присоединился {date}",
+  "portal.moderation.pending": "Ожидает проверки",
+  "portal.moderation.hiddenFromCustomers": "Клиенты пока не видят {noun}.",
+  "portal.moderation.noun.post": "эту публикацию",
+  "portal.moderation.noun.comment": "этот комментарий",
+  "portal.settings.notifications.tips.title": "Советы по настройке",
+  "portal.settings.notifications.tips.description": "Письма со следующим шагом во время настройки этого рабочего пространства.",
+  "portal.settings.notifications.tips.aria": "Советы по настройке по электронной почте",
+  "widget.tickets.blockCard.createFailed": "Не удалось создать тикет",
+  "common.a11y.clear": "Очистить",
+  "common.a11y.breadcrumb": "Навигационная цепочка"
 }

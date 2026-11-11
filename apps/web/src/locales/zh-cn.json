@@ -2262,5 +2262,22 @@
   "portal.feedback.list.searchWidenedMost": "没有帖子包含你的所有词语。显示包含其中大部分词语的帖子。",
   "portal.feedback.list.searchWidenedSimilar": "没有完全匹配的结果。显示拼写相近的帖子。",
   "settings.labs.empty.title": "暂无实验功能",
-  "settings.labs.empty.description": "可在正式发布前试用的功能会显示在这里。"
+  "settings.labs.empty.description": "可在正式发布前试用的功能会显示在这里。",
+  "ui.editor.embed.remove": "移除嵌入",
+  "ui.editor.video.remove": "移除视频",
+  "portal.post.noStatus": "无状态",
+  "portal.filter.removeAria": "移除筛选条件 {label} {value}",
+  "portal.postCard.vote.ariaCount": "{count, plural, other {# 票}}",
+  "portal.mention.teamMemberAria": "{label} 成员",
+  "portal.mention.joined": "加入于 {date}",
+  "portal.moderation.pending": "等待审核",
+  "portal.moderation.hiddenFromCustomers": "客户暂时看不到此{noun}。",
+  "portal.moderation.noun.post": "帖子",
+  "portal.moderation.noun.comment": "评论",
+  "portal.settings.notifications.tips.title": "设置提示",
+  "portal.settings.notifications.tips.description": "在设置此工作区期间发送包含下一步操作的邮件。",
+  "portal.settings.notifications.tips.aria": "通过电子邮件发送设置提示",
+  "widget.tickets.blockCard.createFailed": "创建工单失败",
+  "common.a11y.clear": "清除",
+  "common.a11y.breadcrumb": "面包屑导航"
 }

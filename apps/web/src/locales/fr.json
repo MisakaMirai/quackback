@@ -2262,5 +2262,22 @@
   "portal.feedback.list.searchWidenedMost": "Aucune publication ne contient tous vos mots. Voici celles qui en contiennent la plupart.",
   "portal.feedback.list.searchWidenedSimilar": "Aucun résultat exact. Voici des publications à l’orthographe proche.",
   "settings.labs.empty.title": "Aucune expérience pour le moment",
-  "settings.labs.empty.description": "Les fonctionnalités que vous pouvez essayer avant leur sortie apparaissent ici."
+  "settings.labs.empty.description": "Les fonctionnalités que vous pouvez essayer avant leur sortie apparaissent ici.",
+  "ui.editor.embed.remove": "Supprimer l'intégration",
+  "ui.editor.video.remove": "Supprimer la vidéo",
+  "portal.post.noStatus": "Aucun statut",
+  "portal.filter.removeAria": "Supprimer le filtre {label} {value}",
+  "portal.postCard.vote.ariaCount": "{count, plural, one {# voix} other {# voix}}",
+  "portal.mention.teamMemberAria": "Membre {label}",
+  "portal.mention.joined": "A rejoint le {date}",
+  "portal.moderation.pending": "En attente de validation",
+  "portal.moderation.hiddenFromCustomers": "Les clients ne voient pas encore {noun}.",
+  "portal.moderation.noun.post": "cette publication",
+  "portal.moderation.noun.comment": "ce commentaire",
+  "portal.settings.notifications.tips.title": "Conseils de configuration",
+  "portal.settings.notifications.tips.description": "Des e-mails avec l'étape suivante pendant la configuration de cet espace de travail.",
+  "portal.settings.notifications.tips.aria": "Conseils de configuration par e-mail",
+  "widget.tickets.blockCard.createFailed": "Impossible de créer le ticket",
+  "common.a11y.clear": "Effacer",
+  "common.a11y.breadcrumb": "Fil d'Ariane"
 }

@@ -8,6 +8,7 @@ import {
   TICKET_URL_PASTE_RE,
 } from '@/lib/shared/embeds/parse-embed-url'
 import { QuackbackEmbedCard } from '@/components/shared/quackback-embed-card'
+import { useOptionalIntl } from './use-optional-intl'
 import { cn } from '@/lib/shared/utils'
 
 export interface QuackbackEmbedOptions {
@@ -24,6 +25,7 @@ export interface QuackbackEmbedOptions {
  * non-editable; an empty node simply renders nothing inside it.
  */
 function QuackbackEmbedNodeView({ node, selected, deleteNode }: ReactNodeViewProps) {
+  const intl = useOptionalIntl()
   const kind = node.attrs.kind as 'post' | 'changelog' | 'article' | 'ticket' | null
   const id = node.attrs.id as string | null
   return (
@@ -40,7 +42,10 @@ function QuackbackEmbedNodeView({ node, selected, deleteNode }: ReactNodeViewPro
           editor selection before the click fires. */}
       <button
         type="button"
-        aria-label="Remove embed"
+        aria-label={intl.formatMessage({
+          id: 'ui.editor.embed.remove',
+          defaultMessage: 'Remove embed',
+        })}
         onMouseDown={(e) => e.preventDefault()}
         onClick={() => deleteNode()}
         className={cn(

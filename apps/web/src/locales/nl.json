@@ -2262,5 +2262,22 @@
   "portal.feedback.list.searchWidenedMost": "Geen post bevat al je woorden. Posts met de meeste ervan worden getoond.",
   "portal.feedback.list.searchWidenedSimilar": "Geen exacte resultaten. Posts met een vergelijkbare spelling worden getoond.",
   "settings.labs.empty.title": "Op dit moment geen experimenten",
-  "settings.labs.empty.description": "Functies die je kunt uitproberen voordat ze uitkomen, verschijnen hier."
+  "settings.labs.empty.description": "Functies die je kunt uitproberen voordat ze uitkomen, verschijnen hier.",
+  "ui.editor.embed.remove": "Insluiting verwijderen",
+  "ui.editor.video.remove": "Video verwijderen",
+  "portal.post.noStatus": "Geen status",
+  "portal.filter.removeAria": "Filter {label} {value} verwijderen",
+  "portal.postCard.vote.ariaCount": "{count, plural, one {# stem} other {# stemmen}}",
+  "portal.mention.teamMemberAria": "Lid van {label}",
+  "portal.mention.joined": "Lid sinds {date}",
+  "portal.moderation.pending": "Wacht op beoordeling",
+  "portal.moderation.hiddenFromCustomers": "Klanten kunnen {noun} nog niet zien.",
+  "portal.moderation.noun.post": "dit bericht",
+  "portal.moderation.noun.comment": "deze reactie",
+  "portal.settings.notifications.tips.title": "Insteltips",
+  "portal.settings.notifications.tips.description": "E-mails met de volgende stap terwijl je deze werkruimte instelt.",
+  "portal.settings.notifications.tips.aria": "Insteltips per e-mail",
+  "widget.tickets.blockCard.createFailed": "Kan ticket niet aanmaken",
+  "common.a11y.clear": "Wissen",
+  "common.a11y.breadcrumb": "Kruimelpad"
 }

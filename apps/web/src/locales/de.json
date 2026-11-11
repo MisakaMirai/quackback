@@ -2262,5 +2262,22 @@
   "portal.feedback.list.searchWidenedMost": "Kein Beitrag enthält alle deine Wörter. Angezeigt werden Beiträge mit den meisten davon.",
   "portal.feedback.list.searchWidenedSimilar": "Keine genauen Treffer. Angezeigt werden Beiträge mit ähnlicher Schreibweise.",
   "settings.labs.empty.title": "Gerade keine Experimente",
-  "settings.labs.empty.description": "Funktionen, die du vor dem Start ausprobieren kannst, erscheinen hier."
+  "settings.labs.empty.description": "Funktionen, die du vor dem Start ausprobieren kannst, erscheinen hier.",
+  "ui.editor.embed.remove": "Einbettung entfernen",
+  "ui.editor.video.remove": "Video entfernen",
+  "portal.post.noStatus": "Kein Status",
+  "portal.filter.removeAria": "Filter {label} {value} entfernen",
+  "portal.postCard.vote.ariaCount": "{count, plural, one {# Stimme} other {# Stimmen}}",
+  "portal.mention.teamMemberAria": "{label}-Mitglied",
+  "portal.mention.joined": "Beigetreten am {date}",
+  "portal.moderation.pending": "Wartet auf Prüfung",
+  "portal.moderation.hiddenFromCustomers": "Kunden können {noun} noch nicht sehen.",
+  "portal.moderation.noun.post": "diesen Beitrag",
+  "portal.moderation.noun.comment": "diesen Kommentar",
+  "portal.settings.notifications.tips.title": "Einrichtungstipps",
+  "portal.settings.notifications.tips.description": "E-Mails mit dem nächsten Schritt während der Einrichtung dieses Arbeitsbereichs.",
+  "portal.settings.notifications.tips.aria": "Einrichtungstipps per E-Mail",
+  "widget.tickets.blockCard.createFailed": "Ticket konnte nicht erstellt werden",
+  "common.a11y.clear": "Leeren",
+  "common.a11y.breadcrumb": "Pfadnavigation"
 }

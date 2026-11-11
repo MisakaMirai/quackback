@@ -2262,5 +2262,22 @@
   "portal.feedback.list.searchWidenedMost": "Nenhum post tem todas as suas palavras. Mostrando posts com a maioria delas.",
   "portal.feedback.list.searchWidenedSimilar": "Nenhum resultado exato. Mostrando posts com grafia parecida.",
   "settings.labs.empty.title": "Nenhum experimento no momento",
-  "settings.labs.empty.description": "Os recursos que você pode testar antes do lançamento aparecem aqui."
+  "settings.labs.empty.description": "Os recursos que você pode testar antes do lançamento aparecem aqui.",
+  "ui.editor.embed.remove": "Remover incorporação",
+  "ui.editor.video.remove": "Remover vídeo",
+  "portal.post.noStatus": "Sem status",
+  "portal.filter.removeAria": "Remover filtro {label} {value}",
+  "portal.postCard.vote.ariaCount": "{count, plural, one {# voto} other {# votos}}",
+  "portal.mention.teamMemberAria": "Membro de {label}",
+  "portal.mention.joined": "Entrou em {date}",
+  "portal.moderation.pending": "Aguardando revisão",
+  "portal.moderation.hiddenFromCustomers": "Os clientes ainda não podem ver {noun}.",
+  "portal.moderation.noun.post": "este post",
+  "portal.moderation.noun.comment": "este comentário",
+  "portal.settings.notifications.tips.title": "Dicas de configuração",
+  "portal.settings.notifications.tips.description": "E-mails com o próximo passo enquanto você configura este workspace.",
+  "portal.settings.notifications.tips.aria": "Dicas de configuração por e-mail",
+  "widget.tickets.blockCard.createFailed": "Não foi possível criar o ticket",
+  "common.a11y.clear": "Limpar",
+  "common.a11y.breadcrumb": "Trilha de navegação"
 }

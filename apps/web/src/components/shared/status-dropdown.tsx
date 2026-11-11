@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { CheckIcon } from '@heroicons/react/24/solid'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { StatusBadge } from '@/components/ui/status-badge'
@@ -28,7 +29,12 @@ export function StatusDropdown({
   disabled = false,
   variant = 'badge',
 }: StatusDropdownProps): React.ReactElement {
+  const intl = useOptionalIntl()
   const [open, setOpen] = useState(false)
+  const noStatus = intl.formatMessage({
+    id: 'portal.post.noStatus',
+    defaultMessage: 'No status',
+  })
 
   const handleStatusChange = (statusId: PostStatusId) => {
     onStatusChange(statusId)
@@ -51,7 +57,7 @@ export function StatusDropdown({
             {currentStatus ? (
               <StatusBadge name={currentStatus.name} color={currentStatus.color} className="mb-1" />
             ) : (
-              <span className="text-[13px] text-muted-foreground">No status</span>
+              <span className="text-[13px] text-muted-foreground">{noStatus}</span>
             )}
           </button>
         ) : (
@@ -70,7 +76,7 @@ export function StatusDropdown({
               className="h-2 w-2 rounded-full shrink-0"
               style={{ backgroundColor: currentStatus?.color || '#94a3b8' }}
             />
-            <span className="max-w-[80px] truncate">{currentStatus?.name || 'No Status'}</span>
+            <span className="max-w-[80px] truncate">{currentStatus?.name || noStatus}</span>
           </button>
         )}
       </PopoverTrigger>

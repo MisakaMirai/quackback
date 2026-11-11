@@ -2262,5 +2262,22 @@
   "portal.feedback.list.searchWidenedMost": "ไม่มีโพสต์ที่มีคำของคุณครบทุกคำ กำลังแสดงโพสต์ที่มีคำส่วนใหญ่",
   "portal.feedback.list.searchWidenedSimilar": "ไม่พบผลลัพธ์ที่ตรงกันทุกประการ กำลังแสดงโพสต์ที่สะกดคล้ายกัน",
   "settings.labs.empty.title": "ยังไม่มีการทดลองในตอนนี้",
-  "settings.labs.empty.description": "ฟีเจอร์ที่คุณลองใช้ได้ก่อนเปิดตัวจะแสดงที่นี่"
+  "settings.labs.empty.description": "ฟีเจอร์ที่คุณลองใช้ได้ก่อนเปิดตัวจะแสดงที่นี่",
+  "ui.editor.embed.remove": "ลบการฝัง",
+  "ui.editor.video.remove": "ลบวิดีโอ",
+  "portal.post.noStatus": "ไม่มีสถานะ",
+  "portal.filter.removeAria": "ลบตัวกรอง {label} {value}",
+  "portal.postCard.vote.ariaCount": "{count, plural, other {# โหวต}}",
+  "portal.mention.teamMemberAria": "สมาชิก {label}",
+  "portal.mention.joined": "เข้าร่วมเมื่อ {date}",
+  "portal.moderation.pending": "รอการตรวจสอบ",
+  "portal.moderation.hiddenFromCustomers": "ลูกค้ายังมองไม่เห็น{noun}",
+  "portal.moderation.noun.post": "โพสต์นี้",
+  "portal.moderation.noun.comment": "ความคิดเห็นนี้",
+  "portal.settings.notifications.tips.title": "เคล็ดลับการตั้งค่า",
+  "portal.settings.notifications.tips.description": "อีเมลที่มีขั้นตอนถัดไประหว่างการตั้งค่าพื้นที่ทำงานนี้",
+  "portal.settings.notifications.tips.aria": "เคล็ดลับการตั้งค่าทางอีเมล",
+  "widget.tickets.blockCard.createFailed": "สร้างตั๋วไม่สำเร็จ",
+  "common.a11y.clear": "ล้าง",
+  "common.a11y.breadcrumb": "เส้นทางนำทาง"
 }

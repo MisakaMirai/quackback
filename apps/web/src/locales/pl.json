@@ -2262,5 +2262,22 @@
   "portal.feedback.list.searchWidenedMost": "Żaden wpis nie zawiera wszystkich słów. Pokazujemy wpisy z większością z nich.",
   "portal.feedback.list.searchWidenedSimilar": "Brak dokładnych wyników. Pokazujemy wpisy o podobnej pisowni.",
   "settings.labs.empty.title": "Brak eksperymentów",
-  "settings.labs.empty.description": "Tutaj pojawiają się funkcje, które możesz wypróbować przed premierą."
+  "settings.labs.empty.description": "Tutaj pojawiają się funkcje, które możesz wypróbować przed premierą.",
+  "ui.editor.embed.remove": "Usuń osadzenie",
+  "ui.editor.video.remove": "Usuń wideo",
+  "portal.post.noStatus": "Brak statusu",
+  "portal.filter.removeAria": "Usuń filtr {label} {value}",
+  "portal.postCard.vote.ariaCount": "{count, plural, one {# głos} few {# głosy} many {# głosów} other {# głosu}}",
+  "portal.mention.teamMemberAria": "Członek {label}",
+  "portal.mention.joined": "Dołączył {date}",
+  "portal.moderation.pending": "Oczekuje na przegląd",
+  "portal.moderation.hiddenFromCustomers": "Klienci nie widzą jeszcze {noun}.",
+  "portal.moderation.noun.post": "tego wpisu",
+  "portal.moderation.noun.comment": "tego komentarza",
+  "portal.settings.notifications.tips.title": "Wskazówki konfiguracji",
+  "portal.settings.notifications.tips.description": "E-maile z następnym krokiem podczas konfigurowania tej przestrzeni roboczej.",
+  "portal.settings.notifications.tips.aria": "Wskazówki konfiguracji e-mailem",
+  "widget.tickets.blockCard.createFailed": "Nie udało się utworzyć zgłoszenia",
+  "common.a11y.clear": "Wyczyść",
+  "common.a11y.breadcrumb": "Ścieżka nawigacji"
 }

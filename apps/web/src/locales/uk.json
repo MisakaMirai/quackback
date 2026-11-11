@@ -2262,5 +2262,22 @@
   "portal.feedback.list.searchWidenedMost": "Жоден допис не містить усіх ваших слів. Показано дописи з більшістю з них.",
   "portal.feedback.list.searchWidenedSimilar": "Точних збігів немає. Показано дописи зі схожим написанням.",
   "settings.labs.empty.title": "Зараз експериментів немає",
-  "settings.labs.empty.description": "Тут з’являються функції, які можна спробувати до випуску."
+  "settings.labs.empty.description": "Тут з’являються функції, які можна спробувати до випуску.",
+  "ui.editor.embed.remove": "Видалити вбудовування",
+  "ui.editor.video.remove": "Видалити відео",
+  "portal.post.noStatus": "Без статусу",
+  "portal.filter.removeAria": "Видалити фільтр {label} {value}",
+  "portal.postCard.vote.ariaCount": "{count, plural, one {# голос} few {# голоси} many {# голосів} other {# голоси}}",
+  "portal.mention.teamMemberAria": "Учасник {label}",
+  "portal.mention.joined": "Приєднався {date}",
+  "portal.moderation.pending": "Очікує перевірки",
+  "portal.moderation.hiddenFromCustomers": "Клієнти поки не бачать {noun}.",
+  "portal.moderation.noun.post": "цю публікацію",
+  "portal.moderation.noun.comment": "цей коментар",
+  "portal.settings.notifications.tips.title": "Поради з налаштування",
+  "portal.settings.notifications.tips.description": "Листи з наступним кроком під час налаштування цього робочого простору.",
+  "portal.settings.notifications.tips.aria": "Поради з налаштування електронною поштою",
+  "widget.tickets.blockCard.createFailed": "Не вдалося створити тікет",
+  "common.a11y.clear": "Очистити",
+  "common.a11y.breadcrumb": "Навігаційний ланцюжок"
 }

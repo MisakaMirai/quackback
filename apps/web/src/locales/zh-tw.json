@@ -2262,5 +2262,22 @@
   "portal.feedback.list.searchWidenedMost": "沒有貼文包含你的所有詞語。顯示包含其中大部分詞語的貼文。",
   "portal.feedback.list.searchWidenedSimilar": "沒有完全相符的結果。顯示拼寫相近的貼文。",
   "settings.labs.empty.title": "目前沒有實驗功能",
-  "settings.labs.empty.description": "可在正式推出前試用的功能會顯示在這裡。"
+  "settings.labs.empty.description": "可在正式推出前試用的功能會顯示在這裡。",
+  "ui.editor.embed.remove": "移除嵌入",
+  "ui.editor.video.remove": "移除影片",
+  "portal.post.noStatus": "無狀態",
+  "portal.filter.removeAria": "移除篩選條件 {label} {value}",
+  "portal.postCard.vote.ariaCount": "{count, plural, other {# 票}}",
+  "portal.mention.teamMemberAria": "{label} 成員",
+  "portal.mention.joined": "加入於 {date}",
+  "portal.moderation.pending": "等待審核",
+  "portal.moderation.hiddenFromCustomers": "客戶暫時看不到此{noun}。",
+  "portal.moderation.noun.post": "貼文",
+  "portal.moderation.noun.comment": "留言",
+  "portal.settings.notifications.tips.title": "設定提示",
+  "portal.settings.notifications.tips.description": "在設定此工作區期間寄送包含下一步操作的電子郵件。",
+  "portal.settings.notifications.tips.aria": "透過電子郵件寄送設定提示",
+  "widget.tickets.blockCard.createFailed": "建立工單失敗",
+  "common.a11y.clear": "清除",
+  "common.a11y.breadcrumb": "麵包屑導覽"
 }

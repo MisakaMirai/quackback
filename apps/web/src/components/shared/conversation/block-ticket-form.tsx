@@ -42,7 +42,14 @@ export function BlockTicketForm({
       rpc.createMyTicket({ data: vars, headers: getAuthHeaders() }),
     onSuccess: () => setFiled(true),
     onError: (error) =>
-      toast.error(error instanceof Error ? error.message : 'Failed to create ticket'),
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : intl.formatMessage({
+              id: 'widget.tickets.blockCard.createFailed',
+              defaultMessage: 'Failed to create ticket',
+            })
+      ),
   })
 
   if (filed) {

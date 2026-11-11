@@ -2262,5 +2262,22 @@
   "portal.feedback.list.searchWidenedMost": "لا يوجد منشور يحتوي على كل كلماتك. نعرض المنشورات التي تحتوي على معظمها.",
   "portal.feedback.list.searchWidenedSimilar": "لا توجد نتائج مطابقة تمامًا. نعرض منشورات بتهجئة مشابهة.",
   "settings.labs.empty.title": "لا توجد تجارب حاليًا",
-  "settings.labs.empty.description": "تظهر هنا الميزات التي يمكنك تجربتها قبل إطلاقها."
+  "settings.labs.empty.description": "تظهر هنا الميزات التي يمكنك تجربتها قبل إطلاقها.",
+  "ui.editor.embed.remove": "إزالة التضمين",
+  "ui.editor.video.remove": "إزالة الفيديو",
+  "portal.post.noStatus": "لا توجد حالة",
+  "portal.filter.removeAria": "إزالة عامل التصفية {label} {value}",
+  "portal.postCard.vote.ariaCount": "{count, plural, one {# صوت} other {# أصوات}}",
+  "portal.mention.teamMemberAria": "عضو {label}",
+  "portal.mention.joined": "انضم في {date}",
+  "portal.moderation.pending": "قيد المراجعة",
+  "portal.moderation.hiddenFromCustomers": "لا يمكن للعملاء رؤية {noun} بعد.",
+  "portal.moderation.noun.post": "هذا المنشور",
+  "portal.moderation.noun.comment": "هذا التعليق",
+  "portal.settings.notifications.tips.title": "نصائح الإعداد",
+  "portal.settings.notifications.tips.description": "رسائل بريد إلكتروني بالخطوة التالية أثناء إعداد مساحة العمل هذه.",
+  "portal.settings.notifications.tips.aria": "نصائح الإعداد عبر البريد الإلكتروني",
+  "widget.tickets.blockCard.createFailed": "تعذّر إنشاء التذكرة",
+  "common.a11y.clear": "مسح",
+  "common.a11y.breadcrumb": "مسار التنقل"
 }

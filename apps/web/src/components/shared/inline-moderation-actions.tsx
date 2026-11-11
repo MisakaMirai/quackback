@@ -1,3 +1,4 @@
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { EyeSlashIcon } from '@heroicons/react/24/outline'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/shared/utils'
@@ -25,7 +26,12 @@ export function InlineModerationActions({
   noun,
   className,
 }: InlineModerationActionsProps) {
+  const intl = useOptionalIntl()
   if (!pending) return null
+  const nounLabel = intl.formatMessage({
+    id: `portal.moderation.noun.${noun}`,
+    defaultMessage: noun,
+  })
   const canAct = Boolean(onApprove || onReject)
   return (
     <div
@@ -36,21 +42,36 @@ export function InlineModerationActions({
     >
       <span className="inline-flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-400">
         <EyeSlashIcon className="h-3.5 w-3.5" />
-        Pending review
+        {intl.formatMessage({
+          id: 'portal.moderation.pending',
+          defaultMessage: 'Pending review',
+        })}
       </span>
       <span className="text-xs text-amber-700/80 dark:text-amber-500/70">
-        Customers cannot see this {noun} yet.
+        {intl.formatMessage(
+          {
+            id: 'portal.moderation.hiddenFromCustomers',
+            defaultMessage: 'Customers cannot see this {noun} yet.',
+          },
+          { noun: nounLabel }
+        )}
       </span>
       {canAct && (
         <span className="ms-auto flex shrink-0 gap-1.5">
           {onApprove && (
             <Button size="sm" onClick={onApprove} disabled={busy}>
-              Approve
+              {intl.formatMessage({
+                id: 'portal.moderation.card.approve',
+                defaultMessage: 'Approve',
+              })}
             </Button>
           )}
           {onReject && (
             <Button size="sm" variant="outline" onClick={onReject} disabled={busy}>
-              Reject
+              {intl.formatMessage({
+                id: 'portal.moderation.card.reject',
+                defaultMessage: 'Reject',
+              })}
             </Button>
           )}
         </span>

@@ -21,6 +21,7 @@
  *     instead of relying on react-query.
  */
 import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useOptionalIntl } from './use-optional-intl'
 import { CheckBadgeIcon } from '@heroicons/react/24/solid'
 import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover'
 import { Avatar } from '@/components/ui/avatar'
@@ -101,12 +102,17 @@ interface MentionHoverCardOverlayProps {
 }
 
 export function MentionHoverCardOverlay({ children, className }: MentionHoverCardOverlayProps) {
+  const intl = useOptionalIntl()
   const containerRef = useRef<HTMLDivElement>(null)
   const [anchor, setAnchor] = useState<{ rect: DOMRect; principalId: string } | null>(null)
   const settings = useWorkspaceSettings()
   const branding = settings?.brandingData
   const teamBadgeLogoUrl = branding?.logoUrl ?? null
   const teamBadgeLabel = branding?.name ?? settings?.name ?? 'Team'
+  const teamMemberLabel = intl.formatMessage(
+    { id: 'portal.mention.teamMemberAria', defaultMessage: '{label} Member' },
+    { label: teamBadgeLabel }
+  )
   const [card, setCard] = useState<PrincipalCard | null>(null)
   const [isMissing, setIsMissing] = useState(false)
 
@@ -263,8 +269,8 @@ export function MentionHoverCardOverlay({ children, className }: MentionHoverCar
                   {isTeamMember(card.role) && (
                     <span
                       className="inline-flex items-center justify-center h-5 w-5 rounded-md bg-primary/15 text-primary shrink-0"
-                      aria-label={`${teamBadgeLabel} Member`}
-                      title={`${teamBadgeLabel} Member`}
+                      aria-label={teamMemberLabel}
+                      title={teamMemberLabel}
                     >
                       {teamBadgeLogoUrl ? (
                         <img
@@ -279,11 +285,15 @@ export function MentionHoverCardOverlay({ children, className }: MentionHoverCar
                   )}
                 </div>
                 <div className="text-xs text-muted-foreground/70 mt-1">
-                  Joined{' '}
-                  {new Date(card.joinedAt).toLocaleDateString(undefined, {
-                    month: 'short',
-                    year: 'numeric',
-                  })}
+                  {intl.formatMessage(
+                    { id: 'portal.mention.joined', defaultMessage: 'Joined {date}' },
+                    {
+                      date: intl.formatDate(new Date(card.joinedAt), {
+                        month: 'short',
+                        year: 'numeric',
+                      }),
+                    }
+                  )}
                 </div>
               </div>
             </div>
