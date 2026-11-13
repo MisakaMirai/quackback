@@ -2259,5 +2259,11 @@
   "portal.feedback.list.noSearchResults": "لا توجد منشورات تطابق “{query}”.",
   "portal.feedback.list.postSearchAsIdea": "أنشئ منشورًا منها",
   "portal.feedback.list.searchWidenedMost": "لا يوجد منشور يحتوي على كل كلماتك. نعرض المنشورات التي تحتوي على معظمها.",
-  "portal.feedback.list.searchWidenedSimilar": "لا توجد نتائج مطابقة تمامًا. نعرض منشورات بتهجئة مشابهة."
+  "portal.feedback.list.searchWidenedSimilar": "لا توجد نتائج مطابقة تمامًا. نعرض منشورات بتهجئة مشابهة.",
+  "admin.integrations.oauthError.denied": "تم رفض الاتصال على {name}. اتصل مرة أخرى للسماح بالوصول.",
+  "admin.integrations.oauthError.expired": "انتهت صلاحية طلب الاتصال أو لم يكن صالحًا. حاول الاتصال مرة أخرى.",
+  "admin.integrations.oauthError.session": "تعذّر التحقق من تسجيل دخولك. سجّل الدخول مرة أخرى، ثم اربط.",
+  "admin.integrations.oauthError.credentials": "أضف بيانات اعتماد تطبيق {name} قبل الاتصال.",
+  "admin.integrations.oauthError.elsewhere": "حساب {name} هذا متصل بالفعل بمساحة عمل Quackback أخرى.",
+  "admin.integrations.oauthError.failed": "لم يكتمل الاتصال بـ {name}. حاول الربط مرة أخرى."
 }
