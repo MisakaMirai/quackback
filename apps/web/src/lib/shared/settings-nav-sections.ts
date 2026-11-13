@@ -245,7 +245,11 @@ export function buildNavSections(
           ...navPage('/admin/settings/general'),
           permission: PERMISSIONS.SETTINGS_MANAGE,
         },
-        { ...navPage('/admin/settings/domains'), anyOf: DOMAINS_PAGE_PERMISSIONS, overview: { owner: PERMISSIONS.SETTINGS_CUSTOM_DOMAIN } },
+        {
+          ...navPage('/admin/settings/domains'),
+          anyOf: DOMAINS_PAGE_PERMISSIONS,
+          overview: { owner: PERMISSIONS.SETTINGS_CUSTOM_DOMAIN },
+        },
         { ...navPage('/admin/settings/notifications') },
         {
           ...navPage('/admin/settings/portal'),
@@ -266,10 +270,6 @@ export function buildNavSections(
         {
           ...navPage('/admin/settings/developers'),
           permission: PERMISSIONS.API_KEY_MANAGE,
-        },
-        {
-          ...navPage('/admin/settings/labs'),
-          permission: PERMISSIONS.SETTINGS_MANAGE,
         },
         {
           ...navPage('/admin/settings/integrations'),

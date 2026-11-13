@@ -101,7 +101,7 @@ Profiles: **Owner** = admin class + an admin-owned full API key (scoped keys hol
 
 ## 2. Surfaces and their enforced authorization
 
-### Server functions (`requireAuth`) — 761 surfaces
+### Server functions (`requireAuth`) — 756 surfaces
 
 | Surface | Enforces |
 | --- | --- |
@@ -408,7 +408,6 @@ Profiles: **Owner** = admin class + an admin-owned full API key (scoped keys hol
 | `lib/server/functions/conversation.ts`::removeConversationParticipantFn | conversation.reply |
 | `lib/server/functions/conversation.ts`::listConversationParticipantsFn | conversation.view |
 | `lib/server/functions/conversation.ts`::listFlaggedMessagesFn | conversation.view |
-| `lib/server/functions/conversation.ts`::getLinkedPostsForConversationFn | conversation.view |
 | `lib/server/functions/conversation.ts`::getLinkedConversationsForPostFn | conversation.view |
 | `lib/server/functions/conversation.ts`::translateConversationMessagesFn | conversation.view |
 | `lib/server/functions/conversation.ts`::setInboxTranslationEnabledFn | conversation.manage |
@@ -422,16 +421,12 @@ Profiles: **Owner** = admin class + an admin-owned full API key (scoped keys hol
 | `lib/server/functions/domains-overview.ts`::getSendingDomainSummariesFn | channel_account.manage |
 | `lib/server/functions/domains-overview.ts`::getSignInDomainSummariesFn | auth.manage |
 | `lib/server/functions/domains-overview.ts`::getHelpCenterDomainSummaryFn | settings.custom_domain |
-| `lib/server/functions/external-item-search.ts`::searchExternalItemsFn | integration.manage |
 | `lib/server/functions/external-statuses.ts`::fetchExternalStatusesFn | integration.manage |
 | `lib/server/functions/feature-flags.ts`::updateFeatureFlagsFn | settings.manage |
 | `lib/server/functions/feedback.ts`::acceptSuggestionFn | suggestion.manage |
 | `lib/server/functions/feedback.ts`::dismissSuggestionFn | suggestion.manage |
 | `lib/server/functions/github-star-prompt.ts`::getStarPromptFn | member.view |
 | `lib/server/functions/github-star-prompt.ts`::markStarPromptShownFn | member.view |
-| `lib/server/functions/going-live.ts`::getMessengerInstallStatusFn | settings.manage |
-| `lib/server/functions/going-live.ts`::readyMessengerInstallFn | settings.manage |
-| `lib/server/functions/going-live.ts`::sendMessengerInstallInstructionsFn | settings.manage |
 | `lib/server/functions/help-center-domain.ts`::updateHelpCenterDomainFn | help_center.manage |
 | `lib/server/functions/help-center-domain.ts`::verifyHelpCenterDomainFn | help_center.manage |
 | `lib/server/functions/help-center-domain.ts`::getHelpCenterDomainStatusFn | help_center.manage |
@@ -1083,7 +1078,7 @@ Key scopes are enforced: an API key holds exactly its stored scopes (owner permi
 
 ## 4. Entry points without a requireAuth/key gate
 
-228 of 1099 entry points hold no `requireAuth` / `withApiKeyAuth` / `requireTeamAuth` gate.
+228 of 1094 entry points hold no `requireAuth` / `withApiKeyAuth` / `requireTeamAuth` gate.
 Each is expected to be intentionally public, a pre-auth flow, a signature-verified webhook, or a handler that delegates auth (e.g. the MCP route).
 **Adding a row here is an access-control change** — confirm the new entry point is meant to be reachable without a gate.
 
