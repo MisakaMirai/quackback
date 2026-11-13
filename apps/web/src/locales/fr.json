@@ -1414,7 +1414,6 @@
   "ask.destination.settings_members": "Membres et équipes",
   "ask.destination.settings_security_authentication": "Accès et sécurité",
   "ask.destination.settings_developers": "Développeurs",
-  "ask.destination.settings_labs": "Labs",
   "ask.destination.settings_integrations": "Intégrations",
   "ask.destination.settings_billing": "Offre et facturation",
   "ask.destination.settings_people": "Utilisateurs",
@@ -2260,7 +2259,5 @@
   "portal.feedback.list.noSearchResults": "Aucune publication ne correspond à « {query} ».",
   "portal.feedback.list.postSearchAsIdea": "En faire une publication",
   "portal.feedback.list.searchWidenedMost": "Aucune publication ne contient tous vos mots. Voici celles qui en contiennent la plupart.",
-  "portal.feedback.list.searchWidenedSimilar": "Aucun résultat exact. Voici des publications à l’orthographe proche.",
-  "settings.labs.empty.title": "Aucune expérience pour le moment",
-  "settings.labs.empty.description": "Les fonctionnalités que vous pouvez essayer avant leur sortie apparaissent ici."
+  "portal.feedback.list.searchWidenedSimilar": "Aucun résultat exact. Voici des publications à l’orthographe proche."
 }

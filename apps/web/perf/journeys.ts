@@ -207,7 +207,6 @@ const SWEEP_PAGES: { path: string; as: Actor }[] = [
     'help-center',
     'imports',
     'integrations',
-    'labs',
     'macros',
     'members',
     'members/roles/new',

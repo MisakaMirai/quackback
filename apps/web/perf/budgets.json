@@ -637,19 +637,6 @@
       "htmlTransferKB": 39.7,
       "componentRenders": 430
     },
-    "sweep:doc:admin:/admin/settings/labs": {
-      "dbQueries": 8,
-      "htmlKB": 65.6
-    },
-    "sweep:ui:admin:/admin/settings/labs": {
-      "dbQueries": 8,
-      "serverRequests": 1,
-      "requests": 100,
-      "jsRequests": 96,
-      "jsKB": 389.1,
-      "htmlTransferKB": 30.0,
-      "componentRenders": 352
-    },
     "sweep:doc:admin:/admin/settings/macros": {
       "dbQueries": 7,
       "htmlKB": 69.2

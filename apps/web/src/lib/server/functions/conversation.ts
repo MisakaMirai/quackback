@@ -1652,15 +1652,6 @@ export const listFlaggedMessagesFn = createServerFn({ method: 'GET' }).handler(a
   return await listFlaggedMessages(actor)
 })
 
-export const getLinkedPostsForConversationFn = createServerFn({ method: 'GET' })
-  .validator(conversationIdSchema)
-  .handler(async ({ data }) => {
-    await requireAuth({ permission: PERMISSIONS.CONVERSATION_VIEW })
-    const { getLinkedPostsForConversation } =
-      await import('@/lib/server/domains/conversation/conversation.query')
-    return await getLinkedPostsForConversation(data.conversationId as ConversationId)
-  })
-
 export const getLinkedConversationsForPostFn = createServerFn({ method: 'GET' })
   .validator(z.object({ postId: z.string() }))
   .handler(async ({ data }) => {

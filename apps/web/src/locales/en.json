@@ -1410,7 +1410,6 @@
   "ask.destination.settings_members": "Members & Teams",
   "ask.destination.settings_security_authentication": "Access & Security",
   "ask.destination.settings_developers": "Developers",
-  "ask.destination.settings_labs": "Labs",
   "ask.destination.settings_integrations": "Integrations",
   "ask.destination.settings_billing": "Plan & billing",
   "ask.destination.settings_people": "Users",
@@ -2260,7 +2259,5 @@
   "portal.feedback.list.noSearchResults": "No posts match “{query}”.",
   "portal.feedback.list.postSearchAsIdea": "Create a post from it",
   "portal.feedback.list.searchWidenedMost": "No post has all your words. Showing posts with most of them.",
-  "portal.feedback.list.searchWidenedSimilar": "No exact matches. Showing posts with a similar spelling.",
-  "settings.labs.empty.title": "No experiments right now",
-  "settings.labs.empty.description": "Features you can try before they ship show up here."
+  "portal.feedback.list.searchWidenedSimilar": "No exact matches. Showing posts with a similar spelling."
 }

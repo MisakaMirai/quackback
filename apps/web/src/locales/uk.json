@@ -1410,7 +1410,6 @@
   "ask.destination.settings_members": "Учасники та команди",
   "ask.destination.settings_security_authentication": "Доступ і безпека",
   "ask.destination.settings_developers": "Розробникам",
-  "ask.destination.settings_labs": "Лабораторія",
   "ask.destination.settings_integrations": "Інтеграції",
   "ask.destination.settings_billing": "План і оплата",
   "ask.destination.settings_people": "Користувачі",
@@ -2260,7 +2259,5 @@
   "portal.feedback.list.noSearchResults": "Немає дописів за запитом «{query}».",
   "portal.feedback.list.postSearchAsIdea": "Створити з цього допис",
   "portal.feedback.list.searchWidenedMost": "Жоден допис не містить усіх ваших слів. Показано дописи з більшістю з них.",
-  "portal.feedback.list.searchWidenedSimilar": "Точних збігів немає. Показано дописи зі схожим написанням.",
-  "settings.labs.empty.title": "Зараз експериментів немає",
-  "settings.labs.empty.description": "Тут з’являються функції, які можна спробувати до випуску."
+  "portal.feedback.list.searchWidenedSimilar": "Точних збігів немає. Показано дописи зі схожим написанням."
 }

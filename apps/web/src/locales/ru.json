@@ -1414,7 +1414,6 @@
   "ask.destination.settings_members": "Участники и команды",
   "ask.destination.settings_security_authentication": "Доступ и безопасность",
   "ask.destination.settings_developers": "Разработчикам",
-  "ask.destination.settings_labs": "Лаборатория",
   "ask.destination.settings_integrations": "Интеграции",
   "ask.destination.settings_billing": "Тариф и оплата",
   "ask.destination.settings_people": "Пользователи",
@@ -2260,7 +2259,5 @@
   "portal.feedback.list.noSearchResults": "Нет предложений по запросу «{query}».",
   "portal.feedback.list.postSearchAsIdea": "Создать из этого предложение",
   "portal.feedback.list.searchWidenedMost": "Ни одно предложение не содержит все ваши слова. Показаны предложения с большинством из них.",
-  "portal.feedback.list.searchWidenedSimilar": "Точных совпадений нет. Показаны предложения с похожим написанием.",
-  "settings.labs.empty.title": "Сейчас экспериментов нет",
-  "settings.labs.empty.description": "Здесь появляются функции, которые можно попробовать до выхода."
+  "portal.feedback.list.searchWidenedSimilar": "Точных совпадений нет. Показаны предложения с похожим написанием."
 }
