@@ -88,7 +88,6 @@ export function makeWorkspace(overrides: Partial<WorkspaceSettings> = {}): Works
     faviconData: null,
     managedFieldPaths: [],
     verifiedDomains: [],
-    state: 'active',
     ...overrides,
   }
 }
