@@ -36,7 +36,7 @@ function LocaleProbe() {
   return <span data-testid="locale">{useIntl().locale}</span>
 }
 
-function renderWidget(initialLocale?: 'en' | 'de' | 'fr' | 'ar') {
+function renderWidget(initialLocale?: 'en' | 'zh-cn' | 'zh-tw') {
   const qc = new QueryClient()
   return render(
     <QueryClientProvider client={qc}>
@@ -50,27 +50,27 @@ function renderWidget(initialLocale?: 'en' | 'de' | 'fr' | 'ar') {
 describe('WidgetAuthProvider locale (hydration safety #133)', () => {
   beforeEach(() => {
     // A non-English browser — the trigger for the original bug.
-    Object.defineProperty(navigator, 'language', { value: 'fr-FR', configurable: true })
+    Object.defineProperty(navigator, 'language', { value: 'zh-cn', configurable: true })
   })
 
   it('uses the SSR-resolved initialLocale prop', () => {
-    expect(renderWidget('de').getByTestId('locale').textContent).toBe('de')
+    expect(renderWidget('zh-cn').getByTestId('locale').textContent).toBe('zh-cn')
   })
 
   it('falls back to DEFAULT_LOCALE, never navigator.language, when no locale is provided', () => {
-    // Pre-fix this fell through to navigator.language ('fr'), so a French
-    // browser hydrated a French tree over an English SSR tree → React #418.
+    // Pre-fix this fell through to navigator.language ('zh-cn'), so a Chinese
+    // browser hydrated a Chinese tree over an English SSR tree → React #418.
     expect(renderWidget().getByTestId('locale').textContent).toBe('en')
   })
 
-  it('owns its iframe document lang/dir (RTL for an RTL locale)', () => {
+  it('owns its iframe document lang/dir', () => {
     // The widget is a separate document with a runtime-changeable locale, so it
     // sets its own <html lang>/dir rather than relying on the root document.
-    renderWidget('ar')
-    expect(document.documentElement.lang).toBe('ar')
-    expect(document.documentElement.dir).toBe('rtl')
-    renderWidget('de')
-    expect(document.documentElement.lang).toBe('de')
+    renderWidget('zh-cn')
+    expect(document.documentElement.lang).toBe('zh-CN')
+    expect(document.documentElement.dir).toBe('ltr')
+    renderWidget('en')
+    expect(document.documentElement.lang).toBe('en')
     expect(document.documentElement.dir).toBe('ltr')
   })
 })

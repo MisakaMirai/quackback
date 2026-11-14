@@ -2,7 +2,7 @@
 import { afterEach, expect, it, vi } from 'vitest'
 import { cleanup, render, screen } from '@testing-library/react'
 import { IntlProvider } from 'react-intl'
-import de from '@/locales/de.json'
+import zhCn from '@/locales/zh-cn.json'
 
 vi.mock('@tanstack/react-router', () => ({
   Link: ({ to, children }: { to: string; children: React.ReactNode }) => (
@@ -26,11 +26,11 @@ const category = (articleCount: number) => ({
 
 it('speaks the visitor language when the help center has nothing to show', () => {
   render(
-    <IntlProvider locale="de" messages={de}>
+    <IntlProvider locale="zh-cn" messages={zhCn}>
       <HelpCenterCategoryGrid categories={[]} />
     </IntlProvider>
   )
-  expect(screen.getByText(de['portal.hc.categoryGrid.empty'])).toBeInTheDocument()
+  expect(screen.getByText(zhCn['portal.hc.categoryGrid.empty'])).toBeInTheDocument()
 })
 
 it('counts articles with the plural rules of the language', () => {

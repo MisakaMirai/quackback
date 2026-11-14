@@ -663,33 +663,28 @@ describe('account step — a self-hosted first user', () => {
 // A translated visitor sees each screen in one language: every string the
 // first-user form and its way back in render is in the catalogue.
 describe('account step: in a translated locale', () => {
-  it('renders the first-user screen and the way back in from the German catalogue', async () => {
-    const de = await loadMessages('de')
+  it('renders the first-user screen and the way back in from the Chinese catalogue', async () => {
+    const zhCn = await loadMessages('zh-cn')
     const props = preStamped()
     // Passwords off, so the first-user screen is the emailed-link one.
     props.authConfig.oauth = { ...DEFAULT_AUTH_CONFIG.oauth, password: false, magicLink: true }
     props.authConfig.signInOAuth = { password: true, github: true }
     rtlRender(
-      <IntlProvider locale="de" defaultLocale="en" messages={de} onError={() => {}}>
+      <IntlProvider locale="zh-cn" defaultLocale="en" messages={zhCn} onError={() => {}}>
         <AccountStep {...props} />
       </IntlProvider>
     )
 
-    expect(
-      screen.getByText('Erstelle dein Admin-Konto, um diesen Workspace einzurichten.')
-    ).toBeInTheDocument()
-    expect(screen.getByText(/Schon mit der Einrichtung begonnen\?/)).toBeInTheDocument()
+    expect(screen.getByText(zhCn['onboarding.account.methodsDescription'])).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Anmelden' }))
+    fireEvent.click(screen.getByRole('button', { name: zhCn['onboarding.account.signIn'] }))
 
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Willkommen zurück')
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
+      zhCn['portal.auth.welcomeBack']
+    )
+    expect(screen.getByText(zhCn['onboarding.account.returning.lead'])).toBeInTheDocument()
     expect(
-      screen.getByText(
-        'Melde dich mit dem Konto an, das du hier erstellt hast, um die Einrichtung abzuschließen.'
-      )
-    ).toBeInTheDocument()
-    expect(
-      screen.getByRole('button', { name: 'Stattdessen ein neues Konto erstellen' })
+      screen.getByRole('button', { name: zhCn['onboarding.account.returning.back'] })
     ).toBeInTheDocument()
   })
 })

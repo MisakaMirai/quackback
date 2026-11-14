@@ -4,7 +4,7 @@ import { cleanup, render, screen } from '@testing-library/react'
 import { IntlProvider } from 'react-intl'
 import { afterEach, expect, it } from 'vitest'
 import en from '@/locales/en.json'
-import de from '@/locales/de.json'
+import zhCn from '@/locales/zh-cn.json'
 import { PlanNoticeQuiet } from '../plan-notice-banner'
 
 afterEach(cleanup)
@@ -39,9 +39,9 @@ it('shows a running trial quietly until its last three days', () => {
 
 it('words the trial line in the viewer language', () => {
   render(
-    <IntlProvider locale="de" messages={de}>
+    <IntlProvider locale="zh-cn" messages={zhCn}>
       <PlanNoticeQuiet notice={{ ...trial(14), trialPlan: 'Pro' }} />
     </IntlProvider>
   )
-  expect(screen.getByRole('link', { name: 'Pro-Testphase · 14 Tage' })).toBeInTheDocument()
+  expect(screen.getByRole('link', { name: 'Pro 试用 · 14 天' })).toBeInTheDocument()
 })

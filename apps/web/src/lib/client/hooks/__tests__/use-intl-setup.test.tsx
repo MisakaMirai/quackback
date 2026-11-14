@@ -22,14 +22,14 @@ describe('useIntlSetup', () => {
   })
 
   it('loads the catalog for another language the page did not seed', async () => {
-    const { result } = renderHook(() => useIntlSetup('de'))
-    await waitFor(() => expect(result.current).toEqual({ greeting: 'hello in de' }))
-    expect(loadMessages).toHaveBeenCalledWith('de')
+    const { result } = renderHook(() => useIntlSetup('zh-cn'))
+    await waitFor(() => expect(result.current).toEqual({ greeting: 'hello in zh-cn' }))
+    expect(loadMessages).toHaveBeenCalledWith('zh-cn')
   })
 
   it('keeps a seeded catalog without loading it again', async () => {
-    const seeded = { greeting: 'hallo' }
-    const { result } = renderHook(() => useIntlSetup('de', seeded))
+    const seeded = { greeting: '你好' }
+    const { result } = renderHook(() => useIntlSetup('zh-cn', seeded))
     await act(async () => {})
     expect(result.current).toBe(seeded)
     expect(loadMessages).not.toHaveBeenCalled()
@@ -37,9 +37,9 @@ describe('useIntlSetup', () => {
 
   it('drops the catalog without loading anything when the locale turns English', async () => {
     const { result, rerender } = renderHook(
-      ({ locale }) => useIntlSetup(locale, { greeting: 'hallo' }),
+      ({ locale }) => useIntlSetup(locale, { greeting: '你好' }),
       {
-        initialProps: { locale: 'de' as 'de' | 'en' },
+        initialProps: { locale: 'zh-cn' as 'zh-cn' | 'en' },
       }
     )
     rerender({ locale: 'en' })

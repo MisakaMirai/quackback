@@ -3,7 +3,7 @@ import { cleanup, render } from '@testing-library/react'
 import { IntlProvider } from 'react-intl'
 import { afterEach, describe, expect, it } from 'vitest'
 import en from '@/locales/en.json'
-import de from '@/locales/de.json'
+import zhCn from '@/locales/zh-cn.json'
 import type { OnboardingOutcome } from '@/lib/shared/db-types'
 import { buildLaunchTasks, type LaunchStatus } from '@/lib/shared/launch-checklist'
 import { LaunchTaskLabel } from '../launch-task-label'
@@ -46,8 +46,8 @@ describe('launch task labels', () => {
     expect(label(status(['product_feedback'], true), 'create-board')).toBe(
       'Create a private team board'
     )
-    expect(label(status(['product_feedback'], true), 'create-board', de)).not.toBe(
-      label(status(['product_feedback']), 'create-board', de)
+    expect(label(status(['product_feedback'], true), 'create-board', zhCn)).not.toBe(
+      label(status(['product_feedback']), 'create-board', zhCn)
     )
   })
 

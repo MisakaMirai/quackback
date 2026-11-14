@@ -10,7 +10,7 @@ import { IntlProvider } from 'react-intl'
 import { AssistantAnswer, AssistantSourcesTrace, type RenderableCitation } from '../assistant-turn'
 import type { ConversationMessageCitation } from '@/lib/shared/conversation/types'
 import en from '@/locales/en.json'
-import de from '@/locales/de.json'
+import zhCn from '@/locales/zh-cn.json'
 
 afterEach(cleanup)
 
@@ -138,14 +138,14 @@ describe('<AssistantAnswer> hovercard freshness line', () => {
 describe('citation localization', () => {
   it('localizes accessible public and internal source labels', () => {
     renderRTL(
-      <IntlProvider locale="de" messages={de}>
+      <IntlProvider locale="zh-cn" messages={zhCn}>
         <AssistantAnswer text="Read [1] and [2]." citations={[publicCitation, internalCitation]} />
       </IntlProvider>
     )
     expect(
-      screen.getByRole('link', { name: 'Quelle 1: Resetting your password' })
+      screen.getByRole('link', { name: '来源 1：Resetting your password' })
     ).toBeInTheDocument()
-    expect(screen.getByLabelText('Interne Quelle 2: Refund policy (internal)')).toBeInTheDocument()
+    expect(screen.getByLabelText('内部来源 2：Refund policy (internal)')).toBeInTheDocument()
     expect(screen.queryByLabelText('Source 1: Resetting your password')).not.toBeInTheDocument()
   })
 
@@ -155,24 +155,24 @@ describe('citation localization', () => {
       updatedAt: new Date(Date.now() - 8 * 86400000).toISOString(),
     }
     renderRTL(
-      <IntlProvider locale="de" messages={de}>
+      <IntlProvider locale="zh-cn" messages={zhCn}>
         <AssistantAnswer text="Read [1]." citations={[cited]} />
       </IntlProvider>
     )
-    await userEvent.hover(screen.getByLabelText('Interne Quelle 1: Refund policy (internal)'))
-    expect(await screen.findByText('Intern')).toBeInTheDocument()
-    expect(await screen.findByText('Aktualisiert vor 8 Tagen')).toBeInTheDocument()
+    await userEvent.hover(screen.getByLabelText('内部来源 1：Refund policy (internal)'))
+    expect(await screen.findByText('内部')).toBeInTheDocument()
+    expect(await screen.findByText(/8.*前/)).toBeInTheDocument()
     expect(screen.queryByText(/Updated|days ago/)).not.toBeInTheDocument()
   })
 
   it('localizes the knowledge trace and exposes its expanded state', async () => {
     renderRTL(
-      <IntlProvider locale="de" messages={de}>
+      <IntlProvider locale="zh-cn" messages={zhCn}>
         <AssistantSourcesTrace citations={[publicCitation]} />
       </IntlProvider>
     )
     const trigger = screen.getByRole('button', {
-      name: 'Wissensdatenbank durchsucht · 1 Quelle',
+      name: '已搜索知识库 · 1 个来源',
     })
     expect(trigger).toHaveAttribute('aria-expanded', 'false')
     await userEvent.click(trigger)

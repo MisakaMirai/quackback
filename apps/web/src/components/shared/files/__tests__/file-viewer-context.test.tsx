@@ -64,7 +64,7 @@ function Opener({ files, index }: { files: ViewerFile[]; index: number }) {
 // first open in a busy run is not timed against the module transform.
 beforeAll(async () => {
   await import('../file-viewer')
-  await Promise.all([loadViewerMessages('en'), loadViewerMessages('de')])
+  await Promise.all([loadViewerMessages('en'), loadViewerMessages('zh-cn')])
 })
 
 beforeEach(() => {
@@ -141,10 +141,10 @@ describe('FileViewerProvider', () => {
       <FileViewerProvider>
         <Opener files={[deck]} index={0} />
       </FileViewerProvider>,
-      { locale: 'de', messages: { 'files.download': 'Herunterladen' } }
+      { locale: 'zh-cn', messages: { 'files.download': '下载' } }
     )
     await clickToOpen(screen.getByRole('button', { name: 'Open files' }))
-    expect(await screen.findByRole('button', { name: 'Schließen' })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: '关闭' })).toBeInTheDocument()
   })
 
   it("keeps the page's own viewer strings when its catalog has them", async () => {
@@ -152,11 +152,11 @@ describe('FileViewerProvider', () => {
       <FileViewerProvider>
         <Opener files={[deck]} index={0} />
       </FileViewerProvider>,
-      { locale: 'de', messages: { 'files.viewer.close': 'Zu' } }
+      { locale: 'zh-cn', messages: { 'files.viewer.close': '关' } }
     )
     await clickToOpen(screen.getByRole('button', { name: 'Open files' }))
-    expect(await screen.findByRole('button', { name: 'Zu' })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Schließen' })).toBeNull()
+    expect(await screen.findByRole('button', { name: '关' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '关闭' })).toBeNull()
   })
 
   it('ignores an empty gallery', async () => {

@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { AnchorHTMLAttributes, ReactNode } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import en from '@/locales/en.json'
-import de from '@/locales/de.json'
+import zhCn from '@/locales/zh-cn.json'
 import { launchPath, type LaunchStatus } from '@/lib/shared/launch-checklist'
 
 vi.mock('@tanstack/react-router', () => ({
@@ -285,16 +285,19 @@ describe("Home's launch plan card", () => {
     }
     client.setQueryData(['admin', 'onboarding'], short)
     render(
-      <IntlProvider locale="de" messages={de}>
+      <IntlProvider locale="zh-cn" messages={zhCn}>
         <QueryClientProvider client={client}>
           <HomeNextStep status={short} pending={false} onCreateBoard={() => {}} />
         </QueryClientProvider>
       </IntlProvider>
     )
-    // German keeps its capitals and joins with "und".
-    // Branding comes before invites, so the logo is first and the team last.
-    expect(screen.getByText(/^Später:/).textContent).toMatch(/^Später: Logo hinzufügen und /)
+    // The locale's own join order: branding comes before invites.
+    const later = screen.getByText(/^稍后：/)
+    expect(later.textContent).toContain(zhCn['onboarding.task.customize-branding'])
+    expect(later.textContent!.indexOf(zhCn['onboarding.task.customize-branding'])).toBeLessThan(
+      later.textContent!.indexOf(zhCn['onboarding.task.invite-team'])
+    )
     // The region says which language it is in; the admin document stays English.
-    expect(screen.getByText(/^Später:/).closest('[lang]')).toHaveAttribute('lang', 'de')
+    expect(later.closest('[lang]')).toHaveAttribute('lang', 'zh-cn')
   })
 })

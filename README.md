@@ -48,7 +48,7 @@
 | **Quackback AI**    | An agent that answers customers from your help center, changelog and status page, and hands off to your team when a person should step in. Copilot answers your team's questions and drafts replies; on Home (in Labs) it can propose settings changes you review and apply. Also duplicate detection, summaries and translation. |
 | **Developers**      | A REST API with an OpenAPI spec, signed webhooks, and an [MCP server](#connect-your-ai-tools) for AI agents.                                                                                                                                                                                                                      |
 
-The portal and widget speak 10+ languages, including right-to-left, and follow each visitor's browser language.
+The portal and widget speak English, Simplified Chinese and Traditional Chinese, and follow each visitor's browser language.
 
 ## Get started
 

@@ -1,23 +1,23 @@
 export const DEFAULT_LOCALE = 'en' as const
 
-export const SUPPORTED_LOCALES = [
-  'en',
-  'de',
-  'fr',
-  'es',
-  'ar',
-  'ru',
-  'pt-br',
-  'zh-cn',
-  'zh-tw',
-  'nl',
-  'pl',
-  'th',
-  'uk',
-] as const
+/**
+ * The locales with a message catalog under `src/locales`. The list and the
+ * files stay in lockstep: `locales/__tests__/locale-parity.test.ts` fails on a
+ * supported locale with no catalog, and on a catalog no locale names.
+ *
+ * English, Simplified Chinese and Traditional Chinese. The two Chinese
+ * variants are script-sensitive and ship as separate catalogs (see
+ * `normalizeLocale`).
+ */
+export const SUPPORTED_LOCALES = ['en', 'zh-cn', 'zh-tw'] as const
 
 export type SupportedLocale = (typeof SUPPORTED_LOCALES)[number]
 
+/**
+ * No supported locale is right-to-left today. The table stays so a future RTL
+ * catalog needs no layout change: `htmlLangDir` and the `?rtl=1` debug override
+ * keep working off it.
+ */
 const RTL_LOCALES = new Set(['ar', 'he', 'fa', 'ur'])
 
 /**
@@ -34,7 +34,7 @@ export function normalizeLocale(locale: string): SupportedLocale | null {
     return lower as SupportedLocale
   }
 
-  // Strip region subtag (e.g. "fr-FR" -> "fr"), but only accept 2-letter base codes
+  // Strip region subtag (e.g. "en-GB" -> "en"), but only accept 2-letter base codes
   const parts = lower.split('-')
 
   // Chinese is script-sensitive: Simplified (zh-cn) and Traditional (zh-tw) are
@@ -51,10 +51,6 @@ export function normalizeLocale(locale: string): SupportedLocale | null {
       return 'zh-cn'
     }
   }
-
-  // Portuguese ships a single catalog, Brazilian. Without this, a bare "pt" or a
-  // European tag ("pt-PT") strips to an unsupported "pt" and falls back to English.
-  if (parts[0] === 'pt') return 'pt-br'
 
   if (parts.length >= 2) {
     const base = parts[0]

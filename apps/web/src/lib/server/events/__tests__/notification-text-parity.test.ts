@@ -26,7 +26,7 @@ vi.mock('@/lib/server/realtime/presence', () => ({
 }))
 
 import en from '@/locales/en.json'
-import pl from '@/locales/pl.json'
+import zhCn from '@/locales/zh-cn.json'
 import {
   notificationText,
   type NotificationTextSource,
@@ -36,7 +36,7 @@ import { notificationHook } from '../handlers/notification'
 import type { EventData } from '../types'
 
 const english = createIntl({ locale: 'en', defaultLocale: 'en', messages: en })
-const polish = createIntl({ locale: 'pl', defaultLocale: 'en', messages: pl })
+const chinese = createIntl({ locale: 'zh-cn', defaultLocale: 'en', messages: zhCn })
 
 // Fields every test event shares; the handler words these rows from `config`.
 const base = {
@@ -184,7 +184,7 @@ describe('notification wording matches the server', () => {
 
   it.each(CASES)('words a $name in the reader’s language', async (c) => {
     const n = await storedRow(c)
-    const worded = notificationText(n, polish)
+    const worded = notificationText(n, chinese)
     expect(worded.title).not.toBe(n.title)
     if (c.rewordsBody) expect(worded.body).not.toBe(n.body)
   })

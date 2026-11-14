@@ -7,12 +7,12 @@ import { loadMessages, adminSeedMessages } from '@/lib/shared/i18n'
 import { AskMessages } from '../ask-messages'
 
 it('loads search strings that the page seed leaves out', async () => {
-  const seeded = adminSeedMessages(await loadMessages('fr'))
+  const seeded = adminSeedMessages(await loadMessages('zh-tw'))
   expect(seeded['ask.composer.jumpTo']).toBeUndefined()
   // React retries a suspended use() only inside act.
   await act(async () => {
     render(
-      <IntlProvider locale="fr" messages={seeded} onError={() => {}}>
+      <IntlProvider locale="zh-tw" messages={seeded} onError={() => {}}>
         <Suspense fallback={<p>Loading</p>}>
           <AskMessages>
             <p>
@@ -26,6 +26,6 @@ it('loads search strings that the page seed leaves out', async () => {
       </IntlProvider>
     )
   })
-  expect(await screen.findByText('Aller à')).toBeTruthy()
+  expect(await screen.findByText('跳轉至')).toBeTruthy()
   expect(screen.getByText(seeded['onboarding.launch.name']!)).toBeTruthy()
 })

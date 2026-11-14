@@ -4,15 +4,7 @@ import { cleanup, render, screen } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { IntlProvider } from 'react-intl'
 import { afterEach, expect, it, vi } from 'vitest'
-import de from '@/locales/de.json'
 import en from '@/locales/en.json'
-import ar from '@/locales/ar.json'
-import es from '@/locales/es.json'
-import fr from '@/locales/fr.json'
-import nl from '@/locales/nl.json'
-import pl from '@/locales/pl.json'
-import ptBr from '@/locales/pt-br.json'
-import ru from '@/locales/ru.json'
 import zhCn from '@/locales/zh-cn.json'
 import zhTw from '@/locales/zh-tw.json'
 
@@ -28,7 +20,7 @@ afterEach(cleanup)
 it('labels the board link action in the viewer language', () => {
   render(
     <QueryClientProvider client={new QueryClient()}>
-      <IntlProvider locale="de" messages={de}>
+      <IntlProvider locale="zh-cn" messages={zhCn}>
         <ActivationActionButton
           action={{
             id: 'copy-board-link',
@@ -42,11 +34,11 @@ it('labels the board link action in the viewer language', () => {
       </IntlProvider>
     </QueryClientProvider>
   )
-  expect(screen.getByRole('button', { name: 'Board-Link kopieren' })).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: '复制看板链接' })).toBeInTheDocument()
 })
 
 it('names Changelog and the Help menu What’s new apart in every language', () => {
-  for (const messages of [de, en, ar, es, fr, nl, pl, ptBr, ru, zhCn, zhTw]) {
+  for (const messages of [en, zhCn, zhTw]) {
     const catalogue = messages as Record<string, string>
     expect(catalogue['admin.nav.changelog']).not.toBe(catalogue['admin.help.whatsNew'])
   }

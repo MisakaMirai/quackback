@@ -33,18 +33,8 @@ import type { SupportedLocale } from '@/lib/shared/i18n'
 import { errorText } from '@/lib/client/error-text'
 
 const LOCALE_LABELS: Record<string, string> = {
-  de: 'Deutsch',
-  fr: 'Français',
-  es: 'Español',
-  ar: 'العربية',
-  ru: 'Русский',
-  'pt-br': 'Português (Brasil)',
   'zh-cn': '简体中文',
   'zh-tw': '繁體中文',
-  nl: 'Nederlands',
-  pl: 'Polski',
-  th: 'ภาษาไทย',
-  uk: 'Українська',
 }
 
 const STATUS_LABELS: Record<string, string> = {

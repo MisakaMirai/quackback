@@ -4,7 +4,7 @@ import { cleanup, render, screen } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { IntlProvider } from 'react-intl'
 import type { KbArticleId } from '@quackback/ids'
-import de from '@/locales/de.json'
+import zhCn from '@/locales/zh-cn.json'
 
 const statuses = vi.hoisted(() => ({
   rows: [] as Array<{
@@ -33,7 +33,7 @@ afterEach(cleanup)
 function renderDialog(locale: string, messages: Record<string, string>) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   queryClient.setQueryData(['settings', 'helpCenterConfig'], {
-    locales: { default: 'en', additional: ['de'] },
+    locales: { default: 'en', additional: ['zh-cn'] },
   })
   return render(
     <QueryClientProvider client={queryClient}>
@@ -51,19 +51,17 @@ function renderDialog(locale: string, messages: Record<string, string>) {
 describe('ArticleTranslationsDialog auto-translate pause', () => {
   it('says when auto-translate is waiting for AI allowance, in the viewer language', async () => {
     statuses.rows = [
-      { locale: 'de', status: 'untranslated', updatedAt: null, autoTranslatePaused: true },
+      { locale: 'zh-cn', status: 'untranslated', updatedAt: null, autoTranslatePaused: true },
     ]
-    renderDialog('de', de)
+    renderDialog('zh-cn', zhCn)
     expect(
-      await screen.findByText(
-        'Pausiert: KI-Nutzung für diesen Zeitraum aufgebraucht. Upgrade deinen Tarif für mehr.'
-      )
+      await screen.findByText('已暂停：本周期的 AI 用量已用完。升级套餐即可获得更多。')
     ).toBeTruthy()
   })
 
   it('stays quiet when nothing is paused', async () => {
     statuses.rows = [
-      { locale: 'de', status: 'untranslated', updatedAt: null, autoTranslatePaused: false },
+      { locale: 'zh-cn', status: 'untranslated', updatedAt: null, autoTranslatePaused: false },
     ]
     renderDialog('en', {})
     expect(await screen.findByText('Untranslated')).toBeTruthy()

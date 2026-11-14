@@ -8,21 +8,7 @@ export type InstanceUrl = string
  * app's `SUPPORTED_LOCALES`, so a parity test in apps/web guarantees this list
  * never drifts from it.
  */
-export const WIDGET_LOCALES = [
-  'en',
-  'fr',
-  'de',
-  'es',
-  'ar',
-  'ru',
-  'pt-BR',
-  'zh-CN',
-  'zh-TW',
-  'nl',
-  'pl',
-  'th',
-  'uk',
-] as const
+export const WIDGET_LOCALES = ['en', 'zh-CN', 'zh-TW'] as const
 
 /** Passed to `Quackback("init", ...)` or `Quackback.init(...)`. */
 export interface InitOptions {

@@ -12,7 +12,7 @@ import { IntlProvider } from 'react-intl'
 import type { ReactNode } from 'react'
 import type { ConversationId } from '@quackback/ids'
 import type { AgentConversationMessageDTO } from '@/lib/shared/conversation/types'
-import de from '@/locales/de.json'
+import zhCn from '@/locales/zh-cn.json'
 
 const hoisted = vi.hoisted(() => ({
   translateConversationMessagesFn: vi.fn(),
@@ -472,10 +472,10 @@ describe('useInboxTranslation — translationFor (per-message display)', () => {
 })
 
 describe('useInboxTranslation over the AI allowance', () => {
-  function germanWrapper({ children }: { children: ReactNode }) {
+  function chineseWrapper({ children }: { children: ReactNode }) {
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
     return (
-      <IntlProvider locale="de" messages={de}>
+      <IntlProvider locale="zh-cn" messages={zhCn}>
         <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
       </IntlProvider>
     )
@@ -498,12 +498,12 @@ describe('useInboxTranslation over the AI allowance', () => {
           messages: [message],
           onChanged: vi.fn(),
         }),
-      { wrapper: germanWrapper }
+      { wrapper: chineseWrapper }
     )
 
     await waitFor(() => expect(result.current.overAllowanceNotice).not.toBeNull())
     expect(result.current.overAllowanceNotice).toBe(
-      'Die KI-Nutzung für diesen Zeitraum ist aufgebraucht. Die Übersetzung läuft weiter. Upgrade deinen Tarif für mehr.'
+      '本周期的 AI 用量已用完，翻译仍可继续使用。升级套餐即可获得更多。'
     )
     expect(result.current.translationFor(message)?.translatedContent).toBe('Hello')
   })
@@ -523,7 +523,7 @@ describe('useInboxTranslation over the AI allowance', () => {
           messages: [message],
           onChanged: vi.fn(),
         }),
-      { wrapper: germanWrapper }
+      { wrapper: chineseWrapper }
     )
     await waitFor(() => expect(result.current.translationFor(message)).toBeDefined())
     expect(result.current.overAllowanceNotice).toBeNull()

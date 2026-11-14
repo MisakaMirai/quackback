@@ -3,7 +3,7 @@ import '@testing-library/jest-dom/vitest'
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { IntlProvider } from 'react-intl'
-import de from '@/locales/de.json'
+import zhCn from '@/locales/zh-cn.json'
 import type { BillingCatalogue } from '@/lib/server/control-plane/client'
 import type { BillingProjectionOverview } from '@/lib/server/domains/billing/projection-overview'
 import { BillingPlansView, EmailsPausedNotice } from '../billing-settings'
@@ -140,10 +140,10 @@ describe('BillingPlansView', () => {
         ...paidOverview,
         ai: { ...paidOverview.ai!, resetsAt: '2026-11-08T09:00:00.000Z' },
       },
-      locale: 'de',
-      messages: de,
+      locale: 'zh-cn',
+      messages: zhCn,
     })
-    expect(screen.getByText(/Wird am .*zurückgesetzt/)).toBeInTheDocument()
+    expect(screen.getByText(/重置$/)).toBeInTheDocument()
   })
 
   it('keeps only the monthly reset copy outside a trial', () => {

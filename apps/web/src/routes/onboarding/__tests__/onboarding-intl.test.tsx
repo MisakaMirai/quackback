@@ -93,7 +93,7 @@ describe('onboarding intl provider', () => {
     // boundary catches it; silence it so a RED run reads as an assertion.
     vi.spyOn(console, 'error').mockImplementation(() => {})
 
-    const router = buildRouter('de')
+    const router = buildRouter('zh-cn')
     await router.load()
     render(<RouterProvider router={router} />)
 
@@ -102,7 +102,7 @@ describe('onboarding intl provider', () => {
     const step = await screen.findByTestId('step')
     // The locale the request carried reaches the provider (so dates/numbers
     // format for the visitor)...
-    expect(step.dataset.locale).toBe('de')
+    expect(step.dataset.locale).toBe('zh-cn')
     // ...while the copy itself still renders its inline English default: no
     // catalog carries onboarding keys yet.
     expect(step.textContent).toBe('Create your account')

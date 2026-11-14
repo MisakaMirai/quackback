@@ -519,14 +519,14 @@ describe('AdminSidebar: language', () => {
   afterEach(() => cleanup())
 
   it('names the rail items in the workspace language', async () => {
-    const de = (await import('@/locales/de.json')).default as Record<string, string>
-    renderSidebar('admin', { flags: ALL_ON, locale: 'de', messages: de })
+    const zhCn = (await import('@/locales/zh-cn.json')).default as Record<string, string>
+    renderSidebar('admin', { flags: ALL_ON, locale: 'zh-cn', messages: zhCn })
     const rail = document.querySelector('aside nav[data-tour="products"]') as HTMLElement
-    expect(rail.textContent).toContain(de['admin.nav.home'])
-    expect(rail.textContent).toContain(de['admin.nav.helpCenter'])
+    expect(rail.textContent).toContain(zhCn['admin.nav.home'])
+    expect(rail.textContent).toContain(zhCn['admin.nav.helpCenter'])
     expect(rail.textContent).not.toContain('Help center')
-    expect(document.querySelector('aside')?.textContent).toContain(de['admin.nav.settings'])
+    expect(document.querySelector('aside')?.textContent).toContain(zhCn['admin.nav.settings'])
     expect(document.querySelector('aside')?.textContent).not.toContain('View portal')
-    expect(document.querySelector('aside')?.getAttribute('lang')).toBe('de')
+    expect(document.querySelector('aside')?.getAttribute('lang')).toBe('zh-CN')
   })
 })

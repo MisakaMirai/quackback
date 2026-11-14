@@ -8,7 +8,7 @@ import { afterEach, expect, it, vi } from 'vitest'
 import { cleanup, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { IntlProvider } from 'react-intl'
-import de from '@/locales/de.json'
+import zhCn from '@/locales/zh-cn.json'
 
 vi.mock('@tanstack/react-query', () => ({
   useInfiniteQuery: () => ({
@@ -51,21 +51,21 @@ import { ChangelogList } from '../changelog-list'
 
 afterEach(cleanup)
 
-it('renders the list in German, headed by the sidebar word', async () => {
+it('renders the list in Chinese, headed by the sidebar word', async () => {
   render(
-    <IntlProvider locale="de" defaultLocale="en" messages={de} onError={() => {}}>
+    <IntlProvider locale="zh-cn" defaultLocale="en" messages={zhCn} onError={() => {}}>
       <ChangelogList />
     </IntlProvider>
   )
-  expect(screen.getByRole('heading', { name: de['admin.nav.changelog'] })).toBeTruthy()
-  expect(screen.getByPlaceholderText('Einträge durchsuchen …')).toBeTruthy()
-  expect(screen.getByRole('button', { name: 'Neuer Eintrag' })).toBeTruthy()
-  expect(screen.getByRole('button', { name: /Sortieren: Neueste/ })).toBeTruthy()
-  for (const status of ['Alle', 'Entwurf', 'Geplant', 'Veröffentlicht']) {
+  expect(screen.getByRole('heading', { name: zhCn['admin.nav.changelog'] })).toBeTruthy()
+  expect(screen.getByPlaceholderText('搜索条目…')).toBeTruthy()
+  expect(screen.getByRole('button', { name: '新建条目' })).toBeTruthy()
+  expect(screen.getByRole('button', { name: /排序：最新/ })).toBeTruthy()
+  for (const status of ['全部', '草稿', '已排期', '已发布']) {
     expect(screen.getByText(status)).toBeTruthy()
   }
-  await userEvent.setup().click(screen.getByRole('button', { name: 'Filtern' }))
-  expect(screen.getAllByRole('button', { name: 'Geplant' }).length).toBeGreaterThan(0)
+  await userEvent.setup().click(screen.getByRole('button', { name: '筛选' }))
+  expect(screen.getAllByRole('button', { name: '已排期' }).length).toBeGreaterThan(0)
   const text = document.body.textContent ?? ''
   for (const english of ['Changelog', 'New entry', 'Sort:', 'Draft', 'Scheduled', 'Published']) {
     expect(text).not.toContain(english)

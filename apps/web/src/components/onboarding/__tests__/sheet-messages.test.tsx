@@ -7,12 +7,12 @@ import { loadMessages, adminSeedMessages } from '@/lib/shared/i18n'
 import { SheetMessages } from '../sheet-messages'
 
 it('loads the setup sheet strings that the page seed leaves out', async () => {
-  const seeded = adminSeedMessages(await loadMessages('fr'))
+  const seeded = adminSeedMessages(await loadMessages('zh-tw'))
   expect(seeded['onboarding.live.invite.title']).toBeUndefined()
   // React retries a suspended use() only inside act.
   await act(async () => {
     render(
-      <IntlProvider locale="fr" messages={seeded} onError={() => {}}>
+      <IntlProvider locale="zh-tw" messages={seeded} onError={() => {}}>
         <Suspense fallback={<p>Loading</p>}>
           <SheetMessages>
             <p>
@@ -29,7 +29,7 @@ it('loads the setup sheet strings that the page seed leaves out', async () => {
       </IntlProvider>
     )
   })
-  const all = await loadMessages('fr')
+  const all = await loadMessages('zh-tw')
   expect(await screen.findByText(all['onboarding.live.invite.title']!)).toBeTruthy()
   expect(screen.getByText(seeded['onboarding.launch.name']!)).toBeTruthy()
 })

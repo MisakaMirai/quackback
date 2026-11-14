@@ -21,7 +21,7 @@ vi.mock('@/lib/server/functions/help-center', () => ({
   submitArticleFeedbackReasonFn: (input: { data: unknown }) => submitReason(input),
 }))
 
-import de from '@/locales/de.json'
+import zhCn from '@/locales/zh-cn.json'
 import { HelpCenterArticleFeedback } from '../help-center-article-feedback'
 
 afterEach(() => {
@@ -100,14 +100,14 @@ describe('HelpCenterArticleFeedback', () => {
 
   it('speaks the reader language', async () => {
     render(
-      <IntlProvider locale="de" messages={de} onError={() => {}}>
+      <IntlProvider locale="zh-cn" messages={zhCn} onError={() => {}}>
         <HelpCenterArticleFeedback articleId="article_1" />
       </IntlProvider>
     )
-    expect(screen.getByText(de['portal.hc.articleFeedback.question'])).toBeTruthy()
-    expect(screen.getByText(de['portal.hc.articleFeedback.subtitle'])).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: /Ja/ }))
-    expect(await screen.findByText(de['portal.hc.articleFeedback.thanksHelpful'])).toBeTruthy()
+    expect(screen.getByText(zhCn['portal.hc.articleFeedback.question'])).toBeTruthy()
+    expect(screen.getByText(zhCn['portal.hc.articleFeedback.subtitle'])).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: zhCn['portal.hc.articleFeedback.yes'] }))
+    expect(await screen.findByText(zhCn['portal.hc.articleFeedback.thanksHelpful'])).toBeTruthy()
     expect(document.body.textContent).not.toMatch(/Was this helpful|Yes|Thanks/)
   })
 })

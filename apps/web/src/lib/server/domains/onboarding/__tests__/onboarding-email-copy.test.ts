@@ -40,9 +40,11 @@ function ready(locale: (typeof SUPPORTED_LOCALES)[number], trial = true) {
 
 describe('recipientLocale', () => {
   it('takes the first supported language, else English', () => {
-    expect(recipientLocale(null, 'de-DE', 'fr')).toBe('de')
-    expect(recipientLocale('xx', undefined, 'pt-BR')).toBe('pt-br')
+    expect(recipientLocale(null, 'zh-TW', 'zh-cn')).toBe('zh-tw')
+    expect(recipientLocale('xx', undefined, 'zh-Hans')).toBe('zh-cn')
     expect(recipientLocale(null, 'klingon')).toBe('en')
+    // A language with no catalog falls through to the next candidate.
+    expect(recipientLocale(null, 'de-DE', 'zh-cn')).toBe('zh-cn')
   })
 })
 
@@ -72,19 +74,12 @@ describe('readyEmailCopy', () => {
     expect(copy.paragraphs.join(' ')).not.toMatch(/trial/)
   })
 
-  it('is written in German for a German recipient', async () => {
-    const copy = await ready('de')
-    expect(copy.lang).toBe('de')
+  it('is written in Chinese for a Chinese recipient', async () => {
+    const copy = await ready('zh-cn')
+    expect(copy.lang).toBe('zh-cn')
     expect(copy.subject).not.toBe('Acme is ready, Sam')
     expect(copy.subject).toContain('Acme')
     expect(copy.paragraphs[0]).toContain('acme.quackback.test')
-  })
-
-  it('is right to left in Arabic', async () => {
-    const copy = await ready('ar')
-    expect(copy.lang).toBe('ar')
-    expect(copy.dir).toBe('rtl')
-    expect(copy.heading).not.toBe('Acme is ready')
   })
 
   it('names the help center and status page links for those goals', async () => {
@@ -152,7 +147,7 @@ describe('nudgeEmailCopy', () => {
 
   it('translates the step title from the plan catalogue', async () => {
     const copy = await nudgeEmailCopy({
-      locale: 'de',
+      locale: 'zh-cn',
       name: 'Sam',
       workspaceName: 'Acme',
       goal: 'customer_support',

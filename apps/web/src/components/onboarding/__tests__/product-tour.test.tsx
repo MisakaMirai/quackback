@@ -4,7 +4,7 @@ import { IntlProvider } from 'react-intl'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import en from '@/locales/en.json'
-import de from '@/locales/de.json'
+import zhCn from '@/locales/zh-cn.json'
 import { adminSeedMessages } from '@/lib/shared/i18n'
 import { PERMISSIONS } from '@/lib/shared/permissions'
 
@@ -307,13 +307,13 @@ describe('guided tour', () => {
 
 describe('strings', () => {
   it('loads the overlay strings an admin page leaves out of its seed', async () => {
-    const seeded = adminSeedMessages(de)
+    const seeded = adminSeedMessages(zhCn)
     expect(seeded['onboarding.tour.next']).toBeUndefined()
-    mount(undefined, { locale: 'de', messages: seeded })
+    mount(undefined, { locale: 'zh-cn', messages: seeded })
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: 'Start tour' }))
     })
-    await waitFor(() => expect(dialog()).toHaveTextContent('Weiter'), { timeout: 5000 })
-    expect(dialog()).toHaveTextContent(de['onboarding.tour.stop.feedback.lead'])
+    await waitFor(() => expect(dialog()).toHaveTextContent('下一步'), { timeout: 5000 })
+    expect(dialog()).toHaveTextContent(zhCn['onboarding.tour.stop.feedback.lead'])
   })
 })

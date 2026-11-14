@@ -2,7 +2,7 @@
 import { describe, expect, it, afterEach, vi } from 'vitest'
 import { act, render, screen, cleanup } from '@testing-library/react'
 import { IntlProvider } from 'react-intl'
-import pl from '@/locales/pl.json'
+import zhCn from '@/locales/zh-cn.json'
 import { withoutPageScopedMessages } from '@/lib/shared/i18n'
 import { DocumentLocaleContext } from '../document-locale-context'
 
@@ -149,30 +149,30 @@ describe('error pages in the reader’s language', () => {
 
   it('words the not-found page in the page language', () => {
     render(
-      <IntlProvider locale="pl" defaultLocale="en" messages={pl}>
+      <IntlProvider locale="zh-cn" defaultLocale="en" messages={zhCn}>
         <NotFoundPage />
       </IntlProvider>
     )
-    expect(screen.getByText(pl['common.errorPage.notFound.title'])).toBeTruthy()
-    expect(screen.getByText(pl['common.errorPage.goHome'])).toBeTruthy()
+    expect(screen.getByText(zhCn['common.errorPage.notFound.title'])).toBeTruthy()
+    expect(screen.getByText(zhCn['common.errorPage.goHome'])).toBeTruthy()
   })
 
   it('words the generic error page in the page language', () => {
     render(
-      <IntlProvider locale="pl" defaultLocale="en" messages={pl}>
+      <IntlProvider locale="zh-cn" defaultLocale="en" messages={zhCn}>
         <DefaultErrorPage error={new Error('boom')} reset={() => {}} />
       </IntlProvider>
     )
-    expect(screen.getByText(pl['common.errorPage.error.title'])).toBeTruthy()
-    expect(screen.getByText(pl['common.errorPage.tryAgain'])).toBeTruthy()
-    expect(screen.getByText(pl['common.errorPage.technicalDetails'])).toBeTruthy()
+    expect(screen.getByText(zhCn['common.errorPage.error.title'])).toBeTruthy()
+    expect(screen.getByText(zhCn['common.errorPage.tryAgain'])).toBeTruthy()
+    expect(screen.getByText(zhCn['common.errorPage.technicalDetails'])).toBeTruthy()
   })
 
   // Admin's IntlProvider follows the browser, but most admin pages stay English.
   it('stays English inside an English document whatever the IntlProvider says', () => {
     render(
       <DocumentLocaleContext.Provider value="en">
-        <IntlProvider locale="pl" defaultLocale="en" messages={pl}>
+        <IntlProvider locale="zh-cn" defaultLocale="en" messages={zhCn}>
           <NotFoundPage />
         </IntlProvider>
       </DocumentLocaleContext.Provider>
@@ -184,11 +184,11 @@ describe('error pages in the reader’s language', () => {
   it('loads its strings when the page catalog leaves them out', async () => {
     await act(async () => {
       render(
-        <DocumentLocaleContext.Provider value="pl">
+        <DocumentLocaleContext.Provider value="zh-cn">
           <IntlProvider
-            locale="pl"
+            locale="zh-cn"
             defaultLocale="en"
-            messages={withoutPageScopedMessages(pl)}
+            messages={withoutPageScopedMessages(zhCn)}
             onError={() => {}}
           >
             <NotFoundPage />
@@ -197,7 +197,7 @@ describe('error pages in the reader’s language', () => {
       )
     })
     expect(
-      await screen.findByText(pl['common.errorPage.notFound.title'], {}, { timeout: 5000 })
+      await screen.findByText(zhCn['common.errorPage.notFound.title'], {}, { timeout: 5000 })
     ).toBeTruthy()
   })
 

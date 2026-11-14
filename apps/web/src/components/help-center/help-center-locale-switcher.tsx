@@ -12,18 +12,8 @@ import { HC_LOCALE_COOKIE, localizedHcPath } from '@/lib/shared/help-center-url'
 
 const LOCALE_LABELS: Record<string, string> = {
   en: 'English',
-  de: 'Deutsch',
-  fr: 'Français',
-  es: 'Español',
-  ar: 'العربية',
-  ru: 'Русский',
-  'pt-br': 'Português (Brasil)',
   'zh-cn': '简体中文',
   'zh-tw': '繁體中文',
-  nl: 'Nederlands',
-  pl: 'Polski',
-  th: 'ภาษาไทย',
-  uk: 'Українська',
 }
 
 interface HelpCenterLocaleSwitcherProps {
