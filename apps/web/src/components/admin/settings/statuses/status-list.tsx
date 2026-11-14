@@ -1,4 +1,4 @@
-import { useState, useEffect, useTransition } from 'react'
+import { useId, useState, useEffect, useTransition } from 'react'
 import { useRouter } from '@tanstack/react-router'
 import { useMutation } from '@tanstack/react-query'
 import {
@@ -77,6 +77,7 @@ export function StatusesSettingsPage({ initialStatuses }: StatusListProps) {
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
 
   // Configure DnD sensors
+  const dndId = useId()
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
@@ -201,7 +202,12 @@ export function StatusesSettingsPage({ initialStatuses }: StatusListProps) {
       actions={<NewButton noun="status" onClick={() => setCreateDialogOpen(true)} />}
     >
       {/* Status categories with drag and drop */}
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+      <DndContext
+        id={dndId}
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+      >
         {CATEGORY_ORDER.map((category) => {
           const categoryStatuses = statusesByCategory[category]
           const canDeleteInCategory = categoryStatuses.length > 1

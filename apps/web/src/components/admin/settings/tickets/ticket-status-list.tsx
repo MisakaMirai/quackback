@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 import { useMutation, useSuspenseQuery, useQueryClient } from '@tanstack/react-query'
 import { AUTOSAVE } from '@/lib/client/autosave'
 import {
@@ -91,6 +91,7 @@ export function TicketStatusList({
   const [toDelete, setToDelete] = useState<TicketStatusEntity | null>(null)
   const dialogOpen = creating || editing !== null
 
+  const dndId = useId()
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
@@ -191,7 +192,12 @@ export function TicketStatusList({
 
   return (
     <>
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+      <DndContext
+        id={dndId}
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+      >
         {TICKET_STATUS_CATEGORIES.map((category) => {
           const group = byCategory[category]
           if (group.length === 0) return null

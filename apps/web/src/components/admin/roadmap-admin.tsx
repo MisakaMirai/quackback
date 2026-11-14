@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useId, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate } from '@tanstack/react-router'
 import { useSuspenseQuery, useQueryClient, type InfiniteData } from '@tanstack/react-query'
@@ -79,6 +79,7 @@ export function RoadmapAdmin() {
 
   // Distance threshold: drag only starts after moving 8px (like Trello)
   // This allows click to work normally if pointer doesn't move much
+  const dndId = useId()
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
@@ -229,6 +230,7 @@ export function RoadmapAdmin() {
             </div>
 
             <DndContext
+              id={dndId}
               sensors={sensors}
               onDragStart={handleDragStart}
               onDragEnd={handleDragEnd}
