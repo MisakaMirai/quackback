@@ -125,7 +125,9 @@ function resolveImport(from: string, specifier: string): string | null {
   return null
 }
 
-const rel = (path: string) => relative(SRC, path)
+// The ownership regexes are written with forward slashes; `relative` returns
+// backslashes on Windows, which would make every module look like a leak.
+const rel = (path: string) => relative(SRC, path).replaceAll('\\', '/')
 const files = sourceFiles(SRC).map(rel)
 const sources = new Map(files.map((path) => [path, readFileSync(join(SRC, path), 'utf8')]))
 

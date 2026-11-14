@@ -32,10 +32,10 @@ describe('AreaMessages', () => {
 
   it('shows the strings a route loader read without waiting', () => {
     render(
-      <IntlProvider locale="pl" defaultLocale="en" messages={seeded} onError={() => {}}>
+      <IntlProvider locale="zh-cn" defaultLocale="en" messages={seeded} onError={() => {}}>
         <AreaMessages
           area="helpCenter"
-          messages={{ 'portal.hc.search.placeholder': 'Szukaj artykułów...' }}
+          messages={{ 'portal.hc.search.placeholder': '搜索文章…' }}
           fallback="loading"
         >
           <Placeholder />
@@ -45,7 +45,7 @@ describe('AreaMessages', () => {
         </AreaMessages>
       </IntlProvider>
     )
-    expect(screen.getByText('Szukaj artykułów...')).toBeTruthy()
+    expect(screen.getByText('搜索文章…')).toBeTruthy()
     // The page's own strings stay available inside the area.
     expect(screen.getByText(en['common.cancel'])).toBeTruthy()
   })
@@ -77,7 +77,7 @@ describe('AreaMessages', () => {
     // React retries a render that suspended only once it ran in an awaited `act`.
     await act(async () => {
       render(
-        <IntlProvider locale="pl" defaultLocale="en" messages={seeded} onError={() => {}}>
+        <IntlProvider locale="zh-cn" defaultLocale="en" messages={seeded} onError={() => {}}>
           <AreaMessages area="helpCenter" fallback={<Loading />}>
             <Placeholder />
           </AreaMessages>
@@ -85,7 +85,7 @@ describe('AreaMessages', () => {
       )
     })
     // A cold import of the catalog chunk can take over findByText's 1s default.
-    expect(await screen.findByText('Szukaj artykułów...', {}, { timeout: 5000 })).toBeTruthy()
+    expect(await screen.findByText('搜索文章…', {}, { timeout: 5000 })).toBeTruthy()
     expect(fallbackShown).toBe(true)
     expect(screen.queryByText('loading')).toBeNull()
   })

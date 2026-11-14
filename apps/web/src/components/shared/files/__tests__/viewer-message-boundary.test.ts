@@ -69,7 +69,9 @@ function resolveImport(from: string, specifier: string): string | null {
 }
 
 const files = sourceFiles(SRC)
-const rel = (path: string) => relative(SRC, path)
+// The viewer-module regex is written with forward slashes; `relative` returns
+// backslashes on Windows, which would make every module look like a leak.
+const rel = (path: string) => relative(SRC, path).replaceAll('\\', '/')
 const users = files.filter((path) => usesViewerMessage(readFileSync(path, 'utf8')))
 
 describe('viewer strings stay with the viewer', () => {
