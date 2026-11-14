@@ -5,7 +5,7 @@
  * template gallery or a blank draft. Editing happens on the fullscreen
  * builder route; this component lists, filters, and manages lifecycle.
  */
-import { useMemo, useState, type ReactNode } from 'react'
+import { useId, useMemo, useState, type ReactNode } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
 import { useIntl } from 'react-intl'
@@ -241,6 +241,7 @@ export function WorkflowsManager({
   const setStatus = useSetWorkflowStatus()
   const del = useDeleteWorkflow()
   const reorder = useReorderWorkflows()
+  const dndId = useId()
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
@@ -524,6 +525,7 @@ export function WorkflowsManager({
                     }
                   />
                   <DndContext
+                    id={dndId}
                     sensors={sensors}
                     collisionDetection={closestCenter}
                     onDragEnd={(event) => {

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useIntl } from 'react-intl'
 import { toast } from 'sonner'
@@ -101,6 +101,7 @@ export function GuidanceRulesCard({ agent }: { agent: AssistantAgentKind }) {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [deletingRule, setDeletingRule] = useState<AssistantGuidanceRule | null>(null)
   const [announcement, setAnnouncement] = useState('')
+  const dndId = useId()
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
@@ -336,6 +337,7 @@ export function GuidanceRulesCard({ agent }: { agent: AssistantAgentKind }) {
           </p>
         ) : (
           <DndContext
+            id={dndId}
             sensors={sensors}
             collisionDetection={closestCenter}
             onDragEnd={handleDragEnd}

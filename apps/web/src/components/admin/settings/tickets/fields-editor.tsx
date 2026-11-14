@@ -6,7 +6,7 @@
  * superRefine rejects duplicate keys); a fresh field's key is derived unique
  * up front (`uniqueFieldKey`), an existing field keeps its key.
  */
-import { useEffect, useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 import {
   DndContext,
   closestCenter,
@@ -78,6 +78,7 @@ export function FieldsEditor({ category, fields, onChange }: FieldsEditorProps) 
   const [editing, setEditing] = useState<TicketFormField | null>(null)
   const [toDelete, setToDelete] = useState<TicketFormField | null>(null)
 
+  const dndId = useId()
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
@@ -125,7 +126,12 @@ export function FieldsEditor({ category, fields, onChange }: FieldsEditorProps) 
       <FixedFieldRow label="Subject" typeLabel="Text" />
       <FixedFieldRow label="Details" typeLabel="Long text" />
 
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+      <DndContext
+        id={dndId}
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+      >
         <SortableContext items={fields.map((f) => f.key)} strategy={verticalListSortingStrategy}>
           <div className="space-y-1.5">
             {fields.map((field) => (

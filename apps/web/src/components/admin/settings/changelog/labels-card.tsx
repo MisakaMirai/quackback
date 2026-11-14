@@ -1,4 +1,4 @@
-import { useState, useEffect, useTransition } from 'react'
+import { useId, useState, useEffect, useTransition } from 'react'
 import { useRouter } from '@tanstack/react-router'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import {
@@ -343,6 +343,7 @@ export function LabelsCard({ initialCategories }: LabelsCardProps) {
     onMutate: () => categories,
   })
 
+  const dndId = useId()
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
@@ -371,6 +372,7 @@ export function LabelsCard({ initialCategories }: LabelsCardProps) {
           <EmptyState icon={TagIcon} title="No labels yet" size="compact" />
         ) : (
           <DndContext
+            id={dndId}
             sensors={sensors}
             collisionDetection={closestCenter}
             onDragEnd={handleDragEnd}

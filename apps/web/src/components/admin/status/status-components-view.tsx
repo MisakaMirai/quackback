@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import {
@@ -161,6 +161,7 @@ export function StatusComponentsView() {
   const [deleteComponent, setDeleteComponent] = useState<StatusComponentAdmin | null>(null)
   const [deleteGroup, setDeleteGroup] = useState<StatusComponentGroupAdmin | null>(null)
 
+  const dndId = useId()
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
@@ -428,6 +429,7 @@ export function StatusComponentsView() {
       ) : (
         <div className="p-3 space-y-4">
           <DndContext
+            id={dndId}
             sensors={sensors}
             collisionDetection={closestCorners}
             onDragStart={handleDragStart}
