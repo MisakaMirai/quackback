@@ -200,17 +200,6 @@ export const JOB_DEFINITIONS: readonly JobDefinition[] = [
       (await import('@/lib/server/integrations/deliveries-sweep-queue')).runDeliveriesSweep,
   },
   {
-    name: 'integration-install-cleanup',
-    concurrency: 1,
-    handler: async () =>
-      (await import('@/lib/server/integrations/install-cleanup-queue')).runInstallCleanup,
-  },
-  {
-    name: 'integration-installs-backfill',
-    handler: async () =>
-      (await import('@/lib/server/integrations/installs-backfill-queue')).runInstallsBackfill,
-  },
-  {
     name: 'anon-sweep',
     cron: '0 3 * * *',
     maxAttempts: 3,
@@ -676,49 +665,6 @@ export const JOB_DEFINITIONS: readonly JobDefinition[] = [
     failedRetentionMs: 14 * DAY_MS,
     handler: () =>
       import('@/lib/server/domains/export/export-queue').then((m) => m.runWorkspaceExport),
-  },
-  {
-    // Pushes this workspace's team seats to the control plane. Cloud-only
-    // work: the handler is a successful no-op without QUACKBACK_CONTROL_PLANE_URL.
-    // Roster writes enqueue under a stable key (in-flight coalesces; a spent
-    // row is cancelled first). The 15-minute cron is the missed-enqueue
-    // backstop and stays inert without a control-plane URL.
-    name: 'membership-sync',
-    cron: '*/15 * * * *',
-    concurrency: 1,
-    maxAttempts: 10,
-    retryBackoffMs: 15 * 60_000,
-    cronEnabled: () =>
-      import('@/lib/server/domains/principals/membership-sync-queue').then((m) =>
-        m.isControlPlaneConfigured()
-      ),
-    handler: () =>
-      import('@/lib/server/domains/principals/membership-sync-queue').then(
-        (m) => m.runMembershipSync
-      ),
-  },
-  {
-    // Monthly usage snapshot for hosted billing. Self-host without a hosted
-    // URL is a successful no-op. Hourly cron is the catch-up writer: the
-    // handler reports previousUtcMonth() of now (UTC), and a per-month dedupe
-    // key means the snapshot POSTs at most once. The first tick after a UTC
-    // month boundary, or after downtime, lands the missed close.
-    name: 'usage-report',
-    cron: '10 * * * *',
-    concurrency: 1,
-    maxAttempts: 10,
-    retryBackoffMs: 15 * 60_000,
-    // Hourly catch-up reuses `usage-report:<month>` for the whole previous
-    // month. Keep the succeeded row past that window so prune cannot reopen
-    // the month and POST the snapshot again.
-    retentionMs: 45 * DAY_MS,
-    failedRetentionMs: 45 * DAY_MS,
-    cronEnabled: () =>
-      import('@/lib/server/domains/billing/usage-report-queue').then((m) =>
-        m.isHostedBillingConfigured()
-      ),
-    handler: () =>
-      import('@/lib/server/domains/billing/usage-report-queue').then((m) => m.runUsageReport),
   },
 ]
 

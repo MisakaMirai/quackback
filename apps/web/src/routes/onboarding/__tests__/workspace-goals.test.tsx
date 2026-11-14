@@ -41,8 +41,6 @@ function renderStep(props: {
   return render(
     <IntlProvider locale="en" messages={en}>
       <WorkspaceStep
-        isCloudProvisioned={false}
-        cloudIdentity={null}
         existingWorkspaceName="Acme"
         managedFieldPaths={props.managedFieldPaths}
         setupGoals={{ goals: props.goals }}

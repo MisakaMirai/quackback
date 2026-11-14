@@ -37,7 +37,6 @@ import { portalQueries } from '@/lib/client/queries/portal'
 import { widgetChangelogListQuery } from '@/components/widget/widget-changelog-query'
 import { widgetHelpCategoriesQuery } from '@/components/widget/widget-help-query'
 import { widgetFetchBoardCapabilitiesFn } from '@/lib/server/functions/widget/posts'
-import { getShowPoweredByFn } from '@/lib/server/functions/powered-by'
 import { widgetListPublicArticlesFn } from '@/lib/server/functions/widget/help'
 import { getWidgetAuthHeaders } from '@/lib/client/widget-auth'
 import { sendToHost } from '@/lib/client/widget-bridge'
@@ -158,7 +157,6 @@ export const Route = createFileRoute('/widget/')({
     // Teammate-avatar cluster for the Home header. Workspace-global and public-safe
     // (name + image only), so the anonymous SSR baseline is correct for everyone.
     let team: { name: string; avatarUrl: string | null }[] = []
-    let showPoweredBy = true
     const [portalData, { getBaseUrl }] = await Promise.all([
       feedbackProductEnabled
         ? queryClient.ensureQueryData(
@@ -226,11 +224,6 @@ export const Route = createFileRoute('/widget/')({
             })
             .catch(() => {})
         : Promise.resolve(),
-      // Independent of every branch above, so it runs in the same batch
-      // rather than adding its own round trip after it.
-      getShowPoweredByFn().then((value) => {
-        showPoweredBy = value
-      }),
     ])
 
     queryClient.setQueryData(
@@ -315,7 +308,6 @@ export const Route = createFileRoute('/widget/')({
       // widget handoff URL always points at the portal host — not at the widget
       // iframe origin, which may differ in self-hosted deployments.
       portalOrigin: getBaseUrl(),
-      showPoweredBy,
     }
   },
   component: WidgetRoute,
@@ -421,7 +413,6 @@ function WidgetPage() {
     assistant,
     team,
     messengerEnabled,
-    showPoweredBy,
   } = Route.useLoaderData()
   const { board: initialBoardSlug } = Route.useSearch()
   const { ensureSession, sessionVersion } = useWidgetAuth()
@@ -905,7 +896,6 @@ function WidgetPage() {
       enabledTabs={tabs}
       portalAccess={portalAccess}
       portalOrigin={portalOrigin}
-      showPoweredBy={showPoweredBy}
       logoUrl={(home?.showLogo ?? true) ? logoUrl : null}
       headerContent={messengerHeader}
       // The hero backdrop belongs to Home only; detail views keep a plain panel.

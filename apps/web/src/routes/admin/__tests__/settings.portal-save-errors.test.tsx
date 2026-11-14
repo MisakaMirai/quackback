@@ -74,10 +74,6 @@ vi.mock('@/components/ui/rich-text-editor', () => ({
   ),
 }))
 
-vi.mock('@/components/admin/upgrade', () => ({
-  UpgradeModal: ({ open }: { open: boolean }) => (open ? <div role="dialog">Upgrade</div> : null),
-}))
-
 const { createAutosaveMutationCache } = await import('@/lib/client/autosave')
 const { Route } = await import('@/routes/admin/settings.portal')
 const PortalPage = (Route as unknown as { options: { component: ComponentType } }).options.component
@@ -138,14 +134,13 @@ describe('portal save feedback', () => {
     )
   })
 
-  it('leaves a plan refusal to the upgrade dialog, with no toast', async () => {
+  it('names a plan refusal in the save toast', async () => {
     saveError.value = Object.assign(new Error('Upgrade to Business to enable it.'), {
       statusCode: 402,
     })
     renderPage()
     await saveWelcomeEdit()
-    expect(screen.getByRole('dialog').textContent).toBe('Upgrade')
-    expect(toast.error).not.toHaveBeenCalled()
+    expect(toast.error).toHaveBeenCalled()
   })
 
   it('shows no success toast when the save works', async () => {

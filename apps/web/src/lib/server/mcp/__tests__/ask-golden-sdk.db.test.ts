@@ -89,32 +89,6 @@ describe('Ask golden contracts through the actual in-memory MCP SDK', () => {
       }
     })
   })
-  it('reads an operator-managed name and opens General', async () => {
-    await fixture.run(async (database) => {
-      const seeded = await seedAskGoldenFixture(database, 'owner', false, true)
-      const sdk = await openAskSdkHarness(seeded.auth)
-      try {
-        const read = await sdk.call('get_settings', { area: 'portal' })
-        expect(read.isError).not.toBe(true)
-        expect(parseAskSdkResult(read)).toMatchObject({
-          settings: { displayName: 'Acme workspace' },
-          readOnly: true,
-          settingsHref: '/admin/settings/general',
-        })
-        const navigation = await sdk.call('navigate_workspace', { destination: 'general' })
-        expect(navigation.isError, JSON.stringify(navigation.content)).not.toBe(true)
-        expect(parseAskSdkResult(navigation)).toMatchObject({
-          navigation: { href: '/admin/settings/general' },
-        })
-        expect(await database.select().from(assistantPendingActions)).toEqual([])
-        expect(
-          (await database.select().from(settings).where(eq(settings.id, seeded.workspace.id)))[0]
-        ).toEqual(seeded.workspace)
-      } finally {
-        await sdk.close()
-      }
-    })
-  })
   it('uses current assignments even when a token retains broad scopes and an old role', async () => {
     await fixture.run(async (database) => {
       const seeded = await seedAskGoldenFixture(database, 'no_settings')

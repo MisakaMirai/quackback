@@ -75,23 +75,19 @@ export function ensureEmailLogSink(): void {
   setEmailLogSink((entry) => {
     void writeOutbound(entry)
   })
-  setEmailPoweredByResolver(async () => {
-    const { getCloudConfig } = await import('@/lib/server/domains/settings/cloud/cloud.service')
-    const { shouldShowPoweredBy } = await import('@/lib/server/domains/settings/cloud/powered-by')
-    return shouldShowPoweredBy(await getCloudConfig())
-  })
+  setEmailPoweredByResolver(async () => false)
   setDefaultFromResolver(() => getCurrentWorkspace()?.email.from ?? null)
   // Per-workspace provider tenants. Each lookup returns null without touching
   // the database when tenants are off or no workspace is in scope.
   setSesTenantHooks({
     tenantFor: async (ctx) => {
-      const { tenantForSend } = await import('@/lib/server/domains/channel-accounts/ses-tenant-state')
+      const { tenantForSend } =
+        await import('@/lib/server/domains/channel-accounts/ses-tenant-state')
       return tenantForSend(ctx)
     },
     onTenantPaused: async (tenantName, detail) => {
-      const { recordSesTenantPaused } = await import(
-        '@/lib/server/domains/channel-accounts/ses-tenant-status'
-      )
+      const { recordSesTenantPaused } =
+        await import('@/lib/server/domains/channel-accounts/ses-tenant-status')
       await recordSesTenantPaused(tenantName, detail)
     },
   })

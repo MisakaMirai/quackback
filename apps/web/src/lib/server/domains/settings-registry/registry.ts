@@ -23,7 +23,6 @@ import {
   type SettingsChangeEntry,
 } from '@/lib/shared/settings-registry'
 import { isPathManaged } from '@/lib/server/config-file/managed-paths'
-import { parseIdentityProjection } from '@/lib/server/domains/settings/cloud/identity-projection'
 import type { SettingsRecord } from '@/lib/server/domains/settings/settings.helpers'
 import { areaValues } from '@/lib/server/domains/assistant/settings-proposals.areas'
 import {
@@ -133,12 +132,10 @@ function define(
   }
 }
 
-/** The workspace name is held by the config file or, on a managed workspace, its operator. */
+/** The workspace name is held by the config file. */
 function portalLocks(row: SettingsRecord): LockedField[] {
   if (isPathManaged('workspace.name', row.managedFieldPaths ?? []))
     return [{ field: 'displayName', reason: 'config_file' }]
-  if (parseIdentityProjection(row.cloudIdentity))
-    return [{ field: 'displayName', reason: 'operator' }]
   return []
 }
 

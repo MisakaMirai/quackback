@@ -4,7 +4,7 @@
  *
  * Distinct from:
  *   - per-workspace `QUACKBACK_CP_INTERNAL_TOKEN` (app → CP `/api/v1/internal/*`)
- *   - identity/billing projection JWTs (CP → web, tenant hostname)
+ *   - job-wake calls from the web replica
  *
  * The token is a fleet-wide secret (`QUACKBACK_FLEET_INTERNAL_TOKEN`), the same
  * value already declared on every app service. There is one check and it is

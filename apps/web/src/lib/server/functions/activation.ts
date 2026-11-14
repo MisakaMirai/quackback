@@ -24,7 +24,6 @@ import { isPathManaged } from '@/lib/server/config-file/managed-paths'
 import { getTierLimits } from '@/lib/server/domains/settings/tier-limits.service'
 import { resolveFeatureFlags } from '@/lib/server/domains/settings/settings.types'
 import { logger } from '@/lib/server/logger'
-import { emitPlgEvent } from '@/lib/server/plg-events'
 
 const log = logger.child({ component: 'activation' })
 
@@ -160,7 +159,7 @@ export const getActivationBridgeContextFn = createServerFn({ method: 'GET' }).ha
 export const markPublicBoardLinkCopiedFn = createServerFn({ method: 'POST' })
   .validator(markPublicBoardLinkCopiedSchema)
   .handler(async ({ data }) => {
-    const auth = await requireAuth({ permission: PERMISSIONS.BOARD_MANAGE })
+    await requireAuth({ permission: PERMISSIONS.BOARD_MANAGE })
     const { state, value } = await mutateSetupStateAtomic(async (current, _row, tx) => {
       const board = await tx.query.boards.findFirst({
         where: and(eq(boards.id, data.boardId as BoardId), isNull(boards.deletedAt)),
@@ -189,10 +188,6 @@ export const markPublicBoardLinkCopiedFn = createServerFn({ method: 'POST' })
     log.info(
       { board_id: value.boardId, copied_at: state.activationMilestones?.publicBoardLinkCopiedAt },
       'public board link copied'
-    )
-    await emitPlgEvent(
-      { name: 'board_link_copied', artifactType: 'board' },
-      { workspaceId: auth.settings.id, principalId: auth.principal.id }
     )
     return value
   })

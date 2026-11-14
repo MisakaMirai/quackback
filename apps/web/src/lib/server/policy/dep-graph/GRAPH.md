@@ -58,8 +58,8 @@ Edges (28):
 
 ## 3. Server domains (lib/server/domains)
 
-Nodes (55): activity, admin-overview, ai, analytics, api, api-keys, assistant, attribute-definitions, billing, boards, changelog, channel-accounts, channels, comments, companies, company-attributes, conversation, conversation-attributes, conversation-views, domain-proof, embeddings, export, files, help-center, import, inbox, macros, merge-suggestions, moderation, notifications, office-hours, onboarding, platform-credentials, post-tags, post-views, posts, principals, push-devices, roadmaps, roles, segments, sentiment, settings, settings-registry, sla, status, statuses, subscriptions, summary, teams, tickets, user-attributes, users, webhooks, workflows
-Edges (146):
+Nodes (54): activity, admin-overview, ai, analytics, api, api-keys, assistant, attribute-definitions, boards, changelog, channel-accounts, channels, comments, companies, company-attributes, conversation, conversation-attributes, conversation-views, domain-proof, embeddings, export, files, help-center, import, inbox, macros, merge-suggestions, moderation, notifications, office-hours, onboarding, platform-credentials, post-tags, post-views, posts, principals, push-devices, roadmaps, roles, segments, sentiment, settings, settings-registry, sla, status, statuses, subscriptions, summary, teams, tickets, user-attributes, users, webhooks, workflows
+Edges (140):
 
 - activity -> principals
 - admin-overview -> changelog
@@ -90,10 +90,6 @@ Edges (146):
 - assistant -> statuses
 - assistant -> tickets
 - assistant -> workflows
-- billing -> ai
-- billing -> api
-- billing -> principals
-- billing -> settings
 - boards -> posts
 - boards -> settings
 - changelog -> ai
@@ -132,7 +128,6 @@ Edges (146):
 - conversation-attributes -> settings
 - conversation-attributes -> workflows
 - domain-proof -> channel-accounts
-- domain-proof -> settings
 - embeddings -> ai
 - embeddings -> merge-suggestions
 - export -> companies
@@ -145,7 +140,6 @@ Edges (146):
 - import -> principals
 - inbox -> conversation
 - inbox -> tickets
-- macros -> settings
 - macros -> workflows
 - merge-suggestions -> ai
 - merge-suggestions -> posts

@@ -366,11 +366,8 @@ describe('AddPeopleDialog', () => {
     await pick(/Omar Haddad/)
     const alert = screen.getByRole('alert')
     expect(alert).toHaveTextContent(
-      'Adding 2 people needs 11 seats and the plan has 10. Remove 1, or add seats in Plan & billing.'
+      'Adding 2 people needs 11 seats and the plan has 10. Remove 1, or ask a workspace owner to add seats.'
     )
-    expect(
-      within(alert).getByRole('link', { name: 'add seats in Plan & billing' })
-    ).toHaveAttribute('href', '/admin/settings/billing')
     expect(primary()).toBeDisabled()
     // Nothing would happen, so nothing is summarised.
     expect(screen.queryByRole('list', { name: 'What happens' })).toBeNull()
@@ -496,7 +493,7 @@ describe('AddPeopleDialog', () => {
     fireEvent.click(primary())
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'Adding 1 person needs 1 seat, and 0 are free. Remove 1, or add seats in Plan & billing.'
+      'Adding 1 person needs 1 seat, and 0 are free. Remove 1, or ask a workspace owner to add seats.'
     )
     expect(fns.toastSuccess).not.toHaveBeenCalled()
   })

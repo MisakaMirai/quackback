@@ -63,7 +63,6 @@ vi.mock('@tanstack/react-router', () => ({
     return opts?.select ? opts.select(context as never) : context
   },
 }))
-vi.mock('@/lib/server/functions/powered-by', () => ({ getShowPoweredByFn: vi.fn() }))
 vi.mock('@/components/public/preview-draft-context', () => ({
   usePreviewWelcomeCard: () => null,
 }))
@@ -83,7 +82,6 @@ vi.mock('@/lib/client/queries/portal', () => ({
 vi.mock('@/components/public/feedback/portal-feed-skeleton', () => ({
   PortalFeedSkeleton: () => <div data-testid="feed-skeleton" />,
 }))
-vi.mock('@/components/public/feedback/portal-powered-by', () => ({ PortalPoweredBy: () => null }))
 vi.mock('@/components/public/feedback/feedback-container', () => ({
   FeedbackContainer: ({ posts }: { posts: { id: string }[] }) => {
     const [draft, setDraft] = useState('')

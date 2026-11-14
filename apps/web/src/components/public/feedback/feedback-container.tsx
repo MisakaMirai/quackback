@@ -8,7 +8,6 @@ import { Button } from '@/components/ui/button'
 import { useRouter } from '@tanstack/react-router'
 import { FeedbackHeader } from '@/components/public/feedback/feedback-header'
 import { FeedbackSidebar } from '@/components/public/feedback/feedback-sidebar'
-import { PortalPoweredBy } from '@/components/public/feedback/portal-powered-by'
 import { PortalFilterPanel } from '@/components/public/feedback/portal-filter-panel'
 import { PortalFilterSheet } from '@/components/public/feedback/portal-filter-sheet'
 import { FeedbackToolbar } from '@/components/public/feedback/feedback-toolbar'
@@ -96,7 +95,6 @@ interface FeedbackContainerProps {
    * every card — including infinite-scroll pages — and the submit CTA.
    */
   boardPermissions?: Record<string, { canSubmit: boolean; canVote: boolean }>
-  showPoweredBy?: boolean
   /** Filter panel counts as rendered on the server. */
   facets?: PublicPostFacetCounts | null
   /** How the server-rendered search was widened, if it was. */
@@ -147,7 +145,7 @@ export function postsMatchFilters(
 
 export function FeedbackContainer({
   workspaceName,
-  workspaceSlug,
+  workspaceSlug: _workspaceSlug,
   boards,
   posts: initialPosts,
   statuses,
@@ -160,7 +158,6 @@ export function FeedbackContainer({
   defaultBoardId,
   user,
   boardPermissions,
-  showPoweredBy = true,
   facets,
   searchMode: initialSearchMode,
   postsFilters,
@@ -299,8 +296,6 @@ export function FeedbackContainer({
       }
     />
   )
-
-  const poweredBy = showPoweredBy ? <PortalPoweredBy workspaceSlug={workspaceSlug} /> : null
 
   const posts = flattenPublicPosts(postsData)
   // Dim the list only during an actual filter transition (placeholderData is
@@ -481,7 +476,7 @@ export function FeedbackContainer({
             onSearchChange={handleSearchChange}
             filterButton={
               <div className="lg:hidden">
-                <PortalFilterSheet activeCount={filterCount} footer={poweredBy}>
+                <PortalFilterSheet activeCount={filterCount}>
                   {filterPanel('sheet')}
                 </PortalFilterSheet>
               </div>
@@ -645,7 +640,7 @@ export function FeedbackContainer({
           </div>
         </div>
 
-        <FeedbackSidebar footer={poweredBy}>{filterPanel('sidebar')}</FeedbackSidebar>
+        <FeedbackSidebar>{filterPanel('sidebar')}</FeedbackSidebar>
       </div>
     </div>
   )

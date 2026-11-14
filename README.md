@@ -16,7 +16,6 @@
   <a href="https://quackback.io">Website</a> &middot;
   <a href="https://feedback.quackback.io/hc">Docs</a> &middot;
   <a href="https://feedback.quackback.io">Our live board</a> &middot;
-  <a href="https://app.quackback.io/signup?plan=free">Start free</a> &middot;
   <a href="#self-host">Self-host</a>
 </p>
 
@@ -31,7 +30,7 @@
 
 - **One loop, from request to release.** Customers post and vote, you plan on a public roadmap, and when it ships, everyone who asked hears about it.
 - **Support that knows what customers asked for.** Live chat, email and tickets share an inbox with your feedback, so a conversation can become a vote on a request.
-- **Yours to run.** AGPL-licensed, with every feature when you self-host. Quackback Cloud runs the same code.
+- **Yours to run.** AGPL-licensed, with every feature when you self-host.
 - **Ready for AI.** An agent answers customers, Copilot works beside your team, and an MCP server lets your own AI tools work on feedback and tickets.
 
 ## What's inside
@@ -51,10 +50,6 @@
 The portal and widget speak 10+ languages, including right-to-left, and follow each visitor's browser language.
 
 ## Get started
-
-### Quackback Cloud
-
-[Start free](https://app.quackback.io/signup?plan=free). We host, scale, back up and update it for you. The Free plan needs no card, and every paid plan starts with a 14-day trial. See [pricing](https://quackback.io/pricing).
 
 ### Self-host
 
@@ -83,8 +78,6 @@ docker compose -f docker-compose.prod.yml up -d
 - [Configuration reference](docs/configuration.md): every environment variable
 - [System requirements](https://feedback.quackback.io/hc/en/articles/66-requirements) and the [Docker guide](https://feedback.quackback.io/hc/en/articles/67-docker) in our docs
 
-Self-hosted installs send one anonymous usage snapshot a day: version, setup and banded counts, never content or anything identifying. [telemetry.md](docs/telemetry.md) lists every field, and `DISABLE_TELEMETRY=true` turns it off.
-
 ## Connect your AI tools
 
 Every instance serves an MCP server at `/api/mcp`, so agents like Claude and Cursor can search, triage and act on feedback, tickets, the changelog and help articles. Sign in with OAuth from your client:
@@ -105,10 +98,6 @@ Setup for other clients is in the [MCP docs](https://feedback.quackback.io/hc/en
 | Automation      | Zapier, Make, n8n, Segment, webhooks                                                             |
 
 Each has a setup guide in the [docs](https://feedback.quackback.io/hc/en/collections/11-integrations).
-
-## The cloud code in this repo
-
-Quackback Cloud runs this codebase, so its client side lives here: a default-off `cloud` settings block, plan and entitlement checks, and a control-plane client. On a self-hosted install none of it activates. An install with no cloud configuration is entitled to every feature, shows no upgrade prompts and makes no requests to our control plane. There's nothing to opt out of. We say so here so you never have to discover it in the code.
 
 ## Contributing
 

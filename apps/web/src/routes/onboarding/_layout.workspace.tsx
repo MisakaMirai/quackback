@@ -1,6 +1,5 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import { ensureOnboardingHomeReadyFn } from '@/lib/server/functions/onboarding'
-import { getCloudIdentityFn } from '@/lib/server/functions/cloud-identity'
 import { checkOnboardingState } from '@/lib/server/functions/admin'
 import { pickOnboardingStep } from './-onboarding-step'
 import { WorkspaceStep } from './-workspace-step'
@@ -23,10 +22,7 @@ export const Route = createFileRoute('/onboarding/_layout/workspace')({
       if (target === '/admin') await ensureOnboardingHomeReadyFn()
       throw redirect({ to: target })
     }
-    const isCloudProvisioned = state.setupOpenToClaim === false
     return {
-      isCloudProvisioned,
-      cloudIdentity: isCloudProvisioned ? await getCloudIdentityFn() : null,
       existingWorkspaceName: context.settings?.name ?? '',
       adminName: session.user.name || null,
       // The client settings payload never carries setup state, so the goals a

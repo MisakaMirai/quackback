@@ -31,7 +31,6 @@ describe('settings page registry', () => {
       '/admin/settings/ticket-statuses': 'Ticket statuses',
       '/admin/settings/people': 'Users',
       '/admin/settings/conversation-data': 'Conversations',
-      '/admin/settings/billing': 'Plan & billing',
       '/admin/settings/widget/install': 'Install',
       '/admin/settings/security/authentication': 'Access & Security',
       '/admin/settings/imports': 'Imports & exports',
@@ -62,11 +61,11 @@ describe('settings page registry', () => {
   })
 
   it('names the renamed pages in the nav', () => {
-    const navItems = buildNavSections(ALL_FLAGS, true)
+    const navItems = buildNavSections(ALL_FLAGS)
       .flatMap((section) => section.items)
       .filter((item) => !('pages' in item))
     expect(navItems.map((item) => item.label)).toEqual(
-      expect.arrayContaining(['Users', 'Conversations', 'Plan & billing'])
+      expect.arrayContaining(['Users', 'Conversations'])
     )
   })
 
@@ -81,7 +80,7 @@ describe('settings page registry', () => {
   })
 
   it('is the source of every AI & Automation nav label, and has an icon for each', () => {
-    const section = buildNavSections(ALL_FLAGS, true).find(
+    const section = buildNavSections(ALL_FLAGS).find(
       (candidate) => candidate.label === 'AI & Automation'
     )!
     expect(section.items).toHaveLength(5)

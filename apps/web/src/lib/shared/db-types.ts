@@ -100,7 +100,6 @@ export type {
   // lib/shared/assistant/__tests__/config.test.ts asserts the two agree.
   StoredAssistantConfig,
   // Structural twin of CloudConfig; a drift tripwire in
-  // lib/server/domains/settings/cloud/__tests__/cloud-stored-shape.test.ts
   // asserts the two agree.
   StoredCloudConfig,
   StoredBillingProjection,

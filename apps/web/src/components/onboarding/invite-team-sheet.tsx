@@ -266,12 +266,12 @@ function InviteTeamBody({ onDone }: { onDone: () => void }) {
                     {value === 'member' ? (
                       <FormattedMessage
                         id="onboarding.live.invite.memberHint"
-                        defaultMessage="Works in your inbox and boards. No settings or billing."
+                        defaultMessage="Works in your inbox and boards. No settings."
                       />
                     ) : (
                       <FormattedMessage
                         id="onboarding.live.invite.adminHint"
-                        defaultMessage="Everything, including settings and billing."
+                        defaultMessage="Everything, including settings."
                       />
                     )}
                   </span>
@@ -311,16 +311,12 @@ function InviteTeamBody({ onDone }: { onDone: () => void }) {
                   values={{ used: seats.used, limit: seats.limit }}
                 />
               </span>
-              <Link
-                to="/admin/settings/billing"
-                search={{ checkout: undefined, billing_error: undefined }}
-                className="shrink-0 underline underline-offset-2"
-              >
+              <span className="shrink-0">
                 <FormattedMessage
                   id="onboarding.live.invite.manageSeats"
-                  defaultMessage="Manage seats"
+                  defaultMessage="Manage seats in Members"
                 />
-              </Link>
+              </span>
             </div>
             {overSeats && (
               <p role="alert" className="text-destructive">

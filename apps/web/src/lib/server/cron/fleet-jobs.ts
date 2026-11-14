@@ -12,7 +12,6 @@
  * would open several connections to every workspace database instead of one.
  */
 import { logger } from '@/lib/server/logger'
-import { isPooledTenancy } from '@/lib/server/workspaces/mode'
 
 const log = logger.child({ component: 'fleet-cron' })
 
@@ -148,56 +147,6 @@ export async function runStatusMaintenanceSweep(): Promise<void> {
 }
 
 /**
- * Migrator convergence for the housekeeping job: enrol, then one reconcile
- * pass with the CLI defaults (concurrency 4, lease 900_000 ms).
- *
- * Concurrent safety with a CP-triggered run is the `cp_workspace_schema_state`
- * lease — enrol and reconcile claim through that table, so this pass and a
- * control-plane spawn cannot migrate the same workspace at once.
- */
-/**
- * Enrol missing intent rows, then one reconcile pass.
- *
- * Armed on the always-on worker. The dedicated migrator cron calls the same
- * body via `housekeeping` until that container is retired. The schema-state
- * lease is what stops two passes migrating one workspace; the sweep lock
- * stops two replicas from both enumerating the fleet at once.
- */
-export async function runFleetMigratorPass(): Promise<void> {
-  // The registry the migrator walks only exists under pooled tenancy.
-  if (!isPooledTenancy()) return
-  const { withSweepLock } = await import('@/lib/server/sweep-lock')
-  await withSweepLock('fleet_migrator', ONE_HOUR, async () => {
-    const [{ enrolActiveWorkspaces, runReconcilePass }, { hostname }, { randomUUID }] =
-      await Promise.all([
-        import('@/lib/server/fleet/migrator'),
-        import('node:os'),
-        import('node:crypto'),
-      ])
-    const enrolled = await enrolActiveWorkspaces()
-    const result = await runReconcilePass({
-      workerId: `${hostname()}:${process.pid}:${randomUUID().slice(0, 8)}`,
-      concurrency: 4,
-      leaseMs: 900_000,
-    })
-    log.info(
-      {
-        enrolled,
-        claimed: result.claimed,
-        reconciled: result.reconciled,
-        failed: result.failed,
-        already_current: result.alreadyCurrent,
-        healed: result.healed,
-      },
-      'fleet migrator pass complete'
-    )
-    if (result.failed > 0) {
-      throw new Error(`fleet migrator failed ${result.failed} workspace(s)`)
-    }
-  })
-}
-
-/**
  * One-shot jobs a process can name via `QUACKBACK_CRON_JOB`.
  *
  * The live worker runs the same bodies on timers in `startup.ts`. These names
@@ -212,8 +161,6 @@ export async function runFleetMigratorPass(): Promise<void> {
 export const FLEET_CRON_JOBS = {
   daily: async () => {
     await runDailyMaintenance()
-    const { startTelemetry } = await import('@/lib/server/telemetry')
-    await startTelemetry({ once: true })
   },
   hourly: async () => {
     await runKvSweep()
@@ -231,7 +178,6 @@ export const FLEET_CRON_JOBS = {
     await withSweepLock('daily_cycle', TWENTY_THREE_HOURS, () => FLEET_CRON_JOBS.daily(), {
       keepUntilExpiry: true,
     })
-    await runFleetMigratorPass()
   },
 } as const
 

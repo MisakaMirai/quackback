@@ -77,9 +77,6 @@ export async function analyzeSentiment(
   // whether sentiment is included at all is the cheaper question, and a
   // workspace without it should never pay the usage read. No-op on any install
   // without a plan, which is every self-hosted one — see
-  // domains/settings/cloud/entitlements.ts.
-  const { requireEntitlement } = await import('@/lib/server/domains/settings/cloud/entitlements')
-  await requireEntitlement('aiInsights')
   await enforceAiTokenBudget()
 
   const model = getChatModel('sentiment')

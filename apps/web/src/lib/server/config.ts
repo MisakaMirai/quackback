@@ -307,9 +307,6 @@ const configSchema = z
     aiReasoningEffort: z.string().optional(),
     aiCombinedToolsAndSchema: envBoolean,
 
-    // Telemetry (optional)
-    disableTelemetry: envBoolean,
-
     // Automatic website branding for new workspaces (optional)
     disableAutomaticBranding: envBoolean,
 
@@ -493,9 +490,6 @@ function buildConfigFromEnv(): unknown {
     aiReasoningExclude: env('AI_REASONING_EXCLUDE'),
     aiReasoningEffort: env('AI_REASONING_EFFORT'),
     aiCombinedToolsAndSchema: env('AI_COMBINED_TOOLS_AND_SCHEMA'),
-
-    // Telemetry
-    disableTelemetry: env('DISABLE_TELEMETRY'),
 
     // Automatic website branding
     disableAutomaticBranding: env('DISABLE_AUTOMATIC_BRANDING'),
@@ -804,11 +798,6 @@ export const config = {
   },
   get aiCombinedToolsAndSchema() {
     return loadConfig().aiCombinedToolsAndSchema
-  },
-
-  // Telemetry
-  get disableTelemetry() {
-    return loadConfig().disableTelemetry
   },
 
   // Automatic website branding: true stops the first-run lookup of the

@@ -116,14 +116,6 @@ export function logStartupBanner(): void {
 
   logUnusedRedisUrl(log)
 
-  // Self-hosted first boot only: one line pointing at the repo, while setup is
-  // unfinished, so it shows during the first `docker compose up` and never again.
-  if (!config.isPooledTenancy) {
-    import('@/lib/server/github-star-prompt')
-      .then(({ logFirstBootStarLine }) => logFirstBootStarLine(log))
-      .catch((err) => log.debug({ err }, 'first boot star line skipped'))
-  }
-
   // One-shot override: run a named fleet job and exit. The live fleet does
   // not use this — hourly and daily sweeps run on the always-on worker — but
   // a container that should do one pass and stop still needs a way to say so.
@@ -298,18 +290,6 @@ function startBackgroundProcessing(): void {
     )
     .catch((err) => log.error({ err }, 'boot-time partition ensure failed'))
 
-  // Telemetry used to live on the daily cron container (a web replica does
-  // not arm it from bootstrap). The always-on worker owns it now. Detach
-  // from any inherited request scope so withSweepLock fans out fleet-wide.
-  import('@/lib/server/log-context')
-    .then(({ runWithoutLogContext }) =>
-      runWithoutLogContext(async () => {
-        const { startTelemetry } = await import('@/lib/server/telemetry')
-        await startTelemetry()
-      })
-    )
-    .catch((err) => log.error({ err }, 'failed to start telemetry'))
-
   // One-time copy of files stored before the workspace storage layout into it
   // (`storage/legacy-relocation.ts`). Single-workspace only: under pooled
   // tenancy the bucket is shared and a bare key belongs to nobody. Runs in the
@@ -358,12 +338,6 @@ function startBackgroundProcessing(): void {
       // idempotent, so overlap with a live delayed job is harmless.
       setTimeout(() => void jobs.runStatusMaintenanceSweep(), 31_000)
       setInterval(() => void jobs.runStatusMaintenanceSweep(), 5 * 60 * 1000)
-
-      // Walks the workspace registry, which only exists under pooled tenancy.
-      if (config.isPooledTenancy) {
-        setTimeout(() => void jobs.runFleetMigratorPass(), 90_000)
-        setInterval(() => void jobs.runFleetMigratorPass(), 60 * 60 * 1000)
-      }
 
       log.info({ event: 'sweeps.armed' }, 'scheduled sweeps armed')
     })

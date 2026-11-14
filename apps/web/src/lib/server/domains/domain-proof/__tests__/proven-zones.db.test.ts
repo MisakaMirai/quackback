@@ -149,8 +149,6 @@ describe.skipIf(!fixture.available)('proven zones (real DB, rolled back)', () =>
       await seedSendingDomain('acme.com')
       await seedSendingDomain('signed.example.com', { dkimMode: 'byo', dnsRecords: [SIGNING_KEY] })
       await seedSsoDomain('example.org', true)
-      await seedOperatorHostnames([{ hostname: 'feedback.example.net', readiness: 'ready' }])
-
       const zones = await getProvenZones()
       expect(zones).toEqual(
         expect.arrayContaining([
@@ -166,10 +164,9 @@ describe.skipIf(!fixture.available)('proven zones (real DB, rolled back)', () =>
             exact: false,
             record: { name: 'qb._domainkey.signed.example.com', value: SIGNING_KEY.value },
           },
-          { zone: 'feedback.example.net', source: 'web-address', exact: true, record: null },
         ])
       )
-      expect(zones).toHaveLength(3)
+      expect(zones).toHaveLength(2)
     })
 
     it('adds verified single sign-on domains only when asked to', async () => {
@@ -283,14 +280,6 @@ describe.skipIf(!fixture.available)('proven zones (real DB, rolled back)', () =>
 
       expect(await checkSsoDomainOwnership(sso)).toEqual({ ok: false, reason: 'no-record' })
       expect(zone.asked).toEqual(['_quackback-verify.eu.acme.com'])
-    })
-
-    it('verifies through a ready web address for that exact name only', async () => {
-      await seedOperatorHostnames([{ hostname: 'feedback.acme.com', readiness: 'ready' }])
-
-      expect(await ssoDomainProvenBy('feedback.acme.com')).toBe('web-address')
-      expect(await ssoDomainProvenBy('eu.feedback.acme.com')).toBeNull()
-      expect(await ssoDomainProvenBy('acme.com')).toBeNull()
     })
 
     it("never counts another workspace's rows", async () => {

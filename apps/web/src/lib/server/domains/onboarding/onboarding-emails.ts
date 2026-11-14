@@ -38,8 +38,6 @@ import { loadLaunchStatus } from './launch-status'
 import { permissionsForLegacyRole } from '@/lib/server/policy/permissions'
 import type { Role } from '@/lib/shared/roles'
 import { detectFirstWin } from '@/lib/server/activation-wins'
-import { getCloudConfig } from '@/lib/server/domains/settings/cloud/cloud.service'
-import { PLAN_CATALOGUE } from '@/lib/server/domains/settings/cloud/cloud.types'
 import { sendOnboardingNudgeEmail, sendOnboardingWelcomeEmail } from '@quackback/email'
 import type { SupportedLocale } from '@/lib/shared/i18n'
 import type { OnboardingOutcome } from '@/lib/shared/db-types'
@@ -220,17 +218,6 @@ function primaryGoal(status: LaunchStatus): OnboardingOutcome | null {
   return (status.goals?.[0] ?? status.useCase ?? null) as OnboardingOutcome | null
 }
 
-/** The running trial as the ready email states it, or null without one. */
-async function runningTrial(): Promise<{ days: number; planName: string } | null> {
-  const config = await getCloudConfig()
-  if (!config.enabled || !config.trialActive || !config.plan) return null
-  if (!config.trialStartedAt || !config.trialExpiresAt) return null
-  const length = Date.parse(config.trialExpiresAt) - Date.parse(config.trialStartedAt)
-  const days = Math.round(length / (24 * 60 * 60 * 1000))
-  if (!Number.isFinite(days) || days <= 0) return null
-  return { days, planName: PLAN_CATALOGUE[config.plan].name }
-}
-
 async function unsubscribeUrl(principalId: PrincipalId, base: string): Promise<string> {
   const token = randomUUID()
   await db.insert(unsubscribeTokens).values({
@@ -299,7 +286,7 @@ async function deliver(
       ...common,
       nextStep: next ? emailStep(next, base) : null,
       homeUrl: `${root}/admin`,
-      trial: await runningTrial(),
+      trial: null,
     })
     await sendOnboardingWelcomeEmail({
       to: context.to,

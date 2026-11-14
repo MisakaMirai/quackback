@@ -12,23 +12,16 @@ export const Route = createFileRoute('/admin/settings/integrations/')({
   head: adminPageHead('Integrations settings'),
   loader: async ({ context }) => {
     assertRoutePermission(context.permissions, PERMISSIONS.INTEGRATION_VIEW)
-    const { queryClient } = context
-    const { hasTierFeatureFn } = await import('@/lib/server/functions/entitlement-status')
-    const { ensureBillingCatalogue } = await import('@/lib/client/queries/billing')
-    const ensure = readBatch(queryClient)
-    const [integrationsEnabled] = await Promise.all([
-      hasTierFeatureFn({ data: { feature: 'integrations' } }),
+    const ensure = readBatch(context.queryClient)
+    await Promise.all([
       ensure(adminQueries.integrationCatalog()),
       ensure(adminQueries.integrations()),
-      ensureBillingCatalogue(queryClient, context.billingEnabled),
     ])
-    return { integrationsEnabled }
   },
   component: IntegrationsPage,
 })
 
 function IntegrationsPage() {
-  const { integrationsEnabled } = Route.useLoaderData()
   const catalogQuery = useSuspenseQuery(adminQueries.integrationCatalog())
   const integrationsQuery = useSuspenseQuery(adminQueries.integrations())
 
@@ -40,11 +33,7 @@ function IntegrationsPage() {
 
   return (
     <SettingsPage page="/admin/settings/integrations" width="wide">
-      <IntegrationsSettingsBody
-        enabled={integrationsEnabled}
-        catalog={catalogQuery.data}
-        integrations={integrations}
-      />
+      <IntegrationsSettingsBody catalog={catalogQuery.data} integrations={integrations} />
     </SettingsPage>
   )
 }

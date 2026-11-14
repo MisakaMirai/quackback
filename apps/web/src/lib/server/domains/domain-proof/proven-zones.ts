@@ -21,14 +21,7 @@
  * is no cache: a module-level one would be shared by every workspace a process
  * serves.
  */
-import {
-  db,
-  emailSendingDomains,
-  eq,
-  isNotNull,
-  settings,
-  ssoVerifiedDomain,
-} from '@/lib/server/db'
+import { db, emailSendingDomains, eq, isNotNull, ssoVerifiedDomain } from '@/lib/server/db'
 import type {
   SendingDomainDnsRecord,
   SendingDomainDkimMode,
@@ -39,7 +32,6 @@ import {
   ssoVerifyRecordValue,
   type ProvenZoneSource,
 } from '@/lib/shared/domain-proof'
-import { parseIdentityProjection } from '@/lib/server/domains/settings/cloud/identity-projection'
 import { isAtOrUnder, toAsciiDomain } from '@/lib/server/domains/channel-accounts/outbound-identity'
 import { isKeyRecord } from '@/lib/server/domains/channel-accounts/dkim-key'
 import { ownershipRecordsOf } from '@/lib/server/domains/channel-accounts/sending-identity'
@@ -112,7 +104,7 @@ export function isCoveredByProvenZone(name: string, zones: readonly ProvenZone[]
 export async function getProvenZones(
   options: { includeSso?: boolean } = {}
 ): Promise<ProvenZone[]> {
-  const [sending, sso, settingsRows] = await Promise.all([
+  const [sending, sso] = await Promise.all([
     db
       .select({
         domain: emailSendingDomains.domain,
@@ -131,7 +123,6 @@ export async function getProvenZones(
           .from(ssoVerifiedDomain)
           .where(isNotNull(ssoVerifiedDomain.verifiedAt))
       : [],
-    db.select({ cloudIdentity: settings.cloudIdentity }).from(settings).limit(1),
   ])
 
   const zones: ProvenZone[] = []
@@ -159,17 +150,6 @@ export async function getProvenZones(
         value: ssoVerifyRecordValue(row.verificationToken),
       },
     })
-  }
-  const identity = parseIdentityProjection(settingsRows[0]?.cloudIdentity)
-  for (const hostname of identity?.customDomains ?? []) {
-    if (hostname.readiness === 'ready') {
-      zones.push({
-        zone: toAsciiDomain(hostname.hostname),
-        source: 'web-address',
-        exact: true,
-        record: null,
-      })
-    }
   }
   return zones.filter((z) => z.zone !== '')
 }

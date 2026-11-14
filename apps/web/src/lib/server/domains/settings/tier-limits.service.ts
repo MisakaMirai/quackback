@@ -2,13 +2,6 @@ import { db, settings } from '@/lib/server/db'
 import { logger } from '@/lib/server/logger'
 import { WorkspaceKeyedCache } from '@/lib/server/workspaces/workspace-keyed'
 import { OSS_TIER_LIMITS, type TierLimits } from './tier-limits.types'
-import {
-  parseBillingProjection,
-  projectedLimitsAt,
-  type BillingProjection,
-  type ProjectedLimits,
-} from './cloud/billing-projection'
-import { canonicalPlanId, isPlanId, type PlanId } from './cloud/cloud.types'
 
 const log = logger.child({ component: 'tier-limits-service' })
 
@@ -18,11 +11,10 @@ type StoredTierLimits = Partial<Omit<TierLimits, 'features'>> & {
 
 /**
  * Parse stored `tier_limits` JSON, tolerating corruption. Absent is the
- * documented "no row" state (self-hosters get {@link OSS_TIER_LIMITS};
- * cloud workspaces get the signed projection's floor — see
- * {@link resolveEffectiveTierLimits}). Unparseable or non-object JSON is
- * corrupt data: logged once so it can be found and repaired, and treated
- * the same as "no row" rather than throwing on every tier-limit check.
+ * documented "no row" state (self-hosters get {@link OSS_TIER_LIMITS}).
+ * Unparseable or non-object JSON is corrupt data: logged once so it can be
+ * found and repaired, and treated the same as "no row" rather than throwing on
+ * every tier-limit check.
  */
 function parseStoredTierLimits(raw: string | null | undefined): StoredTierLimits | null {
   if (!raw) return null
@@ -61,164 +53,33 @@ export function mergeTierLimits(stored: StoredTierLimits | null): TierLimits {
   }
 }
 
-const CLOSED_CLOUD_FEATURES: TierLimits['features'] = {
-  customDomain: false,
-  customOidcProvider: false,
-  ipAllowlist: false,
-  webhooks: false,
-  mcpServer: false,
-  analyticsExports: false,
-  customColors: false,
-  customCss: false,
-  integrations: false,
-  visitorAnalytics: false,
-}
-
 /**
- * Feature flags that are not entitlements. Must match CP `definitions.ts`
- * for the same plan. Copied from `effectivePlan` because the projection
- * entitlements map does not carry these keys.
- *
- * `visitorAnalytics` is the exception to the CP-match rule: the control plane
- * does not define it. Every plan includes it, so a cloud workspace keeps
- * counting unless an operator tier-limits row switches it off. Changing a
- * plan's grant here is the one place that controls it.
+ * Resolve the active TierLimits for this workspace. Installs with no row in
+ * `settings.tier_limits` get OSS_TIER_LIMITS (unlimited everything); an
+ * operator-written row caps whatever it names.
  */
-const PLAN_ONLY_FEATURES: Record<
-  PlanId,
-  Pick<
-    TierLimits['features'],
-    'analyticsExports' | 'customColors' | 'customCss' | 'integrations' | 'visitorAnalytics'
-  >
-> = {
-  free: {
-    analyticsExports: false,
-    customColors: true,
-    customCss: false,
-    integrations: false,
-    visitorAnalytics: true,
-  },
-  pro: {
-    analyticsExports: false,
-    customColors: true,
-    customCss: false,
-    integrations: false,
-    visitorAnalytics: true,
-  },
-  business: {
-    analyticsExports: true,
-    customColors: true,
-    customCss: true,
-    integrations: true,
-    visitorAnalytics: true,
-  },
-  enterprise: {
-    analyticsExports: true,
-    customColors: true,
-    customCss: true,
-    integrations: true,
-    visitorAnalytics: true,
-  },
+export function resolveEffectiveTierLimits(stored: StoredTierLimits | null): TierLimits {
+  return mergeTierLimits(stored)
 }
 
-/** Numeric floor from a projection when the operator has not written a row. */
-export function cloudProjectionFloor(limits: ProjectedLimits): TierLimits {
-  return {
-    maxBoards: limits.maxBoards,
-    maxPosts: limits.maxPosts,
-    maxTeamSeats: limits.maxTeamSeats,
-    maxStatusComponents: limits.maxStatusComponents,
-    maxCustomRoles: limits.maxCustomRoles,
-    maxSendingDomains: limits.maxSendingDomains,
-    aiTokensPerMonth: limits.aiTokensPerMonth,
-    emailsPerMonth: limits.emailsPerMonth,
-    maxInboundEmailAddresses: limits.maxInboundEmailAddresses,
-    maxHelpCenterLocales: limits.maxHelpCenterLocales,
-    maxStatusSubscribers: limits.maxStatusSubscribers,
-    apiRequestsPerMonth: limits.apiRequestsPerMonth,
-    apiRequestsPerMinute: limits.apiRequestsPerMinute,
-    features: { ...CLOSED_CLOUD_FEATURES },
-  }
-}
-
-function featuresFromProjection(projection: BillingProjection, now: Date): TierLimits['features'] {
-  const expired =
-    projection.planLimitsExpireAt !== null &&
-    now.getTime() >= Date.parse(projection.planLimitsExpireAt)
-  const entitlements = expired ? {} : projection.entitlements
-  const resolved = expired ? 'free' : canonicalPlanId(projection.effectivePlan)
-  const planId: PlanId = isPlanId(resolved) ? resolved : 'free'
-  return {
-    ...CLOSED_CLOUD_FEATURES,
-    ...PLAN_ONLY_FEATURES[planId],
-    customDomain: entitlements.customDomain === true,
-    customOidcProvider: entitlements.sso === true,
-    webhooks: entitlements.webhooks === true,
-    mcpServer: entitlements.mcpServer === true,
-  }
-}
-
-/**
- * Apply a signed billing projection on top of an optional operator row.
- *
- * No row + cloud off (no projection) stays OSS unlimited. No row + a
- * projection must not inherit that unlimited default — otherwise every
- * cloud Free/Pro workspace is uncapped.
- */
-export function resolveEffectiveTierLimits(
-  stored: StoredTierLimits | null,
-  projection: BillingProjection | null,
-  now = new Date()
-): TierLimits {
-  if (!projection) return mergeTierLimits(stored)
-  const baseline = stored ? mergeTierLimits(stored) : cloudProjectionFloor(projection.freeLimits)
-  const numeric = projectedLimitsAt(projection, baseline, now)
-  if (stored) return numeric
-  return { ...numeric, features: featuresFromProjection(projection, now) }
-}
-
-/**
- * Per workspace, because this is the billing ceiling.
- *
- * A shared entry means whichever workspace is read first sets everyone's
- * limits: a paid plan's allowances leak to a free one, or a free plan's caps
- * are enforced against a customer who paid to be rid of them. It is also
- * silent — nothing errors, the wrong number is simply believed — so it can only
- * be caught by asserting the separation directly.
- */
+/** Per workspace: the limits are that workspace's own operator row. */
 interface CachedLimits {
   stored: StoredTierLimits | null
-  projection: BillingProjection | null
 }
 
 const cachedLimits = new WorkspaceKeyedCache<CachedLimits>()
 const LIMITS_KEY = 'limits'
 
-/**
- * Resolve the active TierLimits for this workspace. Self-hosters with no
- * row in `settings.tier_limits` get OSS_TIER_LIMITS (unlimited everything).
- * Cloud workspaces apply the signed projection instead of that default.
- * The cache is invalidated when the row is written.
- */
-export async function getTierLimits(now = new Date()): Promise<TierLimits> {
+export async function getTierLimits(): Promise<TierLimits> {
   let cached = cachedLimits.get(LIMITS_KEY)
 
   if (!cached) {
-    const rows = await db
-      .select({ tierLimits: settings.tierLimits, cloud: settings.cloud })
-      .from(settings)
-      .limit(1)
-    const raw = rows[0]?.tierLimits
-    const stored = parseStoredTierLimits(raw)
-    const rawProjection = rows[0]?.cloud?.projection
-    cached = {
-      stored,
-      projection: parseBillingProjection(rawProjection),
-    }
+    const rows = await db.select({ tierLimits: settings.tierLimits }).from(settings).limit(1)
+    cached = { stored: parseStoredTierLimits(rows[0]?.tierLimits) }
     cachedLimits.set(LIMITS_KEY, cached)
   }
 
-  return resolveEffectiveTierLimits(cached.stored, cached.projection, now)
+  return resolveEffectiveTierLimits(cached.stored)
 }
 
 /** Invalidate the active workspace's cache. Call when settings.tier_limits is written. */
