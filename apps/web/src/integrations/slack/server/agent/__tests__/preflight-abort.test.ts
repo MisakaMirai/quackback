@@ -38,10 +38,6 @@ vi.mock('@/lib/server/domains/assistant/assistant.runtime', async (original) => 
   isAssistantConfigured: () => true,
   runAssistantTurn: mocks.runAssistantTurn,
 }))
-vi.mock('@/lib/server/domains/settings/cloud/entitlements', async (original) => ({
-  ...(await original<typeof import('@/lib/server/domains/settings/cloud/entitlements')>()),
-  hasEntitlement: async () => true,
-}))
 vi.mock('@/lib/server/domains/settings/tier-enforce', async (original) => ({
   ...(await original<typeof import('@/lib/server/domains/settings/tier-enforce')>()),
   enforceAiTokenBudget: () => mocks.enforceBudget(),

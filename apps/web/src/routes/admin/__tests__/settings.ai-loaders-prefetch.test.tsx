@@ -50,10 +50,6 @@ vi.mock('@/lib/server/functions/settings', async (importOriginal) => ({
   fetchWorkflowAbandonedAutoCloseFn: stub('abandonedAutoClose', {}),
   fetchWorkflowCloseSpamFn: stub('closeSpam', {}),
 }))
-vi.mock('@/lib/server/functions/entitlement-status', () => ({
-  hasEntitlementFn: () => Promise.resolve(true),
-}))
-
 const { assistantQueries } = await import('@/lib/client/queries/assistant')
 const { connectorQueries } = await import('@/lib/client/queries/assistant-connectors')
 const { settingsQueries } = await import('@/lib/client/queries/settings')

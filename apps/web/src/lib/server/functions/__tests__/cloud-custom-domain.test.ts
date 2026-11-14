@@ -57,10 +57,6 @@ vi.mock('@/lib/server/domains/settings/cloud/identity-projection.write', () => (
 }))
 vi.mock('@/lib/server/setup-state', () => ({}))
 vi.mock('@/lib/server/onboarding-board', () => ({}))
-vi.mock('@/lib/server/domains/settings/cloud/entitlements', () => ({
-  requireEntitlement: async () => {},
-  hasEntitlement: async () => true,
-}))
 vi.mock('@/lib/server/auth', () => ({
   auth: { api: { generateOneTimeToken: async () => ({ token: 'ott' }) } },
 }))
@@ -90,7 +86,7 @@ vi.mock('@/lib/server/domains/domain-proof/hostname-proof', () => ({
 
 await import('../cloud-identity')
 const getCustomDomains = handlers[2]!
-const mutateCustomDomain = handlers[4]!
+const mutateCustomDomain = handlers[3]!
 
 const FLAG = 'QUACKBACK_CONTROL_PLANE_PROVEN_ZONES'
 

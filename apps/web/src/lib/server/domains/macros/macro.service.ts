@@ -59,28 +59,11 @@ function toDTO(row: {
 }
 
 /**
- * The plan gate on the macro library. It sits on the two entry points that put
- * a macro in front of a teammate — discovering the library and adding to it —
- * rather than on every function here: editing and deleting stay open so a
- * workspace that drops below the plan including macros can still tidy up what
- * it already has, exactly as a downgraded workspace may still clear a custom
- * domain it can no longer set.
- *
- * No-op on any install without a plan, which is every self-hosted one — see
- * domains/settings/cloud/entitlements.ts.
- */
-async function requireMacroLibrary(): Promise<void> {
-  const { requireEntitlement } = await import('@/lib/server/domains/settings/cloud/entitlements')
-  await requireEntitlement('aiDrafts')
-}
-
-/**
  * List live macros, newest first. `surface` narrows to the macros a given
  * surface offers: the support inbox sees `support` + `both`, the feedback
  * surfaces see `feedback` + `both`. Omitted returns every scope (the manager).
  */
 export async function listMacros(surface?: 'support' | 'feedback'): Promise<MacroDTO[]> {
-  await requireMacroLibrary()
   const scopes: MacroScope[] =
     surface === 'support'
       ? ['support', 'both']
@@ -112,7 +95,6 @@ export async function createMacro(input: {
   actions: MacroAction[]
   createdByPrincipalId: PrincipalId
 }): Promise<MacroDTO> {
-  await requireMacroLibrary()
   const [row] = await db
     .insert(macros)
     .values({

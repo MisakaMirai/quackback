@@ -43,8 +43,6 @@ export async function createWorkflow(input: WorkflowInput): Promise<Workflow> {
   // pause, edit and delete what it already built, it just cannot add more.
   // No-op on any install without a plan, which is every self-hosted one —
   // see domains/settings/cloud/entitlements.ts.
-  const { requireEntitlement } = await import('@/lib/server/domains/settings/cloud/entitlements')
-  await requireEntitlement('workflows')
   const [row] = await db
     .insert(workflows)
     .values({

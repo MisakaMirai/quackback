@@ -55,9 +55,6 @@ export const listAuditEventsFn = createServerFn({ method: 'GET' })
     // Plan gate, asked after the permission so the answer never depends on who
     // is asking. No-op on any install without a plan, which is every
     // self-hosted one — see domains/settings/cloud/entitlements.ts.
-    const { requireEntitlement } = await import('@/lib/server/domains/settings/cloud/entitlements')
-    await requireEntitlement('auditLog')
-
     const requested = Math.min(data.limit ?? DEFAULT_LIMIT, MAX_LIMIT)
     const lookahead = requested + 1
 

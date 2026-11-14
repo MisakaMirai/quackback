@@ -44,8 +44,6 @@ export async function createWebhook(
   // and has the operator capped the feature. Both refuse with a 402; only the
   // first can name the plan that would grant it. No-op on any install without a
   // plan, which is every self-hosted one — see domains/settings/cloud/entitlements.ts.
-  const { requireEntitlement } = await import('@/lib/server/domains/settings/cloud/entitlements')
-  await requireEntitlement('webhooks')
   const { assertTierFeature } = await import('@/lib/server/domains/settings/tier-enforce')
   await assertTierFeature('webhooks', 'Webhooks')
 

@@ -101,7 +101,7 @@ Profiles: **Owner** = admin class + an admin-owned full API key (scoped keys hol
 
 ## 2. Surfaces and their enforced authorization
 
-### Server functions (`requireAuth`) — 756 surfaces
+### Server functions (`requireAuth`) — 754 surfaces
 
 | Surface | Enforces |
 | --- | --- |
@@ -310,7 +310,6 @@ Profiles: **Owner** = admin class + an admin-owned full API key (scoped keys hol
 | `lib/server/functions/cloud-identity.ts`::getCloudIdentityFn | settings.manage |
 | `lib/server/functions/cloud-identity.ts`::markCloudWorkspaceDetailsSeenFn | settings.manage |
 | `lib/server/functions/cloud-identity.ts`::getCloudCustomDomainsFn | settings.custom_domain |
-| `lib/server/functions/cloud-identity.ts`::hasCustomDomainEntitlementFn | settings.custom_domain |
 | `lib/server/functions/cloud-identity.ts`::mutateCloudCustomDomainFn | settings.custom_domain |
 | `lib/server/functions/cloud-identity.ts`::updateCloudIdentityFn | settings.manage |
 | `lib/server/functions/comments.ts`::createCommentFn | END_USER (any authenticated) |
@@ -529,7 +528,6 @@ Profiles: **Owner** = admin class + an admin-owned full API key (scoped keys hol
 | `lib/server/functions/personal-api-keys.ts`::revokeMyApiKeyFn | END_USER (any authenticated) |
 | `lib/server/functions/personal-api-keys.ts`::revokeMyApiKeyFn | TEAM-ONLY |
 | `lib/server/functions/personal-key-policy.ts`::setPersonalKeyPolicyFn | api_key.manage |
-| `lib/server/functions/plan-notice.ts`::getPlanNotice | member.view |
 | `lib/server/functions/platform-credentials.ts`::savePlatformCredentialsFn | integration.manage |
 | `lib/server/functions/platform-credentials.ts`::deletePlatformCredentialsFn | integration.manage |
 | `lib/server/functions/platform-credentials.ts`::fetchPlatformCredentialsMaskedFn | integration.manage |
@@ -862,12 +860,10 @@ Profiles: **Owner** = admin class + an admin-owned full API key (scoped keys hol
 | `lib/server/functions/workspace-api-key-settings.ts`::fetchWorkspaceKeyRolesFn | api_key.manage |
 | `lib/server/functions/workspace-wipe.ts`::wipeCloudWorkspaceFn | END_USER (any authenticated) |
 
-### Public REST API (`withApiKeyAuth`) — 131 surfaces
+### Public REST API (`withApiKeyAuth`) — 129 surfaces
 
 | Surface | Enforces |
 | --- | --- |
-| `routes/api/billing/session.ts`::POST | billing.manage |
-| `routes/api/billing/trial.ts`::POST | billing.manage |
 | `routes/api/export.companies.ts`::GET | company.view |
 | `routes/api/export.ts`::GET | post.export |
 | `routes/api/export.users.ts`::handleExportUsers | people.view |
@@ -1078,7 +1074,7 @@ Key scopes are enforced: an API key holds exactly its stored scopes (owner permi
 
 ## 4. Entry points without a requireAuth/key gate
 
-228 of 1094 entry points hold no `requireAuth` / `withApiKeyAuth` / `requireTeamAuth` gate.
+225 of 1087 entry points hold no `requireAuth` / `withApiKeyAuth` / `requireTeamAuth` gate.
 Each is expected to be intentionally public, a pre-auth flow, a signature-verified webhook, or a handler that delegates auth (e.g. the MCP route).
 **Adding a row here is an access-control change** — confirm the new entry point is meant to be reachable without a gate.
 
@@ -1103,9 +1099,6 @@ Each is expected to be intentionally public, a pre-auth flow, a signature-verifi
 | `lib/server/functions/csat-email.ts`::recordCsatViaTokenFn | server-fn |
 | `lib/server/functions/csat-email.ts`::validateCsatEmailTokenFn | server-fn |
 | `lib/server/functions/embeds.ts`::getEmbedPreviewFn | server-fn |
-| `lib/server/functions/entitlement-status.ts`::hasEntitlementFn | server-fn |
-| `lib/server/functions/entitlement-status.ts`::hasTierFeatureFn | server-fn |
-| `lib/server/functions/entitlement-status.ts`::listEntitlementsFn | server-fn |
 | `lib/server/functions/help-center-redirect-rules.ts`::resolveHelpCenterRedirectFn | server-fn |
 | `lib/server/functions/help-center.ts`::getPublicArticleBySlugFn | server-fn |
 | `lib/server/functions/help-center.ts`::getPublicArticlePageFn | server-fn |

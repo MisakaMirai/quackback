@@ -100,21 +100,12 @@ async function hostnameProofReader() {
   return readHostnameProofs()
 }
 
-export const hasCustomDomainEntitlementFn = createServerFn({ method: 'GET' }).handler(async () => {
-  await requireAuth({ permission: PERMISSIONS.SETTINGS_CUSTOM_DOMAIN })
-  const { hasEntitlement } = await import('@/lib/server/domains/settings/cloud/entitlements')
-  return hasEntitlement('customDomain')
-})
-
 export const mutateCloudCustomDomainFn = createServerFn({ method: 'POST' })
   .validator(customDomainInputSchema)
   .handler(async ({ data }) => {
     await requireAuth({ permission: PERMISSIONS.SETTINGS_CUSTOM_DOMAIN })
     const current = await currentCloudIdentity()
     if (!current) throw new Error('Cloud workspace identity is not enabled')
-    const { requireEntitlement } = await import('@/lib/server/domains/settings/cloud/entitlements')
-    if (data.action === 'add') await requireEntitlement('customDomain')
-
     const mightChangeOrigin = data.action === 'makePrimary' || data.action === 'remove'
     let transferToken: string | null = null
     if (mightChangeOrigin) {

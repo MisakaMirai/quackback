@@ -7,12 +7,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { PERMISSIONS, type PermissionKey } from '@/lib/shared/permissions'
 
-const { entitled } = vi.hoisted(() => ({ entitled: { current: true } }))
-vi.mock('@/lib/server/functions/entitlement-status', () => ({
-  hasEntitlementFn: vi.fn(async () => entitled.current),
-  listEntitlementsFn: vi.fn(async () => ({ sso: false, auditLog: false })),
-}))
-
 const { Route: MacrosRoute } = await import('../admin/settings.macros')
 const { Route: SlaRoute } = await import('../admin/settings.sla')
 const { Route: ChangelogRoute } = await import('../admin/settings.changelog')
@@ -38,7 +32,7 @@ async function warmedKeys(
     }),
   }
   await loaderOf(route)({
-    context: { queryClient, permissions, billingEnabled: false },
+    context: { queryClient, permissions },
     location: { search },
   })
   return keys
@@ -47,13 +41,8 @@ async function warmedKeys(
 const key = (...parts: string[]) => JSON.stringify(parts)
 
 describe('settings page loaders', () => {
-  it('macros: warms the macro library when the plan includes it', async () => {
-    entitled.current = true
+  it('macros: warms the macro library', async () => {
     expect(await warmedKeys(MacrosRoute, [PERMISSIONS.CONVERSATION_MANAGE])).toContain(
-      key('macros', 'all')
-    )
-    entitled.current = false
-    expect(await warmedKeys(MacrosRoute, [PERMISSIONS.CONVERSATION_MANAGE])).not.toContain(
       key('macros', 'all')
     )
   })

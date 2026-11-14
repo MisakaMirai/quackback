@@ -55,10 +55,6 @@ vi.mock('@/lib/server/domains/roles/role.rule-grants', () => ({
   roleRuleGrantCheck: (granter: readonly string[]) => ({ granter }),
 }))
 
-vi.mock('@/lib/server/domains/settings/cloud/entitlements', () => ({
-  requireEntitlement: vi.fn(async () => {}),
-}))
-
 vi.mock('@/lib/server/functions/auth-helpers', () => ({
   requireAuth: hoisted.requireAuth,
 }))

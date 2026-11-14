@@ -26,7 +26,6 @@ import {
 } from './oauth-challenge'
 import { requiredScopesForMcpRpc } from './required-scope'
 import { DomainException, RateLimitError } from '@/lib/shared/errors'
-import { EntitlementRequiredError } from '@/lib/server/errors/entitlement-error'
 import { getDeveloperConfig } from '@/lib/server/domains/settings/settings.service'
 import { permissionsForPrincipal } from '@/lib/server/policy/permissions'
 import type { PermissionKey } from '@/lib/shared/permissions'
@@ -52,23 +51,6 @@ function jsonRpcError(status: number, message: string): Response {
       id: null,
     }),
     { status, headers: { 'Content-Type': 'application/json' } }
-  )
-}
-
-/**
- * A refusal the caller can act on: the JSON-RPC error envelope every MCP client
- * already understands, at HTTP 402, carrying the plan that would grant the
- * server in `data` so a client can show the upgrade prompt rather than a bare
- * "denied".
- */
-function jsonRpcEntitlementError(error: EntitlementRequiredError): Response {
-  return new Response(
-    JSON.stringify({
-      jsonrpc: '2.0',
-      error: { code: -32001, message: error.message, data: error.toResponseBody() },
-      id: null,
-    }),
-    { status: error.statusCode, headers: { 'Content-Type': 'application/json' } }
   )
 }
 
@@ -326,18 +308,6 @@ async function handleMcpRequestInBoundary(request: Request): Promise<Response> {
   if (auth.authMethod === 'oauth') {
     const denied = await oauthScopeStepUp(request, auth)
     if (denied) return denied
-  }
-
-  // Plan gate, deliberately after auth: a 402 names the workspace's plan, which
-  // is an answer only a caller who has already identified itself should get.
-  // No-op on any install without a plan, which is every self-hosted one — see
-  // domains/settings/cloud/entitlements.ts.
-  const { requireEntitlement } = await import('@/lib/server/domains/settings/cloud/entitlements')
-  try {
-    await requireEntitlement('mcpServer')
-  } catch (err) {
-    if (!(err instanceof EntitlementRequiredError)) throw err
-    return jsonRpcEntitlementError(err)
   }
 
   // Portal user access check

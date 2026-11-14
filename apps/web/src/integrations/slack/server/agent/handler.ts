@@ -15,7 +15,6 @@ import {
   getAssistantRuntimeConfig,
   updateAssistantConfig,
 } from '@/lib/server/domains/settings/settings.assistant'
-import { hasEntitlement } from '@/lib/server/domains/settings/cloud/entitlements'
 import { enforceAiTokenBudget } from '@/lib/server/domains/settings/tier-enforce'
 import {
   isAssistantConfigured,
@@ -527,10 +526,6 @@ async function handleSlackQuestion(input: {
     }
     if (!isAssistantConfigured()) {
       await replyError('Configure an AI model in Quackback first.')
-      return
-    }
-    if (!(await hasEntitlement('aiDrafts'))) {
-      await replyError('Your Quackback plan does not include teammate AI.')
       return
     }
     if (turnAbort.signal.aborted) return

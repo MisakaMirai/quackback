@@ -119,8 +119,6 @@ export async function generateAndSavePostSummary(postId: PostId): Promise<void> 
   // workspace without them should never pay the usage read. No-op on any
   // install without a plan, which is every self-hosted one — see
   // domains/settings/cloud/entitlements.ts.
-  const { requireEntitlement } = await import('@/lib/server/domains/settings/cloud/entitlements')
-  await requireEntitlement('aiInsights')
   await enforceAiTokenBudget()
 
   const model = getChatModel('summary')
@@ -226,14 +224,6 @@ export async function refreshStaleSummaries(): Promise<void> {
   // circuit breaker trips.
   if (!isAiClientConfigured(config.openaiApiKey, config.openaiBaseUrl) || !getChatModel('summary'))
     return
-  // Same gate `generateAndSavePostSummary` applies per post, asked once up front.
-  // Without it a workspace on a plan without AI insights queried a batch of stale
-  // posts every sweep and failed each one with TIER_LIMIT_EXCEEDED, for ever.
-  const { hasEntitlement } = await import('@/lib/server/domains/settings/cloud/entitlements')
-  if (!(await hasEntitlement('aiInsights'))) {
-    log.debug('summary sweep skipped: ai insights not entitled')
-    return
-  }
   if (!(await aiBudgetAvailable())) {
     log.debug('summary sweep skipped: ai budget unavailable')
     return

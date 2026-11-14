@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
 import { DISABLED_CLOUD_CONFIG, type CloudConfig } from '../cloud.types'
-import { isEntitled } from '../entitlements'
 import { shouldShowPoweredBy } from '../powered-by'
 
 function cloudOn(overrides: Partial<CloudConfig> = {}): CloudConfig {
@@ -13,8 +12,7 @@ function cloudOn(overrides: Partial<CloudConfig> = {}): CloudConfig {
 }
 
 describe('shouldShowPoweredBy', () => {
-  it('always shows on a self-hosted install, even though isEntitled(hideBranding) is true', () => {
-    expect(isEntitled(DISABLED_CLOUD_CONFIG, 'hideBranding')).toBe(true)
+  it('always shows on a self-hosted install', () => {
     expect(shouldShowPoweredBy(DISABLED_CLOUD_CONFIG)).toBe(true)
   })
 
