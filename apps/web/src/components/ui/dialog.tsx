@@ -38,7 +38,7 @@ function DialogTrigger({
     <DialogPrimitive.Trigger
       data-slot="dialog-trigger"
       {...props}
-      nativeButton={composed.render ? composed.nativeButton : nativeButton}
+      nativeButton={composed.render ? (nativeButton ?? composed.nativeButton) : nativeButton}
       {...overlayTriggerProps(composed)}
     >
       {composed.children}
@@ -62,7 +62,7 @@ function DialogClose({
     <DialogPrimitive.Close
       data-slot="dialog-close"
       {...props}
-      nativeButton={composed.render ? composed.nativeButton : nativeButton}
+      nativeButton={composed.render ? (nativeButton ?? composed.nativeButton) : nativeButton}
       {...overlayTriggerProps(composed)}
     >
       {composed.children}

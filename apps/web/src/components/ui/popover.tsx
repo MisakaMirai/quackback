@@ -73,7 +73,7 @@ function PopoverTrigger({
         }
       }}
       {...props}
-      nativeButton={composed.render ? composed.nativeButton : nativeButton}
+      nativeButton={composed.render ? (nativeButton ?? composed.nativeButton) : nativeButton}
       {...overlayTriggerProps(composed)}
     >
       {composed.children}
