@@ -123,11 +123,7 @@ export function RoleNotes({ role, refused }: { role: RoleChoice; refused: boolea
     )
   }
   if (role.role === 'admin') {
-    return (
-      <p className="text-xs text-warning">
-        Admins can change settings, billing, members and sign-in.
-      </p>
-    )
+    return <p className="text-xs text-warning">Admins can change settings, members and sign-in.</p>
   }
   return null
 }

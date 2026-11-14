@@ -119,7 +119,7 @@ describe.skipIf(!fixture.available)('saving role rules that grant a workspace ro
   })
 
   it('refuses a role whose bundle exceeds what the saver holds', async () => {
-    const billing = await insertRole([PERMISSIONS.BILLING_MANAGE])
+    const billing = await insertRole([PERMISSIONS.AUDIT_VIEW])
     const id = await insertProvider()
     const err = await saveIdentityProviderClaimMapping(id, {
       expectedClaimMapping: null,
@@ -195,7 +195,7 @@ describe.skipIf(!fixture.available)('saving role rules that grant a workspace ro
   })
 
   it('the whole-provider save path checks the grant too', async () => {
-    const billing = await insertRole([PERMISSIONS.BILLING_MANAGE])
+    const billing = await insertRole([PERMISSIONS.AUDIT_VIEW])
     const err = await upsertIdentityProvider({
       registrationId: `oidc_${Math.random().toString(36).slice(2, 10)}`,
       label: 'Test IdP',
@@ -214,7 +214,7 @@ describe.skipIf(!fixture.available)('saving role rules that grant a workspace ro
   })
 
   it('any change to the role section needs every role the rules give to be grantable', async () => {
-    const billing = await insertRole([PERMISSIONS.BILLING_MANAGE])
+    const billing = await insertRole([PERMISSIONS.AUDIT_VIEW])
     const stored = {
       role: {
         claimPath: 'groups',

@@ -340,9 +340,7 @@ describe('AddPeopleDialog', () => {
     const roleSelect = screen.getByLabelText('Role')
     expect(screen.queryByText(/Admins can change settings/)).toBeNull()
     fireEvent.change(roleSelect, { target: { value: 'admin' } })
-    expect(
-      screen.getByText('Admins can change settings, billing, members and sign-in.')
-    ).toBeInTheDocument()
+    expect(screen.getByText('Admins can change settings, members and sign-in.')).toBeInTheDocument()
     // Custom roles are listed under their own heading.
     expect(await screen.findByRole('option', { name: 'Editor' })).toBeInTheDocument()
 
@@ -352,7 +350,7 @@ describe('AddPeopleDialog', () => {
     expect(screen.getByRole('option', { name: /^Member - / })).not.toBeDisabled()
   })
 
-  it('stops at the seat limit: amber message, billing link, primary disabled', async () => {
+  it('stops at the seat limit: amber message, no upgrade link, primary disabled', async () => {
     fns.getTeamSeatsFn.mockResolvedValue({ used: 9, limit: 10 })
     renderDialog()
     expect(await screen.findByText('9 / 10')).toBeInTheDocument()

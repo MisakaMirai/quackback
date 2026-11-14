@@ -73,13 +73,13 @@ describe('permissionsForLegacyRole (compat shim)', () => {
 
   it('admin (Owner) holds billing + settings; member (Manager) holds neither but operates', () => {
     const admin = permissionsForLegacyRole('admin')
-    expect(admin.has(PERMISSIONS.BILLING_MANAGE)).toBe(true)
+    expect(admin.has(PERMISSIONS.AUDIT_VIEW)).toBe(true)
     expect(admin.has(PERMISSIONS.SETTINGS_MANAGE)).toBe(true)
 
     const member = permissionsForLegacyRole('member')
     expect(member.has(PERMISSIONS.SETTINGS_MANAGE)).toBe(false)
     expect(member.has(PERMISSIONS.MEMBER_MANAGE)).toBe(false)
-    expect(member.has(PERMISSIONS.BILLING_MANAGE)).toBe(false)
+    expect(member.has(PERMISSIONS.AUDIT_VIEW)).toBe(false)
     // ...but keeps the operate + non-regressing read permissions.
     expect(member.has(PERMISSIONS.POST_EDIT)).toBe(true)
     expect(member.has(PERMISSIONS.MEMBER_VIEW)).toBe(true)
@@ -96,13 +96,13 @@ describe('permissionsForPrincipal', () => {
 
   it('returns an assigned custom role permission set', async () => {
     dbMock.rows.push(
-      { assignmentId: 'assignment_1', key: PERMISSIONS.BILLING_MANAGE },
+      { assignmentId: 'assignment_1', key: PERMISSIONS.AUDIT_VIEW },
       { assignmentId: 'assignment_1', key: PERMISSIONS.CONVERSATION_VIEW }
     )
 
     const resolved = await permissionsForPrincipal('principal_1' as PrincipalId, 'user')
 
-    expect(resolved).toEqual(new Set([PERMISSIONS.BILLING_MANAGE, PERMISSIONS.CONVERSATION_VIEW]))
+    expect(resolved).toEqual(new Set([PERMISSIONS.AUDIT_VIEW, PERMISSIONS.CONVERSATION_VIEW]))
   })
 
   it('keeps an assigned zero-permission role empty instead of using the legacy fallback', async () => {

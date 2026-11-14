@@ -32,7 +32,7 @@ describe('usePortalPermissions', () => {
 
     expect(result.current.permissions.size).toBe(2)
     expect(result.current.can(PERMISSIONS.POST_SET_STATUS)).toBe(true)
-    expect(result.current.can(PERMISSIONS.BILLING_MANAGE)).toBe(false)
+    expect(result.current.can(PERMISSIONS.AUDIT_VIEW)).toBe(false)
   })
 
   it('hasAny is true when at least one key is held', () => {
@@ -40,8 +40,8 @@ describe('usePortalPermissions', () => {
       wrapper: withProvider([PERMISSIONS.COMMENT_PIN]),
     })
 
-    expect(result.current.hasAny(PERMISSIONS.BILLING_MANAGE, PERMISSIONS.COMMENT_PIN)).toBe(true)
-    expect(result.current.hasAny(PERMISSIONS.BILLING_MANAGE)).toBe(false)
+    expect(result.current.hasAny(PERMISSIONS.AUDIT_VIEW, PERMISSIONS.COMMENT_PIN)).toBe(true)
+    expect(result.current.hasAny(PERMISSIONS.AUDIT_VIEW)).toBe(false)
     expect(result.current.hasAny()).toBe(false)
   })
 

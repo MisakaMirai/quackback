@@ -23,7 +23,7 @@ describe('resolvePermission', () => {
 
   it('withholds a workspace-admin-only permission from the member role', async () => {
     const { resolvePermission } = await import('../use-permission')
-    expect(resolvePermission('member', PERMISSIONS.BILLING_MANAGE)).toBe(false)
+    expect(resolvePermission('member', PERMISSIONS.AUDIT_VIEW)).toBe(false)
   })
 
   it('has no preset for an unrecognized legacy role', async () => {

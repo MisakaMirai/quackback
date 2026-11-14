@@ -651,29 +651,6 @@ export const BARE_GATE_CLASSIFICATIONS: Record<string, Classification> = {
   'routes/api/v1/statuses/index.ts::GET': PUBLIC_DATA('public status list'),
   'routes/api/v1/tags/$tagId.ts::GET': PUBLIC_DATA('public tag'),
   'routes/api/v1/tags/index.ts::GET': PUBLIC_DATA('public tag list'),
-
-  // Advertised plan stickers, the same payload Plan & billing renders. Any
-  // signed-in principal may read them so upgrade offers stay consistent;
-  // checkout, invoices and usage stay behind BILLING_MANAGE.
-
-  // Current plan name and trial eligibility for upgrade prompts. Same audience
-  // as the catalogue: the plan name already reaches every teammate through the
-  // trial banner, and nothing else (references, dates, entitlements) is exposed.
-
-  // Cloud workspace ownership. The gate admits any authenticated principal and
-  // the *handler* makes the access decision by comparing the caller's own
-  // session address against the owner the control plane reports — there is no
-  // catalogue permission for "is the owner", and an admin is deliberately not
-  // enough. The control plane re-checks and answers `not_owner` regardless, so
-  // this is defence in depth rather than the only bar.
-  // Cloud-workspace wipe: reachable self-hosted too, where the fn no-ops
-  // without a control plane. The gate is identity, not role: only the owner
-  // address may wipe, and the control plane re-checks when configured.
-
-  // Best-effort product-analytics beacon. Unauthenticated callers are not
-  // refused, they are ignored: the body is size-capped and schema-parsed, the
-  // emit happens only inside a successful `requireAuth()`, and every path
-  // answers 204 so a missing session cannot be probed through this route.
 }
 
 // ---------------------------------------------------------------------------

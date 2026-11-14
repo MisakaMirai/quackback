@@ -23,7 +23,6 @@ export const PERMISSIONS = {
   SETTINGS_MODERATION: 'settings.moderation', // workspace moderation default
   SETTINGS_NOTIFICATIONS: 'settings.notifications', // RESERVED: no OSS surface yet
   SETTINGS_CUSTOM_DOMAIN: 'settings.custom_domain', // Settings → Domains (cloud identity gateway)
-  BILLING_MANAGE: 'billing.manage', // cloud billing (Owner-only by default)
   ROLE_MANAGE: 'role.manage', // create / edit custom roles
   API_KEY_MANAGE: 'api_key.manage',
   WEBHOOK_VIEW: 'webhook.view', // read outbound webhook subscriptions
@@ -181,11 +180,6 @@ export const PERMISSION_CATALOGUE: ReadonlyArray<{
     category: 'workspace',
     description:
       'Manage workspace settings: branding, general config, portal and widget, moderation default',
-  },
-  {
-    key: PERMISSIONS.BILLING_MANAGE,
-    category: 'workspace',
-    description: 'Manage billing and subscription',
   },
   {
     key: PERMISSIONS.ROLE_MANAGE,
@@ -623,7 +617,6 @@ export const WORKSPACE_ADMIN_PERMISSIONS: readonly PermissionKey[] = [
   PERMISSIONS.SETTINGS_MODERATION,
   PERMISSIONS.SETTINGS_NOTIFICATIONS,
   PERMISSIONS.SETTINGS_CUSTOM_DOMAIN,
-  PERMISSIONS.BILLING_MANAGE,
   PERMISSIONS.MEMBER_MANAGE,
   PERMISSIONS.ROLE_MANAGE,
   PERMISSIONS.API_KEY_MANAGE,
@@ -670,12 +663,19 @@ export const SUPPORT_LEAD_EXTRA_PERMISSIONS: readonly PermissionKey[] = [
  * Permission keys retired from the catalogue. Their `permissions` rows and
  * grants stay in the database so an older app version still running during a
  * rollout keeps working; the reconcile leaves their preset grants alone.
+ *
+ * `billing.manage` retired with the Quackback Cloud subscription layer: it
+ * gated a page and server functions that no longer exist, so no role preset
+ * grants it any more.
  */
-export const RETIRED_PERMISSION_KEYS: readonly string[] = ['assistant.manage']
+export const RETIRED_PERMISSION_KEYS: readonly string[] = ['assistant.manage', 'billing.manage']
 
 export const SYSTEM_ROLE_PERMISSIONS: Record<SystemRoleKey, PermissionKey[]> = {
   owner: ALL_PERMISSIONS,
-  admin: ALL_PERMISSIONS.filter((p) => p !== PERMISSIONS.BILLING_MANAGE),
+  // Owner and Admin now hold the same keys: the only difference used to be
+  // billing.manage, which is gone. They stay separate roles because ownership
+  // is a transferable title, not just a permission bundle.
+  admin: ALL_PERMISSIONS,
   // Everything except the workspace-admin set; this naturally keeps member.view +
   // integration.view (not in the set) while excluding member.manage / integration.manage.
   manager: ALL_PERMISSIONS.filter((p) => !WORKSPACE_ADMIN_PERMISSIONS.includes(p)),
@@ -737,9 +737,9 @@ export const SYSTEM_ROLE_DEFS: ReadonlyArray<{
   {
     key: SYSTEM_ROLES.OWNER,
     name: 'Owner',
-    description: 'Full access, including billing and role management',
+    description: 'Full access, including role management',
   },
-  { key: SYSTEM_ROLES.ADMIN, name: 'Admin', description: 'Full access except billing' },
+  { key: SYSTEM_ROLES.ADMIN, name: 'Admin', description: 'Full access' },
   {
     key: SYSTEM_ROLES.MANAGER,
     name: 'Manager',

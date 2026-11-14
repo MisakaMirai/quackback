@@ -108,7 +108,7 @@ ${renderRefList(SUPPORT_LEAD_EXTRA_PERMISSIONS)}
 
 export const SYSTEM_ROLE_PERMISSIONS: Record<SystemRoleKey, PermissionKey[]> = {
   owner: ALL_PERMISSIONS,
-  admin: ALL_PERMISSIONS.filter((p) => p !== PERMISSIONS.BILLING_MANAGE),
+  admin: ALL_PERMISSIONS,
   manager: ALL_PERMISSIONS.filter((p) => !WORKSPACE_ADMIN_PERMISSIONS.includes(p)),
   support_lead: ALL_PERMISSIONS.filter(
     (p) => !WORKSPACE_ADMIN_PERMISSIONS.includes(p) || SUPPORT_LEAD_EXTRA_PERMISSIONS.includes(p)

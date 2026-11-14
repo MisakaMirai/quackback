@@ -151,9 +151,7 @@ describe('ChangeRoleDialog', () => {
   it('warns about Admin', () => {
     renderDialog()
     fireEvent.change(roleField(), { target: { value: 'admin' } })
-    expect(
-      screen.getByText('Admins can change settings, billing, members and sign-in.')
-    ).toBeInTheDocument()
+    expect(screen.getByText('Admins can change settings, members and sign-in.')).toBeInTheDocument()
   })
 
   it('shows a refused grant by the role field', async () => {

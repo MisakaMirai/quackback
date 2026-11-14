@@ -38,7 +38,7 @@ function scopesFromActor(actor: Actor): ApiKeyScope[] {
   if (permissions.has(PERMISSIONS.CHANGELOG_MANAGE)) scopes.push('write:settings')
   const navigationPermissions = [
     PERMISSIONS.AUTH_MANAGE,
-    PERMISSIONS.BILLING_MANAGE,
+    PERMISSIONS.AUDIT_VIEW,
     PERMISSIONS.SETTINGS_CUSTOM_DOMAIN,
     PERMISSIONS.MEMBER_MANAGE,
     PERMISSIONS.API_KEY_MANAGE,
