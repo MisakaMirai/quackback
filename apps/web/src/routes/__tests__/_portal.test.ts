@@ -115,7 +115,6 @@ function makeContext(sessionUser?: {
     baseUrl: 'http://localhost:3000',
     themeCookie: 'system' as const,
     managedFieldPaths: [],
-    state: 'active' as const,
     registeredAuthProviders: [],
   }
 }

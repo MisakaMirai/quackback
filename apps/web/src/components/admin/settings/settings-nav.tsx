@@ -1,7 +1,7 @@
 import { memo, useContext, useMemo, type ComponentType, type ReactNode } from 'react'
 import { Link, useRouterState } from '@tanstack/react-router'
 import { cn } from '@/lib/shared/utils'
-import { NAV_ICON_CLASS, NAV_ITEM_CLASS } from '@/components/shared/nav-tokens'
+import { MENU_ICON, MENU_ROW } from '@/components/ui/menu'
 import { FilterSection } from '@/components/shared/filter-section'
 import { AUTOMATION_PAGE_ICONS, SETTINGS_PAGE_ICONS } from './settings-page-icons'
 import {
@@ -30,7 +30,7 @@ function iconFor(path: string): IconComponent {
 
 function settingsRowClass(active: boolean) {
   return cn(
-    NAV_ITEM_CLASS,
+    MENU_ROW,
     'w-full',
     active
       ? 'bg-muted text-foreground font-medium'
@@ -95,7 +95,7 @@ function rowContent(label: string, iconPath: string) {
   const Icon = iconFor(iconPath)
   return (
     <>
-      <Icon className={NAV_ICON_CLASS} />
+      <Icon className={MENU_ICON} />
       <span className="truncate flex-1">{label}</span>
     </>
   )

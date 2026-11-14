@@ -1089,7 +1089,6 @@ async function readWorkspaceSettings(): Promise<WorkspaceSettings | null> {
       brandingData,
       faviconData: brandingData.faviconUrl ? { url: brandingData.faviconUrl } : null,
       managedFieldPaths: org.managedFieldPaths ?? [],
-      state: (org.state as 'active' | 'suspended' | 'deleting' | null) ?? 'active',
       verifiedDomains,
     }
 
