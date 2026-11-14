@@ -66,8 +66,6 @@ vi.mock('@/lib/server/functions/version', () => ({
   getLatestVersion: async () => null,
   isNewerVersion: () => false,
 }))
-vi.mock('@/lib/server/functions/plan-notice', () => ({ getPlanNotice: async () => null }))
-
 const dialogs = vi.hoisted(() => ({ mounts: 0 }))
 vi.mock('@/components/ui/dialog', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/components/ui/dialog')>()

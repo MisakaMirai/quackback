@@ -1,7 +1,5 @@
 import { LaunchPlanDock, LaunchPlanInHelp } from '@/components/onboarding/launch-plan-dock'
 import { openHelpLauncher } from '@/components/shared/cloud-quackback-widget'
-import { PlanNoticeQuiet } from '@/components/admin/plan-notice-banner'
-import type { PlanNotice } from '@/lib/server/domains/settings/tier-limits.types'
 import { SearchTrigger } from '@/components/admin/ask/search-palette'
 import { useProductTour } from '@/components/onboarding/product-tour'
 import { FormattedMessage, useIntl } from 'react-intl'
@@ -59,7 +57,6 @@ import { isProductEnabled, type FeatureFlags, type ProductId } from '@/lib/share
 import { adminQueries } from '@/lib/client/queries/admin'
 import { ENTITY_ICONS } from '@/components/admin/entity-icon'
 import {
-  useBillingEnabled,
   useCloudEnabled,
   useGithubStarPrompt,
   useSessionContext,
@@ -92,8 +89,6 @@ interface AdminSidebarProps {
     chatAvailability?: 'online' | 'away'
   }
   latestVersion?: LatestVersionResult | null
-  /** A running trial shows here quietly until its last days. */
-  planNotice?: PlanNotice | null
 }
 
 type RailIcon = ComponentType<{ className?: string }>
@@ -299,7 +294,7 @@ function MobileNavLink({
   )
 }
 
-export function AdminSidebar({ initialUserData, latestVersion, planNotice }: AdminSidebarProps) {
+export function AdminSidebar({ initialUserData, latestVersion }: AdminSidebarProps) {
   const intl = useIntl()
   const router = useRouter()
   const onNotificationsPage = useRouterState({
@@ -310,7 +305,6 @@ export function AdminSidebar({ initialUserData, latestVersion, planNotice }: Adm
   const tour = useProductTour()
   const session = useSessionContext()
   const settings = useWorkspaceSettings()
-  const billingEnabled = useBillingEnabled()
   const cloudEnabled = useCloudEnabled()
   const githubStarPrompt = useGithubStarPrompt()
   const permissions = usePermissions()
@@ -319,8 +313,8 @@ export function AdminSidebar({ initialUserData, latestVersion, planNotice }: Adm
   // Settings is offered to anyone who can open at least one of its pages; the
   // rest would only reach an access-denied page.
   const showSettings = useMemo(
-    () => canOpenSettings(buildNavSections(flags, Boolean(billingEnabled)), permissions),
-    [flags, billingEnabled, permissions]
+    () => canOpenSettings(buildNavSections(flags), permissions),
+    [flags, permissions]
   )
   // The org's own logo (resolved in brandingData by the root loader, same source
   // PortalBrandMark uses); fall back to the Quackback mark when none is set.
@@ -373,7 +367,7 @@ export function AdminSidebar({ initialUserData, latestVersion, planNotice }: Adm
   const siblingsQuery = useQuery({
     queryKey: ['admin', 'owner-workspaces'],
     queryFn: () => listOwnerWorkspacesFn(),
-    enabled: Boolean(billingEnabled),
+    enabled: cloudEnabled,
   })
   const siblings = siblingsQuery.data ?? []
 
@@ -435,8 +429,6 @@ export function AdminSidebar({ initialUserData, latestVersion, planNotice }: Adm
 
             {/* Bottom Section */}
             <div className="flex flex-col gap-0.5 px-2">
-              {/* Mounted only for a notice, so a page without one renders nothing here. */}
-              {planNotice && <PlanNoticeQuiet notice={planNotice} />}
               <LaunchPlanDock />
               {/* Settings (admin-only) */}
               {showSettings &&
@@ -449,7 +441,7 @@ export function AdminSidebar({ initialUserData, latestVersion, planNotice }: Adm
                   }),
                 })}
 
-              {billingEnabled && siblings.length > 0 ? (
+              {cloudEnabled && siblings.length > 0 ? (
                 <WorkspaceSwitcher siblings={siblings} onOpen={(id) => openSibling.mutate(id)} />
               ) : null}
 
@@ -663,7 +655,6 @@ export function AdminSidebar({ initialUserData, latestVersion, planNotice }: Adm
                 />
               ))}
               <div className="h-px bg-border/40 my-4" />
-              <PlanNoticeQuiet notice={planNotice ?? null} />
               <div onClickCapture={() => setMobileMenuOpen(false)}>
                 <LaunchPlanDock />
               </div>
@@ -678,7 +669,7 @@ export function AdminSidebar({ initialUserData, latestVersion, planNotice }: Adm
                   onClick={() => setMobileMenuOpen(false)}
                 />
               )}
-              {billingEnabled && siblings.length > 0
+              {cloudEnabled && siblings.length > 0
                 ? siblings.map((sibling) => (
                     <button
                       key={sibling.instanceId}

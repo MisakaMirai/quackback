@@ -27,11 +27,6 @@ export function useBaseUrl() {
   return useRouteContext({ from: '__root__', select: (context) => context.baseUrl })
 }
 
-/** Whether this deployment sells plans: false on every self-hosted install. */
-export function useBillingEnabled(): boolean {
-  return useRouteContext({ from: '__root__', select: (context) => !!context.billingEnabled })
-}
-
 /** Self-hosted, not the Cloud fleet, not switched off: the GitHub star prompt may show. */
 export function useGithubStarPrompt(): boolean {
   return useRouteContext({ from: '__root__', select: (context) => !!context.githubStarPrompt })

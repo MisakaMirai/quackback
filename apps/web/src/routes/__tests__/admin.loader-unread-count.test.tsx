@@ -24,8 +24,6 @@ vi.mock('@/lib/server/functions/version', () => ({
   getLatestVersion: async () => null,
   isNewerVersion: () => false,
 }))
-vi.mock('@/lib/server/functions/plan-notice', () => ({ getPlanNotice: async () => null }))
-
 const { Route } = await import('../admin')
 const { NotificationBell } = await import('@/components/notifications/notification-bell')
 const { TooltipProvider } = await import('@/components/ui/tooltip')

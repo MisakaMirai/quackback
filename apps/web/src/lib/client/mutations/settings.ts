@@ -7,7 +7,6 @@
 
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { AUTOSAVE } from '@/lib/client/autosave'
-import { isPlanRefusal } from '@/lib/shared/describe-upgrade'
 import {
   deleteLogoFn,
   deleteHeaderLogoFn,
@@ -525,9 +524,9 @@ export function useSaveBrandingTheme() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    // A plan refusal opens the page's upgrade dialog; other refusals (a rejected
-    // stylesheet) are written for the admin, so the toast names them.
-    meta: { ...AUTOSAVE, showServerMessage: true, ownsError: isPlanRefusal },
+    // Refusals (a rejected stylesheet) are written for the admin, so the toast
+    // names them.
+    meta: { ...AUTOSAVE, showServerMessage: true },
     mutationFn: async (input: {
       brandingConfig: Record<string, unknown>
       customCss: string
@@ -539,13 +538,10 @@ export function useSaveBrandingTheme() {
        */
       customCssWrite: 'persist' | 'clear' | 'rewrite'
     }) => {
-      const { throwIfServerFnFailed } = await import('@/lib/shared/describe-upgrade')
       const theme = await updateThemeFn({ data: { brandingConfig: input.brandingConfig } })
-      throwIfServerFnFailed(theme)
       const css = await updateCustomCssFn({
         data: { customCss: input.customCssWrite === 'clear' ? '' : input.customCss },
       })
-      throwIfServerFnFailed(css)
       return [theme, css] as const
     },
     onSuccess: () =>

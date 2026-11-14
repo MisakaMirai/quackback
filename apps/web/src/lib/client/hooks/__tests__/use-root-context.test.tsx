@@ -16,7 +16,6 @@ import {
 } from '@tanstack/react-router'
 import {
   useBaseUrl,
-  useBillingEnabled,
   useCloudEnabled,
   useFeatureFlag,
   useFeatureFlags,
@@ -47,7 +46,6 @@ let rootAnswer: {
   session: { user: { name: string } }
   userRole: string
   baseUrl: string
-  billingEnabled: boolean
   cloudEnabled: boolean | undefined
   managedFieldPaths: string[]
 }
@@ -61,7 +59,6 @@ function Reader() {
     session: useSessionContext(),
     userRole: useUserRole(),
     baseUrl: useBaseUrl(),
-    billingEnabled: useBillingEnabled(),
     cloudEnabled: useCloudEnabled(),
     managedFieldPaths: useManagedFieldPaths(),
     featureFlags: useFeatureFlags(),
@@ -120,7 +117,6 @@ describe('route-context hooks', () => {
       session,
       userRole: 'admin',
       baseUrl: 'https://feedback.example.com',
-      billingEnabled: true,
       cloudEnabled: undefined,
       managedFieldPaths,
     }
@@ -131,7 +127,6 @@ describe('route-context hooks', () => {
       session,
       userRole: 'admin',
       baseUrl: 'https://feedback.example.com',
-      billingEnabled: true,
       cloudEnabled: false,
       managedFieldPaths,
       featureFlags,

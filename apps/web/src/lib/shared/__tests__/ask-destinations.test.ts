@@ -17,7 +17,6 @@ const options = {
     statusPage: true,
     changelog: true,
   },
-  billingEnabled: true,
 }
 
 describe('Ask destinations', () => {
@@ -46,11 +45,10 @@ describe('Ask destinations', () => {
     expect(limited).toContain('/admin/settings/office-hours')
     expect(limited).not.toContain('/admin/settings/widget')
   })
-  it('hides disabled products and optional billing destinations', () => {
+  it('hides disabled products', () => {
     const paths = buildAskDestinations({
       ...options,
       featureFlags: { feedback: true },
-      billingEnabled: false,
     }).map((item) => item.href)
     expect(paths).not.toContain('/admin/inbox')
     expect(paths).not.toContain('/admin/settings/office-hours')

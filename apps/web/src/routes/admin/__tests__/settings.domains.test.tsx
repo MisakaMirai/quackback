@@ -3,10 +3,6 @@ import '@testing-library/jest-dom/vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 
-vi.mock('@/components/admin/upgrade', () => ({
-  UpgradeNotice: () => <p>Custom domains are a Pro feature. Upgrade to Pro to enable it.</p>,
-}))
-
 import type { CustomDomainInstruction } from '@/lib/server/control-plane/client'
 
 const { DomainsCard, QuackbackUrlCard } = await import('@/components/admin/settings/domains-cards')
@@ -21,30 +17,10 @@ const PENDING: CustomDomainInstruction = {
 }
 
 describe('domains card', () => {
-  it('locks add on a plan without the entitlement', () => {
-    render(
-      <DomainsCard
-        entitled={false}
-        domains={[]}
-        hostname=""
-        pending={false}
-        error={null}
-        onHostnameChange={vi.fn()}
-        onAdd={vi.fn()}
-        onRefresh={vi.fn()}
-        onMakePrimary={vi.fn()}
-        onRemove={vi.fn()}
-      />
-    )
-    expect(screen.getByText(/Custom domains are a Pro feature/)).toBeInTheDocument()
-    expect(screen.queryByLabelText('Hostname')).not.toBeInTheDocument()
-  })
-
   it('shows DNS instructions and does not print a provider id', () => {
     const refresh = vi.fn()
     render(
       <DomainsCard
-        entitled
         domains={[PENDING]}
         hostname=""
         pending={false}
@@ -71,7 +47,6 @@ describe('domains card badges', () => {
   const renderWith = (domains: CustomDomainInstruction[]) =>
     render(
       <DomainsCard
-        entitled
         domains={domains}
         hostname=""
         pending={false}

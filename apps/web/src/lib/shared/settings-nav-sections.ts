@@ -202,16 +202,8 @@ export function isNavModule(entry: NavEntry): entry is NavModule {
  * AI & Automation, Workspace, Data). Flags hide ITEMS (or whole product
  * modules), never sections, so the sidebar layout does not reflow when a
  * flag flips. A section a viewer holds no permission for is left out.
- *
- * @param billingEnabled Whether this workspace has a valid billing projection
- *   configured. Not a feature flag: a flag answers "has the admin turned it
- *   on", and this answers "does this deployment sell anything". False on
- *   every self-hosted install, which is why the Billing row is absent there.
  */
-export function buildNavSections(
-  flags?: Partial<FeatureFlags>,
-  billingEnabled = false
-): NavSection[] {
+export function buildNavSections(flags?: Partial<FeatureFlags>): NavSection[] {
   const products: NavEntry[] = buildSettingsModuleRows(flags).map((module): NavEntry => {
     const [only, ...rest] = module.pages
     if (only && rest.length === 0) {
@@ -275,14 +267,6 @@ export function buildNavSections(
           ...navPage('/admin/settings/integrations'),
           permission: PERMISSIONS.INTEGRATION_VIEW,
         },
-        ...(billingEnabled
-          ? [
-              {
-                ...navPage('/admin/settings/billing'),
-                permission: PERMISSIONS.BILLING_MANAGE,
-              },
-            ]
-          : []),
       ],
     },
     {

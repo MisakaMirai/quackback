@@ -43,23 +43,14 @@ export const Route = createFileRoute('/admin/settings/developers')({
   loader: async ({ context }) => {
     assertRoutePermission(context.permissions, PERMISSIONS.API_KEY_MANAGE)
 
-    const { queryClient } = context
     // All three tabs are preloaded so switching tabs never round-trips
     // for data: every payload is small and admin-only.
-    const { listEntitlementsFn } = await import('@/lib/server/functions/entitlement-status')
-    const { ensureBillingCatalogue } = await import('@/lib/client/queries/billing')
-    const ensure = readBatch(queryClient)
-    const [, entitlements] = await Promise.all([
-      Promise.all([
-        ensure(adminQueries.apiKeys()),
-        ensure(adminQueries.webhooks()),
-        ensure(settingsQueries.developerConfig()),
-      ]),
-      listEntitlementsFn(),
-      ensureBillingCatalogue(queryClient, context.billingEnabled),
+    const ensure = readBatch(context.queryClient)
+    await Promise.all([
+      ensure(adminQueries.apiKeys()),
+      ensure(adminQueries.webhooks()),
+      ensure(settingsQueries.developerConfig()),
     ])
-
-    return { webhooksEntitled: entitlements.webhooks, mcpEntitled: entitlements.mcpServer }
   },
   component: ApiPage,
 })
@@ -76,7 +67,6 @@ function ApiPage() {
   const developerConfigQuery = useSuspenseQuery(settingsQueries.developerConfig())
 
   const baseUrl = useBaseUrl()
-  const { webhooksEntitled, mcpEntitled } = Route.useLoaderData()
   const apiBaseUrl = baseUrl ? `${baseUrl}/api/v1` : '/api/v1'
   const mcpEndpointUrl = baseUrl ? `${baseUrl}/api/mcp` : '/api/mcp'
 
@@ -115,7 +105,7 @@ function ApiPage() {
         </TabsContent>
 
         <TabsContent value="webhooks" className="space-y-6">
-          <WebhooksSettings webhooks={webhooksQuery.data} entitled={webhooksEntitled} />
+          <WebhooksSettings webhooks={webhooksQuery.data} />
           <Suspense fallback={null}>
             <WebhookVerificationGuide />
           </Suspense>
@@ -124,7 +114,6 @@ function ApiPage() {
         <TabsContent value="mcp" className="space-y-6">
           <SettingsCard>
             <McpServerSettings
-              entitled={mcpEntitled}
               initialEnabled={developerConfigQuery.data.mcpEnabled}
               initialDynamicRegistrationEnabled={
                 developerConfigQuery.data.oauthDynamicClientRegistrationEnabled

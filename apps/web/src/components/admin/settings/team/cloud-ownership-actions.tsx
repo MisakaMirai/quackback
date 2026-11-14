@@ -9,7 +9,7 @@ import {
   transferWorkspaceOwnershipFn,
 } from '@/lib/server/functions/ownership'
 import { cloudMembershipActions } from './workspace-ownership'
-import { useBillingEnabled } from '@/lib/client/hooks/use-root-context'
+import { useCloudEnabled } from '@/lib/client/hooks/use-root-context'
 import { errorText } from '@/lib/client/error-text'
 
 export function CloudOwnershipActions({
@@ -19,11 +19,11 @@ export function CloudOwnershipActions({
   memberEmails: string[]
   sessionEmail: string | null
 }) {
-  const billingEnabled = useBillingEnabled()
+  const cloudEnabled = useCloudEnabled()
   const ownerQuery = useQuery({
     queryKey: ['admin', 'cloud-owner'],
     queryFn: () => getCloudOwnerEmailFn(),
-    enabled: Boolean(billingEnabled),
+    enabled: cloudEnabled,
   })
   const [toEmail, setToEmail] = useState('')
   const [transferOpen, setTransferOpen] = useState(false)
@@ -32,7 +32,6 @@ export function CloudOwnershipActions({
   const [busy, setBusy] = useState(false)
 
   const actions = cloudMembershipActions({
-    billingEnabled: Boolean(billingEnabled),
     ownerEmail: ownerQuery.data ?? null,
     currentEmail: sessionEmail,
   })

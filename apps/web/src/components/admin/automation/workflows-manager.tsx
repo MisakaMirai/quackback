@@ -63,8 +63,6 @@ import {
 } from './workflow-graph'
 import { WorkflowTemplateGallery } from './workflow-template-gallery'
 import type { WorkflowTemplate } from './workflow-templates'
-import { UpgradeModal } from '@/components/admin/upgrade'
-import { isPlanRefusal } from '@/lib/shared/describe-upgrade'
 import { WorkflowRunsSheet } from './workflow-runs-sheet'
 import { cn } from '@/lib/shared/utils'
 import { SettingsPage } from '@/components/admin/settings/settings-page'
@@ -223,11 +221,9 @@ export function workflowStepSummary(graph: unknown): string {
 }
 
 export function WorkflowsManager({
-  entitled = true,
   children,
   after,
 }: {
-  entitled?: boolean
   /** A note shown above the list. */
   children?: ReactNode
   /** Page content shown below the list. */
@@ -250,17 +246,10 @@ export function WorkflowsManager({
   const [statusFilter, setStatusFilter] = useState<StatusValue | null>(null)
   const [typeFilter, setTypeFilter] = useState<(typeof CLASSES)[number]['value'] | null>(null)
   const [galleryOpen, setGalleryOpen] = useState(false)
-  const [upgradeOpen, setUpgradeOpen] = useState(false)
   const [deleting, setDeleting] = useState<WorkflowDTO | null>(null)
   const [runsWorkflow, setRunsWorkflow] = useState<WorkflowDTO | null>(null)
 
-  const refuseOr = (run: () => void) => {
-    if (!entitled) {
-      setUpgradeOpen(true)
-      return
-    }
-    run()
-  }
+  const refuseOr = (run: () => void) => run()
 
   const metricsByWorkflow: EffectivenessMap = useMemo(() => {
     const map: EffectivenessMap = new Map()
@@ -314,9 +303,8 @@ export function WorkflowsManager({
         },
         {
           onSuccess: (wf) => goToBuilder(wf.id),
-          onError: (error) => {
-            if (isPlanRefusal(error)) setUpgradeOpen(true)
-            else toast.error('Could not create the workflow')
+          onError: () => {
+            toast.error('Could not create the workflow')
           },
         }
       )
@@ -328,9 +316,8 @@ export function WorkflowsManager({
     refuseOr(() => {
       create.mutate(template.payload, {
         onSuccess: (wf) => goToBuilder(wf.id),
-        onError: (error) => {
-          if (isPlanRefusal(error)) setUpgradeOpen(true)
-          else toast.error('Could not create the workflow from this template')
+        onError: () => {
+          toast.error('Could not create the workflow from this template')
         },
       })
     })
@@ -563,8 +550,6 @@ export function WorkflowsManager({
         onOpenChange={setGalleryOpen}
         onSelect={createFromTemplate}
       />
-      <UpgradeModal open={upgradeOpen} onOpenChange={setUpgradeOpen} entitlement="workflows" />
-
       {deleting && (
         <ConfirmDialog
           open

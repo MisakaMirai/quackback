@@ -17,7 +17,6 @@ afterEach(cleanup)
 function renderCard(domains: (CustomDomainInstruction & { provenBy?: ShownProofSource | null })[]) {
   return render(
     <DomainsCard
-      entitled
       domains={domains}
       hostname=""
       pending={false}

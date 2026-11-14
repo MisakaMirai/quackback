@@ -7,7 +7,6 @@ import {
   type KeyboardEvent,
   type ReactNode,
 } from 'react'
-import { Link } from '@tanstack/react-router'
 import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query'
 import { formatDistanceToNow } from 'date-fns'
 import { toast } from 'sonner'
@@ -397,35 +396,24 @@ function SeatMeter({
       </div>
       {over ? (
         <p role="alert" className="text-[13px] leading-snug text-warning">
-          {seatOverMessage(adding, check)} <BillingLink />.
+          {seatOverMessage(adding, check)} ask a workspace owner to add seats.
         </p>
       ) : serverRefused ? (
         <p role="alert" className="text-[13px] leading-snug text-warning">
           {serverRefused.needed != null && serverRefused.free != null ? (
             <>
-              {seatRefusalMessage(serverRefused.needed, serverRefused.free)} <BillingLink />.
+              {seatRefusalMessage(serverRefused.needed, serverRefused.free)} ask a workspace owner
+              to add seats.
             </>
           ) : (
             <>
-              The plan has no seats left for {peopleCount(adding)}. Remove someone, or{' '}
-              <BillingLink />.
+              The plan has no seats left for {peopleCount(adding)}. Remove someone, or ask a
+              workspace owner to add seats.
             </>
           )}
         </p>
       ) : null}
     </div>
-  )
-}
-
-function BillingLink() {
-  return (
-    <Link
-      to="/admin/settings/billing"
-      search={{ checkout: undefined, billing_error: undefined }}
-      className="underline underline-offset-2"
-    >
-      add seats in Plan &amp; billing
-    </Link>
   )
 }
 

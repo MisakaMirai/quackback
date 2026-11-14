@@ -67,19 +67,6 @@ export interface BootstrapData {
    *  banner renders in its final expanded/collapsed state on first paint. */
   updateBannerDismissedVersion: string | null
   /**
-   * Whether this workspace has a valid control-plane billing projection.
-   *
-   * A single boolean, and deliberately nothing more: the admin settings nav
-   * needs to know whether a Billing item exists, and nothing else on the
-   * client is entitled to a billing fact. No customer reference, no
-   * subscription reference, no plan, no price — every one of those stays
-   * server-side, and `settings.cloud` remains in `SERVER_ONLY_SETTINGS_KEYS`.
-   *
-   * False on every self-hosted install. Provider configuration is never read
-   * by the workspace application.
-   */
-  billingEnabled: boolean
-  /**
    * Whether this workspace has a signed cloud identity projection.
    * Gates the Settings Domains row. False on every self-hosted install.
    */
@@ -309,7 +296,6 @@ const getBootstrapDataInternal = createServerOnlyFn(async (): Promise<BootstrapD
     registeredAuthProviders,
     acceptLanguageLocale,
     updateBannerDismissedVersion,
-    billingEnabled: cloud.enabled && (cloud.canUpgrade || cloud.canManageBilling),
     cloudEnabled: cloud.enabled,
     githubStarPrompt: starPromptAllowedHere(cloud.enabled),
     productAnalytics: config.productAnalytics

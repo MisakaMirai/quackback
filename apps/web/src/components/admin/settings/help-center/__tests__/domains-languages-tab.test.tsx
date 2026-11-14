@@ -10,7 +10,7 @@ const { mockBillingEnabled } = vi.hoisted(() => ({
 
 vi.mock('@tanstack/react-router', () => ({
   useRouteContext: (opts?: { select?: (context: never) => unknown }) => {
-    const context = { billingEnabled: mockBillingEnabled.current }
+    const context = { cloudEnabled: mockBillingEnabled.current }
     return opts?.select ? opts.select(context as never) : context
   },
 }))

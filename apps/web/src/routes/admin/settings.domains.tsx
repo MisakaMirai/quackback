@@ -2,14 +2,13 @@ import { useState } from 'react'
 import { PERMISSIONS, type PermissionKey } from '@/lib/shared/permissions'
 import { assertRouteAnyPermission } from '@/lib/shared/route-permission'
 import { DOMAINS_PAGE_PERMISSIONS } from '@/lib/shared/domains-permissions'
-import { useMutation, type QueryClient } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
 import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { toast } from 'sonner'
 import { SettingsPage } from '@/components/admin/settings/settings-page'
 import {
   getCloudCustomDomainsFn,
   getCloudIdentityFn,
-  hasCustomDomainEntitlementFn,
   mutateCloudCustomDomainFn,
   platformLabelFromHostname,
   updateCloudIdentityFn,
@@ -43,7 +42,7 @@ export const Route = createFileRoute('/admin/settings/domains')({
     const webAddresses = can(PERMISSIONS.SETTINGS_CUSTOM_DOMAIN)
 
     const [operator, sending, signIn, helpCenterDomain] = await Promise.all([
-      cloudEnabled && webAddresses ? loadOperatorHostnames(context) : null,
+      cloudEnabled && webAddresses ? loadOperatorHostnames() : null,
       can(PERMISSIONS.CHANNEL_ACCOUNT_MANAGE)
         ? getSendingDomainSummariesFn().catch(() => [] as SendingDomainSummary[])
         : ([] as SendingDomainSummary[]),
@@ -65,18 +64,12 @@ export const Route = createFileRoute('/admin/settings/domains')({
   component: DomainsSettingsPage,
 })
 
-async function loadOperatorHostnames(context: {
-  queryClient: QueryClient
-  billingEnabled: boolean | undefined
-}) {
-  const { ensureBillingCatalogue } = await import('@/lib/client/queries/billing')
-  const [entitled, domains, cloudIdentity] = await Promise.all([
-    hasCustomDomainEntitlementFn(),
+async function loadOperatorHostnames() {
+  const [domains, cloudIdentity] = await Promise.all([
     getCloudCustomDomainsFn().catch(() => [] as WebAddress[]),
     getCloudIdentityFn().catch(() => null),
-    ensureBillingCatalogue(context.queryClient, context.billingEnabled),
   ])
-  return { entitled, domains, cloudIdentity }
+  return { domains, cloudIdentity }
 }
 
 function DomainsSettingsPage() {
@@ -98,7 +91,6 @@ function DomainsSettingsPage() {
 
 /** Hostnames an operator routes to this workspace, set up on this page. */
 function OperatorHostnames({
-  entitled,
   domains: initialDomains,
   cloudIdentity: initialCloudIdentity,
 }: Awaited<ReturnType<typeof loadOperatorHostnames>>) {
@@ -165,7 +157,6 @@ function OperatorHostnames({
   return (
     <>
       <DomainsCard
-        entitled={entitled}
         domains={domains}
         hostname={hostname}
         pending={mutation.isPending}

@@ -107,7 +107,6 @@ function renderSidebar(
     permissions?: string[]
     cloudEnabled?: boolean
     githubStarPrompt?: boolean
-    planNotice?: import('@/lib/server/domains/settings/tier-limits.types').PlanNotice
     locale?: string
     messages?: Record<string, string>
   } = {}
@@ -116,20 +115,19 @@ function renderSidebar(
   mockGetRouteContext.mockReturnValue({
     permissions: opts.permissions ?? (userRole === 'admin' ? ALL_PERMISSIONS : []),
     session: { user: { id: 'user_1', name: 'Test', email: 'test@example.com', image: null } },
-    cloudEnabled: opts.cloudEnabled ?? false,
+    cloudEnabled: opts.cloudEnabled ?? mockBillingEnabled.current,
     githubStarPrompt: opts.githubStarPrompt ?? false,
     settings: {
       featureFlags: opts.flags ?? {},
       brandingData: opts.name ? { name: opts.name } : undefined,
     },
     userRole,
-    billingEnabled: mockBillingEnabled.current,
   })
   return render(
     <IntlProvider locale={opts.locale ?? 'en'} messages={opts.messages ?? {}}>
       <TooltipProvider>
         <SearchPaletteContext.Provider value={searchContext}>
-          <AdminSidebar planNotice={opts.planNotice ?? null} />
+          <AdminSidebar />
         </SearchPaletteContext.Provider>
       </TooltipProvider>
     </IntlProvider>
@@ -291,7 +289,6 @@ describe('AdminSidebar: labeled rail', () => {
         settings: { featureFlags: {}, visualTheme: stored },
         visualTheme: stored,
         userRole: 'admin',
-        billingEnabled: false,
       })
       const { container } = render(
         <IntlProvider locale="en" messages={{}}>
@@ -392,21 +389,6 @@ describe('AdminSidebar rail', () => {
   })
 })
 
-it('shows a running trial quietly in the footer, and nothing there without a notice', () => {
-  renderSidebar('admin', {
-    planNotice: {
-      label: 'Pro trial',
-      expiresAt: new Date(Date.now() + 14 * 86_400_000 - 60_000).toISOString(),
-      actionUrl: '/admin/settings/billing',
-    },
-  })
-  expect(screen.getByRole('link', { name: 'Pro trial · 14 days' })).toBeTruthy()
-  cleanup()
-  renderSidebar('admin')
-  expect(screen.queryByText(/Pro trial/)).toBeNull()
-  cleanup()
-})
-
 it('opens the shared palette from the sidebar search button, the one tour stop', () => {
   const { container } = renderSidebar('admin')
   fireEvent.click(screen.getAllByRole('button', { name: 'Search' })[0]!)
@@ -487,19 +469,12 @@ describe('AdminSidebar: help and the phone menu', () => {
     mockLaunchStatus.current = undefined
   })
 
-  it('carries the launch plan and the trial in the phone menu, and names Changelog once', () => {
+  it('carries the launch plan in the phone menu, and names Changelog once', () => {
     localStorage.setItem(
       'quackback:launch-plan-dock:user_1',
       JSON.stringify({ step: 2, total: 3, resolved: false })
     )
-    renderSidebar('admin', {
-      flags: { feedback: true, changelog: true },
-      planNotice: {
-        label: 'Pro trial',
-        expiresAt: new Date(Date.now() + 10 * 86_400_000).toISOString(),
-        actionUrl: '/admin/settings/billing',
-      },
-    })
+    renderSidebar('admin', { flags: { feedback: true, changelog: true } })
     fireEvent.click(screen.getByRole('button', { name: 'Open menu' }))
     const menu = screen.getByRole('dialog')
     expect(within(menu).getByRole('link', { name: /Step 2 of 3/ })).toHaveAttribute(
@@ -510,7 +485,6 @@ describe('AdminSidebar: help and the phone menu', () => {
       'href',
       '/admin/getting-started'
     )
-    expect(within(menu).getByText(/Pro trial/)).toBeTruthy()
     expect(within(menu).getAllByText('Changelog')).toHaveLength(1)
   })
 })

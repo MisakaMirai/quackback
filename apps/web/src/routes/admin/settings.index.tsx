@@ -5,11 +5,7 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { SettingsNav } from '@/components/admin/settings/settings-nav'
 import { SettingsPage } from '@/components/admin/settings/settings-page'
 import { useMediaQuery } from '@/lib/client/hooks/use-media-query'
-import {
-  useBillingEnabled,
-  useFeatureFlags,
-  usePermissions,
-} from '@/lib/client/hooks/use-root-context'
+import { useFeatureFlags, usePermissions } from '@/lib/client/hooks/use-root-context'
 import {
   buildNavSections,
   firstSettingsPath,
@@ -23,17 +19,16 @@ function SettingsIndexPage() {
   const navigate = useNavigate()
   const isDesktop = useMediaQuery('(min-width: 1024px)')
   const flags = useFeatureFlags()
-  const billingEnabled = useBillingEnabled()
   const permissions = usePermissions()
 
   // On desktop the sidebar handles navigation, so open the first page this
   // viewer may open (General for anyone who holds settings.manage).
   useEffect(() => {
     if (isDesktop) {
-      const to = firstSettingsPath(buildNavSections(flags, billingEnabled), permissions)
+      const to = firstSettingsPath(buildNavSections(flags), permissions)
       navigate({ to, replace: true })
     }
-  }, [isDesktop, navigate, flags, billingEnabled, permissions])
+  }, [isDesktop, navigate, flags, permissions])
 
   return (
     <div className="lg:hidden">

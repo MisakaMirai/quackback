@@ -45,7 +45,6 @@ export const SETTINGS_PAGES = {
   '/admin/settings/security/authentication': { label: 'Access & Security' },
   '/admin/settings/developers': { label: 'Developers' },
   '/admin/settings/integrations': { label: 'Integrations' },
-  '/admin/settings/billing': { label: 'Plan & billing' },
   // Data
   '/admin/settings/people': { label: 'Users' },
   '/admin/settings/companies': { label: 'Companies' },

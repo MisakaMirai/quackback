@@ -24,8 +24,6 @@ vi.mock('@/lib/server/functions/version', () => ({
   getLatestVersion: async () => null,
   isNewerVersion: () => false,
 }))
-vi.mock('@/lib/server/functions/plan-notice', () => ({ getPlanNotice: async () => null }))
-
 const { Route } = await import('../admin')
 const { adminQueries } = await import('@/lib/client/queries/admin')
 

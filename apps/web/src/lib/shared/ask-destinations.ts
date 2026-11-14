@@ -16,7 +16,6 @@ export interface AskDestination {
 export interface AskDestinationOptions {
   permissions: ReadonlySet<PermissionKey>
   featureFlags?: Partial<FeatureFlags>
-  billingEnabled?: boolean
 }
 
 interface ProductDestination {
@@ -94,14 +93,14 @@ function destination(href: string, label: string): AskDestination {
 
 /** The palette reads the same flat page and module permission gates as Settings. */
 export function buildAskDestinations(options: AskDestinationOptions): AskDestination[] {
-  const { permissions, featureFlags, billingEnabled = false } = options
+  const { permissions, featureFlags } = options
   const result = PRODUCTS.filter(
     (item) =>
       (!item.product || isProductEnabled(featureFlags, item.product)) &&
       (!item.permissions || item.permissions.some((permission) => permissions.has(permission)))
   ).map((item) => destination(item.href, item.label))
 
-  const sections = navSectionsFor(buildNavSections(featureFlags, billingEnabled), permissions)
+  const sections = navSectionsFor(buildNavSections(featureFlags), permissions)
   for (const section of sections) {
     for (const entry of section.items) {
       if (isNavModule(entry)) {
@@ -210,7 +209,6 @@ export const ASK_CATALOGUE_MESSAGES = Object.fromEntries([
       statusPage: true,
       changelog: true,
     },
-    billingEnabled: true,
   }).map((item) => [item.messageId, item.defaultMessage]),
   ...Object.values(STARTERS).map((item) => [item.id, item.defaultMessage]),
 ]) as Record<string, string>

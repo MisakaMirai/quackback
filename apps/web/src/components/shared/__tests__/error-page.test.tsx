@@ -6,12 +6,7 @@ import pl from '@/locales/pl.json'
 import { withoutPageScopedMessages } from '@/lib/shared/i18n'
 import { DocumentLocaleContext } from '../document-locale-context'
 
-import {
-  DefaultErrorPage,
-  NotFoundPage,
-  isAuthorizationError,
-  isEntitlementError,
-} from '../error-page'
+import { DefaultErrorPage, NotFoundPage, isAuthorizationError } from '../error-page'
 
 describe('isAuthorizationError', () => {
   it('flags the role-gate failures thrown by requireAuth', () => {
@@ -35,28 +30,6 @@ describe('isAuthorizationError', () => {
     expect(isAuthorizationError({ message: 'boom' })).toBe(false)
     expect(isAuthorizationError(null)).toBe(false)
     expect(isAuthorizationError(undefined)).toBe(false)
-  })
-})
-
-describe('isEntitlementError', () => {
-  it('flags a named plan refusal', () => {
-    expect(
-      isEntitlementError(
-        new Error(
-          'The audit log is an Enterprise feature. Your workspace is on Business. Upgrade to Enterprise to enable it.'
-        )
-      )
-    ).toBe(true)
-    expect(
-      isEntitlementError(
-        new Error('Workflows are not included in your plan. Contact us to enable it.')
-      )
-    ).toBe(true)
-  })
-
-  it('ignores unrelated runtime errors', () => {
-    expect(isEntitlementError(new Error('boom'))).toBe(false)
-    expect(isEntitlementError(new Error('Access denied: Requires [admin], got member'))).toBe(false)
   })
 })
 

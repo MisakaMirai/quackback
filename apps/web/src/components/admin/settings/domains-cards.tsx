@@ -2,7 +2,6 @@ import { ArrowPathIcon } from '@heroicons/react/24/solid'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { SettingsCard } from '@/components/admin/settings/settings-card'
-import { UpgradeNotice } from '@/components/admin/upgrade'
 import { Button } from '@/components/ui/button'
 import { StateBadge } from '@/components/shared/state-badge'
 import {
@@ -132,7 +131,6 @@ function ReadinessBadge({ readiness }: { readiness: CustomDomainInstruction['rea
 }
 
 export function DomainsCard(props: {
-  entitled: boolean
   domains: HostnameRow[]
   hostname: string
   pending: boolean
@@ -148,35 +146,31 @@ export function DomainsCard(props: {
       title={WEB_ADDRESSES_TITLE}
       description="Where people reach your portal and help center."
     >
-      {!props.entitled ? (
-        <UpgradeNotice entitlement="customDomain" />
-      ) : (
-        <form
-          className="max-w-xl space-y-3"
-          onSubmit={(event) => {
-            event.preventDefault()
-            props.onAdd()
-          }}
-        >
-          <div className="space-y-1.5">
-            <Label htmlFor="custom-hostname" className="text-xs text-muted-foreground">
-              Domain
-            </Label>
-            <Input
-              id="custom-hostname"
-              value={props.hostname}
-              onChange={(event) => props.onHostnameChange(event.target.value)}
-              placeholder="feedback.example.com"
-              autoCapitalize="none"
-              autoCorrect="off"
-              disabled={props.pending}
-            />
-          </div>
-          <Button type="submit" size="sm" disabled={props.pending || !props.hostname.trim()}>
-            Add domain
-          </Button>
-        </form>
-      )}
+      <form
+        className="max-w-xl space-y-3"
+        onSubmit={(event) => {
+          event.preventDefault()
+          props.onAdd()
+        }}
+      >
+        <div className="space-y-1.5">
+          <Label htmlFor="custom-hostname" className="text-xs text-muted-foreground">
+            Domain
+          </Label>
+          <Input
+            id="custom-hostname"
+            value={props.hostname}
+            onChange={(event) => props.onHostnameChange(event.target.value)}
+            placeholder="feedback.example.com"
+            autoCapitalize="none"
+            autoCorrect="off"
+            disabled={props.pending}
+          />
+        </div>
+        <Button type="submit" size="sm" disabled={props.pending || !props.hostname.trim()}>
+          Add domain
+        </Button>
+      </form>
 
       {props.error && (
         <p role="alert" className="mt-4 text-sm text-destructive">

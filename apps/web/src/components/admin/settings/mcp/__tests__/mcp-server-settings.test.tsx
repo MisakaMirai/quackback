@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 
 const save = vi.fn()
@@ -12,43 +12,24 @@ vi.mock('@/lib/server/functions/settings', () => ({
   updateDeveloperConfigFn: (arg: unknown) => save(arg),
 }))
 
-vi.mock('@/components/admin/upgrade', () => ({
-  UpgradeModal: ({ open }: { open: boolean }) =>
-    open ? <p>The MCP server is a Pro feature. Upgrade to Pro to enable it.</p> : null,
-}))
-
 const { McpServerSettings } = await import('../mcp-server-settings')
 
-describe('McpServerSettings enable lock', () => {
-  it('opens the upgrade modal and does not save when enable is locked', () => {
-    render(
-      <McpServerSettings
-        entitled={false}
-        initialEnabled={false}
-        initialDynamicRegistrationEnabled
-      />
-    )
-    fireEvent.click(screen.getByLabelText('MCP server'))
-    expect(screen.getByText(/The MCP server is a Pro feature/)).toBeTruthy()
-    expect(save).not.toHaveBeenCalled()
-    expect(screen.getByLabelText('MCP server')).toHaveAttribute('aria-checked', 'false')
-  })
+describe('McpServerSettings', () => {
+  beforeEach(() => save.mockClear())
 
-  it('saves when the plan includes MCP', async () => {
-    render(<McpServerSettings entitled initialEnabled={false} initialDynamicRegistrationEnabled />)
+  it('turns the server on and saves', async () => {
+    render(<McpServerSettings initialEnabled={false} initialDynamicRegistrationEnabled />)
     fireEvent.click(screen.getByLabelText('MCP server'))
     await waitFor(() => {
       expect(save).toHaveBeenCalledWith({ data: { mcpEnabled: true } })
     })
-    expect(screen.queryByText(/The MCP server is a Pro feature/)).toBeNull()
   })
 
-  it('still allows turning MCP off when locked', async () => {
-    render(<McpServerSettings entitled={false} initialEnabled initialDynamicRegistrationEnabled />)
+  it('turns the server off and saves', async () => {
+    render(<McpServerSettings initialEnabled initialDynamicRegistrationEnabled />)
     fireEvent.click(screen.getByLabelText('MCP server'))
     await waitFor(() => {
       expect(save).toHaveBeenCalledWith({ data: { mcpEnabled: false } })
     })
-    expect(screen.queryByText(/The MCP server is a Pro feature/)).toBeNull()
   })
 })

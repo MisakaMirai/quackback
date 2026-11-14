@@ -1,38 +1,28 @@
 import { describe, expect, it } from 'vitest'
 import { cloudMembershipActions } from '../workspace-ownership'
 
-describe('cloudMembershipActions', () => {
-  it('hides transfer and leave when cloud is off', () => {
+describe('cloud membership actions', () => {
+  it('shows nothing when no owner address is known', () => {
     expect(
       cloudMembershipActions({
-        billingEnabled: false,
-        ownerEmail: 'owner@example.com',
+        ownerEmail: null,
         currentEmail: 'owner@example.com',
-      })
-    ).toEqual({ showTransfer: false, showLeave: false, isOwner: false })
-    expect(
-      cloudMembershipActions({
-        billingEnabled: false,
-        ownerEmail: 'owner@example.com',
-        currentEmail: 'mate@example.com',
       })
     ).toEqual({ showTransfer: false, showLeave: false, isOwner: false })
   })
 
-  it('lets the owner transfer and refuses leave', () => {
+  it('lets the owner transfer the workspace, and never leave it', () => {
     expect(
       cloudMembershipActions({
-        billingEnabled: true,
         ownerEmail: 'Owner@Example.com',
         currentEmail: 'owner@example.com',
       })
     ).toEqual({ showTransfer: true, showLeave: false, isOwner: true })
   })
 
-  it('lets a non-owner leave and hides transfer', () => {
+  it('lets a teammate leave, and never transfer', () => {
     expect(
       cloudMembershipActions({
-        billingEnabled: true,
         ownerEmail: 'owner@example.com',
         currentEmail: 'mate@example.com',
       })

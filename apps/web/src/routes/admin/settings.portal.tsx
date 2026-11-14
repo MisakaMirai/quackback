@@ -51,13 +51,6 @@ import { primaryPresetIds, themePresets } from '@/lib/shared/theme/presets'
 import { useUpdatePortalConfig } from '@/lib/client/mutations/settings'
 import { useImageUpload } from '@/lib/client/hooks/use-image-upload'
 import { useStableCallback } from '@/lib/client/hooks/use-stable-callback'
-import { UpgradeModal } from '@/components/admin/upgrade'
-import {
-  describePlanRefusal,
-  describePlanUpgrade,
-  isPlanRefusal,
-  type UpgradeDescription,
-} from '@/lib/shared/describe-upgrade'
 import { DEFAULT_PORTAL_CONFIG, isProductEnabled } from '@/lib/shared/types/settings'
 import { isStatusPagePublished } from '@/lib/shared/status-settings'
 import { isPortalSupportSurfaceEnabled } from '@/lib/shared/support-surfaces'
@@ -79,14 +72,12 @@ export const Route = createFileRoute('/admin/settings/portal')({
     // shell full of 403s.
     assertRoutePermission(context.permissions, PERMISSIONS.SETTINGS_BRANDING)
 
-    const { ensureBillingCatalogue } = await import('@/lib/client/queries/billing')
     const ensure = readBatch(context.queryClient)
     await Promise.all([
       ensure(settingsQueries.branding()),
       ensure(settingsQueries.logo()),
       ensure(settingsQueries.customCss()),
       ensure(settingsQueries.portalConfig()),
-      ensureBillingCatalogue(context.queryClient, context.billingEnabled),
     ])
   },
   component: PortalPage,
@@ -106,10 +97,7 @@ function PortalPage() {
   const portalConfigQuery = useSuspenseQuery(settingsQueries.portalConfig())
   const config = portalConfigQuery.data as PortalConfig
 
-  const updatePortalConfig = useUpdatePortalConfig({
-    showServerMessage: true,
-    ownsError: isPlanRefusal,
-  })
+  const updatePortalConfig = useUpdatePortalConfig({ showServerMessage: true })
 
   // ============================================
   // Draft state. Everything below commits through the contextual save bar;
@@ -143,7 +131,6 @@ function PortalPage() {
   const navBaseline = useRef(JSON.stringify(navItems))
 
   const [saving, setSaving] = useState(false)
-  const [upgrade, setUpgrade] = useState<UpgradeDescription | null>(null)
 
   const themeDirty =
     state.cssText !== themeBaseline.current.css || state.themeMode !== themeBaseline.current.mode
@@ -189,17 +176,8 @@ function PortalPage() {
       }
 
       startTransition(() => router.invalidate())
-    } catch (error) {
-      // A plan refusal opens the upgrade dialog; any other failure raises the
-      // shared "Couldn't save" toast from the autosave mutations.
-      if (isPlanRefusal(error)) {
-        setUpgrade(
-          describePlanRefusal(
-            error,
-            describePlanUpgrade('Custom colours', 'business', { plural: true })
-          )
-        )
-      }
+    } catch {
+      // The save mutation raises the shared "Couldn't save" toast.
     } finally {
       setSaving(false)
     }
@@ -342,13 +320,6 @@ function PortalPage() {
       </div>
 
       <DraftBar dirty={isDirty} saving={saving} onSave={handleSave} onDiscard={handleDiscard} />
-      <UpgradeModal
-        open={upgrade !== null}
-        onOpenChange={(open) => {
-          if (!open) setUpgrade(null)
-        }}
-        description={upgrade ?? describePlanUpgrade('Custom colours', 'business', { plural: true })}
-      />
     </SettingsPage>
   )
 }

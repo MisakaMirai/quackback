@@ -47,7 +47,6 @@ export interface RouterContext {
   registeredAuthProviders?: string[]
   acceptLanguageLocale?: SupportedLocale
   updateBannerDismissedVersion?: BootstrapData['updateBannerDismissedVersion']
-  billingEnabled?: boolean
   cloudEnabled?: boolean
   githubStarPrompt?: boolean
   productAnalytics?: BootstrapData['productAnalytics']
