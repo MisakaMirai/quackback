@@ -55,14 +55,7 @@ export async function ensureAssistantPrincipal(exec: Executor = db): Promise<Pri
   const existing = await getAssistantPrincipal(exec)
   if (existing) return existing
 
-  let identity = { name: ASSISTANT_DEFAULT_NAME, avatarUrl: null as string | null }
-  try {
-    const { getAssistantConfig } = await import('@/lib/server/domains/settings/settings.assistant')
-    const current = await getAssistantConfig()
-    identity = current.config.identity
-  } catch {
-    // Provisioning must still work before workspace settings are available.
-  }
+  const identity = { name: ASSISTANT_DEFAULT_NAME, avatarUrl: null as string | null }
 
   const created = await createServicePrincipal(
     {

@@ -39,16 +39,6 @@ export const RELATED_ARTICLE_SIMILARITY_FLOOR = 0.3
 /** Default size of the Related Articles block on the public article page. */
 export const RELATED_ARTICLES_LIMIT = 4
 
-/** pgvector may come back as number[] or a '[1,2,...]' string depending on the driver. */
-function embeddingToVectorLiteral(embedding: unknown): string | null {
-  if (embedding == null) return null
-  if (Array.isArray(embedding)) return `[${embedding.join(',')}]`
-  if (typeof embedding === 'string' && embedding.length > 0) {
-    return embedding.startsWith('[') ? embedding : `[${embedding}]`
-  }
-  return null
-}
-
 export interface RelatedArticle {
   id: string
   urlId: number
@@ -93,7 +83,6 @@ export async function getRelatedArticles(
       id: helpCenterArticles.id,
       title: helpCenterArticles.title,
       categoryId: helpCenterArticles.categoryId,
-      embedding: helpCenterArticles.embedding,
     })
     .from(helpCenterArticles)
     .where(and(eq(helpCenterArticles.id, articleId as never), isNull(helpCenterArticles.deletedAt)))
@@ -104,27 +93,14 @@ export async function getRelatedArticles(
   const visibility = helpCenterVisibilityConditions('public', viewer)
   const notSelf = ne(helpCenterArticles.id, source.id as never)
 
-  let scoreExpr
-  let matchCondition
-  const vectorStr = embeddingToVectorLiteral(source.embedding)
-  if (vectorStr) {
-    scoreExpr = sql<number>`1 - (${helpCenterArticles.embedding} <=> ${vectorStr}::vector)`.as(
-      'related_score'
-    )
-    matchCondition = sql`(
-      ${helpCenterArticles.embedding} IS NOT NULL
-      AND 1 - (${helpCenterArticles.embedding} <=> ${vectorStr}::vector) > ${RELATED_ARTICLE_SIMILARITY_FLOOR}
-    )`
-  } else {
-    const tsQuery = orTermsTsQuery(source.title)
-    scoreExpr = sql<number>`ts_rank(${helpCenterArticles.searchVector}, ${tsQuery})`.as(
-      'related_score'
-    )
-    matchCondition = sql`(
-      ${helpCenterArticles.searchVector} @@ ${tsQuery}
-      AND ts_rank(${helpCenterArticles.searchVector}, ${tsQuery}) > ${KEYWORD_RANK_FLOOR}
-    )`
-  }
+  const tsQuery = orTermsTsQuery(source.title)
+  const scoreExpr = sql<number>`ts_rank(${helpCenterArticles.searchVector}, ${tsQuery})`.as(
+    'related_score'
+  )
+  const matchCondition = sql`(
+    ${helpCenterArticles.searchVector} @@ ${tsQuery}
+    AND ts_rank(${helpCenterArticles.searchVector}, ${tsQuery}) > ${KEYWORD_RANK_FLOOR}
+  )`
 
   const ranked = await db
     .select({ ...relatedArticleColumns, score: scoreExpr })

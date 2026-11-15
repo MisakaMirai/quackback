@@ -147,28 +147,15 @@ describe('Widget Config Types', () => {
   })
 
   describe('publicMessengerConfig', () => {
-    it('projects the assistant identity but strips agent-only fields', () => {
-      const projected = publicMessengerConfig(
-        {
-          enabled: true,
-          assistant: { enabled: true },
-          routing: { enabled: true, strategy: 'auto_assign_active' },
-        },
-        {
-          name: 'Quinn',
-          avatarUrl: null,
-        }
-      )
-      expect(projected.assistant).toEqual({
+    it('strips agent-only fields and the retired assistant deployment', () => {
+      const projected = publicMessengerConfig({
         enabled: true,
-        name: 'Quinn',
-        avatarUrl: null,
+        assistant: { enabled: true },
+        routing: { enabled: true, strategy: 'auto_assign_active' },
       })
+      expect(projected.assistant).toBeUndefined()
       expect('routing' in projected).toBe(false)
     })
-  })
-
-  describe('home config merge semantics', () => {
     it('replaces the ordered cards array wholesale (remove/reorder must persist)', () => {
       // deepMerge is the widget-config write path; arrays must REPLACE, not
       // element-merge, or removing/reordering Home cards silently breaks.

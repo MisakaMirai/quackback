@@ -13,11 +13,6 @@ import { localCacheGet, localCacheSet, settingsLocalTtlMs } from '@/lib/server/l
 import { memoizePerRequest } from '@/lib/server/request-memo'
 import { ValidationError, NotFoundError } from '@/lib/shared/errors'
 import { httpsUrl } from '@/lib/shared/schemas/auth'
-import {
-  assistantConfigSchema,
-  DEFAULT_ASSISTANT_CONFIG,
-  type AssistantCopilotCapabilities,
-} from '@/lib/shared/assistant/config'
 import { assertNotManaged } from '@/lib/server/config-file/managed-guard'
 import { absolutizeOffHostAssetUrl } from '@/lib/server/storage/asset-url'
 import { getPublicUrlOrNull } from '@/lib/server/storage/s3'
@@ -1019,10 +1014,6 @@ async function readWorkspaceSettings(): Promise<WorkspaceSettings | null> {
     const developerConfig = parseJsonConfig(org.developerConfig, DEFAULT_DEVELOPER_CONFIG)
 
     const widgetConfig = parseWidgetConfig(org.widgetConfig)
-    const assistantConfig = assistantConfigSchema.safeParse(org.assistantConfig)
-    const assistantIdentity = assistantConfig.success
-      ? assistantConfig.data.identity
-      : DEFAULT_ASSISTANT_CONFIG.identity
     const helpCenterConfig = parseJsonConfig(org.helpCenterConfig, DEFAULT_HELP_CENTER_CONFIG)
     const statusConfig = resolveStatusSettings(org.metadata)
 
@@ -1081,7 +1072,7 @@ async function readWorkspaceSettings(): Promise<WorkspaceSettings | null> {
           },
         }
       })(),
-      publicWidgetConfig: projectPublicWidgetConfig(widgetConfig, featureFlags, assistantIdentity),
+      publicWidgetConfig: projectPublicWidgetConfig(widgetConfig, featureFlags),
       featureFlags,
       brandingData,
       faviconData: brandingData.faviconUrl ? { url: brandingData.faviconUrl } : null,
@@ -1129,17 +1120,6 @@ export async function isFeatureEnabled(flag: keyof FeatureFlags): Promise<boolea
  * missing/invalid/unreadable config must not silently disable a working
  * default, mirroring how the route already degrades.
  */
-export async function isCopilotCapabilityEnabled(
-  capability: keyof AssistantCopilotCapabilities
-): Promise<boolean> {
-  const workspace = await getWorkspaceSettings()
-  const parsed = assistantConfigSchema.safeParse(workspace?.settings.assistantConfig)
-  const capabilities = parsed.success
-    ? parsed.data.agents.copilot.capabilities
-    : DEFAULT_ASSISTANT_CONFIG.agents.copilot.capabilities
-  return capabilities[capability]
-}
-
 /**
  * Update feature flags (partial update, merges with existing)
  */

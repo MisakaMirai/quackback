@@ -18,7 +18,6 @@ import {
 } from '@/lib/server/domains/principals/bootstrap-admin'
 import { db, settings, principal, user, postStatuses, eq, DEFAULT_STATUSES } from '@/lib/server/db'
 import { invalidateSettingsCache } from '@/lib/server/domains/settings/settings.helpers'
-import { DEFAULT_ASSISTANT_CONFIG } from '@/lib/shared/assistant/config'
 import {
   DEFAULT_AUTH_CONFIG,
   newWorkspaceBaseFlags,
@@ -267,7 +266,6 @@ export async function setupWorkspaceForUser(input: {
             createdAt: new Date(),
             portalConfig: JSON.stringify(DEFAULT_PORTAL_CONFIG),
             widgetConfig: JSON.stringify(DEFAULT_WIDGET_CONFIG),
-            assistantConfig: DEFAULT_ASSISTANT_CONFIG,
             authConfig: JSON.stringify({ ...DEFAULT_AUTH_CONFIG, openSignup: true }),
             setupState: JSON.stringify(initialState),
             featureFlags: JSON.stringify(baseFlags),

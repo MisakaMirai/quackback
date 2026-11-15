@@ -303,7 +303,6 @@ export const adminQueries = {
           updatedAt: new Date(data.updatedAt),
           deletedAt: data.deletedAt ? new Date(data.deletedAt) : null,
           eta: data.eta ? new Date(data.eta) : null,
-          summaryUpdatedAt: data.summaryUpdatedAt ? new Date(data.summaryUpdatedAt) : null,
           comments: data.comments.map(deserializeComment),
           pinnedComment: data.pinnedComment
             ? { ...data.pinnedComment, createdAt: new Date(data.pinnedComment.createdAt) }
@@ -350,9 +349,6 @@ export const adminQueries = {
             createdAt: new Date(data.post.createdAt),
             updatedAt: new Date(data.post.updatedAt),
             deletedAt: data.post.deletedAt ? new Date(data.post.deletedAt) : null,
-            summaryUpdatedAt: data.post.summaryUpdatedAt
-              ? new Date(data.post.summaryUpdatedAt)
-              : null,
             comments: data.post.comments.map(deserializeComment),
             pinnedComment: data.post.pinnedComment
               ? {

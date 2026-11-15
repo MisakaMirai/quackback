@@ -19,7 +19,6 @@ import type {
   conversationMessageMentions,
   conversationMessageReactions,
   conversationMessageFlags,
-  conversationMessageTranslations,
 } from './schema/conversation'
 import type { teams, teamMembers } from './schema/teams'
 import type { tickets, ticketStatuses, ticketConversations, ticketLinks } from './schema/tickets'
@@ -1202,13 +1201,6 @@ export type ConversationMessageReaction = InferSelectModel<typeof conversationMe
 export type NewConversationMessageReaction = InferInsertModel<typeof conversationMessageReactions>
 export type ConversationMessageFlag = InferSelectModel<typeof conversationMessageFlags>
 export type NewConversationMessageFlag = InferInsertModel<typeof conversationMessageFlags>
-export type ConversationMessageTranslation = InferSelectModel<
-  typeof conversationMessageTranslations
->
-export type NewConversationMessageTranslation = InferInsertModel<
-  typeof conversationMessageTranslations
->
-
 // Teams (§4.12) row types
 export type Team = InferSelectModel<typeof teams>
 export type NewTeam = InferInsertModel<typeof teams>

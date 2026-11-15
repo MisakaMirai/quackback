@@ -301,7 +301,6 @@ export {
   conversations,
   conversationsRelations,
   conversationMessages,
-  workspaceAssistantThreads,
   conversationMessagesRelations,
   conversationTags,
   conversationTagsRelations,
@@ -314,8 +313,6 @@ export {
   conversationMessageReactionsRelations,
   conversationMessageFlags,
   conversationMessageFlagsRelations,
-  conversationMessageTranslations,
-  conversationMessageTranslationsRelations,
   // Schema tables - past-conversation summaries (Quinn grounding, P2-A.4)
   conversationSummaries,
   conversationSummariesRelations,

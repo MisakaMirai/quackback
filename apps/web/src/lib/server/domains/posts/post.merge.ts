@@ -303,7 +303,6 @@ export async function unmergePost(
         canonicalPostId: null,
         mergedAt: null,
         mergedByPrincipalId: null,
-        mergeCheckedAt: null,
       })
       .where(eq(posts.id, postId))
 

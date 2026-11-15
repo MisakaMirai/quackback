@@ -2106,7 +2106,6 @@ export async function appendAssistantReply(
         senderType: 'agent',
         content,
         contentJson: opts.contentJson ?? null,
-        citations: opts.citations?.length ? opts.citations : null,
         metadata: opts.metadata ?? null,
       })
       .returning()

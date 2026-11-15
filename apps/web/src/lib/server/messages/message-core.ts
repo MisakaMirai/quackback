@@ -150,7 +150,7 @@ export function toMessageDTO(
     editedAt: message.editedAt ? message.editedAt.toISOString() : null,
     author,
     attachments,
-    citations: message.citations ?? [],
+    citations: [],
     isAssistant: assistantPrincipalId != null && message.principalId === assistantPrincipalId,
     isInternal: message.isInternal,
     contentJson,

@@ -16,14 +16,7 @@ import type {
   MessengerConfig,
 } from './settings.types'
 import { DEFAULT_MESSENGER_CONFIG, resolveFeatureFlags } from './settings.types'
-import { NotFoundError, ValidationError } from '@/lib/shared/errors'
-import type { AssistantConfigAuditActor } from './settings.assistant'
-import { recordAuditEventInTransaction } from '@/lib/server/audit/log'
-import {
-  assistantConfigSchema,
-  DEFAULT_ASSISTANT_CONFIG,
-  type AssistantIdentity,
-} from '@/lib/shared/assistant/config'
+import { ValidationError } from '@/lib/shared/errors'
 import { isWidgetMessengerEnabled } from '@/lib/shared/support-surfaces'
 
 import { logSettingsReadError } from './settings-log'
@@ -144,10 +137,7 @@ export function publicHomeConfig(home: WidgetHomeConfig | undefined): WidgetHome
  *  Office hours are NOT projected here — the widget reads availability from the
  *  presence snapshot (getConversationPresenceFn), which resolves the one canonical
  *  schedule via `@/lib/shared/office-hours`. */
-export function publicMessengerConfig(
-  messenger: MessengerConfig,
-  identity: AssistantIdentity = DEFAULT_ASSISTANT_CONFIG.identity
-): PublicMessengerConfig {
+export function publicMessengerConfig(messenger: MessengerConfig): PublicMessengerConfig {
   return {
     // Callers override this with the `supportInbox` flag. Stored
     // `messenger.enabled` is ignored at the gate.
@@ -155,16 +145,6 @@ export function publicMessengerConfig(
     welcomeMessage: messenger.welcomeMessage,
     offlineMessage: messenger.offlineMessage,
     teamName: messenger.teamName,
-    assistant: messenger.assistant
-      ? {
-          enabled: messenger.assistant.enabled,
-          respond: messenger.assistant.respond,
-          name: identity.name,
-          avatarUrl: identity.avatarUrl
-            ? absolutizeOffHostAssetUrl(identity.avatarUrl)
-            : identity.avatarUrl,
-        }
-      : undefined,
   }
 }
 import {
@@ -254,50 +234,6 @@ export function widgetActivationConfig(
   }
 }
 
-/** Update only the web-widget deployment flags; behavior config is never touched. */
-export async function updateWidgetAssistantDeployment(
-  input: { enabled: boolean; respond: boolean },
-  actor: AssistantConfigAuditActor
-): Promise<{ enabled: boolean; respond: boolean }> {
-  const result = await db.transaction(async (tx) => {
-    const [row] = await tx
-      .select({ id: settings.id, widgetConfig: settings.widgetConfig })
-      .from(settings)
-      .limit(1)
-      .for('update')
-    if (!row) throw new NotFoundError('SETTINGS_NOT_FOUND', 'Settings not found')
-
-    const config = parseWidgetConfig(row.widgetConfig)
-    const current = config.messenger?.assistant ?? {}
-    const messenger = {
-      ...(config.messenger ?? DEFAULT_MESSENGER_CONFIG),
-      assistant: { enabled: input.enabled, respond: input.respond },
-    }
-    await tx
-      .update(settings)
-      .set({ widgetConfig: JSON.stringify({ ...config, messenger }) })
-      .where(eq(settings.id, row.id))
-
-    const { headers, ...auditActor } = actor
-    await recordAuditEventInTransaction(tx, {
-      event: 'assistant.deployment.changed',
-      actor: auditActor,
-      headers,
-      target: { type: 'settings', id: row.id },
-      metadata: {
-        changedPaths: ['widget.assistant.enabled', 'widget.assistant.respond'],
-        transitions: [
-          { path: 'widget.assistant.enabled', from: current.enabled ?? true, to: input.enabled },
-          { path: 'widget.assistant.respond', from: current.respond ?? true, to: input.respond },
-        ],
-      },
-    })
-    return input
-  })
-  await invalidateSettingsCache()
-  return result
-}
-
 /**
  * Client-safe widget projection. Shared by `getPublicWidgetConfig` and the
  * workspace-settings payload so the iframe and `/api/widget/config.json`
@@ -305,8 +241,7 @@ export async function updateWidgetAssistantDeployment(
  */
 export function projectPublicWidgetConfig(
   config: WidgetConfig,
-  flags: ReturnType<typeof resolveFeatureFlags>,
-  identity: AssistantIdentity = DEFAULT_ASSISTANT_CONFIG.identity
+  flags: ReturnType<typeof resolveFeatureFlags>
 ): PublicWidgetConfig {
   const tabs = {
     feedback: (config.tabs?.feedback ?? true) && flags.feedback,
@@ -334,7 +269,7 @@ export function projectPublicWidgetConfig(
     // `enabled` mirrors the module flag — there is no separate messenger
     // master switch; widget visibility is `tabs.messenger`.
     messenger: {
-      ...publicMessengerConfig(config.messenger ?? DEFAULT_MESSENGER_CONFIG, identity),
+      ...publicMessengerConfig(config.messenger ?? DEFAULT_MESSENGER_CONFIG),
       enabled: flags.supportInbox,
     },
     // Per-locale messenger welcome/offline copy — client-safe.
@@ -347,12 +282,8 @@ export async function getPublicWidgetConfig(): Promise<PublicWidgetConfig> {
     // Read-only + on public hot paths (config.json, widget SSR): cached row.
     const org = await requireSettingsCached()
     const config = parseWidgetConfig(org.widgetConfig)
-    const assistantConfig = assistantConfigSchema.safeParse(org.assistantConfig)
-    const identity = assistantConfig.success
-      ? assistantConfig.data.identity
-      : DEFAULT_ASSISTANT_CONFIG.identity
     const flags = resolveFeatureFlags(org.featureFlags)
-    return projectPublicWidgetConfig(config, flags, identity)
+    return projectPublicWidgetConfig(config, flags)
   } catch (error) {
     logSettingsReadError(log, error, 'get public widget config failed')
     wrapDbError('fetch public widget config', error)

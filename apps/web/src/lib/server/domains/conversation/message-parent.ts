@@ -2,7 +2,6 @@
  * Copilot transcripts stay outside this boundary. */
 import type { ConversationMessage } from '@/lib/server/db'
 import type { ConversationId, TicketId } from '@quackback/ids'
-import { NotFoundError } from '@/lib/shared/errors'
 import type { Actor } from '@/lib/server/policy/types'
 
 export type MessageParent =
@@ -23,7 +22,6 @@ export async function resolveMessageParent(
   message: ConversationMessage,
   actor: Actor
 ): Promise<MessageParent> {
-  if (message.workspaceThreadKey) throw new NotFoundError('MESSAGE_NOT_FOUND', 'Message not found')
   if (message.ticketId) {
     const { assertTicketVisible } = await import('@/lib/server/domains/tickets/ticket.service')
     await assertTicketVisible(message.ticketId, actor)

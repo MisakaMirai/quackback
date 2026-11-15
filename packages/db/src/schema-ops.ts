@@ -76,16 +76,6 @@ export interface ConcurrentIndexSpec {
 
 export const CONCURRENT_INDEX_SPECS: readonly ConcurrentIndexSpec[] = [
   {
-    name: 'posts_embedding_hnsw_idx',
-    concurrent: true,
-    ddl: 'CREATE INDEX CONCURRENTLY IF NOT EXISTS posts_embedding_hnsw_idx ON posts USING hnsw (embedding vector_cosine_ops) WHERE embedding IS NOT NULL',
-  },
-  {
-    name: 'kb_articles_embedding_hnsw_idx',
-    concurrent: true,
-    ddl: 'CREATE INDEX CONCURRENTLY IF NOT EXISTS kb_articles_embedding_hnsw_idx ON kb_articles USING hnsw (embedding vector_cosine_ops) WHERE embedding IS NOT NULL',
-  },
-  {
     name: 'principal_display_name_trgm_idx',
     concurrent: true,
     ddl: 'CREATE INDEX CONCURRENTLY IF NOT EXISTS principal_display_name_trgm_idx ON principal USING gin (display_name gin_trgm_ops) WHERE display_name IS NOT NULL',

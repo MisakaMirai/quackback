@@ -453,17 +453,8 @@ export function slaDueAtFor(conversation: Pick<Conversation, 'slaApplied'>): Dat
  * `conversationToDTO` from this module without a circular import —
  * conversation-translation.service.ts re-exports this for convenience.
  */
-export function translationStateFrom(
-  conversation: Pick<
-    Conversation,
-    'translationEnabled' | 'detectedCustomerLanguage' | 'translationDismissedAt'
-  >
-): ConversationTranslationStateDTO {
-  return {
-    enabled: conversation.translationEnabled ?? false,
-    detectedCustomerLanguage: conversation.detectedCustomerLanguage ?? null,
-    suggestionDismissed: conversation.translationDismissedAt != null,
-  }
+export function translationStateFrom(_conversation: unknown): ConversationTranslationStateDTO {
+  return { enabled: false, detectedCustomerLanguage: null, suggestionDismissed: true }
 }
 
 export function toConversationDTO(
@@ -1653,9 +1644,6 @@ export async function listConversationsForAgent(
       snoozedUntil: conversations.snoozedUntil,
       visitorEmail: conversations.visitorEmail,
       slaApplied: conversations.slaApplied,
-      translationEnabled: conversations.translationEnabled,
-      detectedCustomerLanguage: conversations.detectedCustomerLanguage,
-      translationDismissedAt: conversations.translationDismissedAt,
       isTest: isTestThreadSql(conversations.visitorPrincipalId).mapWith(Boolean),
     })
     .from(conversations)

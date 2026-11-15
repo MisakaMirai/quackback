@@ -1,5 +1,4 @@
 import type { IntegrationDefinition } from '@/lib/server/integrations/types'
-import { InternalError } from '@/lib/shared/errors'
 
 export type SyncHistoryReason =
   'ok' | 'no_installation' | 'not_active' | 'no_ledger' | 'no_destination'
@@ -82,15 +81,6 @@ export function syncHistoryAvailable(input: {
   return { available: true, reason: 'ok' }
 }
 
-export async function readSlackAssistantEnabled(provider: string): Promise<boolean> {
-  if (provider !== 'slack') return false
-  try {
-    const { getAssistantSettings } =
-      await import('@/lib/server/domains/settings/settings.assistant')
-    const settings = await getAssistantSettings()
-    return settings.config.agents.workspace.slack.enabled === true
-  } catch (error) {
-    if (error instanceof InternalError && error.code === 'ASSISTANT_CONFIG_INVALID') return false
-    throw error
-  }
+export async function readSlackAssistantEnabled(_provider: string): Promise<boolean> {
+  return false
 }

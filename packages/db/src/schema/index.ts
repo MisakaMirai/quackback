@@ -62,4 +62,3 @@ export * from './integration-deliveries'
 export * from './integration-sync'
 
 export * from './onboarding-emails'
-export * from './workspace-assistant'

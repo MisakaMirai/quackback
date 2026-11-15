@@ -89,10 +89,7 @@ export function validateAttributeValue(
  *  (including anonymous visitors) as 'user'. */
 async function attributeChangeActor(src: ConversationAttributeSource): Promise<EventActor> {
   if (src !== 'ai') return { type: 'user' }
-  const { getAssistantRuntimeConfig } =
-    await import('@/lib/server/domains/settings/settings.assistant')
-  const assistant = await getAssistantRuntimeConfig()
-  return { type: 'service', displayName: assistant.config.identity.name }
+  return { type: 'service', displayName: 'Quackback AI' }
 }
 
 /** The visible refusal thrown when a customer-sourced write loses the
