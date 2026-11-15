@@ -37,10 +37,9 @@ export function EmbedHydration({
   /** Opens a post in place; required when `openMode` is `modal`. */
   onOpenInModal?: (postId: string) => void
   /**
-   * Called at request time to supply auth headers. The widget passes
-   * `getWidgetAuthHeaders` here so the embed preview fetch and vote mutation
-   * both carry the visitor's Bearer token. Portal and admin surfaces omit
-   * this; cookie-based auth continues to work unchanged.
+   * Called at request time to supply auth headers. Portal surfaces that hold a
+   * Bearer token pass it here so the embed preview fetch and vote mutation both
+   * carry it; cookie-based auth continues to work unchanged.
    */
   getAuthHeaders?: () => Record<string, string>
 }) {

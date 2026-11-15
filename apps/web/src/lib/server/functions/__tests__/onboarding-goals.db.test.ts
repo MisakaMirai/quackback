@@ -104,16 +104,11 @@ describe('wizard goals read and write', () => {
     expect(JSON.parse(row!.portalConfig!).support.enabled).toBe(true)
   })
 
-  it('keeps the Messenger idea tab only when Feedback is one of the goals', async () => {
+  it('stores the default Messenger settings when Support is one of the goals', async () => {
     await saveWorkspaceAndGoalFn({ data: { workspaceName: 'Acme', goals: ['customer_support'] } })
-    let row = await testDb.query.settings.findFirst()
-    expect(JSON.parse(row!.widgetConfig!).tabs).toMatchObject({ feedback: false, messenger: true })
-    await testDb.delete(settings)
-    await saveWorkspaceAndGoalFn({
-      data: { workspaceName: 'Acme', goals: ['customer_support', 'product_feedback'] },
-    })
-    row = await testDb.query.settings.findFirst()
-    expect(JSON.parse(row!.widgetConfig!).tabs).toMatchObject({ feedback: true, messenger: true })
+    const row = await testDb.query.settings.findFirst()
+    expect(JSON.parse(row!.featureFlags!).supportInbox).toBe(true)
+    expect(JSON.parse(row!.messengerConfig!).messenger.enabled).toBe(false)
   })
 
   it('keeps Changelog on only when Feedback is one of the goals', async () => {

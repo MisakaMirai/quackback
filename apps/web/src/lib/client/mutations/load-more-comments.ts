@@ -1,5 +1,5 @@
 /**
- * "Show more comments" loaders for the three post-detail surfaces.
+ * "Show more comments" loaders for the post-detail surfaces.
  *
  * Comments are keyset-paginated by ROOT comment on the server. The first page
  * is embedded in the post-detail payload (SSR-streamed on the portal), and
@@ -13,10 +13,8 @@ import { useQueryClient } from '@tanstack/react-query'
 import type { QueryKey } from '@tanstack/react-query'
 import type { PostId } from '@quackback/ids'
 import { fetchPublicPostDetail } from '@/lib/server/functions/portal'
-import { widgetFetchPublicPostDetailFn } from '@/lib/server/functions/widget/posts'
 import { fetchPostWithDetails } from '@/lib/server/functions/posts'
 import type { PublicPostDetailView, PublicCommentView } from '@/lib/client/queries/portal-detail'
-import { getWidgetAuthHeaders } from '@/lib/client/widget-auth'
 
 /** Minimal shape the appender needs from any post-detail cache entry. */
 interface CommentPagedDetail {
@@ -88,42 +86,6 @@ export function useLoadMorePortalComments(
       setIsLoading(false)
     }
   }, [queryClient, postId, queryKey])
-
-  return { loadMore, isLoading, hasMore }
-}
-
-/**
- * Widget post-detail "show more comments". Same append semantics against the
- * widget's session-versioned cache key; carries the Bearer identity headers.
- */
-export function useLoadMoreWidgetComments(
-  postId: PostId,
-  queryKey: QueryKey,
-  pageSize = 15
-): LoadMoreState {
-  const queryClient = useQueryClient()
-  const [isLoading, setIsLoading] = useState(false)
-
-  const current = queryClient.getQueryData<PublicPostDetailView>(queryKey)
-  const hasMore = !!current?.commentsHasMore
-
-  const loadMore = useCallback(async () => {
-    const detail = queryClient.getQueryData<PublicPostDetailView>(queryKey)
-    if (!detail?.commentsHasMore || !detail.commentsNextCursor) return
-    setIsLoading(true)
-    try {
-      const page = (await widgetFetchPublicPostDetailFn({
-        data: { postId, commentsCursor: detail.commentsNextCursor, commentsLimit: pageSize },
-        headers: getWidgetAuthHeaders(),
-      })) as PublicPostDetailView | null
-      if (!page) return
-      queryClient.setQueryData<PublicPostDetailView>(queryKey, (old) =>
-        old ? appendCommentPage(old, page) : old
-      )
-    } finally {
-      setIsLoading(false)
-    }
-  }, [queryClient, postId, queryKey, pageSize])
 
   return { loadMore, isLoading, hasMore }
 }

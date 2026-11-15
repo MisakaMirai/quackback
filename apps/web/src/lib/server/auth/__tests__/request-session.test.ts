@@ -80,13 +80,11 @@ vi.mock('@/lib/server/db', () => ({
       principal: { findFirst: (args: never) => mockPrincipalFindFirst(args) },
       settings: { findFirst: () => mockSettingsFindFirst() },
       invitation: { findFirst: vi.fn(async () => undefined) },
-      widgetOriginSession: { findFirst: vi.fn(async () => undefined) },
     },
     execute: vi.fn(async () => []),
   },
   principal: { userId: 'principal.userId' },
   invitation: {},
-  widgetOriginSession: {},
   eq: (col: string, val: string) => ({ col, val }),
   and: (...parts: unknown[]) => ({ parts }),
   sql: () => ({}),
@@ -312,15 +310,15 @@ describe('one identity read per request', () => {
     expect(mockPrincipalFindFirst).toHaveBeenCalledTimes(2)
   })
 
-  it('keeps the audience of a widget session', async () => {
+  it('treats a legacy widget session as the portal audience', async () => {
     addUser({ token: 'tok_widget', userId: 'user_w', role: 'admin', scope: 'widget' })
     const outcome = await inRequest('tok_widget', async () => {
       const optional = await getOptionalAuth()
-      const required = await requireAuth().catch((err: Error) => err.message)
+      const required = await requireAuth()
       return { optional, required }
     })
-    expect(outcome.optional).toBeNull()
-    expect(outcome.required).toMatch(/Widget sessions cannot access this resource/)
+    expect(outcome.optional).toMatchObject({ scope: 'portal', principal: { role: 'user' } })
+    expect(outcome.required).toMatchObject({ scope: 'portal', permissions: [] })
     expect(mockGetSession).toHaveBeenCalledTimes(1)
   })
 })

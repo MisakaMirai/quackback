@@ -105,7 +105,7 @@ describe.skipIf(!fixture.available)('setup emails (real DB)', () => {
     }
     expect(params.subject).toBe('Acme is ready, Sam')
     expect(params.lang).toBe('en')
-    expect(params.paragraphs).toContain('Your next step: Put Messenger on your site.')
+    expect(params.paragraphs).toContain('Your next step: Create a feedback board.')
     expect(params.cta.url).toBe('https://acme.quackback.test/admin')
     expect(params.unsubscribeUrl).toMatch(/^https:\/\/acme\.quackback\.test\/unsubscribe\?token=/)
 
@@ -165,8 +165,8 @@ describe.skipIf(!fixture.available)('setup emails (real DB)', () => {
     expect(mail.nudge.mock.calls[0][0]).toMatchObject({
       subject: 'Your next step in Acme',
       cta: {
-        label: 'Put Messenger on your site',
-        url: 'https://acme.quackback.test/admin/settings/widget/install',
+        label: 'Create a feedback board',
+        url: 'https://acme.quackback.test/admin/settings/boards',
       },
       secondary: null,
     })

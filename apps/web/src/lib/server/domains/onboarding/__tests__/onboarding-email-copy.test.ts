@@ -19,10 +19,10 @@ const SHARE_STEP = {
   title: 'Share your board',
   url: `${BASE}/admin?open=share`,
 }
-const MESSENGER_STEP = {
-  id: 'connect-messenger',
-  title: 'Put Messenger on your site',
-  url: `${BASE}/admin/settings/widget/install`,
+const BOARD_STEP = {
+  id: 'create-board',
+  title: 'Create a feedback board',
+  url: `${BASE}/admin/settings/boards`,
 }
 
 function ready(locale: (typeof SUPPORTED_LOCALES)[number], trial = true) {
@@ -141,12 +141,12 @@ describe('nudgeEmailCopy', () => {
       workspaceName: 'Acme',
       goal: 'customer_support',
       base: BASE,
-      nextStep: MESSENGER_STEP,
+      nextStep: BOARD_STEP,
     })
     expect(copy.subject).toBe('Your next step in Acme')
     expect(copy.share).toBeNull()
     expect(copy.paragraphs[0]).toBe('No customer has started a conversation yet.')
-    expect(copy.cta).toEqual({ label: 'Put Messenger on your site', url: MESSENGER_STEP.url })
+    expect(copy.cta).toEqual({ label: 'Create a feedback board', url: BOARD_STEP.url })
     expect(copy.secondary).toBeNull()
   })
 
@@ -157,9 +157,9 @@ describe('nudgeEmailCopy', () => {
       workspaceName: 'Acme',
       goal: 'customer_support',
       base: BASE,
-      nextStep: MESSENGER_STEP,
+      nextStep: BOARD_STEP,
     })
-    expect(copy.cta.label).not.toBe('Put Messenger on your site')
+    expect(copy.cta.label).not.toBe('Create a feedback board')
     expect(copy.subject).not.toBe('Your next step in Acme')
   })
 })

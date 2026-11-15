@@ -1,9 +1,8 @@
 /**
- * Server functions for the support inbox: the messenger widget channel plus agent-side inbox operations.
+ * Server functions for the support inbox: the portal messenger channel plus agent-side inbox operations.
  *
  * Visitor-facing portal functions use cookie/site auth (`requireAuth` /
- * `getOptionalAuth`, which deny widget). The widget BFF in `widget/conversation.ts`
- * reuses the same `run*` helpers with `requireWidgetAuth`.
+ * `getOptionalAuth`).
  * Agent-facing functions are gated to team roles and re-checked independently
  * of the admin route guard.
  */
@@ -239,13 +238,12 @@ async function assertConversationsEnabled(principalId: PrincipalId): Promise<voi
 
 /**
  * Shared gate for visitor-facing conversation endpoints: conversations must be
- * reachable. Portal-site callers also need portal access; widget-scoped
- * sessions (Bearer BFF) do not — the host app already admitted them.
- * Team members bypass the portal check (admin inbox).
+ * reachable and portal-site callers also need portal access. Team members
+ * bypass the portal check (admin inbox).
  */
 async function assertVisitorConversationAccess(ctx: AuthContext): Promise<void> {
   await assertConversationsEnabled(ctx.principal.id)
-  if (isTeamMember(ctx.principal.role) || ctx.scope === 'widget') return
+  if (isTeamMember(ctx.principal.role)) return
   const { resolvePortalAccessForRequest } = await import('./portal-access')
   const access = await resolvePortalAccessForRequest()
   if (!access.granted) throw new ForbiddenError('PORTAL_ACCESS_REQUIRED', 'Portal access required')
@@ -261,7 +259,7 @@ export const runSendConversationMessage = createServerOnlyFn(
     // Visitor-only ingress checks (agents send via sendAgentMessageFn).
     if (!isTeamMember(ctx.principal.role)) {
       // Blocked people cannot send (support platform §4.6). The same
-      // isBlocked read backs the widget identify gate and, per the integrator
+      // isBlocked read backs the messenger access gate and, per the integrator
       // TODO in blocking.ts, the email-inbound boundary.
       const { isBlocked } = await import('@/lib/server/domains/principals/blocking')
       if (await isBlocked(ctx.principal.id)) {
@@ -285,7 +283,8 @@ export const runSendConversationMessage = createServerOnlyFn(
       // unmatched one is functionally an ordinary free-text reply and must
       // still be refused here like any other.
       if (data.conversationId) {
-        const { getMessengerConfig } = await import('@/lib/server/domains/settings/settings.widget')
+        const { getMessengerConfig } =
+          await import('@/lib/server/domains/settings/settings.messenger')
         const messenger = await getMessengerConfig()
         if (messenger.preventRepliesWhenClosed) {
           const { getConversationForVisitor } =
@@ -354,8 +353,8 @@ export const sendConversationMessageFn = createServerFn({ method: 'POST' })
 /**
  * The team's availability verdict (live presence + office-hours snapshot),
  * WITHOUT loading the conversation or messages. Workspace-global — no visitor auth
- * needed. The widget polls this to keep the online/offline indicator fresh, and
- * the widget loader calls it server-side to SSR-seed the same value so the first
+ * needed. The messenger polls this to keep the online/offline indicator fresh, and
+ * the portal loader calls it server-side to SSR-seed the same value so the first
  * paint matches what the poll reports.
  *
  * The database reads stay INSIDE the handler so the server-fn transform strips
@@ -388,21 +387,21 @@ export const getConversationPresenceFn = createServerFn({ method: 'GET' }).handl
 )
 
 /**
- * Teammate avatars for the widget Home header cluster. Workspace-global and
+ * Teammate avatars for the messenger header cluster. Workspace-global and
  * public-safe by construction — the domain query exposes only name + image for
  * genuine teammates (never portal users, anonymous visitors, or service
  * principals), so no visitor auth is needed.
  */
-export const runGetWidgetTeamAvatars = createServerOnlyFn(
-  async function runGetWidgetTeamAvatars(): Promise<{ name: string; avatarUrl: string | null }[]> {
-    const { listTeamAvatars } = await import('@/lib/server/domains/principals/principal.service')
-    return listTeamAvatars(3)
-  }
-)
+export const runGetTeamAvatars = createServerOnlyFn(async function runGetTeamAvatars(): Promise<
+  { name: string; avatarUrl: string | null }[]
+> {
+  const { listTeamAvatars } = await import('@/lib/server/domains/principals/principal.service')
+  return listTeamAvatars(3)
+})
 
-export const getWidgetTeamAvatarsFn = createServerFn({ method: 'GET' }).handler(
+export const getTeamAvatarsFn = createServerFn({ method: 'GET' }).handler(
   async (): Promise<{ name: string; avatarUrl: string | null }[]> => {
-    return runGetWidgetTeamAvatars()
+    return runGetTeamAvatars()
   }
 )
 
@@ -411,25 +410,24 @@ export const runGetMyConversation = createServerOnlyFn(async function runGetMyCo
   ctx: AuthContext | null,
   data: MyConversationInput
 ) {
-  const { getMessengerConfig, getWidgetConfig } =
-    await import('@/lib/server/domains/settings/settings.widget')
+  const { getMessengerSettings } = await import('@/lib/server/domains/settings/settings.messenger')
   const { isConversationsEnabledFor } =
     await import('@/lib/server/domains/settings/settings.support')
   const { getSettings } = await import('./workspace')
   const { isEmailConfigured } = await import('@quackback/email')
   const { canEmailVisitor } = await import('@/lib/shared/conversation/reply-capability')
-  const { widgetTranslationFor } = await import('@/lib/shared/widget/translations')
-  const [enabled, messengerConfig, appSettings, widgetConfig] = await Promise.all([
+  const { messengerTranslationFor } = await import('@/lib/shared/messenger/translations')
+  const [enabled, messengerSettings, appSettings] = await Promise.all([
     isConversationsEnabledFor(ctx?.principal.id),
-    getMessengerConfig(),
+    getMessengerSettings(),
     getSettings(),
-    getWidgetConfig(),
   ])
+  const messengerConfig = messengerSettings.messenger
   // Per-locale copy override for this visitor's language (base copy is the
   // fallback).
-  const t = widgetTranslationFor(widgetConfig.translations, data?.locale)
+  const t = messengerTranslationFor(messengerSettings.translations, data?.locale)
   const emailConfigured = isEmailConfigured()
-  // Note: team-availability presence is NOT returned here. The widget reads it
+  // Note: team-availability presence is NOT returned here. The messenger reads it
   // from the shared useConversationPresence query (getConversationPresenceFn) so every surface
   // agrees and only one poll runs — this fn is just the visitor's thread.
   const base = {
@@ -442,9 +440,9 @@ export const runGetMyConversation = createServerOnlyFn(async function runGetMyCo
     // Whether we already have a contact email for this visitor.
     visitorHasEmail: false,
     // Whether an offline reply could actually reach this visitor by email —
-    // the widget shows a non-promising offline message when false.
+    // the messenger shows a non-promising offline message when false.
     canEmailVisitor: canEmailVisitor({ emailConfigured, visitorHasEmail: false }),
-    // Whether the surfaced conversation is closed (read-only) — the widget
+    // Whether the surfaced conversation is closed (read-only) — the messenger
     // then offers "start a new conversation" instead of a composer (P1.9).
     isReadOnly: false,
     // The pair's ticket (converged Messages surface): the thread header
@@ -457,8 +455,7 @@ export const runGetMyConversation = createServerOnlyFn(async function runGetMyCo
   }
 
   // Portal-site visitors need portal access (degrade to greeting-only).
-  // Widget-scoped sessions skip that — the host app already admitted them.
-  if (!isTeamMember(ctx.principal.role) && ctx.scope !== 'widget') {
+  if (!isTeamMember(ctx.principal.role)) {
     const { resolvePortalAccessForRequest } = await import('./portal-access')
     const access = await resolvePortalAccessForRequest()
     if (!access.granted) {
@@ -495,7 +492,7 @@ export const runGetMyConversation = createServerOnlyFn(async function runGetMyCo
     : await getActiveConversationForVisitor(ctx.principal.id)
   const conversation = active.conversation
   // Anonymous visitors carry a synthetic placeholder email — it must not count
-  // as a real address (else the widget promises an email reply it can't send).
+  // as a real address (else the messenger promises an email reply it can't send).
   const visitorHasEmail =
     Boolean(realEmail(ctx.user?.email)) || Boolean(realEmail(conversation?.visitorEmail))
   const canEmail = canEmailVisitor({ emailConfigured, visitorHasEmail })
@@ -551,7 +548,7 @@ export const runGetMyConversations = createServerOnlyFn(async function runGetMyC
     await import('@/lib/server/domains/settings/settings.support')
   if (!ctx?.principal || !(await isConversationsEnabledFor(ctx.principal.id))) return empty
 
-  if (!isTeamMember(ctx.principal.role) && ctx.scope !== 'widget') {
+  if (!isTeamMember(ctx.principal.role)) {
     const { resolvePortalAccessForRequest } = await import('./portal-access')
     const access = await resolvePortalAccessForRequest()
     if (!access.granted) return empty
@@ -608,7 +605,7 @@ export const runGetMessengerUnread = createServerOnlyFn(async function runGetMes
     await import('@/lib/server/domains/settings/settings.support')
   if (!ctx?.principal || !(await isConversationsEnabledFor(ctx.principal.id))) return zero
 
-  if (!isTeamMember(ctx.principal.role) && ctx.scope !== 'widget') {
+  if (!isTeamMember(ctx.principal.role)) {
     const { resolvePortalAccessForRequest } = await import('./portal-access')
     const access = await resolvePortalAccessForRequest()
     if (!access.granted) return zero
@@ -983,7 +980,7 @@ export const getConversationFn = createServerFn({ method: 'GET' })
     // Upgrade to AgentConversationMessageDTO[] by attaching the agent-only
     // reaction + flag + post-suggestion fields. This enrichment runs ONLY on
     // the agent thread path; no visitor path calls it, so those fields can't
-    // reach the widget. The map rides in-memory off `listMessages` (no re-read).
+    // reach the messenger. The map rides in-memory off `listMessages` (no re-read).
     const messages = await enrichMessagesForAgent(
       page.messages,
       ctx.principal.id,

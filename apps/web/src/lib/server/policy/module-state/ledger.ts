@@ -462,14 +462,6 @@ export const MODULE_STATE_LEDGER: readonly LedgerEntry[] = [
       'that timezone and the fixed format options, so it carries nothing about who asked for it.',
   },
   {
-    file: 'apps/web/src/routes/api/widget/sdk[.]js.ts',
-    name: 'encodedCache',
-    category: 'content-addressed',
-    reason:
-      'Pre-compressed gzip/brotli variants keyed by the response body string itself, which already ' +
-      "bakes in the workspace's base URL and widget config.",
-  },
-  {
     file: 'apps/web/src/lib/server/config.ts',
     name: '_config',
     category: 'process-lifetime',

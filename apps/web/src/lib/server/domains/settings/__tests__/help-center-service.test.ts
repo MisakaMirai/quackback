@@ -110,7 +110,6 @@ function makeSettingsRow(overrides: Record<string, unknown> = {}) {
     headerLogoKey: null,
     headerDisplayMode: 'logo_and_name',
     headerDisplayName: null,
-    widgetSecret: null,
     createdAt: new Date('2025-01-01'),
     updatedAt: new Date('2025-01-01'),
     ...overrides,

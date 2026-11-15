@@ -7,7 +7,7 @@ Edges come from static analysis of import / export-from / string-literal dynamic
 
 ## 1. Workspace packages
 
-Nodes (6): apps/web, packages/db, packages/email, packages/ids, packages/logger, packages/widget
+Nodes (5): apps/web, packages/db, packages/email, packages/ids, packages/logger
 
 | From | To | Evidence |
 | --- | --- | --- |

@@ -26,9 +26,9 @@ import { liftErrorReferenceOnFailure } from '@/lib/client/error-reference-middle
  *
  * It guards `handlerType === 'serverFn'` only — the cookie-authed RPC surface
  * (admin/portal UI). API routes are `handlerType === 'router'` and are left
- * alone, which is correct: the embeddable widget's cross-origin calls go to
- * `/api/widget/*` with `Authorization: Bearer` + `credentials: 'omit'` (no
- * cookies), so they are not CSRF-vulnerable and must not be blocked.
+ * alone, which is correct: public API routes that accept cross-origin beacon
+ * requests carry no cookies, so they are not CSRF-vulnerable and must not be
+ * blocked.
  */
 const csrfMiddleware = createCsrfMiddleware({
   filter: (ctx) => ctx.handlerType === 'serverFn',

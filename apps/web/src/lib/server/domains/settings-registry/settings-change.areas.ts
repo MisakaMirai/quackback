@@ -9,13 +9,12 @@ import { resolveOfficeHoursSchedule } from '@/lib/server/domains/settings/settin
 import { resolveChangelogSettings } from '@/lib/server/domains/settings/settings.changelog'
 import {
   parseJsonOrNull,
-  parseWidgetConfig,
   requireSettings,
   type SettingsRecord,
 } from '@/lib/server/domains/settings/settings.helpers'
+import { parseMessengerSettings } from '@/lib/server/domains/settings/settings.messenger'
 import { resolveFeatureFlags } from '@/lib/server/domains/settings/settings.types'
 import { getPublicUrlOrNull } from '@/lib/server/storage/s3'
-import { isWidgetMessengerEnabled } from '@/lib/shared/support-surfaces'
 import { expandTheme } from '@/lib/shared/theme/expand'
 import type { ThemeConfig } from '@/lib/shared/theme/types'
 
@@ -76,10 +75,10 @@ export function areaValues(row: SettingsRecord, area: SettingsArea): Record<stri
     case 'portal':
       return { displayName: row.name }
     case 'messenger': {
-      const widget = parseWidgetConfig(row.widgetConfig)
+      const messenger = parseMessengerSettings(row.messengerConfig)
       return {
-        enabled: isWidgetMessengerEnabled(resolveFeatureFlags(row.featureFlags), widget),
-        welcomeMessage: widget.messenger?.welcomeMessage ?? '',
+        enabled: resolveFeatureFlags(row.featureFlags).supportInbox,
+        welcomeMessage: messenger.messenger.welcomeMessage ?? '',
       }
     }
     case 'modules': {
@@ -92,7 +91,7 @@ export function areaValues(row: SettingsRecord, area: SettingsArea): Record<stri
       }
     }
     case 'office_hours':
-      return { ...resolveOfficeHoursSchedule(row.metadata, row.widgetConfig) }
+      return { ...resolveOfficeHoursSchedule(row.metadata, row.messengerConfig) }
     case 'changelog': {
       const config = resolveChangelogSettings(row.metadata)
       return {

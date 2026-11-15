@@ -57,7 +57,7 @@ export const user = pgTable(
     // X-Country-Code) on session creation. NULL when no header is
     // present — local dev or deployments without a geo-aware proxy.
     country: text('country'),
-    // Stable external identity for widget-identified visitors: the verified JWT
+    // Stable external identity for identified portal visitors: the verified JWT
     // `sub` (the host app's durable user id). Set ONLY on the verified ssoToken
     // identify path so a visitor is recognized on a new device even after an
     // email change. Null for team accounts and unverified identifies.
@@ -76,7 +76,7 @@ export const user = pgTable(
       .where(sql`email IS NOT NULL`),
     // Functional index on LOWER(email) — backs the case-insensitive
     // lookups in recovery-codes-consume.ts, segment.evaluation.ts, and
-    // routes/api/widget/identify.ts. Without it those queries seq-scan.
+    // /api/v1/users/identify. Without it those queries seq-scan.
     index('user_email_lower_idx')
       .on(sql`LOWER(${table.email})`)
       .where(sql`email IS NOT NULL`),
@@ -156,7 +156,7 @@ export const session = pgTable(
       .notNull(),
     ipAddress: text('ip_address'),
     userAgent: text('user_agent'),
-    // Session audience: dashboard | widget | portal. Only dashboard may satisfy team/permission gates.
+    // Session audience: dashboard | portal. Only dashboard may satisfy team/permission gates.
     scope: text('scope').notNull().default('dashboard'),
     userId: typeIdColumn('user')('user_id')
       .notNull()
@@ -327,23 +327,9 @@ export const settings = pgTable('settings', {
    */
   setupState: text('setup_state'),
   /**
-   * Widget configuration (JSON)
-   * Structure: { enabled, defaultBoard?, position?, buttonText?, identifyVerification? }
+   * Messenger configuration (JSON): { messenger, translations }.
    */
-  widgetConfig: text('widget_config'),
-  /**
-   * Widget HMAC verification secret (separate column — NOT in JSON config)
-   * Format: 'wgt_' + 64 hex chars
-   */
-  widgetSecret: text('widget_secret'),
-  /** First externally embedded widget configuration observation. */
-  widgetInstalledFirstSeenAt: timestamp('widget_installed_first_seen_at', { withTimezone: true }),
-  /** Most recent external observation, write-throttled by the public endpoint. */
-  widgetInstalledLastSeenAt: timestamp('widget_installed_last_seen_at', { withTimezone: true }),
-  /** Normalized external Origin hostname only (no path, query, port, or scheme). */
-  widgetInstalledOriginHost: text('widget_installed_origin_host'),
-  /** Last SDK version reported on an install ping (`?sdk=` or instance-served sdk.js). */
-  widgetInstalledSdkVersion: text('widget_installed_sdk_version'),
+  messengerConfig: text('messenger_config'),
   /** Feature flags for experimental features (JSON) */
   featureFlags: text('feature_flags'),
   /**
@@ -1203,53 +1189,3 @@ export const oauthConsentRelations = relations(oauthConsent, ({ one }) => ({
     references: [user.id],
   }),
 }))
-
-/**
- * Widget origin session marker table.
- *
- * Records sessions that were created via the widget OTT handoff route
- * (`/auth/widget-handoff?ott=...`). The portal access evaluator requires
- * a row here before granting the `widget` reason — prevents any
- * self-registered portal user from sneaking in via that grant branch.
- *
- * PK on session_id is the lookup key (one row per session at most).
- * Index on user_id supports cleanup of orphaned rows when a user's
- * sessions expire.
- */
-export const widgetOriginSession = pgTable(
-  'widget_origin_session',
-  {
-    sessionId: text('session_id').primaryKey(),
-    userId: text('user_id').notNull(),
-    markedAt: timestamp('marked_at', { withTimezone: true }).defaultNow().notNull(),
-  },
-  (table) => [index('widget_origin_session_user_id_idx').on(table.userId)]
-)
-
-/**
- * Widget identification provenance table.
- *
- * Records, for each session minted by `/api/widget/identify`, whether
- * the identity claim was HMAC-verified (verified-token path) or
- * unverified (email-capture path). The handoff route reads this to
- * decide whether to insert a `widget_origin_session` marker — only
- * HMAC-verified sessions are allowed to upgrade into the widget
- * portal-access grant.
- *
- * Without this row, the portal gate would only know the workspace's
- * *current* `identifyVerificationEnabled` setting, not whether the
- * specific session was ever HMAC-verified — letting a session created
- * during an unverified window keep portal access after the admin turns
- * verification on, and letting any BA session that minted a generic
- * OTT walk through the handoff.
- *
- * Upsert semantics: re-identifying the same session demotes (or
- * promotes) hmac_verified to reflect the latest identify path. A
- * session that loses HMAC verification on re-identify must lose the
- * trust it carries.
- */
-export const widgetIdentifiedSession = pgTable('widget_identified_session', {
-  sessionId: text('session_id').primaryKey(),
-  hmacVerified: boolean('hmac_verified').notNull(),
-  identifiedAt: timestamp('identified_at', { withTimezone: true }).defaultNow().notNull(),
-})

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { ArrowTopRightOnSquareIcon, ClipboardDocumentIcon } from '@heroicons/react/24/outline'
+import { ClipboardDocumentIcon } from '@heroicons/react/24/outline'
 import { toast } from 'sonner'
 import { defineMessages, useIntl } from 'react-intl'
 import { Button } from '@/components/ui/button'
@@ -125,13 +125,11 @@ export function ActivationActionButton({
     <Button asChild variant={variant} className={className}>
       <a
         href={action.destination}
-        {...(action.kind === 'external' ? { target: '_blank', rel: 'noreferrer' } : {})}
         onClick={() => {
           void onCompleted?.()
         }}
       >
         {label}
-        {action.kind === 'external' && <ArrowTopRightOnSquareIcon className="h-4 w-4" />}
       </a>
     </Button>
   )

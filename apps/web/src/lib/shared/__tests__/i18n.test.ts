@@ -13,7 +13,6 @@ import {
   loadMessages,
   loadPortalMessages,
   loadViewerMessages,
-  loadWidgetMessages,
   loadAskMessages,
   isAskMessage,
   adminSeedMessages,
@@ -225,13 +224,12 @@ describe('SUPPORTED_LOCALES', () => {
 
 describe('viewer strings', () => {
   it('are left out of the catalogs pages seed and kept for the viewer', async () => {
-    const [all, widget, portal, viewer] = await Promise.all([
+    const [all, portal, viewer] = await Promise.all([
       loadMessages('de'),
-      loadWidgetMessages('de'),
       loadPortalMessages('de'),
       loadViewerMessages('de'),
     ])
-    for (const seeded of [widget, portal, adminSeedMessages(all)]) {
+    for (const seeded of [portal, adminSeedMessages(all)]) {
       expect(Object.keys(seeded).filter(isViewerMessage)).toEqual([])
       expect(seeded['files.download']).toBe(all['files.download'])
     }
@@ -243,13 +241,12 @@ describe('viewer strings', () => {
 
 describe('unsubscribe page strings', () => {
   it('are seeded by that page alone, translated, and by no shared surface', async () => {
-    const [all, widget, portal, unsubscribe] = await Promise.all([
+    const [all, portal, unsubscribe] = await Promise.all([
       loadMessages('de'),
-      loadWidgetMessages('de'),
       loadPortalMessages('de'),
       loadUnsubscribeMessages('de'),
     ])
-    for (const seeded of [widget, portal, adminSeedMessages(all)]) {
+    for (const seeded of [portal, adminSeedMessages(all)]) {
       expect(Object.keys(seeded).filter(isUnsubscribeMessage)).toEqual([])
     }
     expect(unsubscribe['unsubscribe.button']).toBe('Abmelden')
@@ -372,21 +369,15 @@ describe('admin seed', () => {
 describe('public pages in English', () => {
   // As on admin pages: the code holds every message's English, so no page in
   // English seeds a catalog (see useIntlSetup, which then loads nothing either).
-  it('seed nothing on the portal, widget, unsubscribe page or setup wizard', async () => {
+  it('seed nothing on the portal, unsubscribe page or setup wizard', async () => {
     expect(await loadPortalMessages(DEFAULT_LOCALE)).toEqual({})
-    expect(await loadWidgetMessages(DEFAULT_LOCALE)).toEqual({})
     expect(await loadUnsubscribeMessages(DEFAULT_LOCALE)).toEqual({})
     expect(await loadOnboardingMessages(DEFAULT_LOCALE)).toEqual({})
     expect(await seedAreaMessages(DEFAULT_LOCALE, 'helpCenter')).toEqual({})
   })
 
   it('seed the same slices as before in any other language', async () => {
-    for (const load of [
-      loadPortalMessages,
-      loadWidgetMessages,
-      loadUnsubscribeMessages,
-      loadOnboardingMessages,
-    ]) {
+    for (const load of [loadPortalMessages, loadUnsubscribeMessages, loadOnboardingMessages]) {
       expect(Object.keys(await load('de')).length).toBeGreaterThan(10)
     }
     expect(await seedAreaMessages('de', 'helpCenter')).toEqual(
@@ -471,13 +462,12 @@ describe('launch plan strings', () => {
 
 describe('area strings', () => {
   it('are left out of the catalogs pages seed and load for their area', async () => {
-    const [all, widget, portal, settings] = await Promise.all([
+    const [all, portal, settings] = await Promise.all([
       loadMessages('pl'),
-      loadWidgetMessages('pl'),
       loadPortalMessages('pl'),
       loadAreaMessages('pl', 'settings', 'notificationPreferences'),
     ])
-    for (const seeded of [widget, portal, withoutPageScopedMessages(all)]) {
+    for (const seeded of [portal, withoutPageScopedMessages(all)]) {
       expect(Object.keys(seeded).filter((key) => messageArea(key) !== null)).toEqual([])
     }
     expect(portal['portal.header.nav.feedback']).toBe(all['portal.header.nav.feedback'])

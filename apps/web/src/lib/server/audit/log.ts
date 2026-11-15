@@ -115,11 +115,6 @@ export type AuditEventType =
   | 'team.invite.expired'
   // v1 portal segment allowlist
   | 'portal.allowed_segments.changed'
-  // v1 portal widget sign-in toggle
-  | 'portal.widget_signin.changed'
-  // v1 widget OTT handoff
-  | 'portal.widget_handshake.consumed'
-  | 'portal.widget_handshake.invalid'
   // v1 audit-log observability
   | 'portal.access.denied' // OWASP authz_fail — gate denied an authenticated visitor
   | 'auth.signin.failed' // OWASP authn_login_fail — twin of auth.signin.success

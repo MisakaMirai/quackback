@@ -1,10 +1,7 @@
 import { INLINE_LINK } from '@/components/admin/settings/inline-link'
 import { useState, useMemo } from 'react'
 import { ClipboardDocumentIcon, CheckIcon } from '@heroicons/react/24/solid'
-import {
-  HighlightedCode,
-  type SyntaxLang,
-} from '@/components/admin/settings/widget/highlighted-code'
+import { HighlightedCode, type SyntaxLang } from '@/components/admin/settings/highlighted-code'
 import {
   NodeJsIcon,
   PythonIcon,

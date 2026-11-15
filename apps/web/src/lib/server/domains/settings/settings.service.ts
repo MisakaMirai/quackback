@@ -45,7 +45,7 @@ import {
   resolveFeatureFlags,
 } from './settings.types'
 import { signupOpenFor } from '@/lib/shared/signup-open'
-import { projectPublicWidgetConfig, widgetActivationConfig } from './settings.widget'
+import { parseMessengerSettings, publicMessengerConfig } from './settings.messenger'
 import { getSetupState, isOnboardingComplete } from '@/lib/shared/db-types'
 import { resolveStatusSettings } from './settings.status'
 import {
@@ -53,7 +53,6 @@ import {
   parseJsonOrNull,
   parseMetadataBag,
   parsePortalConfig,
-  parseWidgetConfig,
   deepMerge,
   requireSettings,
   requireSettingsCached,
@@ -937,7 +936,6 @@ export async function getPublicPortalConfig(): Promise<PublicPortalConfig> {
       ...(welcome && { welcomeCard: liveWelcomeCard(welcome) }),
       portalAccess: {
         isPrivate: portalConfig.access?.visibility === 'private',
-        widgetSignIn: portalConfig.access?.widgetSignIn ?? false,
       },
     }
   } catch (error) {
@@ -1012,7 +1010,7 @@ async function readWorkspaceSettings(): Promise<WorkspaceSettings | null> {
     const brandingConfig = parseJsonOrNull<BrandingConfig>(org.brandingConfig) ?? {}
     const developerConfig = parseJsonConfig(org.developerConfig, DEFAULT_DEVELOPER_CONFIG)
 
-    const widgetConfig = parseWidgetConfig(org.widgetConfig)
+    const messengerSettings = parseMessengerSettings(org.messengerConfig)
     const helpCenterConfig = parseJsonConfig(org.helpCenterConfig, DEFAULT_HELP_CENTER_CONFIG)
     const statusConfig = resolveStatusSettings(org.metadata)
 
@@ -1067,11 +1065,13 @@ async function readWorkspaceSettings(): Promise<WorkspaceSettings | null> {
           ...(welcome && { welcomeCard: welcome }),
           portalAccess: {
             isPrivate: portalConfig.access?.visibility === 'private',
-            widgetSignIn: portalConfig.access?.widgetSignIn ?? false,
           },
         }
       })(),
-      publicWidgetConfig: projectPublicWidgetConfig(widgetConfig, featureFlags),
+      publicMessengerConfig: publicMessengerConfig(
+        messengerSettings.messenger,
+        featureFlags.supportInbox
+      ),
       featureFlags,
       brandingData,
       faviconData: brandingData.faviconUrl ? { url: brandingData.faviconUrl } : null,
@@ -1117,8 +1117,8 @@ export async function updateFeatureFlags(
   input: Partial<FeatureFlags>,
   options: SettingsWriteOptions = {}
 ): Promise<FeatureFlags> {
-  // The patch rewrites columns it was computed from (flags, metadata, widget
-  // and portal config), so the row is read under its lock: a concurrent write
+  // The patch rewrites columns it was computed from (flags, metadata and
+  // portal config), so the row is read under its lock: a concurrent write
   // to any of them is read here rather than overwritten.
   const write = async (tx: Database | Transaction) => {
     const [org] = await tx.select().from(settings).limit(1).for('update')
@@ -1135,11 +1135,10 @@ export async function updateFeatureFlags(
 /**
  * The settings columns one flag change writes. Exported so setup applies its
  * goals through the same side effects as Settings > General: Status ON
- * publishes the page, Support ON opens the Messenger and portal surfaces,
- * Help center ON adds the Messenger help tab.
+ * publishes the page and Support ON opens the portal Support surface.
  */
 export function featureFlagsWrite(
-  org: Pick<SettingsRecord, 'id' | 'featureFlags' | 'metadata' | 'widgetConfig' | 'portalConfig'>,
+  org: Pick<SettingsRecord, 'id' | 'featureFlags' | 'metadata' | 'portalConfig'>,
   input: Partial<FeatureFlags>
 ) {
   // Unknown stored keys (retired Labs flags) drop here; the next write
@@ -1147,7 +1146,6 @@ export function featureFlagsWrite(
   const current = resolveFeatureFlags(org.featureFlags)
   const updated = { ...current, ...input, feedback: true }
   const turningSupportOn = current.supportInbox !== true && updated.supportInbox === true
-  const turningHelpOn = current.helpCenter !== true && updated.helpCenter === true
   // General Status ON is the single publish control: clear a legacy
   // unpublished bit so the page actually goes live. OFF only flips the flag;
   // workspaces that stored statusPage:true with enabled:false stay unpublished
@@ -1156,7 +1154,6 @@ export function featureFlagsWrite(
   const patch: {
     featureFlags: string
     metadata?: string
-    widgetConfig?: string
     portalConfig?: string
   } = {
     featureFlags: JSON.stringify(updated),
@@ -1166,12 +1163,6 @@ export function featureFlagsWrite(
     const meta = parseMetadataBag(org.metadata, { settingsId: org.id, key: 'statusSettings' })
     meta.statusSettings = { ...existing, enabled: true }
     patch.metadata = JSON.stringify(meta)
-  }
-  if (turningSupportOn || turningHelpOn) {
-    let widget = parseWidgetConfig(org.widgetConfig)
-    if (turningSupportOn) widget = widgetActivationConfig(widget, 'messenger')
-    if (turningHelpOn) widget = { ...widget, tabs: { ...widget.tabs, help: true } }
-    patch.widgetConfig = JSON.stringify(widget)
   }
   if (turningSupportOn) {
     const portal = parsePortalConfig(org.portalConfig)

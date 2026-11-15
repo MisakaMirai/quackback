@@ -1,6 +1,6 @@
 /**
- * Widget-scoped sessions must not mutate the shared account. Portal-scoped
- * customers (widget handoff) still can, so they can use /settings/profile.
+ * Profile mutations run for any signed-in session: the portal audience (and a
+ * legacy widget-scoped session, which maps onto it) can use /settings/profile.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
@@ -87,8 +87,6 @@ vi.mock('@/lib/server/logger', () => ({
 await import('../user')
 
 const updateProfileNameHandler = handlers[1]
-const removeAvatarHandler = handlers[2]
-const saveAvatarKeyHandler = handlers[3]
 const updateNotificationPreferencesHandler = handlers[6]
 
 const SESSION_USER = { id: 'user_1', email: 'a@example.com', name: 'Ada' }
@@ -97,24 +95,12 @@ function sessionWithScope(scope: string) {
   return { session: { id: 'sess_1', scope }, user: SESSION_USER }
 }
 
-describe('profile mutations reject widget scope', () => {
+describe('profile mutations for visitor sessions', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     hoisted.mockUpdateReturning.mockResolvedValue([
       { id: 'user_1', name: 'Ada', email: 'a@example.com', image: null, imageKey: null },
     ])
-  })
-
-  it.each([
-    ['widget', updateProfileNameHandler, { name: 'New Name' }],
-    ['widget', removeAvatarHandler, undefined],
-    ['widget', saveAvatarKeyHandler, { key: 'avatars/x.png' }],
-  ] as const)('rejects a %s session', async (scope, handler, data) => {
-    hoisted.mockGetSession.mockResolvedValue(sessionWithScope(scope))
-    await expect(handler({ data: data as Record<string, unknown> })).rejects.toThrow(
-      /Widget sessions/
-    )
-    expect(hoisted.mockUpdateReturning).not.toHaveBeenCalled()
   })
 
   it('updates the name on a dashboard session', async () => {
@@ -124,7 +110,7 @@ describe('profile mutations reject widget scope', () => {
     expect(hoisted.mockSyncPrincipalProfile).toHaveBeenCalled()
   })
 
-  it('updates the name on a portal session (widget handoff customer)', async () => {
+  it('updates the name on a portal session', async () => {
     hoisted.mockGetSession.mockResolvedValue(sessionWithScope('portal'))
     const result = await updateProfileNameHandler({ data: { name: 'New Name' } })
     expect(result).toEqual(expect.objectContaining({ name: 'Ada', hasCustomAvatar: false }))
@@ -132,7 +118,7 @@ describe('profile mutations reject widget scope', () => {
   })
 })
 
-describe('notification preference mutations reject widget scope', () => {
+describe('notification preference mutations', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     hoisted.mockUpdateNotificationPreferences.mockResolvedValue({
@@ -140,16 +126,6 @@ describe('notification preference mutations reject widget scope', () => {
       emailNewComment: true,
       emailMuted: false,
     })
-  })
-
-  it('rejects a widget session so a teammate Bearer cannot mute mail', async () => {
-    hoisted.mockRequireAuth.mockRejectedValue(
-      new Error('Access denied: Widget sessions cannot access this resource')
-    )
-    await expect(
-      updateNotificationPreferencesHandler({ data: { emailMuted: true } })
-    ).rejects.toThrow(/Widget sessions/)
-    expect(hoisted.mockUpdateNotificationPreferences).not.toHaveBeenCalled()
   })
 
   it('allows a portal session', async () => {

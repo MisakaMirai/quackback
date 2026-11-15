@@ -42,7 +42,7 @@ export function leaves(
 export const JSON_COLUMNS = [
   'brandingConfig',
   'featureFlags',
-  'widgetConfig',
+  'messengerConfig',
   'portalConfig',
   'metadata',
 ] as const

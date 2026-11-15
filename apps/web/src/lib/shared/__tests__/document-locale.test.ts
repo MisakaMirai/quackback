@@ -9,9 +9,8 @@ describe('documentLocale', () => {
     expect(documentLocale(['__root__', '/_portal', '/_portal/hc'], 'zh-cn')).toBe('zh-cn')
     expect(documentLocale(['__root__', '/_portal', '/_portal/roadmap/'], 'zh-tw')).toBe('zh-tw')
   })
-  it('localizes the standalone auth and widget routes', () => {
+  it('localizes the standalone auth routes', () => {
     expect(documentLocale(['__root__', '/auth/reset-password'], 'zh-cn')).toBe('zh-cn')
-    expect(documentLocale(['__root__', '/widget'], 'ar')).toBe('ar')
     expect(documentLocale(['__root__', '/unsubscribe'], 'ar')).toBe('ar')
   })
   it('keeps the other settings pages on the default', () => {
@@ -20,7 +19,6 @@ describe('documentLocale', () => {
       '/admin/settings/general',
       '/admin/settings/agents',
       '/admin/settings/integrations',
-      '/admin/settings/widget',
     ]) {
       expect(documentLocale(['__root__', '/admin', '/admin/settings', id], 'zh-cn'), id).toBe('en')
     }
@@ -32,7 +30,7 @@ describe('documentLocale', () => {
     expect(documentLocale(['__root__', '/auth/signup'], 'zh-cn')).toBe('en')
     expect(documentLocale(['__root__', '/auth/two-factor'], 'ar')).toBe('en')
     expect(documentLocale(['__root__', '/auth/auth-complete'], 'zh-cn')).toBe('en')
-    expect(documentLocale(['__root__', '/auth/widget-handoff'], 'zh-tw')).toBe('en')
+    expect(documentLocale(['__root__', '/auth/open-handoff'], 'zh-tw')).toBe('en')
   })
   it('keeps the admin app (incl. its English-first login) and system routes on the default', () => {
     // /admin/login renders an English heading + email stage on first paint, so

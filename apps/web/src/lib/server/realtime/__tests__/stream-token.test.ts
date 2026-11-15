@@ -19,8 +19,17 @@ function legacyStreamToken(principalId: string, ttlMs = 60_000): string {
 
 describe('stream token audience', () => {
   it('round-trips the bound scope', () => {
-    const token = mintStreamToken('principal_1' as never, 'widget')
-    expect(verifyStreamToken(token)).toEqual({ principalId: 'principal_1', scope: 'widget' })
+    const token = mintStreamToken('principal_1' as never, 'portal')
+    expect(verifyStreamToken(token)).toEqual({ principalId: 'principal_1', scope: 'portal' })
+  })
+
+  it('maps the retired widget audience onto the portal', () => {
+    const payload = `principal_1.widget.${Date.now() + 60_000}`
+    const signature = createHmac('sha256', TEST_KEY)
+      .update(`chat-stream:v1\n${payload}`)
+      .digest('base64url')
+    const token = `${Buffer.from(payload).toString('base64url')}.${signature}`
+    expect(verifyStreamToken(token)).toEqual({ principalId: 'principal_1', scope: 'portal' })
   })
 
   it('defaults to dashboard', () => {

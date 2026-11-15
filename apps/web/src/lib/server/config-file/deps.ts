@@ -2,7 +2,7 @@ import { db, settings, eq } from '@/lib/server/db'
 import { invalidateSettingsCache } from '@/lib/server/domains/settings/settings.helpers'
 import {
   DEFAULT_PORTAL_CONFIG,
-  DEFAULT_WIDGET_CONFIG,
+  DEFAULT_MESSENGER_SETTINGS,
   newWorkspaceFlagsForGoals,
 } from '@/lib/server/domains/settings/settings.types'
 import { getSetupState } from '@/lib/shared/db-types'
@@ -88,7 +88,7 @@ export function makeReconcileDeps(): ReconcileDeps {
           managedFieldPaths: insert.managedFieldPaths,
           authConfigVersion: 1,
           portalConfig: JSON.stringify(DEFAULT_PORTAL_CONFIG),
-          widgetConfig: JSON.stringify(DEFAULT_WIDGET_CONFIG),
+          messengerConfig: JSON.stringify(DEFAULT_MESSENGER_SETTINGS),
           featureFlags: JSON.stringify(newWorkspaceFlagsForGoals(stampedGoals(insert.setupState))),
         })
         .onConflictDoNothing({ target: settings.slug })

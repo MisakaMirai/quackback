@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 # Repository bootstrap for the Quackback Cloud Agent environment.
 #
-# Runs after the source is checked out. Installs JS dependencies and builds the
-# widget bundle that the web build imports (packages/widget/dist/browser.js).
+# Runs after the source is checked out. Installs JS dependencies.
 # Must be idempotent and must NOT start long-running processes or depend on the
 # datastores (those are handled per-boot by start.sh).
 set -euo pipefail
@@ -13,11 +12,6 @@ cd "$REPO_ROOT"
 echo "[install] Installing dependencies with Bun..."
 bun install --frozen-lockfile
 
-# apps/web imports packages/widget/dist/browser.js via Vite `?raw`, so the
-# widget must be built before any web build. This is fast (tsup) and safe to
-# re-run.
-echo "[install] Building @quackback/widget bundle..."
-bun run --filter @quackback/widget build
 
 # Snapshot the datastore images so start.sh is not paying pull/build on every
 # agent VM. dockerd is only up for this step.

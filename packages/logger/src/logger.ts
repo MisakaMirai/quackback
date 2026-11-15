@@ -51,7 +51,6 @@ const REDACT_PATHS = [
   'api_key',
   'secret',
   '*.secret',
-  'widgetSecret',
   'email',
   '*.email',
   'user.email',

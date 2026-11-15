@@ -16,7 +16,7 @@
  * shortening it to this window would change them too.
  *
  * Only a dashboard session of a person counts. Widget and portal sessions are
- * minted by the app (an identified widget visitor, an anonymous visitor)
+ * minted by the app (an identified visitor, an anonymous visitor)
  * rather than by anyone signing in here.
  */
 import type { UserId } from '@quackback/ids'

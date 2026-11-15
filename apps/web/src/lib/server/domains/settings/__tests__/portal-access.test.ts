@@ -345,9 +345,6 @@ describe('evaluatePortalAccess — segment branch', () => {
       userEmail: 'user@external.com',
       allowedDomains: [],
       hasAcceptedPortalInvite: false,
-      widgetSignInEnabled: false,
-      hasViaWidgetMarker: false,
-      identifyVerificationEnabled: false,
       isInAllowedSegment: true,
     })
     expect(result).toEqual({ granted: true, reason: 'segment' })
@@ -362,9 +359,6 @@ describe('evaluatePortalAccess — segment branch', () => {
       userEmail: 'user@external.com',
       allowedDomains: [],
       hasAcceptedPortalInvite: false,
-      widgetSignInEnabled: false,
-      hasViaWidgetMarker: false,
-      identifyVerificationEnabled: false,
       isInAllowedSegment: false,
     })
     expect(result).toEqual({ granted: false, reason: 'unauthorized' })
@@ -380,9 +374,6 @@ describe('evaluatePortalAccess — segment branch', () => {
       userEmail: null,
       allowedDomains: [],
       hasAcceptedPortalInvite: false,
-      widgetSignInEnabled: false,
-      hasViaWidgetMarker: false,
-      identifyVerificationEnabled: false,
       isInAllowedSegment: true, // shouldn't grant — caller is anonymous
     })
     expect(result.granted).toBe(false)
@@ -427,9 +418,6 @@ describe('evaluatePortalAccess — segment branch edge cases', () => {
       userEmail: 'user@external.com',
       allowedDomains: [],
       hasAcceptedPortalInvite: false,
-      widgetSignInEnabled: false,
-      hasViaWidgetMarker: false,
-      identifyVerificationEnabled: false,
       isInAllowedSegment: true,
     })
     expect(result).toEqual({ granted: false, reason: 'unauthorized' })
@@ -444,9 +432,6 @@ describe('evaluatePortalAccess — segment branch edge cases', () => {
       userEmail: 'user@external.com',
       allowedDomains: [],
       hasAcceptedPortalInvite: false,
-      widgetSignInEnabled: false,
-      hasViaWidgetMarker: false,
-      identifyVerificationEnabled: false,
       isInAllowedSegment: true,
     })
     expect(result).toEqual({ granted: true, reason: 'segment' })
@@ -461,9 +446,6 @@ describe('evaluatePortalAccess — segment branch edge cases', () => {
       userEmail: 'user@acme.com',
       allowedDomains: ['acme.com'],
       hasAcceptedPortalInvite: false,
-      widgetSignInEnabled: false,
-      hasViaWidgetMarker: false,
-      identifyVerificationEnabled: false,
       isInAllowedSegment: true,
     })
     expect(result).toEqual({ granted: true, reason: 'domain' })

@@ -14,7 +14,7 @@ export function WorkspaceIdentityCard(props: {
   return (
     <SettingsCard
       title="Workspace"
-      description="Your logo and name, shown across the portal, widget and emails."
+      description="Your logo and name, shown across the portal and emails."
     >
       <div className="flex items-center gap-4">
         <LogoUploader workspaceName={props.workspaceName} focus={props.focusLogo} />

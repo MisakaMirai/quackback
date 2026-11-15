@@ -32,8 +32,6 @@ const CAPABILITY_HINTS: Record<Capability, string> = {
   db: 'pass --alpha-db and --bravo-db',
   'storage-secret': 'pass --alpha-storage-secret and --bravo-storage-secret',
   'api-key': 'pass --alpha-api-key and --bravo-api-key',
-  'widget-secret':
-    'pass --alpha-widget-secret and --bravo-widget-secret, or supply --alpha-db/--bravo-db',
 }
 
 /**
@@ -224,9 +222,8 @@ export async function runSuite(
     targets: { alpha: config.alphaUrl, bravo: config.bravoUrl },
     capabilities: [...preflight.capabilities],
     missingCapabilities: preflight.missing,
-    // `publicMarkers` strips credential markers. The widget signing secret is a
-    // marker the tripwire scans for, and it must not travel in an artifact that
-    // gets attached to tickets.
+    // `publicMarkers` strips credential markers. A secret the tripwire scans for
+    // must not travel in an artifact that gets attached to tickets.
     markers: { alpha: publicMarkers(alpha.markers), bravo: publicMarkers(bravo.markers) },
     verdict: allPass ? 'PASS' : 'FAIL',
     partial: filteredOut.length > 0,

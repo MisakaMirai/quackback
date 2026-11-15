@@ -32,7 +32,7 @@ function EmailIcon({ className }: { className?: string }) {
 
 /** Source type → icon component (merges custom icons with existing integration icons) */
 const SOURCE_TYPE_ICONS: Record<string, ComponentType<{ className?: string }>> = {
-  // widget/quackback uses the logo image, not an SVG icon — handled separately in SourceTypeIcon
+  // quackback uses the logo image, not an SVG icon — handled separately in SourceTypeIcon
   api: ApiIcon,
   csv: CsvIcon,
   email: EmailIcon,

@@ -1,12 +1,8 @@
 /**
  * The audience stamped on a session as Better Auth creates it.
  *
- * Two surfaces mint anonymous sessions through the same `/sign-in/anonymous`
- * endpoint: the portal (cookie, same origin) and the widget (Bearer token via
- * `set-auth-token`, cookies omitted). The portal session has to reach
- * `requireAuth`, which refuses widget scope; the widget session has to stay
- * widget so its Bearer never satisfies a site surface. Absent a marker the mint
- * is the widget's, so an old or unmarked client lands on the restrictive side.
+ * There is one anonymous audience — the portal — so every `/sign-in/anonymous`
+ * mint is tagged portal, whichever client asked for it.
  */
 import { describe, expect, it, vi } from 'vitest'
 
@@ -18,39 +14,22 @@ vi.mock('@tanstack/react-start/server', () => ({
 }))
 
 import { assignSessionScope } from '../session-audience'
-import { SESSION_AUDIENCE_HEADER } from '@/lib/shared/roles'
 
 const base = { userId: 'user_anon', token: 'tok', expiresAt: new Date(0) }
 
-function ctx(
-  path: string,
-  headers: Record<string, string> = {},
-  via: 'headers' | 'request' = 'headers'
-) {
-  const bag = new Headers(headers)
-  return via === 'headers' ? { path, headers: bag } : { path, request: { headers: bag } }
+function ctx(path: string, headers: Record<string, string> = {}) {
+  return { path, headers: new Headers(headers) }
 }
 
 describe('assignSessionScope', () => {
-  it('tags the portal anonymous mint as portal', async () => {
-    const result = await assignSessionScope(
-      base,
-      ctx('/sign-in/anonymous', { [SESSION_AUDIENCE_HEADER]: 'portal' })
-    )
+  it('tags the anonymous mint as portal', async () => {
+    const result = await assignSessionScope(base, ctx('/sign-in/anonymous'))
     expect(result).toEqual({ data: { ...base, scope: 'portal', ipAddress: '203.0.113.5' } })
   })
 
-  it('reads the marker from the request when the context carries no header bag', async () => {
-    const result = await assignSessionScope(
-      base,
-      ctx('/sign-in/anonymous', { [SESSION_AUDIENCE_HEADER]: 'portal' }, 'request')
-    )
+  it('tags the anonymous mint as portal even when the context carries no header bag', async () => {
+    const result = await assignSessionScope(base, { path: '/sign-in/anonymous' })
     expect(result?.data.scope).toBe('portal')
-  })
-
-  it('tags the widget anonymous mint (no marker) as widget', async () => {
-    const result = await assignSessionScope(base, ctx('/sign-in/anonymous'))
-    expect(result).toEqual({ data: { ...base, scope: 'widget', ipAddress: '203.0.113.5' } })
   })
 
   it('records the resolved peer address on the anonymous mint, for the anonymous vote limit', async () => {
@@ -61,27 +40,9 @@ describe('assignSessionScope', () => {
     expect(result?.data.ipAddress).toBe('203.0.113.5')
   })
 
-  it('treats a mint with no context headers at all as widget', async () => {
-    const result = await assignSessionScope(base, { path: '/sign-in/anonymous' })
-    expect(result?.data.scope).toBe('widget')
-  })
-
-  it.each(['dashboard', 'widget', 'PORTAL', 'portal, dashboard', ''])(
-    'never grants anything but portal or widget: marker %j mints widget',
-    async (value) => {
-      const result = await assignSessionScope(
-        base,
-        ctx('/sign-in/anonymous', { [SESSION_AUDIENCE_HEADER]: value })
-      )
-      expect(result?.data.scope).toBe('widget')
-    }
-  )
-
-  it('leaves non-anonymous sign-ins at the column default, marker or not', async () => {
+  it('leaves non-anonymous sign-ins at the column default', async () => {
     for (const path of ['/sign-in/email', '/sign-in/social', '/callback/:id']) {
-      expect(
-        await assignSessionScope(base, ctx(path, { [SESSION_AUDIENCE_HEADER]: 'portal' }))
-      ).toBeUndefined()
+      expect(await assignSessionScope(base, ctx(path))).toBeUndefined()
     }
     expect(await assignSessionScope(base, null)).toBeUndefined()
   })

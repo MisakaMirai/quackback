@@ -11,16 +11,13 @@ vi.mock('../settings.service', () => ({
   getPortalConfig: hoisted.mockGetPortalConfig,
 }))
 
-vi.mock('../settings.widget', () => ({
+vi.mock('../settings.messenger', () => ({
   isMessengerEnabled: hoisted.mockIsMessengerEnabled,
 }))
 
 import { isPortalSupportEnabled, isConversationsEnabled } from '../settings.support'
 import { DEFAULT_PORTAL_CONFIG } from '../settings.types'
-import {
-  isPortalSupportSurfaceEnabled,
-  isWidgetMessengerEnabled,
-} from '@/lib/shared/support-surfaces'
+import { isPortalSupportSurfaceEnabled } from '@/lib/shared/support-surfaces'
 
 describe('DEFAULT_PORTAL_CONFIG.support', () => {
   it('is on by default so Support ON is enough to start portal chats', () => {
@@ -46,26 +43,6 @@ describe('isPortalSupportSurfaceEnabled', () => {
       ).toBe(expected)
     }
   )
-})
-
-describe('isWidgetMessengerEnabled', () => {
-  it('requires the inbox flag, widget master, and Messages tab', () => {
-    expect(
-      isWidgetMessengerEnabled({ supportInbox: true }, { enabled: true, tabs: { messenger: true } })
-    ).toBe(true)
-    expect(
-      isWidgetMessengerEnabled(
-        { supportInbox: true },
-        { enabled: false, tabs: { messenger: true } }
-      )
-    ).toBe(false)
-    expect(
-      isWidgetMessengerEnabled(
-        { supportInbox: false },
-        { enabled: true, tabs: { messenger: true } }
-      )
-    ).toBe(false)
-  })
 })
 
 describe('isPortalSupportEnabled', () => {
@@ -108,18 +85,18 @@ describe('isConversationsEnabled', () => {
   // customer ticket is a conversation pair, so an email-first workspace with
   // the messenger off still lists and replies to its threads.
   it.each([
-    { widget: true, portalSupport: false, tickets: false, expected: true },
-    { widget: false, portalSupport: true, tickets: false, expected: true },
-    { widget: true, portalSupport: true, tickets: false, expected: true },
-    { widget: false, portalSupport: false, tickets: true, expected: true },
-    { widget: false, portalSupport: false, tickets: false, expected: false },
+    { messenger: true, portalSupport: false, tickets: false, expected: true },
+    { messenger: false, portalSupport: true, tickets: false, expected: true },
+    { messenger: true, portalSupport: true, tickets: false, expected: true },
+    { messenger: false, portalSupport: false, tickets: true, expected: true },
+    { messenger: false, portalSupport: false, tickets: false, expected: false },
   ])(
-    'widget=$widget portalSupport=$portalSupport tickets=$tickets → $expected',
-    async ({ widget, portalSupport, tickets, expected }) => {
+    'messenger=$messenger portalSupport=$portalSupport tickets=$tickets → $expected',
+    async ({ messenger, portalSupport, tickets, expected }) => {
       hoisted.mockIsFeatureEnabled.mockImplementation(async (flag: string) =>
         flag === 'supportTickets' ? tickets : true
       )
-      hoisted.mockIsMessengerEnabled.mockResolvedValue(widget)
+      hoisted.mockIsMessengerEnabled.mockResolvedValue(messenger)
       hoisted.mockGetPortalConfig.mockResolvedValue({ support: { enabled: portalSupport } })
       expect(await isConversationsEnabled()).toBe(expected)
     }

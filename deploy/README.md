@@ -69,4 +69,4 @@ deploy/
 
 ## License
 
-The app is licensed under AGPL-3.0 (the `@quackback/widget` package is MIT). There is no closed enterprise edition and no license key: a self-hosted install is entitled to every feature, including OIDC SSO and the audit log.
+The app is licensed under AGPL-3.0. There is no closed enterprise edition and no license key: a self-hosted install is entitled to every feature, including OIDC SSO and the audit log.

@@ -20,19 +20,18 @@ import { resolveDocumentTheme, SYSTEM_THEME_SCRIPT } from '@/lib/shared/theme'
 import { MinimalDocument } from '@/components/shared/minimal-document'
 import { DefaultErrorPage } from '@/components/shared/error-page'
 import { DocumentHead, DocumentScripts } from '@/components/shared/document-head'
-import { OttHandler } from '@/components/shared/ott-handler'
 import { VisitorBeacon } from '@/components/shared/visitor-beacon'
 import { ProductAnalytics } from '@/components/shared/product-analytics'
 import { documentLocale, htmlLangDir } from '@/lib/shared/document-locale'
 import { DocumentLocaleContext } from '@/components/shared/document-locale-context'
-import { normalizeLocale, DEFAULT_LOCALE, type SupportedLocale } from '@/lib/shared/i18n'
+import { DEFAULT_LOCALE, type SupportedLocale } from '@/lib/shared/i18n'
 import { useWorkspaceSettings } from '@/lib/client/hooks/use-root-context'
 import { rssAlternateLink } from '@/lib/shared/rss-alternate'
 import { isStatusFeedReadable } from '@/lib/shared/status-settings'
 
 // The toast renderer is its own chunk: the root module ships with every
-// document (the embedded widget included), and a toast fired before it mounts
-// is replayed to it once it subscribes.
+// document, and a toast fired before it mounts is replayed to it once it
+// subscribes.
 const Toaster = lazy(() => import('@/components/ui/sonner').then((m) => ({ default: m.Toaster })))
 
 export interface RouterContext {
@@ -60,7 +59,6 @@ const ONBOARDING_EXEMPT_PATHS = [
   '/complete-signup/',
   '/oauth/',
   '/.well-known/',
-  '/widget',
   '/e2e/',
 ]
 
@@ -154,7 +152,6 @@ export const Route = createRootRouteWithContext<RouterContext>()({
 function RootComponent() {
   return (
     <RootDocument>
-      <OttHandler />
       <VisitorBeacon />
       <ProductAnalytics />
       <Outlet />
@@ -221,27 +218,15 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
   const isPortalRoute = useRouterState({
     select: (s) => !NON_PORTAL_PREFIXES.some((prefix) => s.location.pathname.startsWith(prefix)),
   })
-  const isWidgetRoute = useRouterState({
-    select: (s) => s.matches.some((m) => m.routeId === '/widget'),
-  })
-  // The widget honors a `?locale=` override (its SDK appends it); read it so the
-  // iframe document advertises the widget's actual language, not just the
-  // Accept-Language one. Only the widget route reads this param.
-  const widgetLocaleParam = useRouterState({
-    select: (s) => (s.location.search as { locale?: string }).locale,
-  })
-  // The widget and portal both honor a `?theme=` override (the admin settings
-  // previews append it): forced for that document only, never persisted to the
-  // cookie.
+  // The portal honors a `?theme=` override (the admin settings preview appends
+  // it): forced for that document only, never persisted to the cookie.
   const themeParam = useRouterState({
     select: (s) => (s.location.search as { theme?: string }).theme,
   })
 
   const themeMode = settings?.brandingConfig?.themeMode ?? 'user'
   const searchForcedTheme =
-    (isWidgetRoute || isPortalRoute) && (themeParam === 'light' || themeParam === 'dark')
-      ? themeParam
-      : undefined
+    isPortalRoute && (themeParam === 'light' || themeParam === 'dark') ? themeParam : undefined
   const forcedTheme =
     searchForcedTheme ?? (isPortalRoute && themeMode !== 'user' ? themeMode : undefined)
 
@@ -263,11 +248,8 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
   // Advertise the rendered language on the document during SSR so non-English
   // visitors don't get an English `<html lang>` (and so RTL locales aren't laid
   // out LTR until hydration). Decided from the matched route IDs so only
-  // actually-localized routes are tagged; see documentLocale. On the widget a
-  // valid `?locale=` override wins, matching what the widget itself renders.
-  const widgetOverride =
-    isWidgetRoute && widgetLocaleParam ? normalizeLocale(widgetLocaleParam) : null
-  const resolvedLocale = widgetOverride ?? acceptLanguageLocale ?? DEFAULT_LOCALE
+  // actually-localized routes are tagged; see documentLocale.
+  const resolvedLocale = acceptLanguageLocale ?? DEFAULT_LOCALE
   const locale = useRouterState({
     select: (s) =>
       documentLocale(
@@ -302,9 +284,9 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
           forcedTheme={forcedTheme}
           disableTransitionOnChange
           // Never write the shared theme cookie from a forced-theme document:
-          // the widget iframe and the same-origin portal preview iframe would
-          // otherwise flip the admin's own theme.
-          syncCookie={!isWidgetRoute && !searchForcedTheme}
+          // the same-origin portal preview iframe would otherwise flip the
+          // admin's own theme.
+          syncCookie={!searchForcedTheme}
         >
           <DocumentLocaleContext.Provider value={locale}>{children}</DocumentLocaleContext.Provider>
           <Suspense fallback={null}>

@@ -158,12 +158,12 @@
  * endpoints sit behind `checkMagicLinkSendRateLimit`, which is spent before the
  * question is asked.
  *
- * Anonymous widget sessions are exempt at the backstop rather than here: their
+ * Anonymous sessions are exempt at the backstop rather than here: their
  * synthetic placeholder address is not a signup in any sense a workspace admin
  * means by the word.
  *
  * Accounts an admin creates directly (portal user admin, import, verified
- * widget identify) never reach any of these paths; they are authenticated acts
+ * identify) never reach any of these paths; they are authenticated acts
  * by someone who already holds the workspace, and `openSignup` does not speak
  * about them.
  */
@@ -346,7 +346,7 @@ export async function isAccountCreationAllowed(
  *
  * The anonymous plugin needs a unique non-null email and mints a synthetic
  * placeholder for one, which is not a person signing up in any sense a
- * workspace admin means by the word. Blocking them would take the widget down
+ * workspace admin means by the word. Blocking them would take the portal down
  * on every workspace that closed sign-ups.
  *
  * ## The portal door, on every path but one

@@ -32,7 +32,6 @@ import { isTestCustomer } from '../test-data'
 import { policyActorFromAuth, type AuthContext } from '../functions/auth-helpers'
 import { runFetchBoardCapabilities } from '../functions/portal'
 import { runCreatePublicPost } from '../functions/public-posts'
-import { getOptionalWidgetAuth } from '../functions/widget-auth'
 import { DEFAULT_PORTAL_CONFIG } from '../domains/settings/settings.types'
 
 const effects = vi.hoisted(() => ({
@@ -158,7 +157,7 @@ beforeEach(async () => {
     user: { id: testCustomer.userId!, name: 'Test customer', email: '', image: null },
     principal: { id: customer, role: 'user', type: 'anonymous' },
     permissions: [],
-    scope: 'widget',
+    scope: 'portal',
   }
 })
 afterEach(fixture.rollback)
@@ -210,17 +209,16 @@ it('advertises and creates a private-board test idea with anonymous posting disa
   // Test status is the author's identity; the client's metadata is kept as sent.
   expect(saved.principalId).toBe(customer)
   expect(await isTestCustomer(saved.principalId)).toBe(true)
-  expect(saved.widgetMetadata).toEqual(claimed)
+  expect(saved.clientMetadata).toEqual(claimed)
 })
 
-it('reads private-board submission capabilities from the exchanged widget Bearer and revokes them with the owner permission', async () => {
+it('reads private-board submission capabilities from the exchanged test-customer Bearer and revokes them with the owner permission', async () => {
   const token = await mintTestCustomerToken(owner, 'en')
   const exchanged = await consumeTestCustomerToken(token.token)
   expect(exchanged?.principal.id).toBe(customer)
-  effects.headers = new Headers({ Authorization: `Bearer ${exchanged!.bearerToken}` })
-  const widgetAuth = await getOptionalWidgetAuth()
-  expect(widgetAuth?.principal).toEqual({ id: customer, role: 'user', type: 'anonymous' })
-  expect(widgetAuth?.permissions).toEqual([])
+  const widgetAuth = auth
+  expect(widgetAuth.principal).toEqual({ id: customer, role: 'user', type: 'anonymous' })
+  expect(widgetAuth.permissions).toEqual([])
   const capabilities = await runFetchBoardCapabilities(widgetAuth)
   expect(capabilities.boards.map((board) => board.id)).toContain(privateBoard)
   expect(capabilities.permissions[privateBoard]).toEqual({ canSubmit: true, canVote: false })
@@ -233,19 +231,17 @@ it('reads private-board submission capabilities from the exchanged widget Bearer
   expect(saved.principalId).toBe(customer)
 
   await grantOwner([PERMISSIONS.POST_VIEW_PRIVATE])
-  const revoked = await runFetchBoardCapabilities(await getOptionalWidgetAuth())
+  const revoked = await runFetchBoardCapabilities(widgetAuth)
   expect(revoked.permissions[privateBoard]).toEqual({ canSubmit: false, canVote: false })
   await expect(
-    runCreatePublicPost((await getOptionalWidgetAuth())!, {
+    runCreatePublicPost(widgetAuth, {
       boardId: privateBoard,
       title: 'Acme denied idea',
       content: '',
     })
   ).rejects.toThrow(/post.create|anonymous interaction/i)
 
-  effects.headers = new Headers({ Cookie: 'better-auth.session_token=teammate-cookie' })
-  expect(await getOptionalWidgetAuth()).toBeNull()
-  const unauthenticated = await runFetchBoardCapabilities(await getOptionalWidgetAuth())
+  const unauthenticated = await runFetchBoardCapabilities(null)
   expect(unauthenticated.boards.map((board) => board.id)).not.toContain(privateBoard)
   expect(unauthenticated.permissions[publicBoard]).toEqual({ canSubmit: false, canVote: false })
 })

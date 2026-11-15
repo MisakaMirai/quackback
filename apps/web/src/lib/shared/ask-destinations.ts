@@ -72,8 +72,7 @@ const KEYWORDS: Record<string, string[]> = {
   '/admin/settings/members': ['invite', 'team', 'roles'],
   '/admin/settings/security/authentication': ['sso', 'sign in', 'authentication', 'login'],
   '/admin/settings/developers': ['api', 'keys', 'webhooks'],
-  '/admin/settings/widget': ['messenger', 'welcome', 'chat'],
-  '/admin/settings/widget/install': ['install', 'snippet', 'website', 'embed'],
+  '/admin/settings/channels/messenger': ['messenger', 'welcome', 'chat'],
   '/admin/settings/portal': ['branding', 'logo', 'color', 'theme', 'header'],
   '/admin/settings/general': ['modules', 'workspace', 'name'],
 }
@@ -110,12 +109,6 @@ export function buildAskDestinations(options: AskDestinationOptions): AskDestina
   }
 
   if (permissions.has(PERMISSIONS.SETTINGS_MANAGE)) {
-    result.push(
-      destination(
-        '/admin/settings/widget/install',
-        SETTINGS_PAGES['/admin/settings/widget/install'].label
-      )
-    )
     if (featureFlags?.supportInbox) {
       result.push(
         destination(
@@ -162,7 +155,6 @@ export interface AskStarterPrompt {
 const STARTERS = {
   branding: { id: 'ask.starter.branding', defaultMessage: 'Set my brand color' },
   invite: { id: 'ask.starter.invite', defaultMessage: 'Invite my team' },
-  install: { id: 'ask.starter.install', defaultMessage: 'Put Messenger on my site' },
   welcome: { id: 'ask.starter.welcome', defaultMessage: 'Write a welcome message' },
   feedback: { id: 'ask.starter.feedback', defaultMessage: 'Set up my feedback board' },
   help: { id: 'ask.starter.help', defaultMessage: 'Create my first help article' },
@@ -177,7 +169,6 @@ export function buildAskStarterPrompts(
   const selected: AskStarterPrompt[] = []
   for (const goal of goals) {
     if (goal === 'customer_support') {
-      if (!completed.has('connect-messenger')) selected.push(STARTERS.install)
       selected.push(STARTERS.welcome)
     } else if (goal === 'help_center' && !completed.has('help-article'))
       selected.push(STARTERS.help)
@@ -188,7 +179,7 @@ export function buildAskStarterPrompts(
   if (!completed.has('customize-branding')) selected.push(STARTERS.branding)
   if (!completed.has('invite-team')) selected.push(STARTERS.invite)
   const unique = [...new Map(selected.map((item) => [item.id, item])).values()]
-  for (const fallback of [STARTERS.branding, STARTERS.invite, STARTERS.install]) {
+  for (const fallback of [STARTERS.branding, STARTERS.invite]) {
     if (unique.length >= 3) break
     if (!unique.some((item) => item.id === fallback.id)) unique.push(fallback)
   }

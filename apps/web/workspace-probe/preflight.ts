@@ -131,11 +131,9 @@ async function establishAdminSession(
   }
 }
 
-function secretFor(slot: WorkspaceSlot, config: ProbeConfig, kind: 'storage' | 'widget' | 'api') {
+function secretFor(slot: WorkspaceSlot, config: ProbeConfig, kind: 'storage' | 'api') {
   if (kind === 'storage')
     return slot === 'alpha' ? config.alphaStorageSecret : config.bravoStorageSecret
-  if (kind === 'widget')
-    return slot === 'alpha' ? config.alphaWidgetSecret : config.bravoWidgetSecret
   return slot === 'alpha' ? config.alphaApiKey : config.bravoApiKey
 }
 
@@ -299,7 +297,6 @@ export async function runPreflight(
   for (const [capability, kind] of [
     ['api-key', 'api'],
     ['storage-secret', 'storage'],
-    ['widget-secret', 'widget'],
   ] as const) {
     const a = secretFor('alpha', config, kind)
     const b = secretFor('bravo', config, kind)
@@ -320,29 +317,6 @@ export async function runPreflight(
         name: `credential:${capability}`,
         ok: true,
         detail: 'not supplied; dependent probes will report BLOCKED',
-      })
-    }
-  }
-
-  // Widget secrets can be read straight out of the settings row when the
-  // database is reachable, so the operator does not have to plumb them by hand.
-  if (!capabilities.has('widget-secret') && capabilities.has('db')) {
-    const secrets: Partial<Record<WorkspaceSlot, string>> = {}
-    for (const handle of both) {
-      const [row] = await handle.db!.query<{ widget_secret: string | null }>(SETTINGS_ROW_SQL)
-      if (row?.widget_secret) secrets[handle.slot] = row.widget_secret
-    }
-    if (secrets.alpha && secrets.bravo) {
-      config.alphaWidgetSecret = secrets.alpha
-      config.bravoWidgetSecret = secrets.bravo
-      capabilities.add('widget-secret')
-      steps.push({
-        name: 'credential:widget-secret',
-        ok: secrets.alpha !== secrets.bravo,
-        detail:
-          secrets.alpha !== secrets.bravo
-            ? 'read from settings.widget_secret on both workspaces'
-            : 'read from the database and IDENTICAL across workspaces — a shared widget secret forges identities in both',
       })
     }
   }
@@ -552,7 +526,7 @@ function finish(
   bravo: WorkspaceHandle,
   failureReason?: string
 ): PreflightOutput {
-  const all: Capability[] = ['http', 'admin', 'db', 'storage-secret', 'api-key', 'widget-secret']
+  const all: Capability[] = ['http', 'admin', 'db', 'storage-secret', 'api-key']
   return {
     ok: !failureReason,
     steps,

@@ -219,27 +219,14 @@ async function loadConversationMailContext(conversationId: ConversationId): Prom
 
 /**
  * Where a conversation email deep-links to for the VISITOR: the portal Support
- * thread when that surface is enabled, else the widget's `?c=` deep link. Pure
- * so the selection is unit-tested directly.
+ * thread.
  */
 export function visitorConversationLink(
   portalBaseUrl: string,
-  conversationId: ConversationId,
-  portalSupportEnabled: boolean
+  conversationId: ConversationId
 ): string {
   const base = portalBaseUrl.replace(/\/$/, '')
-  return portalSupportEnabled
-    ? `${base}/support/${encodeURIComponent(conversationId)}`
-    : `${base}/widget/?c=${encodeURIComponent(conversationId)}`
-}
-
-/** Resolve the visitor-facing conversation link with the current gate state. */
-async function resolveVisitorConversationLink(
-  portalBaseUrl: string,
-  conversationId: ConversationId
-): Promise<string> {
-  const { isPortalSupportEnabled } = await import('@/lib/server/domains/settings/settings.support')
-  return visitorConversationLink(portalBaseUrl, conversationId, await isPortalSupportEnabled())
+  return `${base}/support/${encodeURIComponent(conversationId)}`
 }
 
 /**
@@ -610,7 +597,7 @@ export async function notifyAgentReply(opts: {
     // when enabled, else the widget messenger view). The thread is surfaced from
     // the visitor's own session (or a re-identify in the host app), so the URL
     // only navigates — it carries no capability of its own.
-    const ctaUrl = await resolveVisitorConversationLink(ctx.portalBaseUrl, opts.conversationId)
+    const ctaUrl = visitorConversationLink(ctx.portalBaseUrl, opts.conversationId)
     const adapter = requireChannelAdapter(opts.channel)
     const threadAddressed = getChannelDescriptor(opts.channel)?.addressing === 'thread'
     if (recipient || threadAddressed) {
@@ -718,7 +705,7 @@ export async function notifyConversationStarted(opts: {
 
     const ctx = await buildHookContext()
     if (!ctx) return
-    const ctaUrl = await resolveVisitorConversationLink(ctx.portalBaseUrl, opts.conversationId)
+    const ctaUrl = visitorConversationLink(ctx.portalBaseUrl, opts.conversationId)
     await requireChannelAdapter(channel).deliverAgentMessage({
       conversationId: opts.conversationId,
       messageId: opts.messageId,

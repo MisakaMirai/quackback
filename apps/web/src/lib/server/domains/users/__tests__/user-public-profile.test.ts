@@ -63,7 +63,7 @@ const TABLES = vi.hoisted(() => ({
     principalId: 'posts.principalId',
     createdAt: 'posts.createdAt',
     deletedAt: 'posts.deletedAt',
-    widgetMetadata: 'posts.widgetMetadata',
+    clientMetadata: 'posts.clientMetadata',
   },
   postComments: {
     postId: 'postComments.postId',

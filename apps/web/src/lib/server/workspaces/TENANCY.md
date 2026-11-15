@@ -257,13 +257,13 @@ Local pooled fleet, `QUACKBACK_ROLE=web`, `WORKSPACE_POOL_IDLE_SECONDS=20`, agai
 method polls the compute for `current_state = idle` **before** the trial: a
 suspend/wake measurement without a verified pre-state measures nothing.
 
-| Step                                                              | Observed                                                                                       |
-| ----------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| verified pre-state                                                | `idle`                                                                                         |
-| cold request (`GET /api/widget/config.json`, Host `t3.localhost`) | HTTP **200 in 3 s** — compute wake + first pool build + fingerprint + render, all cold         |
-| state immediately after                                           | `active`                                                                                       |
-| pool evicted                                                      | **+25.2 s** after last use, `reason: idle`, socket closed (20 s threshold, swept every ~6.7 s) |
-| compute returned to `idle`                                        | **+337 s** after last traffic, polled every 15 s                                               |
+| Step                                        | Observed                                                                                       |
+| ------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| verified pre-state                          | `idle`                                                                                         |
+| cold request (`GET /`, Host `t3.localhost`) | HTTP **200 in 3 s** — compute wake + first pool build + fingerprint + render, all cold         |
+| state immediately after                     | `active`                                                                                       |
+| pool evicted                                | **+25.2 s** after last use, `reason: idle`, socket closed (20 s threshold, swept every ~6.7 s) |
+| compute returned to `idle`                  | **+337 s** after last traffic, polled every 15 s                                               |
 
 337 s against a documented 300 s `suspend_timeout_seconds`, of which the first
 ~25 s is the pool still holding a socket open. So the compute suspended roughly
@@ -341,7 +341,7 @@ should be fixed by anyone reading this file rather than by the suite's owner.
 
 ### The surface the isolation probe cannot judge
 
-The Piece 1 probe suite's own README records `/api/widget/config.json` as
+The Piece 1 probe suite's own README records the portal documents as
 unguarded for any workspace on a greyscale or default brand colour: the planted
 identity token lives in the workspace name or the portal welcome headline, and
 that surface carries neither — only colours. So it was checked directly, on the
@@ -610,7 +610,7 @@ workspace resumes within the hour of its first request.
 `config.baseUrl` returns `getCurrentWorkspace()?.routing.baseUrl` whenever a workspace
 scope is active. One getter rather than ~56 call sites, because a per-call-site
 fix is a list that goes stale on the next absolute URL anyone writes. It reaches
-email links, asset URLs, `__QUACKBACK_URL__` in the widget SDK, OAuth callback
+email links, asset URLs, OAuth callback
 redirects, the MCP resource metadata, better-auth's `baseURL` and the cookie
 `secure` flag. `trustedOrigins` becomes the workspace's own hostnames and stops
 honouring the process-wide `TRUSTED_ORIGINS`, which under pooling would make one

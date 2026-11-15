@@ -15,7 +15,6 @@
 import { describe, expect, it } from 'vitest'
 import { p01SessionCookie } from '../probes/p01-session-cookie'
 import { p03StorageToken } from '../probes/p03-storage-token'
-import { p04WidgetIdentify } from '../probes/p04-widget-identify'
 import { p05ApiKey } from '../probes/p05-api-key'
 import { p06SettingsCache } from '../probes/p06-settings-cache'
 import { p08CrossRead } from '../probes/p08-cross-read'
@@ -150,20 +149,6 @@ describe('P03 storage read token', () => {
   })
 })
 
-describe('P04 widget identify token', () => {
-  it('passes when each workspace holds its own widget secret', async () => {
-    const outcome = await p04WidgetIdentify.run(makeContext(new FakeFleet()))
-    expect(outcome.verdict).toBe('PASS')
-  })
-
-  it('reports LEAK when the widget signing secret spans workspaces', async () => {
-    const fleet = new FakeFleet({ sharedWidgetSecret: true })
-    const outcome = await p04WidgetIdentify.run(makeContext(fleet))
-    expect(outcome.verdict).toBe('LEAK')
-    expect(failedNegatives(outcome)).toContain("alpha's identify token → bravo")
-  })
-})
-
 describe('P05 API key', () => {
   it('passes when each workspace rejects the others key', async () => {
     const outcome = await p05ApiKey.run(makeContext(new FakeFleet()))
@@ -208,7 +193,7 @@ describe('P06 settings and branding cache', () => {
 
   it('reports LEAK on a partial identity leak that leaves the host rendering its own colour', async () => {
     // The round-4 shape: the portal serves alpha's cached name and headline
-    // while the widget config keeps bravo's own colour. Every defence built on
+    // while still rendering an identity of its own. Every defence built on
     // derived vocabulary missed it; the planted token does not.
     const fleet = new FakeFleet({ partialIdentityLeak: true })
     const outcome = await p06SettingsCache.run(makeContext(fleet, undefined, { withDb: true }))
@@ -239,25 +224,9 @@ describe('P06 settings and branding cache', () => {
 })
 
 describe('P08 cross-workspace read', () => {
-  it('passes when each workspaces search returns only its own rows', async () => {
+  it('passes when each workspace-s portal documents carry only its own rows', async () => {
     const outcome = await p08CrossRead.run(makeContext(new FakeFleet()))
     expect(outcome.verdict).toBe('PASS')
-  })
-
-  it('reports LEAK when the search index spans workspaces', async () => {
-    const fleet = new FakeFleet({ sharedSearchIndex: true })
-    const outcome = await p08CrossRead.run(makeContext(fleet))
-    expect(outcome.verdict).toBe('LEAK')
-    expect(failedNegatives(outcome).length).toBeGreaterThan(0)
-  })
-
-  it('does not mistake the colliding title for a leak', async () => {
-    // Both workspaces legitimately have a post titled "Dark mode". A probe that
-    // asserted an empty result set here would fail on a correct system.
-    const outcome = await p08CrossRead.run(makeContext(new FakeFleet()))
-    const collidingCheck = outcome.controls.find((c) => c.label.includes('colliding title'))
-    expect(collidingCheck?.ok).toBe(true)
-    expect(collidingCheck?.detail).toContain("bravo's own fixture post")
   })
 })
 

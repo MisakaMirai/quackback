@@ -50,24 +50,13 @@ describe('settings config mutations cache invalidation', () => {
     expect(result).toBeInstanceOf(Promise)
   })
 
-  it('useUpdateWidgetConfig.onSuccess awaits invalidation of the widgetConfig query', async () => {
-    const { useUpdateWidgetConfig } = await import('../settings')
-    const mutation = useUpdateWidgetConfig() as { onSuccess?: () => unknown }
+  it('useUpdateMessengerConfig.onSuccess awaits invalidation of the messengerConfig query', async () => {
+    const { useUpdateMessengerConfig } = await import('../settings')
+    const mutation = useUpdateMessengerConfig() as { onSuccess?: () => unknown }
 
     const result = mutation.onSuccess?.()
 
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['settings', 'widgetConfig'] })
-    expect(result).toBeInstanceOf(Promise)
-  })
-
-  it('useRegenerateWidgetSecret.onSuccess writes the new secret then awaits invalidation', async () => {
-    const { useRegenerateWidgetSecret } = await import('../settings')
-    const mutation = useRegenerateWidgetSecret() as { onSuccess?: (secret: string) => unknown }
-
-    const result = mutation.onSuccess?.('wgt_new')
-
-    expect(setQueryData).toHaveBeenCalledWith(['settings', 'widgetSecret'], 'wgt_new')
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['settings', 'widgetSecret'] })
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['settings', 'messengerConfig'] })
     expect(result).toBeInstanceOf(Promise)
   })
 

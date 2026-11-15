@@ -47,7 +47,7 @@ describe('logSettingsReadError', () => {
 
 describe('which call sites downgrade', () => {
   const dir = join(__dirname, '..')
-  const sources = ['settings.service.ts', 'settings.widget.ts'].map((f) =>
+  const sources = ['settings.service.ts', 'settings.messenger.ts'].map((f) =>
     readFileSync(join(dir, f), 'utf8')
   )
   const downgraded = sources.flatMap((s) =>
@@ -57,11 +57,10 @@ describe('which call sites downgrade', () => {
   it('downgrades exactly the pre-onboarding reads', () => {
     expect([...downgraded].sort()).toEqual([
       'get auth config failed',
+      'get messenger settings failed',
       'get portal config failed',
       'get public auth config failed',
       'get public portal config failed',
-      'get public widget config failed',
-      'get widget config failed',
       'get workspace settings failed',
     ])
   })
@@ -70,12 +69,9 @@ describe('which call sites downgrade', () => {
     const all = sources.join('\n')
     for (const msg of [
       'update auth config failed',
-      'update widget config failed',
       'update portal config failed',
       'update developer config failed',
       'update help center config failed',
-      'save widget hero image key failed',
-      'regenerate widget secret failed',
     ]) {
       expect(all).toContain(`log.error({ err: error }, '${msg}')`)
       expect(downgraded).not.toContain(msg)

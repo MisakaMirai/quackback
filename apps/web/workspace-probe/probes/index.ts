@@ -10,7 +10,6 @@
 import { p01SessionCookie } from './p01-session-cookie'
 import { p02MagicLinkOtp } from './p02-magic-link-otp'
 import { p03StorageToken } from './p03-storage-token'
-import { p04WidgetIdentify } from './p04-widget-identify'
 import { p05ApiKey } from './p05-api-key'
 import { p06SettingsCache } from './p06-settings-cache'
 import { p07BackgroundJob } from './p07-background-job'
@@ -22,7 +21,6 @@ export const ALL_PROBES: Probe[] = [
   p01SessionCookie,
   p02MagicLinkOtp,
   p03StorageToken,
-  p04WidgetIdentify,
   p05ApiKey,
   p06SettingsCache,
   p07BackgroundJob,
@@ -34,7 +32,6 @@ export {
   p01SessionCookie,
   p02MagicLinkOtp,
   p03StorageToken,
-  p04WidgetIdentify,
   p05ApiKey,
   p06SettingsCache,
   p07BackgroundJob,

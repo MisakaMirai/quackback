@@ -180,11 +180,10 @@ export default defineConfig(({ mode }) => {
         // code-splitting app-wide: rolldown places modules shared between a
         // pinned chunk and the entry INSIDE the pinned chunk, so the entry
         // imported router-core/error-page helpers *from* route-admin and every
-        // page — the portal and the embeddable /widget iframe on third-party
-        // sites — eagerly downloaded the entire admin app (~1.7 MB gzipped).
+        // page — the portal on its own origin — eagerly downloaded the entire
+        // admin app (~1.7 MB gzipped).
         // Usage-based splitting keeps the eager set honest (~400-500 KB gz)
         // at the cost of more, smaller chunks (fine over HTTP/2).
-        // scripts/check-widget-bundle.ts guards the widget's eager graph in CI.
       },
     },
     environments: {

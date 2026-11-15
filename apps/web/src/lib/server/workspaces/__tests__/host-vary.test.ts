@@ -148,7 +148,7 @@ describe('publicly cacheable responses vary on Host', () => {
     // The previous assertion passes trivially if the regex matches nothing.
     // Pin the count so a change that stops detecting them is loud.
     const total = files.reduce((n, f) => n + scanResponses(readFileSync(f, 'utf8')).length, 0)
-    expect(total).toBeGreaterThanOrEqual(10)
+    expect(total).toBeGreaterThanOrEqual(9)
   })
 })
 

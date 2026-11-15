@@ -725,21 +725,14 @@ export const updateDeveloperConfigFn = createServerFn({ method: 'POST' })
   })
 
 // ============================================
-// Widget Config Operations
+// Messenger Config Operations
 // ============================================
 
-export const fetchWidgetConfig = createServerFn({ method: 'GET' }).handler(async () => {
-  log.debug('fetch widget config')
+export const fetchMessengerConfig = createServerFn({ method: 'GET' }).handler(async () => {
+  log.debug('fetch messenger config')
   await requireAuth({ permission: PERMISSIONS.SETTINGS_MANAGE })
-  const { getWidgetConfig } = await import('@/lib/server/domains/settings/settings.widget')
-  return await getWidgetConfig()
-})
-
-export const fetchWidgetSecret = createServerFn({ method: 'GET' }).handler(async () => {
-  log.debug('fetch widget secret')
-  await requireAuth({ permission: PERMISSIONS.SETTINGS_MANAGE })
-  const { ensureWidgetSecret } = await import('@/lib/server/domains/settings/settings.widget')
-  return await ensureWidgetSecret()
+  const { getMessengerSettings } = await import('@/lib/server/domains/settings/settings.messenger')
+  return await getMessengerSettings()
 })
 
 const messengerConfigInputSchema = z.object({
@@ -749,97 +742,10 @@ const messengerConfigInputSchema = z.object({
   teamName: z.string().max(80).optional(),
   // Refuse visitor replies to closed conversations (Messenger only; §4.3).
   preventRepliesWhenClosed: z.boolean().optional(),
-  assistant: z
-    .object({
-      enabled: z.boolean().optional(),
-      // Whether the assistant actually replies (vs. identity-only).
-      respond: z.boolean().optional(),
-    })
-    .optional(),
-  officeHours: z
-    .object({
-      enabled: z.boolean(),
-      timezone: z.string().max(64),
-      days: z
-        .array(
-          z.object({
-            enabled: z.boolean(),
-            start: z.string().regex(/^\d{2}:\d{2}$/),
-            end: z.string().regex(/^\d{2}:\d{2}$/),
-          })
-        )
-        .length(7),
-    })
-    .optional(),
 })
 
-// heroImageKey is intentionally absent: the hero image is written only via
-// saveWidgetHeroImageKeyFn, which owns the S3 object lifecycle.
-// Hex-only (or empty = "use brand color"): these values are interpolated into
-// inline styles on the public widget, so the boundary must reject anything
-// that could smuggle CSS.
-const heroColorSchema = z.union([z.literal(''), z.string().regex(/^#[0-9a-f]{6}$/i)])
-
-const widgetHomeConfigSchema = z.object({
-  greeting: z.string().max(120).optional(),
-  subtitle: z.string().max(200).optional(),
-  headerStyle: z.enum(['plain', 'gradient', 'pattern', 'image']).optional(),
-  gradient: z
-    .object({
-      from: heroColorSchema.optional(),
-      to: heroColorSchema.optional(),
-    })
-    .optional(),
-  pattern: z.enum(['dots', 'grid', 'mesh', 'waves']).optional(),
-  showLogo: z.boolean().optional(),
-  showTeamAvatars: z.boolean().optional(),
-  cards: z
-    .array(
-      z
-        .object({
-          id: z.string().max(64),
-          type: z.enum([
-            'feedback',
-            'new_conversation',
-            'article_search',
-            'latest_updates',
-            'link',
-          ]),
-          enabled: z.boolean().optional(),
-          audience: z.enum(['everyone', 'anonymous', 'identified']).optional(),
-          title: z.string().max(80).optional(),
-          subtitle: z.string().max(160).optional(),
-          url: z.string().url().max(2000).optional(),
-        })
-        // A link card without a URL has nowhere to go.
-        .refine((c) => c.type !== 'link' || !!c.url, {
-          message: 'Link cards require a URL',
-        })
-    )
-    .max(8)
-    .optional(),
-})
-
-const updateWidgetConfigSchema = z.object({
-  enabled: z.boolean().optional(),
-  defaultBoard: z.string().optional(),
-  position: z.enum(['bottom-right', 'bottom-left']).optional(),
-  launcherGreeting: z.string().max(120).optional(),
-  launcherLabel: z.string().max(60).optional(),
-  visitorAnalytics: z.boolean().optional(),
-  visitorDeviceTracking: z.boolean().optional(),
-  tabs: z
-    .object({
-      feedback: z.boolean().optional(),
-      changelog: z.boolean().optional(),
-      help: z.boolean().optional(),
-      messenger: z.boolean().optional(),
-      tickets: z.boolean().optional(),
-      home: z.boolean().optional(),
-    })
-    .optional(),
+const updateMessengerConfigSchema = z.object({
   messenger: messengerConfigInputSchema.optional(),
-  home: widgetHomeConfigSchema.optional(),
   translations: z
     .record(
       z.string().max(20),
@@ -851,45 +757,15 @@ const updateWidgetConfigSchema = z.object({
     .optional(),
 })
 
-export const updateWidgetConfigFn = createServerFn({ method: 'POST' })
-  .validator(updateWidgetConfigSchema)
+export const updateMessengerConfigFn = createServerFn({ method: 'POST' })
+  .validator(updateMessengerConfigSchema)
   .handler(async ({ data }) => {
-    log.info({ enabled: data.enabled, position: data.position }, 'update widget config')
+    log.info('update messenger config')
     await requireAuth({ permission: PERMISSIONS.SETTINGS_MANAGE })
-    const { updateWidgetConfig } = await import('@/lib/server/domains/settings/settings.widget')
-    return updateWidgetConfig(data)
+    const { updateMessengerConfig } =
+      await import('@/lib/server/domains/settings/settings.messenger')
+    return updateMessengerConfig(data)
   })
-
-export const saveWidgetHeroImageKeyFn = createServerFn({ method: 'POST' })
-  .validator(z.object({ key: z.string().min(1).max(512) }))
-  .handler(async ({ data }) => {
-    log.info('save widget hero image key')
-    await requireAuth({ permission: PERMISSIONS.SETTINGS_MANAGE })
-    const { saveWidgetHeroImageKey } = await import('@/lib/server/domains/settings/settings.widget')
-    await saveWidgetHeroImageKey(data.key)
-  })
-
-export const deleteWidgetHeroImageFn = createServerFn({ method: 'POST' }).handler(async () => {
-  log.info('delete widget hero image')
-  await requireAuth({ permission: PERMISSIONS.SETTINGS_MANAGE })
-  const { deleteWidgetHeroImage } = await import('@/lib/server/domains/settings/settings.widget')
-  await deleteWidgetHeroImage()
-})
-
-export const regenerateWidgetSecretFn = createServerFn({ method: 'POST' }).handler(async () => {
-  log.info('regenerate widget secret')
-  await requireAuth({ permission: PERMISSIONS.SETTINGS_MANAGE })
-  const { regenerateWidgetSecret } = await import('@/lib/server/domains/settings/settings.widget')
-  return await regenerateWidgetSecret()
-})
-
-export const mintWidgetInstallCodeFn = createServerFn({ method: 'POST' }).handler(async () => {
-  log.info('mint widget install pairing code')
-  await requireAuth({ permission: PERMISSIONS.SETTINGS_MANAGE })
-  const { mintWidgetInstallCode } =
-    await import('@/lib/server/domains/settings/widget-install-pairing')
-  return await mintWidgetInstallCode()
-})
 
 // ============================================
 // Office Hours Operations

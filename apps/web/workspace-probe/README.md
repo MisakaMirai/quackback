@@ -110,7 +110,7 @@ entirely — and **every** deliberate cross-workspace attempt in the suite sets 
 so the tripwire's real coverage was incidental traffic only. It was switched off
 on precisely the replays it exists to backstop, leaving those covered by
 whatever each probe author had coded a check for: P01, P05 and P08 call
-`markersPresent` themselves; P02, P03, P04, P06 and P07 call nothing. The flag
+`markersPresent` themselves; P02, P03, P06 and P07 call nothing. The flag
 now only labels a hit `deliberate`. Echo suppression is instead done on the one
 basis that is sound — a marker the harness itself put on the wire is never
 counted — and "the wire" means the whole request: url, body, headers (a replayed
@@ -147,7 +147,6 @@ Both workspaces are given identical human-readable data on purpose:
 | Admin address     | `admin@example.com`                    |
 | Board name / slug | `Feature Requests` / `workspace-probe` |
 | Post title        | `Dark mode`                            |
-| Widget visitor    | `probe-visitor@example.com`            |
 
 Only two things differ: a per-workspace canary token in the post and board body
 (`qbprobecanaryalpha` / `qbprobecanarybravo`) and the row ids. That is the whole
@@ -205,8 +204,8 @@ three derived-vocabulary defences missing it for three different reasons.
 
 The derived vocabulary (name, slug, id, theme colours, minus generic values)
 is retained as a secondary layer: it still catches leaks on surfaces the
-planted token does not reach — the widget public config carries colours and no
-text — and a leak observed there is evidence regardless. It just can no longer
+planted token does not reach — a themed document can carry colours and no text
+— and a leak observed there is evidence regardless. It just can no longer
 produce a `PASS` on its own.
 
 ## Running it
@@ -229,7 +228,7 @@ bun apps/web/workspace-probe/cli.ts \
 
 `bun apps/web/workspace-probe/cli.ts --help` lists every flag. Each has an
 environment-variable equivalent (`ALPHA_BASE_URL`, `ALPHA_API_KEY`,
-`ALPHA_DATABASE_URL`, `ALPHA_S3_SECRET_ACCESS_KEY`, `ALPHA_WIDGET_SECRET`,
+`ALPHA_DATABASE_URL`, `ALPHA_S3_SECRET_ACCESS_KEY`,
 `ALPHA_IDENTITY_TOKEN`, and the `BRAVO_` twins) so CI can pass secrets without
 putting them in argv.
 
@@ -255,10 +254,10 @@ first in the summary.
 and lists `filteredOut` in the JSON, so a consumer reading `verdict: "PASS"`
 never has to parse the human summary to learn that six probes did not run.
 
-The report never contains a credential. The widget signing secret is a marker
-the tripwire scans for — a signing secret appearing in a response body is among
-the worst findings available — but it is held separately from the reportable
-markers, redacted in any hit, and stripped from the JSON.
+The report never contains a credential. A signing secret is a marker the
+tripwire scans for — one appearing in a response body is among the worst
+findings available — but it is held separately from the reportable markers,
+redacted in any hit, and stripped from the JSON.
 
 `--teardown` removes the fixture from both workspaces.
 
@@ -278,9 +277,8 @@ with the rejected write quoted, not pass.
 | `--alpha` / `--bravo`                               | reachability, and every HTTP probe                                                                 |
 | `--alpha-api-key` / `--bravo-api-key`               | **fixture provisioning** (required), P05, P07's drive write                                        |
 | `--admin-email` / `--admin-password`                | P01, P02 (defaults `admin@example.com` / `password`)                                               |
-| `--alpha-db` / `--bravo-db`                         | P02, P07, P09, and the row-level scans in P06/P08. Also reads the widget secrets automatically     |
+| `--alpha-db` / `--bravo-db`                         | P02, P07, P09, and the row-level scans in P06/P08                                                  |
 | `--alpha-storage-secret` / `--bravo-storage-secret` | P03                                                                                                |
-| `--alpha-widget-secret` / `--bravo-widget-secret`   | P04 (or supply the database URLs)                                                                  |
 | `--alpha-identity-token` / `--bravo-identity-token` | P06's planted identity vocabulary (only when a custom token was planted; defaults are suite-owned) |
 
 ## The probes
@@ -290,7 +288,6 @@ with the rejected write quoted, not pass.
 | **P01** | session   | A session minted by alpha authenticates nothing on bravo — not as a cookie, not as a raw Bearer token, and not on an authenticated SSR document.                                                                                                                         |
 | **P02** | session   | A magic-link token or sign-in OTP minted by one workspace establishes no session on the other, _while the other workspace holds its own live credential for the identical address_, and each workspace's own credential resolves to its own user.                        |
 | **P03** | storage   | A private-object read capability minted with one workspace’s storage secret is refused by the other for the identical object key, and one workspace’s secret does not verify against the other’s own signed message — i.e. the workspaces do not share a storage secret. |
-| **P04** | widget    | A widget SSO token signed with one workspace's widget secret mints no session in the other, and a widget session token issued by one resolves to no user in the other.                                                                                                   |
 | **P05** | api       | A REST API key issued by one workspace is rejected with 401 by the other, and returns neither the issuer's rows (wrong pool) nor the target's (wrong credential accepted).                                                                                               |
 | **P06** | cache     | Settings-derived public surfaces read in a tight interleave never serve one workspace's planted identity token, stored identity, branding or configuration under the other's hostname — and each host provably serves its own planted token.                             |
 | **P07** | jobs      | A write driven on alpha produces derived background rows carrying _this run's_ drive token in alpha's database and none at all in bravo's.                                                                                                                               |
@@ -309,8 +306,8 @@ for that exact address, bravo must refuse a token it did not itself mint.
 has stored as a secondary layer.** An earlier version searched served responses
 for the workspace slug and the workspace TypeID and could not see a
 settings-cache leak at all, because neither string is present in what leaks:
-`/api/widget/config.json` carries theme colours, tabs and flags and no
-identifier whatsoever, and the portal document carries the workspace _name_.
+the portal document carries the workspace _name_ and the planted token, and no
+other public surface carries a settings-derived identifier.
 The planted token is what a partial leak cannot escape (see
 [Planted identity](#planted-identity)); underneath it, the probe still reads
 `name`, `slug`, id, `branding_config` and `custom_css` from each workspace's
@@ -382,7 +379,7 @@ health.
 | **P07** | The worker tier is genuinely shared — one service, one replica, no per-workspace `DATABASE_URL` — so a misrouted job CAN reach the other database and this probe is load-bearing today. The residual is that it observes rows and not processes: it cannot see a job that ran against the wrong workspace and only READ, nor tell a correct write from a wrong-workspace write that failed.                                                                    |
 | **P09** | `memoizedAssistantPrincipalId` (`assistant.orchestrator.ts:66`) is now a `WorkspaceKeyedCache`, so poisoning needs the workspace key to be wrong or absent rather than merely shared. The probe proves the two ids are distinct and unreferenced — when both exist at all; see the note on P09 being blocked below.                                                                                                                                            |
 
-P03, P04, P05 and P08 are fully meaningful today: they test secrets, credentials
+P03, P05 and P08 are fully meaningful today: they test secrets, credentials
 and query scoping that are already shared-or-not regardless of process topology.
 P03 in particular directly tests the property §9 relies on to justify
 bucket-per-workspace.
@@ -426,8 +423,8 @@ at all. A future reader needs this list more than any of the green ticks.
   (webhook rows, registered auth providers, resolved platform credentials) is out
   of its reach over HTTP, and the database scan reads stored rows rather than
   what a process is holding.
-- **The judged HTTP surfaces are three.** `/`, `/b/<slug>/posts/<postId>` and
-  `/api/widget/config.json`, plus `/admin` for P01. It was `/b/<slug>` until a
+- **The judged HTTP surfaces are two.** `/` and `/b/<slug>/posts/<postId>`, plus
+  `/admin` for P01. It was `/b/<slug>` until a
   live run showed that URL answering **404 on both workspaces** — there is no board
   index route in the app, only `/b/$slug/posts/$postId` — so two of P08's ten
   controls were passing against an empty page. Both halves of that were fixed:
@@ -467,13 +464,12 @@ bun run test   # or: bunx vitest run apps/web/workspace-probe
 
 `__tests__/leak-detection.test.ts` is the important one. It plants each hazard
 into an in-process two-workspace fleet — shared session store, shared storage
-secret, shared API keys, shared search index, shared widget secret, shared
-settings cache — and asserts the matching probe reports `LEAK`, that the clean
+secret, shared API keys, shared search index, shared settings cache — and asserts the matching probe reports `LEAK`, that the clean
 fleet reports `PASS`, and that a misconfigured or unreachable target reports
 `ERROR`. A suite that only ever ran against a correct system would be validated
 against the one case where every possible implementation passes.
 
-`__tests__/crypto-drift.test.ts` pins the two tokens the harness mints for itself
+`__tests__/crypto-drift.test.ts` pins the token the harness mints for itself
 against the real verifiers imported from the app. `storageReadSig` is
 module-private in `lib/server/storage/s3.ts`, so the harness re-implements it; if
 the server's construction ever changes, the minted token would be malformed,
@@ -568,7 +564,7 @@ http.ts         per-workspace client with an inspectable cookie jar
 db.ts           optional direct Postgres access; TypeID/uuid marker forms
 db-scan.ts      row-level marker search across the content and job schema
 auth-flows.ts   magic-link and OTP mint/redeem primitives
-crypto.ts       storage read capability and widget JWT minting (drift-pinned)
+crypto.ts       storage read capability (drift-pinned)
 probes/         P01–P09
 runner.ts       orchestration, capability gating, verdict assembly
 report.ts       JSON and human rendering

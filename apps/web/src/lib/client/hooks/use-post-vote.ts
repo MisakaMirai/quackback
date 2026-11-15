@@ -23,13 +23,13 @@ interface UsePostVoteOptions {
   enabled?: boolean
   /**
    * Called at request time to supply auth headers. Used by surfaces where
-   * cookie-based session is unavailable (e.g. the widget iframe, which
+   * cookie-based session is unavailable (e.g. a cross-origin embed, which
    * authenticates with a Bearer token). Portal/admin callers omit this;
    * cookie auth continues to work unchanged.
    *
    * Note: the voted-state query (`fetchVotedPosts`) is a globally-keyed
    * cache shared across all call sites and cannot accept per-call headers
-   * without a broader refactor. Widget visitors will see `hasVoted: false`
+   * without a broader refactor. Such visitors will see `hasVoted: false`
    * on load (the toggle mutation still carries their token, so the vote
    * lands correctly and the optimistic update reflects immediately).
    */

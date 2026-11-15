@@ -123,11 +123,9 @@ describe('Launch plan page', () => {
     expect(screen.queryByText('Create a feedback board')).toBeNull()
   })
 
-  it('gives every step a short outcome line and never strikes a step through', () => {
+  it('renders a later step and never strikes a step through', () => {
     mount()
-    expect(
-      within(row('Put Messenger on your site')).getByText('Customers reach you from your site')
-    ).toBeVisible()
+    expect(row('Invite your team')).toBeVisible()
     expect(document.querySelector('.line-through')).toBeNull()
   })
 
@@ -141,18 +139,12 @@ describe('Launch plan page', () => {
 
   it('gives each open later step one action and a Skip, and skips it', async () => {
     mount()
-    const messenger = row('Put Messenger on your site')
-    // Messenger's step opens its install settings page.
-    expect(within(messenger).getByRole('link', { name: 'Start' })).toHaveAttribute(
-      'href',
-      '/admin/settings/widget/install'
-    )
-    fireEvent.click(
-      within(messenger).getByRole('button', { name: 'Skip Put Messenger on your site' })
-    )
+    const invite = row('Invite your team')
+    expect(within(invite).getByRole('button', { name: 'Start' })).toBeVisible()
+    fireEvent.click(within(invite).getByRole('button', { name: 'Skip Invite your team' }))
     await waitFor(() =>
       expect(hoisted.resolutions).toEqual([
-        { data: { taskId: 'connect-messenger', resolution: 'dismissed' } },
+        { data: { taskId: 'invite-team', resolution: 'dismissed' } },
       ])
     )
   })
@@ -193,8 +185,6 @@ describe('Launch plan page', () => {
     hoisted.status = {
       ...status,
       publicBoardLinkCopiedAt: AT,
-      hasWidgetInstalled: true,
-      hasWidgetEnabled: true,
       memberCount: 2,
     }
     mount()

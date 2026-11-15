@@ -104,7 +104,7 @@ export async function mintTestCustomerToken(
       id: crypto.randomUUID(),
       token: bearerToken,
       userId: customer.userId!,
-      scope: 'widget',
+      scope: 'portal',
       createdAt: now,
       updatedAt: now,
       expiresAt: new Date(now.getTime() + TEST_SESSION_TTL_MS),
@@ -139,7 +139,7 @@ export async function consumeTestCustomerToken(token: string) {
     const activeSession = await tx.query.session.findFirst({
       where: and(
         eq(session.token, proof.value),
-        eq(session.scope, 'widget'),
+        eq(session.scope, 'portal'),
         gt(session.expiresAt, new Date())
       ),
       with: { user: true },

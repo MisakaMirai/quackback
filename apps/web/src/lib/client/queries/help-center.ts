@@ -6,7 +6,7 @@
 
 import { queryOptions, infiniteQueryOptions, keepPreviousData } from '@tanstack/react-query'
 import type { KbArticleId } from '@quackback/ids'
-import { canonicalArticleTypeId } from '@/lib/shared/widget/article-ref'
+import { canonicalArticleTypeId } from '@/lib/shared/help-center/article-ref'
 import {
   listCategoriesFn,
   listPublicCategoriesFn,

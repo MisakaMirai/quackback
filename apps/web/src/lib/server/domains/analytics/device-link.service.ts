@@ -2,7 +2,7 @@
  * Durable-device identity linkage (visitor analytics layer 2).
  *
  * A device row tracks first/last seen; the principal soft link is set when
- * the device engages (widget identify or anonymous mint) and re-pointed by
+ * the device engages (an anonymous session mint) and re-pointed by
  * mergeAnonymousToIdentified when a lead signs in. Linking also carries the
  * device's prior anonymous page-views onto the principal, which is what
  * makes the Visitor -> Lead -> User funnel lossless.

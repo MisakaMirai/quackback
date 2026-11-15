@@ -149,7 +149,7 @@ const ASSIGNEE_OPTIONS: Array<{ value: string; label: string }> = [
   { value: 'me', label: 'Me' },
   { value: 'unassigned', label: 'Unassigned' },
 ]
-const SOURCE_OPTIONS = ['widget', 'email']
+const SOURCE_OPTIONS = ['portal', 'email']
 const KIND_OPTIONS: Array<{ value: string; label: string }> = [
   { value: 'conversation', label: 'Conversation' },
   { value: 'ticket', label: 'Ticket' },
@@ -175,7 +175,7 @@ function defaultValueFor(field: ConversationViewRuleField): string {
     case 'assignee':
       return 'me'
     case 'source':
-      return 'widget'
+      return 'portal'
     case 'waiting':
       return 'true'
     case 'kind':

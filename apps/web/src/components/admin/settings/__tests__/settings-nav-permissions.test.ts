@@ -1,7 +1,7 @@
 /**
  * Each workspace and data page in the settings nav checks a permission when
  * it opens. The nav offers a page only to a viewer who holds it, so a role
- * that may see the members list is not shown General, Portal, Widget or
+ * that may see the members list is not shown General, Portal or
  * Developers only to land on Access denied.
  */
 import { describe, expect, it } from 'vitest'
@@ -37,7 +37,6 @@ describe('navSectionsFor', () => {
     expect(labels(only(PERMISSIONS.SETTINGS_MANAGE), 'Workspace')).toEqual([
       'General',
       'Notifications',
-      'Widget',
     ])
     expect(labels(only(PERMISSIONS.SETTINGS_MANAGE), 'Data')).toEqual(['Imports & exports'])
     expect(labels(only(PERMISSIONS.SETTINGS_BRANDING), 'Workspace')).toEqual([

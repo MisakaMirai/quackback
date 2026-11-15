@@ -58,7 +58,7 @@ export const signOut: typeof authClient.signOut = async (...args) => {
  *
  * Note: Better Auth sets HttpOnly on session cookies, so document.cookie
  * cannot read them. This function serves as a best-effort check for
- * non-HttpOnly cookies (e.g. widget identify endpoint sets its own).
+ * non-HttpOnly cookies (an identify endpoint may set its own).
  * For portal components, prefer checking the session from route context.
  */
 export function hasSession(): boolean {

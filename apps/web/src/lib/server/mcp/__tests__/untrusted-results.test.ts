@@ -30,7 +30,6 @@ const mocks = vi.hoisted(() => ({
   listTicketMessages: vi.fn(),
   getActivityForPost: vi.fn(),
   addReaction: vi.fn(),
-  getWidgetInstallStatus: vi.fn(),
   getArticleById: vi.fn(),
   principalIdsOnTeam: vi.fn(),
 }))
@@ -94,9 +93,6 @@ vi.mock('@/lib/server/domains/settings/settings.service', () => ({
 }))
 vi.mock('@/lib/server/domains/segments/segment-membership.service', () => ({
   segmentIdsForPrincipal: async () => new Set(),
-}))
-vi.mock('@/lib/server/domains/settings/widget-install-pairing', () => ({
-  getWidgetInstallStatus: mocks.getWidgetInstallStatus,
 }))
 
 import { createMcpServer } from '../server'
@@ -1513,25 +1509,6 @@ describe('team-authored results', () => {
         createdAt: ISO1,
       })
     )
-  })
-})
-
-describe('widget_install_status', () => {
-  it('marks only the host the widget reported from', async () => {
-    const status = {
-      connected: true,
-      enabled: true,
-      lastDetectedAt: ISO2,
-      originHost: 'www.acme.com',
-      sdkVersion: '0.2.0',
-      currentSdkVersion: '0.2.0',
-      sdkNeedsUpdate: false,
-    }
-    mocks.getWidgetInstallStatus.mockResolvedValue(status)
-
-    const text = await callText('widget_install_status', {})
-
-    expect(descriptorAppendedTo(text, pretty(status))?.fields).toEqual(['originHost'])
   })
 })
 

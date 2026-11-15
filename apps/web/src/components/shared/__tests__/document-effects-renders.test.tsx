@@ -1,10 +1,8 @@
 // @vitest-environment happy-dom
 /**
- * The root document mounts two watchers on every page: one forwards a
- * leftover `?ott=` on a portal page to the widget handoff, the other sends a
- * pageview beacon on the public surfaces. Each renders only when what it acts
- * on changes, so an admin navigation (no `?ott=`, not a public surface)
- * renders neither, while both still act where they should.
+ * The root document mounts the pageview watcher on every page: it sends a
+ * beacon on the public surfaces only, and renders only when what it acts on
+ * changes, so an admin navigation does not re-render it.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Profiler } from 'react'
@@ -17,18 +15,15 @@ import {
   createRoute,
   createRouter,
 } from '@tanstack/react-router'
-import { OttHandler } from '../ott-handler'
 import { VisitorBeacon } from '../visitor-beacon'
 
 const sendBeacon = vi.fn(() => true)
-const replace = vi.fn()
 
 beforeEach(() => {
   vi.stubGlobal('navigator', { ...navigator, sendBeacon, doNotTrack: null })
   vi.spyOn(window, 'location', 'get').mockReturnValue({
     ...window.location,
     href: 'http://localhost/',
-    replace,
   } as Location)
 })
 
@@ -37,18 +32,14 @@ afterEach(() => {
   vi.restoreAllMocks()
   vi.unstubAllGlobals()
   sendBeacon.mockClear()
-  replace.mockClear()
 })
 
-const commits = { ott: 0, beacon: 0 }
+const commits = { beacon: 0 }
 
 function buildRouter(initial: string) {
   const rootRoute = createRootRoute({
     component: () => (
       <>
-        <Profiler id="ott" onRender={() => commits.ott++}>
-          <OttHandler />
-        </Profiler>
         <Profiler id="beacon" onRender={() => commits.beacon++}>
           <VisitorBeacon />
         </Profiler>
@@ -75,7 +66,7 @@ function buildRouter(initial: string) {
   const portalHome = createRoute({
     getParentRoute: () => portal,
     path: '/',
-    validateSearch: (search: Record<string, unknown>) => search as { ott?: string; page?: string },
+    validateSearch: (search: Record<string, unknown>) => search as { page?: string },
     component: () => <p>portal page</p>,
   })
   return createRouter({
@@ -85,7 +76,6 @@ function buildRouter(initial: string) {
 }
 
 async function mount(initial: string, text: string) {
-  commits.ott = 0
   commits.beacon = 0
   const router = buildRouter(initial)
   render(<RouterProvider router={router} />)
@@ -104,19 +94,14 @@ describe('document watchers', () => {
 
     expect(commits).toEqual(settled)
     expect(sendBeacon).not.toHaveBeenCalled()
-    expect(replace).not.toHaveBeenCalled()
   })
 
-  it('still send a pageview for each public page and forward a leftover ott', async () => {
+  it('sends a pageview for each public page', async () => {
     const router = await mount('/', 'portal page')
     expect(sendBeacon).toHaveBeenCalledTimes(1)
 
     await act(() => router.navigate({ to: '/', search: { page: '2' } } as never))
     expect(sendBeacon).toHaveBeenCalledTimes(2)
-
-    await act(() => router.navigate({ to: '/', search: { ott: 'tok_1' } } as never))
-    expect(replace).toHaveBeenCalledTimes(1)
-    expect(replace.mock.calls[0]![0]).toContain('tok_1')
   })
 
   // The admin settings pages frame the live portal as a preview (`?preview=true`);

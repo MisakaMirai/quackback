@@ -69,7 +69,7 @@ describe('isRecentSignIn', () => {
   })
 
   it('does not count a session the app minted without a sign-in', () => {
-    expect(isRecentSignIn(session({ createdAt: minutesAgo(1), scope: 'widget' }), NOW)).toBe(false)
+    expect(isRecentSignIn(session({ createdAt: minutesAgo(1), scope: 'portal' }), NOW)).toBe(false)
     expect(isRecentSignIn(session({ createdAt: minutesAgo(1), scope: 'portal' }), NOW)).toBe(false)
     expect(isRecentSignIn(session({ createdAt: minutesAgo(1), isAnonymous: true }), NOW)).toBe(
       false

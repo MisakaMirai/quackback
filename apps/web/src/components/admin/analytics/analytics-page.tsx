@@ -137,7 +137,7 @@ export function AnalyticsPage() {
   const range = useMemo(() => periodRange(period), [period])
   const [activeMetric, setActiveMetric] = useState<MetricKey>('posts')
   const [visitorMetric, setVisitorMetric] = useState<VisitorMetricKey>('visitors')
-  const [surface, setSurface] = useState<'all' | 'portal' | 'widget'>('all')
+  const [surface, setSurface] = useState<'all' | 'portal'>('all')
 
   const { data, isLoading } = useQuery({
     ...analyticsQueries.data(period),
@@ -225,7 +225,6 @@ export function AnalyticsPage() {
                       >
                         <DropdownMenuRadioItem value="all">All surfaces</DropdownMenuRadioItem>
                         <DropdownMenuRadioItem value="portal">Portal</DropdownMenuRadioItem>
-                        <DropdownMenuRadioItem value="widget">Widget</DropdownMenuRadioItem>
                       </DropdownMenuRadioGroup>
                     </DropdownMenuContent>
                   </DropdownMenu>

@@ -25,7 +25,7 @@ const log = logger.child({ component: 'portal-access' })
  * someone else.
  *
  * Returns ONLY the access decision: { granted, reason }. The full
- * portal access policy (allowedDomains, widgetSignIn) is never
+ * portal access policy (allowedDomains) is never
  * included in the response — this is a public RPC endpoint and
  * returning the allowlist would recreate the exact exposure being
  * fixed here.
@@ -33,7 +33,7 @@ const log = logger.child({ component: 'portal-access' })
 export type PortalAccessDecision =
   | {
       granted: true
-      reason: 'public' | 'team' | 'domain' | 'invite' | 'widget' | 'segment'
+      reason: 'public' | 'team' | 'domain' | 'invite' | 'segment'
     }
   | {
       granted: false
@@ -49,8 +49,8 @@ export type PortalAccessDecision =
  * server function or route handler that serves portal content, so the
  * "private portal" gate is enforced at the data layer, not just on the page.
  *
- * The caller's identity is read only from the request headers (cookie session
- * or widget Bearer token) — a caller cannot supply their own identity.
+ * The caller's identity is read only from the request headers (session
+ * cookie) — a caller cannot supply their own identity.
  *
  * The decision is resolved once per request (every portal loader asks) and is
  * forgotten with the rest of the request's identity when the session changes.
@@ -119,7 +119,7 @@ async function resolvePortalCaller(): Promise<PortalCaller> {
   return {
     session,
     // Non-dashboard audiences are portal-tier: a promoted principal on a
-    // widget/portal session must not take the evaluator's team branch.
+    // portal session must not take the evaluator's team branch.
     role: rawRole ? sessionRole(rawRole, toSessionScope(session.session.scope)) : null,
     isAuthenticated: true,
     principalId: principalRecord?.id ?? null,
@@ -129,7 +129,7 @@ async function resolvePortalCaller(): Promise<PortalCaller> {
 async function resolvePortalAccess(): Promise<PortalAccessDecision> {
   const { db, eq } = await import('@/lib/server/db')
 
-  // Read the full portal config + widget config server-side; it never leaves this function.
+  // Read the full portal config server-side; it never leaves this function.
   // Two distinct failure modes:
   //   - NotFoundError (no settings row): fresh un-onboarded install, fail
   //     OPEN to a public portal so it keeps working.
@@ -192,27 +192,7 @@ async function resolvePortalAccess(): Promise<PortalAccessDecision> {
     }
   }
 
-  // Look up the widget origin marker for the current session.
-  // Fail CLOSED on DB error: a lookup failure never grants widget access.
-  let hasViaWidgetMarker = false
-  if (isAuthenticated && session?.session?.id) {
-    const { widgetOriginSession } = await import('@/lib/server/db')
-    try {
-      const markerRow = await db.query.widgetOriginSession.findFirst({
-        where: eq(widgetOriginSession.sessionId, session.session.id),
-        columns: { sessionId: true },
-      })
-      hasViaWidgetMarker = !!markerRow
-    } catch {
-      // DB error: fail closed (no widget marker).
-      hasViaWidgetMarker = false
-    }
-  }
-
   const { evaluatePortalAccess } = await import('@/lib/server/domains/settings/portal-access')
-  // Widget identify is verified-only (backend-signed ssoToken; GH issue
-  // #300), so HMAC verification is structural, not a per-workspace toggle.
-  const identifyVerificationEnabled = true
 
   // Check segment membership, only when authenticated and the config lists allowed segments.
   // Fail CLOSED on DB error: a lookup failure never grants access.
@@ -238,13 +218,10 @@ async function resolvePortalAccess(): Promise<PortalAccessDecision> {
     emailVerified,
     allowedDomains: portalConfig.access?.allowedDomains ?? [],
     hasAcceptedPortalInvite,
-    widgetSignInEnabled: portalConfig.access?.widgetSignIn ?? false,
-    hasViaWidgetMarker,
-    identifyVerificationEnabled,
     isInAllowedSegment,
   })
 
-  // Return only the decision. Never include allowedDomains, widgetSignIn,
+  // Return only the decision. Never include allowedDomains
   // or any other policy input; those must stay server-side.
   return { granted: result.granted, reason: result.reason } as PortalAccessDecision
 }
@@ -255,7 +232,7 @@ async function resolvePortalAccess(): Promise<PortalAccessDecision> {
  * Thin `createServerFn` wrapper over `resolvePortalAccessForRequest` so the
  * portal page (`_portal.tsx`) can call it as an RPC. The response carries
  * ONLY the access decision: { granted, reason }. The full portal access
- * policy (allowedDomains, widgetSignIn) is never included in the response.
+ * policy (allowedDomains) is never included in the response.
  */
 export const evaluateMyPortalAccessFn = createServerFn({ method: 'GET' }).handler(async () => {
   return resolvePortalAccessForRequest()
@@ -360,7 +337,6 @@ function normalizeDomains(raw: string[]): string[] {
 export const updatePortalVisibilitySchema = z.object({
   visibility: z.enum(['public', 'private']),
   allowedDomains: z.array(z.string()).optional(),
-  widgetSignIn: z.boolean().optional(),
   allowedSegmentIds: z.array(z.string()).optional(),
 })
 
@@ -382,7 +358,6 @@ export const updatePortalAccessFn = createServerFn({ method: 'POST' })
       {
         visibility: data.visibility,
         domain_count: (data.allowedDomains ?? []).length,
-        widget_sign_in: data.widgetSignIn,
         segment_count: (data.allowedSegmentIds ?? []).length,
       },
       'update portal access'
@@ -399,9 +374,6 @@ export const updatePortalAccessFn = createServerFn({ method: 'POST' })
       data.allowedDomains !== undefined
         ? normalizeDomains(data.allowedDomains)
         : (before.access?.allowedDomains ?? [])
-
-    const nextWidgetSignIn =
-      data.widgetSignIn !== undefined ? data.widgetSignIn : (before.access?.widgetSignIn ?? false)
 
     // Validate any newly-supplied allowedSegmentIds against the segments
     // table: drop unknown / soft-deleted ids, dedupe. Without this step
@@ -431,7 +403,6 @@ export const updatePortalAccessFn = createServerFn({ method: 'POST' })
       access: {
         visibility: data.visibility,
         allowedDomains: normalizedDomains,
-        widgetSignIn: nextWidgetSignIn,
         allowedSegmentIds: nextSegmentIds,
       },
     })
@@ -461,18 +432,6 @@ export const updatePortalAccessFn = createServerFn({ method: 'POST' })
         target: { type: 'settings', id: 'portal-config' },
         before: { allowedDomains: prevDomains },
         after: { allowedDomains: nextDomains },
-      })
-    }
-
-    const prevWidgetSignIn = before.access?.widgetSignIn ?? false
-    if (data.widgetSignIn !== undefined && prevWidgetSignIn !== data.widgetSignIn) {
-      await recordAuditEvent({
-        event: 'portal.widget_signin.changed',
-        actor,
-        headers,
-        target: { type: 'settings', id: 'portal-config' },
-        before: { widgetSignIn: prevWidgetSignIn },
-        after: { widgetSignIn: data.widgetSignIn },
       })
     }
 

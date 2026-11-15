@@ -24,7 +24,7 @@ function exchange(over: Partial<Exchange> = {}): Exchange {
   return {
     workspace: 'bravo',
     method: 'GET',
-    url: 'https://bravo.test/api/widget/search',
+    url: 'https://bravo.test/api/health/live',
     status: 200,
     requestBody: '',
     requestHeaders: {},
@@ -65,7 +65,7 @@ describe('createTripwire', () => {
     const tripwire = createTripwire(alpha, bravo)
     tripwire.record(
       exchange({
-        url: 'https://bravo.test/api/widget/search?q=qbprobecanaryalpha',
+        url: 'https://bravo.test/api/health/live?q=qbprobecanaryalpha',
         responseText: `{"query":"qbprobecanaryalpha","data":{"posts":[]}}`,
       })
     )

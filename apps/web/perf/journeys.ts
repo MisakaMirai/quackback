@@ -9,8 +9,7 @@
  */
 import type { APIRequestContext, Locator, Page } from '@playwright/test'
 import postgres from 'postgres'
-import { buildWidgetInstallSnippet } from '../src/lib/shared/widget/install-prompt'
-import { BENCH_DATABASE_URL, BENCH_PORT } from './config'
+import { BENCH_DATABASE_URL } from './config'
 
 export type Actor = 'anon' | 'admin'
 
@@ -164,12 +163,6 @@ async function firstPostPath(request: APIRequestContext): Promise<string> {
   return match[0]
 }
 
-/** A customer's page on another site, with the widget installed as documented. */
-const HOST_PAGE = 'https://customer.example/'
-const hostPageHtml = () =>
-  `<!doctype html><html><head><title>Customer site</title></head><body><h1>Customer site</h1>` +
-  `${buildWidgetInstallSnippet(`http://localhost:${BENCH_PORT}`)}</body></html>`
-
 /**
  * Every page reachable without an id that answers 200 on the bench data, loaded
  * both as a document and in a browser. Pages behind a feature the bench data
@@ -216,8 +209,6 @@ const SWEEP_PAGES: { path: string; as: Actor }[] = [
     'tags',
     'ticket-statuses',
     'ticket-types',
-    'widget',
-    'widget/install',
   ].map((page) => ({ path: `/admin/settings/${page}`, as: 'admin' as const })),
   ...['/roadmap', '/changelog', '/hc', '/support', '/notifications'].map((path) => ({
     path,
@@ -253,7 +244,6 @@ export const journeys: Journey[] = [
   // once that query has been written into it.
   { kind: 'document', name: 'doc:portal-post', as: 'anon', path: firstPostPath },
   { kind: 'document', name: 'doc:help-center', as: 'anon', path: '/hc' },
-  { kind: 'document', name: 'doc:widget', as: 'anon', path: '/widget' },
 
   // The same portal pages for a signed-in user: the difference is the
   // per-request cost of a session.
@@ -316,51 +306,6 @@ export const journeys: Journey[] = [
       await firstPortalPost(page).click()
       await page.waitForURL(/\/posts\/post_/)
       await page.locator('[id^="comment-"]').first().waitFor()
-    },
-  },
-  {
-    kind: 'browser',
-    name: 'ui:widget-load',
-    as: 'anon',
-    run: async (page) => {
-      await page.goto('/widget')
-      await page.getByRole('button', { name: 'Home', exact: true }).waitFor()
-    },
-  },
-  {
-    // What every visitor to a page with the widget installed pays: the SDK
-    // preloads the hidden widget iframe whether or not the visitor opens it.
-    kind: 'browser',
-    name: 'ui:widget-embed',
-    as: 'anon',
-    run: async (page) => {
-      await page.route(HOST_PAGE, (route) =>
-        route.fulfill({ contentType: 'text/html', body: hostPageHtml() })
-      )
-      // The widget is served from a loopback address; a public page needs
-      // the browser's local-network permission to reach it.
-      await page.context().grantPermissions(['local-network-access'])
-      await page.goto(HOST_PAGE)
-      await page
-        .frameLocator('iframe.quackback-widget-iframe')
-        .getByRole('button', { name: 'Home', exact: true })
-        .waitFor({ state: 'attached' })
-    },
-  },
-  {
-    kind: 'browser',
-    name: 'ui:widget-feedback-tab',
-    as: 'anon',
-    setup: async (page) => {
-      await page.goto('/widget')
-      await page.getByRole('button', { name: 'Home', exact: true }).waitFor()
-    },
-    run: async (page) => {
-      await page.getByRole('button', { name: 'Feedback', exact: true }).click()
-      await page
-        .getByRole('button', { name: /^Vote \(/ })
-        .first()
-        .waitFor()
     },
   },
   {
@@ -572,23 +517,6 @@ export const journeys: Journey[] = [
     },
     teardown: () => replyConversation.restore(),
   },
-  {
-    kind: 'browser',
-    name: 'ui:widget-type-message',
-    as: 'anon',
-    setup: async (page) => {
-      await page.goto('/widget')
-      await page.getByRole('button', { name: 'Home', exact: true }).waitFor()
-      const ask = page.getByRole('button', { name: 'Ask a question' })
-      await clickUntil(page.getByRole('button', { name: 'Messages', exact: true }), ask)
-      const composer = page.locator('[contenteditable="true"]').first()
-      await clickUntil(ask, composer)
-      await composer.click()
-    },
-    run: async (page) => {
-      await page.keyboard.type('Measuring what a keystroke costs.', { delay: 30 })
-    },
-  },
   // The "new post" composers: the title is typed before the measured part.
   {
     kind: 'browser',
@@ -600,24 +528,6 @@ export const journeys: Journey[] = [
       const composer = page.locator('[contenteditable="true"]').first()
       await clickUntil(page.getByRole('textbox', { name: 'Feedback title' }), composer)
       await page.keyboard.type('A keystroke budget')
-      await composer.click()
-    },
-    run: async (page) => {
-      await page.keyboard.type('Measuring what a keystroke costs.', { delay: 30 })
-    },
-  },
-  {
-    kind: 'browser',
-    name: 'ui:widget-type-new-post',
-    as: 'anon',
-    setup: async (page) => {
-      await page.goto('/widget')
-      await page.getByRole('button', { name: 'Home', exact: true }).waitFor()
-      const title = page.getByRole('textbox', { name: 'Feedback title' })
-      await clickUntil(page.getByRole('button', { name: 'Feedback', exact: true }), title)
-      await title.click()
-      await page.keyboard.type('A keystroke budget')
-      const composer = page.locator('[contenteditable="true"]').first()
       await composer.click()
     },
     run: async (page) => {
@@ -639,45 +549,6 @@ export const journeys: Journey[] = [
     },
     run: async (page) => {
       await page.keyboard.type('Measuring what a keystroke costs.', { delay: 30 })
-    },
-  },
-  {
-    kind: 'browser',
-    name: 'ui:widget-type-post-title',
-    as: 'anon',
-    setup: async (page) => {
-      await page.goto('/widget')
-      await page.getByRole('button', { name: 'Home', exact: true }).waitFor()
-      const title = page.getByRole('textbox', { name: 'Feedback title' })
-      await clickUntil(page.getByRole('button', { name: 'Feedback', exact: true }), title)
-      // The composer opens on the first character.
-      await title.click()
-      await page.keyboard.type('M')
-      await page.locator('[contenteditable="true"]').first().waitFor()
-      await title.click()
-    },
-    run: async (page) => {
-      await page.keyboard.type('easuring what a keystroke costs.', { delay: 30 })
-    },
-  },
-  {
-    kind: 'browser',
-    name: 'ui:widget-switch-tabs',
-    as: 'anon',
-    setup: async (page) => {
-      await page.goto('/widget')
-      await page.getByRole('button', { name: 'Home', exact: true }).waitFor()
-    },
-    run: async (page) => {
-      await page.getByRole('button', { name: 'Help', exact: true }).click()
-      await page.getByRole('textbox', { name: 'Search help articles' }).waitFor()
-      await page.getByRole('button', { name: 'Changelog', exact: true }).click()
-      await page
-        .getByRole('heading', { name: 'Latest' })
-        .or(page.getByText('No updates yet'))
-        .first()
-        .waitFor()
-      await page.getByRole('button', { name: 'Home', exact: true }).click()
     },
   },
   {

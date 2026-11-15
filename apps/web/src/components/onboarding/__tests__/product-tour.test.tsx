@@ -249,25 +249,25 @@ describe('guided tour', () => {
   })
 
   it("runs a stop's Try it: the tour closes and the page that does it opens", async () => {
-    hoisted.context = { ...hoisted.context, goals: ['customer_support'] }
-    hoisted.flags = { ...hoisted.flags, supportInbox: true }
-    hoisted.permissions = new Set([PERMISSIONS.SETTINGS_MANAGE])
+    hoisted.context = { ...hoisted.context, goals: ['help_center'] }
+    hoisted.flags = { ...hoisted.flags, helpCenter: true }
+    hoisted.permissions = new Set([PERMISSIONS.HELP_CENTER_MANAGE])
     mount()
     await startTour()
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'Put Messenger on your site' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Write your first article' }))
     })
-    expect(hoistedPath.navigations).toContain('/admin/settings/widget/install')
+    expect(hoistedPath.navigations).toContain('/admin/help-center')
     expect(screen.queryByRole('dialog')).toBeNull()
   })
 
   it('offers no Try it to someone who cannot do it', async () => {
-    hoisted.flags = { ...hoisted.flags, supportInbox: true }
-    hoisted.context = { ...hoisted.context, goals: ['customer_support'] }
+    hoisted.flags = { ...hoisted.flags, helpCenter: true }
+    hoisted.context = { ...hoisted.context, goals: ['help_center'] }
     hoisted.permissions = new Set()
     mount()
     await startTour()
-    expect(screen.queryByRole('button', { name: 'Put Messenger on your site' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Write your first article' })).toBeNull()
   })
 
   it('has no stops on a phone', async () => {

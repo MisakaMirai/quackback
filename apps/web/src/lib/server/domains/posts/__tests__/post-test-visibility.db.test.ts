@@ -277,7 +277,7 @@ describe('test feedback stays inside its customer session and team workspace', (
         (row) => row.postId === testPost
       )
     ).toMatchObject({ title: 'Acme test title', post: { id: testPost } })
-    await testDb.update(posts).set({ widgetMetadata: null }).where(eq(posts.id, testPost))
+    await testDb.update(posts).set({ clientMetadata: null }).where(eq(posts.id, testPost))
     expect(
       (await getNotificationsForMember(visitor.principalId!, {}, visitor)).notifications.find(
         (row) => row.postId === testPost

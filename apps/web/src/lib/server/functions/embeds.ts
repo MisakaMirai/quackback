@@ -192,7 +192,7 @@ export function projectArticlePreview(article: ArticleInput, baseUrl: string): E
 /**
  * Project a viewer-scoped ticket row into the customer-safe card shape. The
  * `reference` is the formatted sequential number and `url` is the absolute
- * portal ticket page (opened in a new tab from the widget). `baseUrl` is the
+ * portal ticket page. `baseUrl` is the
  * canonical portal base.
  */
 export function projectTicketPreview(ticket: TicketEmbedRow, baseUrl: string): EmbedTicketPreview {
@@ -295,7 +295,7 @@ export const getEmbedPreviewFn = createServerFn({ method: 'GET' })
       ])
 
       // Canonical portal base for the absolute embed `url` (opened in a new tab
-      // by surfaces like the widget). Imported lazily alongside the read paths.
+      // by portal surfaces). Imported lazily alongside the read paths.
       const { config } = await import('@/lib/server/config')
 
       // Article resolver: `getPublicArticleBySlug` throws NotFoundError when the

@@ -39,16 +39,14 @@ export interface FleetLeaks {
   sharedApiKeys?: boolean
   /** Search on one workspace returns the other workspace's post. */
   sharedSearchIndex?: boolean
-  /** Both workspaces verify widget identify tokens with the same secret. */
-  sharedWidgetSecret?: boolean
   /** Both workspaces serve the same cached settings blob. */
   sharedSettingsCache?: boolean
   /**
    * A PARTIAL identity leak: the portal document serves alpha's cached name and
-   * planted headline, while the widget config keeps serving each workspace's own
-   * theme colour. The round-4 plant — every derived-vocabulary defence missed
-   * it, because the leaked name was generic, the tripwire had dropped the same
-   * generic name, and the host still rendered an identity of its own.
+   * planted headline while keeping its own theme. The round-4 plant — every
+   * derived-vocabulary defence missed it, because the leaked name was generic,
+   * the tripwire had dropped the same generic name, and the host still rendered
+   * an identity of its own.
    */
   partialIdentityLeak?: boolean
   /**
@@ -126,12 +124,10 @@ export interface FakeSettings {
   id: string
   slug: string
   name: string
-  widget_secret: string | null
   feature_flags: string | null
   branding_config: string | null
   custom_css: string | null
   portal_config: string | null
-  widget_config: string | null
   auth_config_version: number
 }
 
@@ -157,7 +153,6 @@ export interface FakeWorkspace {
   sessionToken: string
   apiKey: string
   storageSecret: string
-  widgetSecret: string
   assistantPrincipalId: string
   /** Set to sign storage capabilities over the pooled, workspace-bound message. */
   workspaceKey?: string
@@ -221,7 +216,6 @@ function makeWorkspace(slot: WorkspaceSlot): FakeWorkspace {
     sessionToken: `sess-${slot}-token`,
     apiKey: `qb_${slot.padEnd(48, '0')}`,
     storageSecret: `s3-secret-${slot}`,
-    widgetSecret: `wgt_${slot.padEnd(64, '0')}`,
   }
 }
 
@@ -229,17 +223,15 @@ function makeWorkspace(slot: WorkspaceSlot): FakeWorkspace {
  * The stored settings row for a workspace.
  *
  * Deliberately shaped like the critic's leak: the identity lives in `name`,
- * `slug` and the branding colour. `/api/widget/config.json` publishes only the
- * colour, and the portal document publishes only the name — neither carries the
- * workspace id or slug, which is precisely why a probe that searched for those
- * two strings could not see this leak at all.
+ * `slug` and the branding colour. The portal document publishes the name — it
+ * carries neither the workspace id nor the slug, which is precisely why a probe
+ * that searched for those two strings could not see this leak at all.
  */
 export function fakeSettings(t: FakeWorkspace): FakeSettings {
   return {
     id: t.settingsUuid,
     slug: t.workspaceSlug,
     name: t.workspaceName,
-    widget_secret: t.widgetSecret,
     feature_flags: '{}',
     branding_config: JSON.stringify({ light: { primary: t.themeColor } }),
     custom_css: t.customCss ?? `:root { --primary: ${t.themeColor}; }`,
@@ -247,7 +239,6 @@ export function fakeSettings(t: FakeWorkspace): FakeSettings {
     // portal welcome-card headline — a settings-derived field the portal
     // document renders.
     portal_config: JSON.stringify({ welcomeCard: { title: t.identityToken } }),
-    widget_config: '{}',
     auth_config_version: 0,
   }
 }
@@ -256,7 +247,6 @@ export function fakeSettings(t: FakeWorkspace): FakeSettings {
 export const ADMIN_EMAIL = 'admin@example.com'
 
 const SHARED_STORAGE_SECRET = 's3-secret-shared-bucket'
-const SHARED_WIDGET_SECRET = `wgt_${'shared'.padEnd(64, '0')}`
 
 function json(body: unknown, status = 200, headers: Record<string, string> = {}): Response {
   return new Response(JSON.stringify(body), {
@@ -273,23 +263,6 @@ function json(body: unknown, status = 200, headers: Record<string, string> = {})
 function storageSig(secret: string, key: string, workspaceKey?: string): string {
   const message = workspaceKey ? `t:${workspaceKey}|read|${key}` : `read|${key}`
   return createHmac('sha256', secret).update(message).digest('hex').slice(0, 32)
-}
-
-function verifyJwt(secret: string, token: string): Record<string, unknown> | null {
-  const [header, payload, signature] = token.split('.')
-  if (!header || !payload || !signature) return null
-  const expected = createHmac('sha256', secret)
-    .update(`${header}.${payload}`)
-    .digest('base64')
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=+$/, '')
-  if (expected !== signature) return null
-  try {
-    return JSON.parse(Buffer.from(payload, 'base64url').toString('utf8')) as Record<string, unknown>
-  } catch {
-    return null
-  }
 }
 
 export class FakeFleet {
@@ -383,17 +356,9 @@ export class FakeFleet {
     return this.leaks.sharedStorageSecret ? SHARED_STORAGE_SECRET : workspace.storageSecret
   }
 
-  private widgetSecretFor(workspace: FakeWorkspace): string {
-    return this.leaks.sharedWidgetSecret ? SHARED_WIDGET_SECRET : workspace.widgetSecret
-  }
-
   /** The `storageSecret` an operator would hand the probe for this workspace. */
   publicStorageSecret(slot: WorkspaceSlot): string {
     return this.storageSecretFor(slot === 'alpha' ? this.alpha : this.bravo)
-  }
-
-  publicWidgetSecret(slot: WorkspaceSlot): string {
-    return this.widgetSecretFor(slot === 'alpha' ? this.alpha : this.bravo)
   }
 
   readonly fetch: FetchLike = async (input, init) => {
@@ -606,56 +571,6 @@ export class FakeFleet {
       })
     }
 
-    // ---- widget ----------------------------------------------------------
-    if (path === '/api/widget/identify' && method === 'POST') {
-      const body = JSON.parse(String(init?.body ?? '{}')) as { ssoToken?: string }
-      const claims = body.ssoToken
-        ? verifyJwt(this.widgetSecretFor(workspace), body.ssoToken)
-        : null
-      if (!claims) return json({ error: { code: 'TOKEN_INVALID', message: 'bad token' } }, 400)
-      return json({
-        sessionToken: `widget-${workspace.slot}-session`,
-        user: { id: `principal_widget_${workspace.slot}`, email: String(claims.email ?? '') },
-        votedPostIds: [],
-      })
-    }
-
-    if (path === '/api/widget/session') {
-      const owner = bearer.startsWith('widget-alpha')
-        ? this.alpha
-        : bearer.startsWith('widget-bravo')
-          ? this.bravo
-          : null
-      if (!owner) return json({ error: { code: 'AUTH_REQUIRED' } }, 401)
-      if (owner.slot !== workspace.slot && !this.leaks.sharedSessionStore) {
-        return json({ error: { code: 'AUTH_REQUIRED' } }, 401)
-      }
-      return json({ data: { user: { id: `principal_widget_${owner.slot}` } } })
-    }
-
-    if (path === '/api/widget/search') {
-      const q = url.searchParams.get('q') ?? ''
-      const posts = this.searchPosts(workspace, q).map((p) => ({
-        id: p.id,
-        title: p.title,
-        board: { id: p.boardId, slug: FIXTURE.boardSlug },
-      }))
-      return json({ data: { posts } })
-    }
-
-    if (path === '/api/widget/config.json') {
-      // Mirrors `lib/server/widget/public-config.ts`: theme, tabs and flags.
-      // No workspace id, no slug, no name — the exact shape that defeated an
-      // earlier version of P06, which searched only for the slug and the id.
-      const source = this.leaks.sharedSettingsCache ? this.alpha : workspace
-      return json({
-        enabled: true,
-        theme: { lightPrimary: source.themeColor, themeMode: 'user', radius: '0.5rem' },
-        tabs: { feedback: true, changelog: true, help: true },
-        hmacRequired: false,
-      })
-    }
-
     // ---- portal ----------------------------------------------------------
     //
     // The portal root CANONICALISES before it renders: the search schema
@@ -692,8 +607,7 @@ export class FakeFleet {
       // headline — matching the real app, which renders the name and the
       // welcome-card title from portal_config and no other workspace identifier.
       // A full shared cache serves alpha's whole blob; a PARTIAL leak serves
-      // alpha's name and headline while the widget config keeps each workspace's
-      // own colour.
+      // alpha's name and headline while the host keeps its own theme.
       const source =
         this.leaks.sharedSettingsCache || this.leaks.partialIdentityLeak ? this.alpha : workspace
       const headline = this.leaks.omitPlantedToken ? '' : ` ${source.identityToken}`
@@ -857,8 +771,6 @@ export function baseConfig(fleet: FakeFleet, overrides: Partial<ProbeConfig> = {
     bravoApiKey: fleet.bravo.apiKey,
     alphaStorageSecret: fleet.publicStorageSecret('alpha'),
     bravoStorageSecret: fleet.publicStorageSecret('bravo'),
-    alphaWidgetSecret: fleet.publicWidgetSecret('alpha'),
-    bravoWidgetSecret: fleet.publicWidgetSecret('bravo'),
     allowBlocked: false,
     requestTimeoutMs: 5000,
     teardown: false,
@@ -980,7 +892,6 @@ export function makeContext(
       'admin',
       'api-key',
       'storage-secret',
-      'widget-secret',
       ...(opts.withDb ? (['db'] as Capability[]) : []),
     ]),
     log: silentLogger,

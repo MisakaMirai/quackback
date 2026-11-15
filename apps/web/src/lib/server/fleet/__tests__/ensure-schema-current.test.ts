@@ -65,11 +65,8 @@ describe('ensureWorkspaceSchemaCurrent', () => {
   it('migrates a mint whose vendor snapshot stopped short of this build', async () => {
     const { ensureWorkspaceSchemaCurrent, missingBundledMigrations } =
       await import('../ensure-schema-current')
-    const behind = ledger(allBut('0271_widget_installed_sdk_version', '0272_kb_url_id'))
-    expect(missingBundledMigrations(behind)).toEqual([
-      '0271_widget_installed_sdk_version',
-      '0272_kb_url_id',
-    ])
+    const behind = ledger(allBut('0272_kb_url_id'))
+    expect(missingBundledMigrations(behind)).toEqual(['0272_kb_url_id'])
     readAppliedLedger.mockResolvedValue(behind)
     migrateDirect.mockResolvedValue({
       ok: true,
@@ -89,14 +86,14 @@ describe('ensureWorkspaceSchemaCurrent', () => {
 
   it('uses migrateDirect so a gapped ledger can be healed rather than 503-looping', async () => {
     const { ensureWorkspaceSchemaCurrent } = await import('../ensure-schema-current')
-    const gapped = ledger(allBut('0271_widget_installed_sdk_version'))
+    const gapped = ledger(allBut('0272_kb_url_id'))
     readAppliedLedger.mockResolvedValue(gapped)
     migrateDirect.mockResolvedValue({
       ok: true,
       code: 'healed_ledger_gap',
       detail: 'healed',
       after: completeLedger(),
-      gap: { missing: ['0271_widget_installed_sdk_version'] },
+      gap: { missing: ['0272_kb_url_id'] },
     })
 
     await ensureWorkspaceSchemaCurrent({
@@ -109,11 +106,11 @@ describe('ensureWorkspaceSchemaCurrent', () => {
 
   it('refuses to serve when migrateDirect does not succeed', async () => {
     const { ensureWorkspaceSchemaCurrent } = await import('../ensure-schema-current')
-    readAppliedLedger.mockResolvedValue(ledger(allBut('0271_widget_installed_sdk_version')))
+    readAppliedLedger.mockResolvedValue(ledger(allBut('0272_kb_url_id')))
     migrateDirect.mockResolvedValue({
       ok: false,
       code: 'postconditions_violated',
-      detail: 'column public.settings.widget_installed_sdk_version is missing',
+      detail: 'column public.kb_articles.url_id is missing',
       after: null,
       gap: null,
     })

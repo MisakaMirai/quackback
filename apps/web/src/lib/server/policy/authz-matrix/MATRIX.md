@@ -95,7 +95,7 @@ Profiles: **Owner** = admin class + an admin-owned full API key (scoped keys hol
 
 ## 2. Surfaces and their enforced authorization
 
-### Server functions (`requireAuth`) — 629 surfaces
+### Server functions (`requireAuth`) — 603 surfaces
 
 | Surface | Enforces |
 | --- | --- |
@@ -508,13 +508,8 @@ Profiles: **Owner** = admin class + an admin-owned full API key (scoped keys hol
 | `lib/server/functions/settings.ts`::updateWorkspaceNameFn | settings.branding |
 | `lib/server/functions/settings.ts`::updateCustomCssFn | settings.branding |
 | `lib/server/functions/settings.ts`::updateDeveloperConfigFn | settings.manage |
-| `lib/server/functions/settings.ts`::fetchWidgetConfig | settings.manage |
-| `lib/server/functions/settings.ts`::fetchWidgetSecret | settings.manage |
-| `lib/server/functions/settings.ts`::updateWidgetConfigFn | settings.manage |
-| `lib/server/functions/settings.ts`::saveWidgetHeroImageKeyFn | settings.manage |
-| `lib/server/functions/settings.ts`::deleteWidgetHeroImageFn | settings.manage |
-| `lib/server/functions/settings.ts`::regenerateWidgetSecretFn | settings.manage |
-| `lib/server/functions/settings.ts`::mintWidgetInstallCodeFn | settings.manage |
+| `lib/server/functions/settings.ts`::fetchMessengerConfig | settings.manage |
+| `lib/server/functions/settings.ts`::updateMessengerConfigFn | settings.manage |
 | `lib/server/functions/settings.ts`::fetchOfficeHoursFn | office_hours.manage |
 | `lib/server/functions/settings.ts`::fetchConversationRoutingFn | settings.manage |
 | `lib/server/functions/settings.ts`::updateConversationRoutingFn | settings.manage |
@@ -693,7 +688,6 @@ Profiles: **Owner** = admin class + an admin-owned full API key (scoped keys hol
 | `lib/server/functions/uploads.ts`::getFaviconUploadUrlFn | settings.manage |
 | `lib/server/functions/uploads.ts`::getHeaderLogoUploadUrlFn | settings.manage |
 | `lib/server/functions/uploads.ts`::getIdentityProviderLogoUploadUrlFn | auth.manage |
-| `lib/server/functions/uploads.ts`::getWidgetHeroUploadUrlFn | settings.manage |
 | `lib/server/functions/uploads.ts`::getAvatarUploadUrlFn | END_USER (any authenticated) |
 | `lib/server/functions/user-attributes.ts`::listUserAttributesFn | user_attribute.view |
 | `lib/server/functions/user-attributes.ts`::createUserAttributeFn | user_attribute.manage |
@@ -707,26 +701,6 @@ Profiles: **Owner** = admin class + an admin-owned full API key (scoped keys hol
 | `lib/server/functions/webhooks.ts`::updateWebhookFn | webhook.manage |
 | `lib/server/functions/webhooks.ts`::deleteWebhookFn | webhook.manage |
 | `lib/server/functions/webhooks.ts`::rotateWebhookSecretFn | webhook.manage |
-| `lib/server/functions/widget/comments.ts`::widgetCreateCommentFn | END_USER (any authenticated) |
-| `lib/server/functions/widget/comments.ts`::widgetAddReactionFn | END_USER (any authenticated) |
-| `lib/server/functions/widget/comments.ts`::widgetRemoveReactionFn | END_USER (any authenticated) |
-| `lib/server/functions/widget/conversation.ts`::widgetSendConversationMessageFn | END_USER (any authenticated) |
-| `lib/server/functions/widget/conversation.ts`::widgetListConversationMessagesFn | END_USER (any authenticated) |
-| `lib/server/functions/widget/conversation.ts`::widgetMarkConversationReadFn | END_USER (any authenticated) |
-| `lib/server/functions/widget/conversation.ts`::widgetSendConversationTypingFn | END_USER (any authenticated) |
-| `lib/server/functions/widget/conversation.ts`::widgetSubmitCsatFn | END_USER (any authenticated) |
-| `lib/server/functions/widget/conversation.ts`::widgetMintConversationStreamTokenFn | END_USER (any authenticated) |
-| `lib/server/functions/widget/posts.ts`::widgetCreatePublicPostFn | END_USER (any authenticated) |
-| `lib/server/functions/widget/posts.ts`::widgetToggleVoteFn | END_USER (any authenticated) |
-| `lib/server/functions/widget/tickets.ts`::widgetGetMyTicketsFn | END_USER (any authenticated) |
-| `lib/server/functions/widget/tickets.ts`::widgetGetMyTicketStageLabelsFn | END_USER (any authenticated) |
-| `lib/server/functions/widget/tickets.ts`::widgetGetMyTicketFormFn | END_USER (any authenticated) |
-| `lib/server/functions/widget/tickets.ts`::widgetGetMyTicketWatchStatusFn | END_USER (any authenticated) |
-| `lib/server/functions/widget/tickets.ts`::widgetGetConversationLinkedTicketFn | END_USER (any authenticated) |
-| `lib/server/functions/widget/tickets.ts`::widgetCreateMyTicketFn | END_USER (any authenticated) |
-| `lib/server/functions/widget/tickets.ts`::widgetWatchMyTicketFn | END_USER (any authenticated) |
-| `lib/server/functions/widget/tickets.ts`::widgetUnwatchMyTicketFn | END_USER (any authenticated) |
-| `lib/server/functions/widget/user.ts`::widgetGetUserStatsFn | END_USER (any authenticated) |
 | `lib/server/functions/workspace-api-key-settings.ts`::fetchWorkspaceKeyRolesFn | api_key.manage |
 
 ### Public REST API (`withApiKeyAuth`) — 122 surfaces
@@ -870,7 +844,7 @@ Profiles: **Owner** = admin class + an admin-owned full API key (scoped keys hol
 
 ## 3. MCP tools
 
-40 tools. "Team" = requires an admin/member role in addition to the scope.
+39 tools. "Team" = requires an admin/member role in addition to the scope.
 
 | Tool | Scope(s) | Team |
 | --- | --- | :---: |
@@ -913,7 +887,6 @@ Profiles: **Owner** = admin class + an admin-owned full API key (scoped keys hol
 | update_settings | write:settings | ✓ |
 | upload_file | write:chat | ✓ |
 | vote_post | write:feedback | · |
-| widget_install_status | read:feedback | ✓ |
 
 ### MCP scope holdings by class
 
@@ -927,7 +900,7 @@ Key scopes are enforced: an API key holds exactly its stored scopes (owner permi
 
 ## 4. Entry points without a requireAuth/key gate
 
-213 of 944 entry points hold no `requireAuth` / `withApiKeyAuth` / `requireTeamAuth` gate.
+182 of 887 entry points hold no `requireAuth` / `withApiKeyAuth` / `requireTeamAuth` gate.
 Each is expected to be intentionally public, a pre-auth flow, a signature-verified webhook, or a handler that delegates auth (e.g. the MCP route).
 **Adding a row here is an access-control change** — confirm the new entry point is meant to be reachable without a gate.
 
@@ -943,11 +916,12 @@ Each is expected to be intentionally public, a pre-auth flow, a signature-verifi
 | `lib/server/functions/changelog.ts`::listPublicChangelogsFn | server-fn |
 | `lib/server/functions/comments.ts`::canPinCommentFn | server-fn |
 | `lib/server/functions/comments.ts`::getCommentPermissionsFn | server-fn |
+| `lib/server/functions/conversation-capabilities.ts`::getConversationCapabilitiesFn | server-fn |
 | `lib/server/functions/conversation.ts`::getConversationPresenceFn | server-fn |
 | `lib/server/functions/conversation.ts`::getMessengerUnreadFn | server-fn |
 | `lib/server/functions/conversation.ts`::getMyConversationFn | server-fn |
 | `lib/server/functions/conversation.ts`::getMyConversationsFn | server-fn |
-| `lib/server/functions/conversation.ts`::getWidgetTeamAvatarsFn | server-fn |
+| `lib/server/functions/conversation.ts`::getTeamAvatarsFn | server-fn |
 | `lib/server/functions/csat-email.ts`::recordCsatViaTokenFn | server-fn |
 | `lib/server/functions/csat-email.ts`::validateCsatEmailTokenFn | server-fn |
 | `lib/server/functions/embeds.ts`::getEmbedPreviewFn | server-fn |
@@ -1025,7 +999,6 @@ Each is expected to be intentionally public, a pre-auth flow, a signature-verifi
 | `lib/server/functions/subscriptions.ts`::previewUnsubscribeTokenFn | server-fn |
 | `lib/server/functions/subscriptions.ts`::processUnsubscribeTokenFn | server-fn |
 | `lib/server/functions/uploads.ts`::checkS3ConfiguredFn | server-fn |
-| `lib/server/functions/uploads.ts`::getWidgetImageUploadUrlFn | server-fn |
 | `lib/server/functions/user.ts`::getNotificationPreferencesFn | server-fn |
 | `lib/server/functions/user.ts`::getProfileFn | server-fn |
 | `lib/server/functions/user.ts`::getUserRoleFn | server-fn |
@@ -1034,23 +1007,6 @@ Each is expected to be intentionally public, a pre-auth flow, a signature-verifi
 | `lib/server/functions/user.ts`::saveAvatarKeyFn | server-fn |
 | `lib/server/functions/user.ts`::updateProfileNameFn | server-fn |
 | `lib/server/functions/version.ts`::getLatestVersion | server-fn |
-| `lib/server/functions/widget-capabilities.ts`::getWidgetCapabilitiesFn | server-fn |
-| `lib/server/functions/widget/changelog.ts`::widgetGetPublicChangelogFn | server-fn |
-| `lib/server/functions/widget/changelog.ts`::widgetListPublicChangelogsFn | server-fn |
-| `lib/server/functions/widget/conversation.ts`::widgetGetConversationPresenceFn | server-fn |
-| `lib/server/functions/widget/conversation.ts`::widgetGetMessengerUnreadFn | server-fn |
-| `lib/server/functions/widget/conversation.ts`::widgetGetMyConversationFn | server-fn |
-| `lib/server/functions/widget/conversation.ts`::widgetGetMyConversationsFn | server-fn |
-| `lib/server/functions/widget/conversation.ts`::widgetGetTeamAvatarsFn | server-fn |
-| `lib/server/functions/widget/help.ts`::widgetListPublicArticlesFn | server-fn |
-| `lib/server/functions/widget/help.ts`::widgetListPublicArticlesForCategoryFn | server-fn |
-| `lib/server/functions/widget/help.ts`::widgetListPublicCategoriesFn | server-fn |
-| `lib/server/functions/widget/help.ts`::widgetRecordArticleFeedbackFn | server-fn |
-| `lib/server/functions/widget/help.ts`::widgetResolvePublicArticleRefFn | server-fn |
-| `lib/server/functions/widget/posts.ts`::widgetFetchBoardCapabilitiesFn | server-fn |
-| `lib/server/functions/widget/posts.ts`::widgetFetchPublicPostDetailFn | server-fn |
-| `lib/server/functions/widget/posts.ts`::widgetGetVotedPostsFn | server-fn |
-| `lib/server/functions/widget/posts.ts`::widgetListPublicPostsFn | server-fn |
 | `lib/server/functions/workspace-utils.ts`::requireWorkspaceRole | server-fn |
 | `routes/_portal.tsx`::setPortalFrameHeaders | server-fn |
 | `routes/[.]well-known.oauth-authorization-server.api.auth.ts`::GET | route |
@@ -1084,6 +1040,7 @@ Each is expected to be intentionally public, a pre-auth flow, a signature-verifi
 | `routes/api/integrations/$type/identify.ts`::POST | route |
 | `routes/api/integrations/$type/webhook.ts`::POST | route |
 | `routes/api/internal/job-wake.ts`::POST | route |
+| `routes/api/kb-search.ts`::GET | route |
 | `routes/api/mcp.ts`::DELETE | route |
 | `routes/api/mcp.ts`::GET | route |
 | `routes/api/mcp.ts`::POST | route |
@@ -1119,22 +1076,10 @@ Each is expected to be intentionally public, a pre-auth flow, a signature-verifi
 | `routes/api/v1/status/services/index.ts`::GET | route |
 | `routes/api/v1/status/services/index.ts`::POST | route |
 | `routes/api/v1/users/$principalId.card.ts`::GET | route |
-| `routes/api/widget/config[.]json.ts`::GET | route |
-| `routes/api/widget/device.ts`::POST | route |
-| `routes/api/widget/files.ts`::POST | route |
-| `routes/api/widget/identify.ts`::POST | route |
-| `routes/api/widget/install-context.ts`::POST | route |
-| `routes/api/widget/kb-search.ts`::GET | route |
-| `routes/api/widget/sdk[.]js.ts`::GET | route |
-| `routes/api/widget/search.ts`::GET | route |
-| `routes/api/widget/session.ts`::GET | route |
-| `routes/api/widget/upload.ts`::POST | route |
 | `routes/apps.tsx`::setIframeHeaders | server-fn |
-| `routes/auth.widget-handoff.tsx`::consumeWidgetHandoffFn | server-fn |
 | `routes/changelog/feed.ts`::GET | route |
 | `routes/changelog/rss.ts`::GET | route |
 | `routes/changelog/rss[.]xml.ts`::GET | route |
-| `routes/e2e.widget.ts`::GET | route |
 | `routes/hc/sitemap[.]xml.ts`::GET | route |
 | `routes/oauth/$integration/callback.ts`::GET | route |
 | `routes/oauth/$integration/callback.ts`::POST | route |
@@ -1143,6 +1088,3 @@ Each is expected to be intentionally public, a pre-auth flow, a signature-verifi
 | `routes/sitemap[.]xml.ts`::GET | route |
 | `routes/status/feed.ts`::GET | route |
 | `routes/unsubscribe.tsx`::POST | route |
-| `routes/widget.tsx`::getPortalSessionToken | server-fn |
-| `routes/widget.tsx`::getWidgetLocale | server-fn |
-| `routes/widget.tsx`::setIframeHeaders | server-fn |

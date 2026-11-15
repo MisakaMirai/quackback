@@ -2,7 +2,7 @@
   <a href="https://quackback.io">
     <picture>
       <source media="(prefers-color-scheme: dark)" srcset=".github/readme/hero-dark.svg" />
-      <img src=".github/readme/hero-light.svg" width="100%" alt="Quackback: hear what customers want. Ship it. Tell them. Feedback boards, roadmap, changelog, support inbox, help center, status page and Quackback AI, shown with the feedback inbox and the customer widget." />
+      <img src=".github/readme/hero-light.svg" width="100%" alt="Quackback: hear what customers want. Ship it. Tell them. Feedback boards, roadmap, changelog, support inbox, help center, status page and Quackback AI, shown with the feedback inbox." />
     </picture>
   </a>
 </p>
@@ -41,13 +41,12 @@
 | **Roadmap**         | Show what's planned, in progress and complete. Link requests to Linear, GitHub, Jira and other trackers. Linear and GitHub move the request as the issue moves; other trackers send each change for your approval.                                                                                                                |
 | **Changelog**       | Publish updates and link the requests they ship, so every voter hears about it. Schedule entries, and reach subscribers by email and RSS.                                                                                                                                                                                         |
 | **Support inbox**   | Live chat, email and tickets in one shared inbox, with assignment, snoozing, macros, SLAs, office hours and workflows.                                                                                                                                                                                                            |
-| **Help center**     | A searchable knowledge base on your own domain and inside the widget.                                                                                                                                                                                                                                                             |
+| **Help center**     | A searchable knowledge base on your own domain.                                                                                                                                                                                                                                                                                   |
 | **Status page**     | Components, incidents and maintenance windows, with email updates for subscribers.                                                                                                                                                                                                                                                |
-| **Widget**          | One embeddable widget for feedback, chat, help articles and your changelog. Works on the web, with SDKs for [iOS](https://github.com/QuackbackIO/quackback-ios) and [Android](https://github.com/QuackbackIO/quackback-android).                                                                                                  |
 | **Quackback AI**    | An agent that answers customers from your help center, changelog and status page, and hands off to your team when a person should step in. Copilot answers your team's questions and drafts replies; on Home (in Labs) it can propose settings changes you review and apply. Also duplicate detection, summaries and translation. |
 | **Developers**      | A REST API with an OpenAPI spec, signed webhooks, and an [MCP server](#connect-your-ai-tools) for AI agents.                                                                                                                                                                                                                      |
 
-The portal and widget speak 10+ languages, including right-to-left, and follow each visitor's browser language.
+The portal speaks 10+ languages, including right-to-left, and follow each visitor's browser language.
 
 ## Get started
 
@@ -128,5 +127,3 @@ With the demo data, sign in as `demo@example.com` with the password `password`.
 ## License
 
 [AGPL-3.0](LICENSE). Self-hosting is free and complete. If you run a modified version as a service or distribute it, publish your changes under the AGPL. Contributions need a signed [CLA](CLA.md).
-
-The widget SDK ([`packages/widget`](packages/widget), published as `@quackback/widget`) is [MIT](packages/widget/LICENSE), so you can embed it in closed-source apps.

@@ -35,9 +35,6 @@ export default defineConfig({
       // their own deps and must not be run by the parent repo's suite.
       '**/.claude/**',
       '**/*-integration.test.ts',
-      // Widget package has its own vitest.config.ts with happy-dom — run via
-      // `bun run --cwd packages/widget test`. Don't double-run from the root.
-      'packages/widget/**',
     ],
     // Use ts-node or vite's transformation instead of stripping
     typecheck: {

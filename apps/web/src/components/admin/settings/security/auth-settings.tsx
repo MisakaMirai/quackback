@@ -8,7 +8,7 @@ import type { AuthConfig, PortalConfig } from '@/lib/shared/types/settings'
 
 /**
  * The Access & Security page tabs split by concern, not by surface:
- *  - `portal-access` — who can view the portal (visibility, domains, invites, segments, widget)
+ *  - `portal-access` — who can view the portal (visibility, domains, invites, segments)
  *  - `sign-in`       — authentication providers for both surfaces in one place
  *                       (password + 2FA enforcement, magic link, social, custom OIDC)
  *                       with per-surface toggles inline.

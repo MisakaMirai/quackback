@@ -300,8 +300,6 @@ export const UNTRUSTED_TOOL_FIELDS = {
   unlink_ticket: NONE,
 
   upload_file: NONE,
-  // Taken from the Origin or Referer of whichever page loaded the widget.
-  widget_install_status: ['originHost'],
   get_settings: NONE,
   update_settings: NONE,
   navigate_workspace: NONE,

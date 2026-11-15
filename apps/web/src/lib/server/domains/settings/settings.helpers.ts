@@ -10,13 +10,10 @@ import { isEmptyTiptapDoc } from '@/lib/shared/utils/is-empty-tiptap-doc'
 import { logger } from '@/lib/server/logger'
 import {
   DEFAULT_PORTAL_CONFIG,
-  DEFAULT_WIDGET_CONFIG,
   EMPTY_WELCOME_BODY,
   LEGACY_PORTAL_CONFIG,
-  LEGACY_WIDGET_CONFIG,
   type PortalConfig,
   type PortalWelcomeCard,
-  type WidgetConfig,
   workspaceAllowsAnonymous,
 } from './settings.types'
 import type { TiptapContent } from '@/lib/shared/db-types'
@@ -56,11 +53,6 @@ export function parseStoredConfig<T extends object>(
   } catch {
     return currentDefault
   }
-}
-
-/** @internal */
-export function parseWidgetConfig(json: string | null): WidgetConfig {
-  return parseStoredConfig(json, DEFAULT_WIDGET_CONFIG, LEGACY_WIDGET_CONFIG)
 }
 
 /** @internal */

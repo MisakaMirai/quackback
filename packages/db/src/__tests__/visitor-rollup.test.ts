@@ -39,10 +39,10 @@ beforeAll(async () => {
     { ...base, surface: 'portal', path: '/a', visitorHash: 'test-a', occurredAt: at(0) },
     { ...base, surface: 'portal', path: '/a', visitorHash: 'test-a', occurredAt: at(5) },
     { ...base, surface: 'portal', path: '/b', visitorHash: 'test-a', occurredAt: at(50) },
-    // Visitor B on the widget: a single view.
+    // Visitor B: a single view of another page.
     {
       ...base,
-      surface: 'widget',
+      surface: 'portal',
       path: '/pricing',
       visitorHash: 'test-b',
       occurredAt: at(2),
@@ -70,8 +70,8 @@ describe.skipIf(!DB_URL)('refreshVisitorAnalytics', () => {
     const bySurface = Object.fromEntries(rows.map((r) => [r.surface, r]))
 
     expect(bySurface['all']).toMatchObject({ uniqueVisitors: 2, pageviews: 4, visits: 3 })
-    expect(bySurface['portal']).toMatchObject({ uniqueVisitors: 1, pageviews: 3, visits: 2 })
-    expect(bySurface['widget']).toMatchObject({ uniqueVisitors: 1, pageviews: 1, visits: 1 })
+    expect(bySurface['portal']).toMatchObject({ uniqueVisitors: 2, pageviews: 4, visits: 3 })
+    expect(bySurface['widget']).toBeUndefined()
   })
 
   it('is idempotent for the recomputed day', async () => {
@@ -80,7 +80,7 @@ describe.skipIf(!DB_URL)('refreshVisitorAnalytics', () => {
       .select()
       .from(visitorStatsDaily)
       .where(eq(visitorStatsDaily.date, NOW.toISOString().slice(0, 10)))
-    expect(rows).toHaveLength(3)
+    expect(rows).toHaveLength(2)
   })
 
   it('snapshots ranked top stats per period, surface, and dimension', async () => {
@@ -91,9 +91,8 @@ describe.skipIf(!DB_URL)('refreshVisitorAnalytics', () => {
     // Ranked by distinct visitors, ties broken by label for determinism.
     expect(allPages.find((r) => r.rank === 1)?.label).toBe('/a')
 
-    const widgetCountries = rows.filter((r) => r.surface === 'widget' && r.dimension === 'country')
-    expect(widgetCountries).toHaveLength(1)
-    expect(widgetCountries[0]).toMatchObject({ label: 'US', count: 1, rank: 1 })
+    const portalCountries = rows.filter((r) => r.surface === 'portal' && r.dimension === 'country')
+    expect(portalCountries.map((r) => r.label).sort()).toEqual(['DE', 'US'])
 
     const allBrowsers = rows.filter((r) => r.surface === 'all' && r.dimension === 'browser')
     expect(allBrowsers.map((r) => r.label).sort()).toEqual(['Chrome', 'Safari'])

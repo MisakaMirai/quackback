@@ -63,7 +63,7 @@ vi.mock('@/lib/server/functions/portal-access', () => ({
   resolvePortalAccessForRequest: hoisted.resolvePortalAccessForRequest,
 }))
 vi.mock('@/lib/server/domains/principals/blocking', () => ({ isBlocked: hoisted.isBlocked }))
-vi.mock('@/lib/server/domains/settings/settings.widget', () => ({
+vi.mock('@/lib/server/domains/settings/settings.messenger', () => ({
   getMessengerConfig: hoisted.getMessengerConfig,
 }))
 vi.mock('@/lib/server/domains/conversation/conversation.query', () => ({

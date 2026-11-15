@@ -221,10 +221,6 @@ export function buildNavSections(flags?: Partial<FeatureFlags>): NavSection[] {
           permission: PERMISSIONS.SETTINGS_BRANDING,
         },
         {
-          ...navPage('/admin/settings/widget'),
-          permission: PERMISSIONS.SETTINGS_MANAGE,
-        },
-        {
           ...navPage('/admin/settings/members'),
           permission: PERMISSIONS.MEMBER_VIEW,
         },

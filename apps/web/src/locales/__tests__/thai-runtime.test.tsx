@@ -3,19 +3,15 @@ import { describe, it, expect } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import { createIntl, FormattedMessage } from 'react-intl'
 import { PortalIntlProvider } from '@/components/portal-intl-provider'
-import { loadMessages, loadWidgetMessages } from '@/lib/shared/i18n'
+import { loadMessages } from '@/lib/shared/i18n'
 import { htmlLangDir } from '@/lib/shared/document-locale'
 
 describe('Thai locale runtime wiring', () => {
-  it('loads the Thai catalog and widget slice without falling back to English', async () => {
-    const [en, th, widget] = await Promise.all([
-      loadMessages('en'),
-      loadMessages('th'),
-      loadWidgetMessages('th'),
-    ])
+  it('loads the Thai catalog without falling back to English', async () => {
+    const [en, th] = await Promise.all([loadMessages('en'), loadMessages('th')])
     expect(th['portal.header.nav.roadmap']).toBe('แผนพัฒนา')
     expect(th['portal.header.nav.roadmap']).not.toBe(en['portal.header.nav.roadmap'])
-    expect(widget['widget.home.form.submit']).toBe('โพสต์')
+    expect(th['widget.home.form.submit']).toBe('โพสต์')
     expect(htmlLangDir('th')).toEqual({ lang: 'th', dir: 'ltr' })
   })
 

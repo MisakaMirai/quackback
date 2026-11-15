@@ -132,10 +132,9 @@ describe("Home's launch plan card", () => {
       features: { ...status.features!, helpCenter: true },
     }
     mount(goals)
-    // Support and Help center come before the polish, as on the plan page.
+    // Help center comes before the polish, as on the plan page.
     const open = launchPath(goals).later.filter((task) => !task.isCompleted && !task.isSkipped)
     expect(open.map((task) => task.title)).toEqual([
-      'Put Messenger on your site',
       'Publish your first article',
       'Publish your first update',
       'Add your logo',
@@ -144,11 +143,11 @@ describe("Home's launch plan card", () => {
     ])
     const later = screen.getByText(/^Later:/)
     expect(later.textContent).toBe(
-      'Later: Put Messenger on your site, publish your first article, publish your first update, and 3 more'
+      'Later: Publish your first article, publish your first update, add your logo, and 2 more'
     )
-    expect(within(later).getByRole('link', { name: 'Put Messenger on your site' })).toHaveAttribute(
+    expect(within(later).getByRole('link', { name: 'Publish your first article' })).toHaveAttribute(
       'href',
-      '/admin/settings/widget/install'
+      '/admin/help-center'
     )
     expect(screen.getByRole('link', { name: 'All steps' })).toHaveAttribute(
       'href',
@@ -159,8 +158,6 @@ describe("Home's launch plan card", () => {
   it('leaves done and skipped steps out of Later', () => {
     mount({
       ...status,
-      hasWidgetInstalled: true,
-      hasWidgetEnabled: true,
       hasPublishedChangelog: true,
       taskResolutions: {
         product_feedback: {
@@ -189,8 +186,6 @@ describe("Home's launch plan card", () => {
       hasBranding: true,
       memberCount: 2,
       hasPublishedChangelog: true,
-      hasWidgetInstalled: true,
-      hasWidgetEnabled: true,
     })
     expect(screen.getByRole('region', { name: 'A customer creates a post' })).toBeVisible()
   })

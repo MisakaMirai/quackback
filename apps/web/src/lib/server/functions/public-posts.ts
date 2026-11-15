@@ -470,7 +470,7 @@ export const runCreatePublicPost = createServerOnlyFn(async function runCreatePu
       content,
       contentJson: contentJson ? sanitizeTiptapContent(contentJson) : undefined,
       statusId: defaultStatus?.id,
-      widgetMetadata: metadata,
+      clientMetadata: metadata,
       customFields,
     },
     author,

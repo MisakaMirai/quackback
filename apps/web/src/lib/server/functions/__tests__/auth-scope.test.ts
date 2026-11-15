@@ -54,7 +54,7 @@ import {
   requireAuth,
 } from '../auth-helpers'
 import { ensurePrincipalForUser } from '@/lib/server/domains/principals/principal.factory'
-import { SESSION_AUDIENCE_HEADER, sessionRole, toSessionScope } from '@/lib/shared/roles'
+import { sessionRole, toSessionScope } from '@/lib/shared/roles'
 import { assignSessionScope } from '@/lib/server/auth/session-audience'
 
 function sessionWithScope(scope: string) {
@@ -74,11 +74,11 @@ beforeEach(() => {
 })
 
 describe('requireAuth permission gates are dashboard-only', () => {
-  it('denies a widget session even after the principal was promoted to admin', async () => {
+  it('treats the retired widget scope as portal at a permission gate', async () => {
     mockGetSession.mockResolvedValue(sessionWithScope('widget'))
 
     await expect(requireAuth({ permission: PERMISSIONS.SETTINGS_MANAGE })).rejects.toThrow(
-      /Widget sessions cannot access this resource/
+      /dashboard session/
     )
   })
 
@@ -98,10 +98,13 @@ describe('requireAuth permission gates are dashboard-only', () => {
     expect(auth.permissions).toContain(PERMISSIONS.SETTINGS_MANAGE)
   })
 
-  it('bare requireAuth denies widget by default', async () => {
+  it('bare requireAuth admits a portal session as a portal-tier user', async () => {
     mockGetSession.mockResolvedValue(sessionWithScope('widget'))
 
-    await expect(requireAuth()).rejects.toThrow(/Widget sessions cannot access this resource/)
+    const auth = await requireAuth()
+    expect(auth.scope).toBe('portal')
+    expect(auth.principal.role).toBe('user')
+    expect(auth.permissions).toEqual([])
   })
 
   it('keeps the team role and permissions on a dashboard session', async () => {
@@ -116,10 +119,10 @@ describe('requireAuth permission gates are dashboard-only', () => {
 // The mint decision and the gate, end to end: the scope assignSessionScope
 // stamps on a fresh anonymous session is the scope requireAuth then reads.
 describe('anonymous sessions minted by each surface', () => {
-  async function mintedAnonymousSession(headers: Record<string, string>) {
+  async function mintedAnonymousSession() {
     const minted = await assignSessionScope(
       { userId: 'user_anon', token: 'tok' },
-      { path: '/sign-in/anonymous', headers: new Headers(headers) }
+      { path: '/sign-in/anonymous' }
     )
     return {
       session: { id: 'sess_anon', scope: minted?.data.scope },
@@ -135,10 +138,8 @@ describe('anonymous sessions minted by each surface', () => {
     })
   })
 
-  it('lets a portal anonymous session through requireAuth as an anonymous portal user', async () => {
-    mockGetSession.mockResolvedValue(
-      await mintedAnonymousSession({ [SESSION_AUDIENCE_HEADER]: 'portal' })
-    )
+  it('lets an anonymous portal session through requireAuth as an anonymous portal user', async () => {
+    mockGetSession.mockResolvedValue(await mintedAnonymousSession())
 
     const auth = await requireAuth()
     expect(auth.scope).toBe('portal')
@@ -146,16 +147,8 @@ describe('anonymous sessions minted by each surface', () => {
     expect(auth.permissions).toEqual([])
   })
 
-  it('still refuses a widget anonymous session at requireAuth', async () => {
-    mockGetSession.mockResolvedValue(await mintedAnonymousSession({}))
-
-    await expect(requireAuth()).rejects.toThrow(/Widget sessions cannot access this resource/)
-  })
-
   it('refuses a portal anonymous session at a permission gate', async () => {
-    mockGetSession.mockResolvedValue(
-      await mintedAnonymousSession({ [SESSION_AUDIENCE_HEADER]: 'portal' })
-    )
+    mockGetSession.mockResolvedValue(await mintedAnonymousSession())
 
     await expect(requireAuth({ permission: PERMISSIONS.SETTINGS_MANAGE })).rejects.toThrow(
       /dashboard session/
@@ -164,10 +157,12 @@ describe('anonymous sessions minted by each surface', () => {
 })
 
 describe('getOptionalAuth strips team authority from non-dashboard scopes', () => {
-  it('treats a widget session as anonymous by default', async () => {
+  it('treats a legacy widget-scoped session as the portal audience', async () => {
     mockGetSession.mockResolvedValue(sessionWithScope('widget'))
 
-    expect(await getOptionalAuth()).toBeNull()
+    const auth = await getOptionalAuth()
+    expect(auth?.scope).toBe('portal')
+    expect(auth?.permissions).toEqual([])
   })
 
   it('downgrades a promoted portal principal to the portal tier', async () => {
@@ -189,13 +184,13 @@ describe('getOptionalAuth strips team authority from non-dashboard scopes', () =
 })
 
 describe('assertPermission scope gate', () => {
-  it('denies a widget session holding the permission', () => {
+  it('denies a portal session holding the permission', () => {
     expect(() =>
       assertPermission(
         {
           permissions: [PERMISSIONS.SETTINGS_MANAGE],
           principal: { id: 'principal_1', role: 'admin', type: 'user' },
-          scope: 'widget',
+          scope: 'portal',
         },
         PERMISSIONS.SETTINGS_MANAGE
       )
@@ -217,8 +212,8 @@ describe('assertPermission scope gate', () => {
 })
 
 describe('toSessionScope', () => {
-  it('maps known scopes', () => {
-    expect(toSessionScope('widget')).toBe('widget')
+  it('maps known scopes, treating the retired widget value as portal', () => {
+    expect(toSessionScope('widget')).toBe('portal')
     expect(toSessionScope('portal')).toBe('portal')
     expect(toSessionScope('dashboard')).toBe('dashboard')
   })
@@ -231,8 +226,7 @@ describe('toSessionScope', () => {
 })
 
 describe('assertDashboardScope', () => {
-  it('rejects widget and portal', () => {
-    expect(() => assertDashboardScope({ scope: 'widget' })).toThrow(/dashboard session/)
+  it('rejects portal', () => {
     expect(() => assertDashboardScope({ scope: 'portal' })).toThrow(/dashboard session/)
   })
 
@@ -245,7 +239,7 @@ describe('sessionRole', () => {
   it('keeps the role only for dashboard sessions', () => {
     expect(sessionRole('admin', 'dashboard')).toBe('admin')
     expect(sessionRole('member', 'dashboard')).toBe('member')
-    expect(sessionRole('admin', 'widget')).toBe('user')
+    expect(sessionRole('admin', 'portal')).toBe('user')
     expect(sessionRole('member', 'portal')).toBe('user')
   })
 })

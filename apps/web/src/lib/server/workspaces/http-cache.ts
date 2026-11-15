@@ -3,16 +3,16 @@
  *
  * Under pooled tenancy the `Host` header chooses the database, so a publicly
  * cacheable response is per-workspace content on a URL path that every workspace
- * shares. `/api/widget/config.json` is the same path for all of them and
- * returns a different body for each.
+ * shares. `/api/kb-search` is the same path for all of them and returns a
+ * different body for each.
  *
  * An origin server's own cache keys on the full request URI including the
  * authority, so this is safe by default — but a CDN in front of the fleet does
  * not have to. Cache keys are configurable, host-agnostic keys are a common
  * default for single-origin sites, and the plan puts a CDN in front of exactly
  * this fleet. The failure that produces is `SAAS-HOSTING-STACK.md` §3 arriving
- * through the edge rather than through the pool: workspace A's branding, widget
- * configuration and asset served to workspace B, with nothing erroring and nothing
+ * through the edge rather than through the pool: workspace A's branding and
+ * configuration served to workspace B, with nothing erroring and nothing
  * in the application logs.
  *
  * `Vary: Host` is the standard signal that says "this body depends on the

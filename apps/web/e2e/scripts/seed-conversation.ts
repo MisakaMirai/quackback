@@ -2,7 +2,7 @@
  * CLI: seed one support conversation with two visitor messages, for e2e tests.
  *
  * By default the visitor is a fresh anonymous principal (type 'anonymous',
- * role 'user'), matching what the widget messenger creates. Pass an email as
+ * role 'user'), matching what the portal messenger creates. Pass an email as
  * the second argument to attach the conversation to that user's principal
  * instead (the portal /support surface only lists conversations owned by the
  * signed-in principal); the principal is created if the user exists but has
@@ -54,7 +54,7 @@ async function principalForEmail(email: string): Promise<string> {
   return uuid
 }
 
-/** Create a fresh anonymous visitor principal (widget-messenger shape). */
+/** Create a fresh anonymous visitor principal (portal-messenger shape). */
 async function createAnonymousVisitor(): Promise<string> {
   const uuid = toUuid(generateId('principal'))
   await sql`

@@ -69,7 +69,7 @@ import type { ConversationMessageDTO } from '@/lib/shared/conversation/types'
 import { CSAT_FACES } from '@/lib/shared/db-types'
 import type { BlockReplyMetadata } from '@/lib/shared/db-types'
 import { useVisitorSurfaceRpc } from '@/lib/client/visitor-surface-rpc'
-import { getWidgetCapabilitiesFn } from '@/lib/server/functions/widget-capabilities'
+import { getConversationCapabilitiesFn } from '@/lib/server/functions/conversation-capabilities'
 import { TicketHeaderCard } from './ticket-header-card'
 import { useLocalDateFormatter } from '@/components/ui/local-date'
 import type { RequesterTicketDTO } from '@/lib/server/domains/tickets'
@@ -287,8 +287,8 @@ export function VisitorConversationThread({
   // hosts where SSE degrades fall back to the polling refetch below. Cached for
   // the session — it's a deployment property, not per-conversation.
   const { data: capabilities } = useQuery({
-    queryKey: ['widget-capabilities'],
-    queryFn: () => getWidgetCapabilitiesFn(),
+    queryKey: ['conversation-capabilities'],
+    queryFn: () => getConversationCapabilitiesFn(),
     staleTime: Infinity,
   })
 

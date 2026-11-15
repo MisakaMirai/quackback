@@ -24,7 +24,7 @@ export interface SessionUser {
 export interface Session {
   // No `token` field: the Session shape flows into client-bound bootstrap
   // payloads that are dehydrated into SSR HTML, and embedding the raw token
-  // there would defeat the HttpOnly cookie. Paths that need it (widget
+  // there would defeat the HttpOnly cookie. Paths that need it (cross-origin
   // iframe handoff) read the cookie directly.
   session: {
     id: SessionId

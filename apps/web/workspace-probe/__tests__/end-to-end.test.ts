@@ -114,10 +114,9 @@ describe('a clean fleet', () => {
     const { report } = await run({})
     const fleet = new FakeFleet({})
     const serialized = JSON.stringify(report)
-    expect(serialized).not.toContain(fleet.alpha.widgetSecret)
-    expect(serialized).not.toContain(fleet.bravo.widgetSecret)
     expect(serialized).not.toContain(fleet.alpha.apiKey)
-    expect(Object.keys(report.markers.alpha.ids)).not.toContain('widgetSecret')
+    expect(serialized).not.toContain(fleet.alpha.storageSecret)
+    expect(Object.keys(report.markers.alpha)).not.toContain('sensitive')
   })
 })
 
@@ -143,13 +142,10 @@ describe('planted settings-cache leak (P06)', () => {
     expect(observed).toContain('Alpha Workspace')
   })
 
-  it('is caught even when only the theme-bearing surface is checked', async () => {
-    // `/api/widget/config.json` carries no identifier at all — its only workspace
-    // signal is the branding colour, which is why the identity vocabulary is
-    // derived from stored settings rather than assumed.
+  it('is caught on the portal document surface', async () => {
     const { report } = await run(leak, {}, [p06SettingsCache])
     const evidence = probe(report, 'P06').evidence as Record<string, { foreignOnBravo: string[] }>
-    expect(evidence['surface:/api/widget/config.json'].foreignOnBravo).toContain('#aa1122')
+    expect(evidence['surface:/'].foreignOnBravo.length).toBeGreaterThan(0)
   })
 
   it('produces a report that differs from the clean run', async () => {

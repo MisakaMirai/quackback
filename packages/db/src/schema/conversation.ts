@@ -68,10 +68,11 @@ export const conversations = pgTable(
     // when currently NULL, cleared on any teammate/assistant reply. Drives the
     // waiting-longest inbox ordering. NULL = nobody is waiting.
     waitingSince: timestamp('waiting_since', { withTimezone: true }),
-    // Inbound source discriminator for the unified inbox. Only 'widget' exists
-    // today; email and other sources join in later phases. NOT NULL so a new
-    // source can never be silently mislabeled by an omitted insert.
-    source: text('source').notNull().default('widget'),
+    // Inbound source discriminator for the unified inbox. New conversations
+    // default to the portal; historical 'widget' rows keep their value. NOT
+    // NULL so a new source can never be silently mislabeled by an omitted
+    // insert.
+    source: text('source').notNull().default('portal'),
     // Per-conversation extensible metadata (B2B custom fields). Empty object by
     // default; the app owns the shape.
     customAttributes: jsonb('custom_attributes')

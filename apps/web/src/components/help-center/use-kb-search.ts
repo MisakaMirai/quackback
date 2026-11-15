@@ -1,7 +1,6 @@
 /**
- * Debounced help-center article search against /api/widget/kb-search, with a
- * small per-mount result cache and in-flight abort. Shared by the widget
- * Help tab and the /hc hero search.
+ * Debounced help-center article search against /api/kb-search, with a small
+ * per-mount result cache and in-flight abort.
  */
 import { useCallback, useEffect, useRef, useState } from 'react'
 
@@ -21,20 +20,13 @@ export function useKbSearch({
   query,
   limit,
   locale,
-  sessionVersion,
-  getHeaders,
   onResults,
 }: {
   query: string
   limit: number
-  /** Omitted = default locale. The widget passes its own UI locale through
-   *  (domains/languages §2); an unrecognized/not-enabled locale falls back
+  /** Omitted = default locale. An unrecognized/not-enabled locale falls back
    *  to default server-side. */
   locale?: string
-  /** Widget session — included in the cache key and clears hits on change. */
-  sessionVersion?: number
-  /** Widget Bearer (or empty on the portal, which uses cookies). */
-  getHeaders?: () => HeadersInit
   /** Fired with the articles of each completed search (cache hits included);
    *  not fired when the query is blank. */
   onResults?: (articles: KbSearchArticle[]) => void
@@ -46,19 +38,15 @@ export function useKbSearch({
   // Latest callback without retriggering the debounce effect.
   const onResultsRef = useRef(onResults)
   onResultsRef.current = onResults
-  const getHeadersRef = useRef(getHeaders)
-  getHeadersRef.current = getHeaders
-  const sessionVersionRef = useRef(sessionVersion)
-  sessionVersionRef.current = sessionVersion
 
   const doSearch = useCallback(
-    async (q: string, loc: string | undefined, version: number | undefined) => {
+    async (q: string, loc: string | undefined) => {
       if (!q.trim()) {
         setResults([])
         return
       }
 
-      const cacheKey = `${version ?? ''}:${loc ?? ''}:${q}`
+      const cacheKey = `${loc ?? ''}:${q}`
       const cached = cacheRef.current.get(cacheKey)
       if (cached) {
         setResults(cached)
@@ -79,12 +67,10 @@ export function useKbSearch({
       try {
         const params = new URLSearchParams({ q, limit: String(limit) })
         if (loc) params.set('locale', loc)
-        const res = await fetch(`/api/widget/kb-search?${params.toString()}`, {
+        const res = await fetch(`/api/kb-search?${params.toString()}`, {
           signal: controller.signal,
-          headers: getHeadersRef.current?.(),
         })
         if (!res.ok) return
-        if (version !== sessionVersionRef.current) return
         const data = await res.json()
         const articles: KbSearchArticle[] = data.data?.articles ?? []
         cacheRef.current.set(cacheKey, articles)
@@ -100,17 +86,9 @@ export function useKbSearch({
   )
 
   useEffect(() => {
-    abortRef.current?.abort()
-    abortRef.current = null
-    cacheRef.current.clear()
-    setResults([])
-    setIsSearching(false)
-  }, [sessionVersion])
-
-  useEffect(() => {
-    const timer = setTimeout(() => void doSearch(query, locale, sessionVersion), DEBOUNCE_MS)
+    const timer = setTimeout(() => void doSearch(query, locale), DEBOUNCE_MS)
     return () => clearTimeout(timer)
-  }, [query, locale, sessionVersion, doSearch])
+  }, [query, locale, doSearch])
 
   return { results, isSearching }
 }

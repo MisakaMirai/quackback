@@ -40,7 +40,6 @@ vi.mock('@/components/shared/document-head', () => ({
   DocumentHead: () => null,
   DocumentScripts: () => null,
 }))
-vi.mock('@/components/shared/ott-handler', () => ({ OttHandler: () => null }))
 vi.mock('@/components/shared/visitor-beacon', () => ({ VisitorBeacon: () => null }))
 vi.mock('@tanstack/react-router', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@tanstack/react-router')>()),

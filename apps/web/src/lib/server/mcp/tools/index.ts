@@ -25,7 +25,6 @@
  *                    reply_to_ticket, add_ticket_note, link_ticket,
  *                    unlink_ticket
  * - files.ts         upload_file
- * - widget.ts        widget_install_status
  * - settings.ts      get_settings, update_settings
  * - navigation.ts    navigate_workspace
  */
@@ -40,7 +39,6 @@ import { registerHelpCenterTools } from './help-center'
 import { registerConversationTools } from './conversations'
 import { registerTicketTools } from './tickets'
 import { registerFileTools } from './files'
-import { registerWidgetTools } from './widget'
 import { registerSettingsTools } from './settings'
 import { registerNavigationTools } from './navigation'
 
@@ -53,7 +51,6 @@ export function registerTools(server: McpServer, auth: McpAuthContext) {
   registerConversationTools(server, auth)
   registerTicketTools(server, auth)
   registerFileTools(server, auth)
-  registerWidgetTools(server, auth)
   registerSettingsTools(server, auth)
   registerNavigationTools(server, auth)
 }

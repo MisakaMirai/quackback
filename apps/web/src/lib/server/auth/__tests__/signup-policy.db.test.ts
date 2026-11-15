@@ -289,7 +289,7 @@ describe.skipIf(!fixture.available)('isAccountCreationAllowed', () => {
         access: {
           visibility: 'private',
           allowedDomains: ['acme.example'],
-          widgetSignIn: false,
+
           allowedSegmentIds: [],
         },
       },
