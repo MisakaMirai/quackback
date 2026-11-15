@@ -19,6 +19,5 @@ export const CATEGORY_LABELS: Record<PermissionCategory, string> = {
   analytics: 'Analytics',
   integration: 'Integrations',
   support: 'Support',
-  ai: 'AI',
   status_page: 'Status page',
 }

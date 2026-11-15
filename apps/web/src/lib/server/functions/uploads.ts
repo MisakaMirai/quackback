@@ -261,14 +261,3 @@ export const getAvatarUploadUrlFn = createServerFn({ method: 'POST' })
     await requireAuth()
     return presignedImageUpload(data, { label: 'avatar', prefix: 'avatars' })
   })
-
-/**
- * Get a presigned URL for uploading the AI agent's avatar. Gated on
- * ai.customer.manage; the returned publicUrl is stored in identity.avatarUrl.
- */
-export const getAssistantAvatarUploadUrlFn = createServerFn({ method: 'POST' })
-  .validator(imageUploadSchema)
-  .handler(async ({ data }) => {
-    await requireAuth({ permission: PERMISSIONS.AI_CUSTOMER_MANAGE })
-    return presignedImageUpload(data, { label: 'assistant avatar', prefix: 'assistant-avatars' })
-  })

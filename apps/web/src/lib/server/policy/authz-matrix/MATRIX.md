@@ -92,15 +92,12 @@ Profiles: **Owner** = admin class + an admin-owned full API key (scoped keys hol
 | team.manage | support | ✓ | · |
 | workflow.manage | support | ✓ | · |
 | channel_account.manage | support | ✓ | · |
-| ai.customer.manage | ai | ✓ | · |
-| ai.teammate.manage | ai | ✓ | · |
-| copilot.use | ai | ✓ | ✓ |
 | status_page.manage | status_page | ✓ | · |
 | status_page.publish | status_page | ✓ | ✓ |
 
 ## 2. Surfaces and their enforced authorization
 
-### Server functions (`requireAuth`) — 647 surfaces
+### Server functions (`requireAuth`) — 646 surfaces
 
 | Surface | Enforces |
 | --- | --- |
@@ -717,7 +714,6 @@ Profiles: **Owner** = admin class + an admin-owned full API key (scoped keys hol
 | `lib/server/functions/uploads.ts`::getIdentityProviderLogoUploadUrlFn | auth.manage |
 | `lib/server/functions/uploads.ts`::getWidgetHeroUploadUrlFn | settings.manage |
 | `lib/server/functions/uploads.ts`::getAvatarUploadUrlFn | END_USER (any authenticated) |
-| `lib/server/functions/uploads.ts`::getAssistantAvatarUploadUrlFn | ai.customer.manage |
 | `lib/server/functions/user-attributes.ts`::listUserAttributesFn | user_attribute.view |
 | `lib/server/functions/user-attributes.ts`::createUserAttributeFn | user_attribute.manage |
 | `lib/server/functions/user-attributes.ts`::updateUserAttributeFn | user_attribute.manage |
@@ -953,7 +949,7 @@ Key scopes are enforced: an API key holds exactly its stored scopes (owner permi
 
 ## 4. Entry points without a requireAuth/key gate
 
-213 of 965 entry points hold no `requireAuth` / `withApiKeyAuth` / `requireTeamAuth` gate.
+213 of 964 entry points hold no `requireAuth` / `withApiKeyAuth` / `requireTeamAuth` gate.
 Each is expected to be intentionally public, a pre-auth flow, a signature-verified webhook, or a handler that delegates auth (e.g. the MCP route).
 **Adding a row here is an access-control change** — confirm the new entry point is meant to be reachable without a gate.
 

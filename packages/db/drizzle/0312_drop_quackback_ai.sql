@@ -96,3 +96,6 @@ ALTER TABLE conversation_attribute_definitions DROP COLUMN IF EXISTS detect_on_c
 
 -- Slack agent thread sessions.
 DROP TABLE IF EXISTS slack_thread_sessions CASCADE;
+
+-- AI access-control keys are gone with the features they guarded.
+DELETE FROM permissions WHERE key IN ('ai.customer.manage', 'ai.teammate.manage', 'copilot.use');

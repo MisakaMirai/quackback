@@ -178,7 +178,6 @@ export async function loadLaunchStatus(caller: LaunchStatusCaller) {
       brandingManage: permissions.has(PERMISSIONS.SETTINGS_BRANDING),
       integrationManage: permissions.has(PERMISSIONS.INTEGRATION_MANAGE),
       helpCenterManage: permissions.has(PERMISSIONS.HELP_CENTER_MANAGE),
-      assistantManage: permissions.has(PERMISSIONS.AI_CUSTOMER_MANAGE),
     },
     features: {
       supportInbox: flags.supportInbox,
@@ -186,8 +185,6 @@ export async function loadLaunchStatus(caller: LaunchStatusCaller) {
       statusPage: flags.statusPage,
       changelog: flags.changelog,
       integrations: tierLimits.features.integrations,
-      // Quinn can answer only on a plan that includes it and with a model configured.
-      assistant: false,
     },
   }
 }
