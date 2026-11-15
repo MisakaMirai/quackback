@@ -7,10 +7,17 @@ import { settings } from '../auth'
  * throw, not a null — that is the new-mint 500
  * (`Failed to fetch settings with all configs`).
  *
- * When this list changes, add an expand-only migration in
- * `packages/db/drizzle`. The serving image also migrates a behind-ledger
- * workspace on first pool checkout (`ensureWorkspaceSchemaCurrent`), so a
- * short schema is caught before the first read rather than as a 500.
+ * When this list changes:
+ * 1. Add an expand-only migration in `packages/db/drizzle`.
+ * 2. Restage the control-plane vendor lineage
+ *    (`quackback-cp/scripts/vendor-migrator.sh` from the fleet image digest).
+ * 3. Update `REQUIRED_SETTINGS_COLUMNS` in
+ *    `quackback-cp/src/lib/server/tenancy/tenant-schema.ts` so provision
+ *    refuses a short schema instead of marking the workspace Ready.
+ *
+ * The serving image also migrates a behind-ledger workspace on first pool
+ * checkout (`ensureWorkspaceSchemaCurrent`). That is what stops vendor lag
+ * from 500ing a customer even if steps 2–3 are late.
  */
 export const SETTINGS_SQL_COLUMNS = [
   'id',
@@ -42,6 +49,10 @@ export const SETTINGS_SQL_COLUMNS = [
   'spam_filter_config',
   'help_center_config',
   'tier_limits',
+  'cloud',
+  'cloud_revision',
+  'cloud_identity',
+  'cloud_identity_revision',
   'managed_field_paths',
   'state',
   'auth_config_version',

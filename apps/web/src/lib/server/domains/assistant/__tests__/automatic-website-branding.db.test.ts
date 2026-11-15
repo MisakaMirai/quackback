@@ -185,6 +185,7 @@ beforeEach(async () => {
     tierLimits: null,
     metadata: JSON.stringify({ sibling: 'keep' }),
     featureFlags: '{}',
+    cloudIdentity: null,
     ...launchedDaysAgo(0),
   })
   seams.objects.set(good.logoKey, 'image/png')

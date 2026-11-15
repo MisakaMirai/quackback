@@ -35,7 +35,6 @@ describe('assessReplaySafety — safe shapes', () => {
       'CREATE UNIQUE INDEX IF NOT EXISTS "i" ON "t" ("id") WHERE "id" IS NOT NULL;',
     ],
     ['DROP TABLE IF EXISTS', 'DROP TABLE IF EXISTS "t";'],
-    ['DROP COLUMN IF EXISTS', 'ALTER TABLE "settings" DROP COLUMN IF EXISTS "x";'],
     ['COMMENT ON', `COMMENT ON COLUMN "settings"."x" IS 'hello';`],
     [
       'CREATE OR REPLACE FUNCTION',
@@ -71,15 +70,6 @@ describe('assessReplaySafety — the dangerous class', () => {
     ['SELECT INTO', 'SELECT * INTO "copy" FROM "t";'],
   ])('%s is mutates', (_name, sql) => {
     expect(assess(sql).verdict).toBe('mutates')
-  })
-
-  it('a compound ALTER TABLE with one guarded DROP COLUMN is not safe', () => {
-    // DROP COLUMN IF EXISTS is a no-op on a second run, but the pattern is
-    // anchored to a single action: the unguarded half of a compound statement
-    // would still run, so the file is refused rather than waved through on the
-    // strength of its guarded half.
-    const r = assess('ALTER TABLE "t" DROP COLUMN IF EXISTS "a", DROP COLUMN "b";')
-    expect(r.verdict).not.toBe('safe')
   })
 
   it('an opaque DO block is refused rather than reasoned about', () => {

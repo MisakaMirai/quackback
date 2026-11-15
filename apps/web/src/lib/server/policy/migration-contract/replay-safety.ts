@@ -312,15 +312,6 @@ const SAFE_SHAPES: { re: RegExp; why: string }[] = [
     why: 'ADD COLUMN IF NOT EXISTS',
   },
   {
-    // `DROP COLUMN IF EXISTS` has the same replay shape as `DROP … IF EXISTS`
-    // above, but starts with ALTER so that pattern cannot reach it. Single
-    // action, ending the statement, for the same reason the DROP CONSTRAINT
-    // sibling is: a compound `ALTER TABLE t DROP COLUMN IF EXISTS a, DROP
-    // COLUMN b` must not be waved through on the strength of its guarded half.
-    re: /^ALTER\s+TABLE\s+(?:IF\s+EXISTS\s+)?[^\s,;]+\s+DROP\s+COLUMN\s+IF\s+EXISTS\s+[^\s,;]+\s*;?$/i,
-    why: 'DROP COLUMN IF EXISTS',
-  },
-  {
     // The constraint sibling of `DROP ... IF EXISTS` above, which cannot match
     // it because this one starts with ALTER.
     //
