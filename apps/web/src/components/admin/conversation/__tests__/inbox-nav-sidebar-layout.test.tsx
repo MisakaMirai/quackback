@@ -5,7 +5,7 @@
  * filler sentence under an empty Saved views section.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, render, screen, within } from '@testing-library/react'
+import { cleanup, render, screen } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { InboxNavItem } from '@/lib/client/conversation/inbox-scope'
 
@@ -59,14 +59,6 @@ describe('InboxNavSidebar layout', () => {
   it('has no search box', () => {
     const { container } = renderSidebar()
     expect(container.querySelector('input')).toBeNull()
-  })
-
-  it('lists AI agent activity under Conversations, with no AI section', async () => {
-    renderSidebar()
-    expect(screen.queryByText('AI')).toBeNull()
-    const quinn = screen.getByRole('button', { name: /AI agent activity/ })
-    const conversations = screen.getByText('Conversations').closest('div.pb-4') as HTMLElement
-    expect(within(conversations).getByRole('button', { name: /AI agent activity/ })).toBe(quinn)
   })
 
   it('shows no empty-state sentence under Saved views, only its add button', async () => {

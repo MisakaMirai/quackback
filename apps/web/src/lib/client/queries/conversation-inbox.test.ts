@@ -119,7 +119,6 @@ describe('conversationInboxQueries key parity', () => {
         undefined,
         undefined,
         undefined,
-        undefined,
         'email'
       ).queryKey
     ).toEqual([...base, 'channel:email'])

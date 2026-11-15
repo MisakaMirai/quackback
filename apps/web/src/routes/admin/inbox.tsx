@@ -178,11 +178,6 @@ function validateInboxSearch(search: Record<string, unknown>): InboxSearch {
     // ticket_type id is accepted (a junk value is dropped, never reaching
     // the uuid-backed ticket query).
     ttype: coerceTicketTypeId(typeof search.ttype === 'string' ? search.ttype : undefined),
-    // Quinn-view sub-filter by involvement outcome; only the canonical buckets.
-    ai:
-      search.ai === 'resolved' || search.ai === 'escalated' || search.ai === 'pending'
-        ? search.ai
-        : undefined,
     q:
       typeof search.q === 'string' && search.q
         ? search.q
@@ -286,7 +281,6 @@ export const Route = createFileRoute('/admin/inbox')({
             company,
             sort,
             undefined,
-            search.ai,
             search.channel
           )
         )
@@ -427,7 +421,6 @@ function InboxPage() {
     q: urlQ,
     channel: urlChannel,
     company: urlCompany,
-    ai: urlAi,
     post: urlPost,
   } = Route.useSearch()
 
@@ -793,7 +786,6 @@ function InboxPage() {
     sort,
     ticketTypeId: urlTicketType,
     activeViewFilters: activeView?.filters,
-    aiBucket: nav.kind === 'view' && nav.view === 'quinn' ? urlAi : undefined,
     isSaved,
     streamConnected,
     channel: urlChannel,

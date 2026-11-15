@@ -20,7 +20,6 @@ import {
   buildListParams,
   type InboxNavItem,
   type StatusFilter,
-  type AiBucket,
 } from '@/lib/client/conversation/inbox-scope'
 import { conversationKeys } from '@/lib/client/queries/conversation-keys'
 import {
@@ -53,9 +52,6 @@ export const conversationInboxQueries = {
     // scopes and the key-parity test still passes.
     sort?: ConversationSort,
     customParams?: ConversationViewListParams,
-    // Quinn-view sub-filter (Resolved / Escalated / Pending); only set on the
-    // 'quinn' scope, so it leaves every other scope's key byte-identical.
-    aiBucket?: AiBucket,
     channel?: Channel
   ) => {
     const baseKey = conversationKeys.agentConversationList(
@@ -72,7 +68,6 @@ export const conversationInboxQueries = {
     const pinnedSort = explicitConversationSort(sort, !!search)
     if (pinnedSort) key.push(`sort:${pinnedSort}`)
     if (companyId) key.push(companyId)
-    if (aiBucket) key.push(`ai:${aiBucket}`)
     if (channel) key.push(`channel:${channel}`)
     return queryOptions({
       queryKey: key,
@@ -86,7 +81,6 @@ export const conversationInboxQueries = {
             companyId,
             sort,
             customParams,
-            aiBucket,
             channel
           ),
         }),
