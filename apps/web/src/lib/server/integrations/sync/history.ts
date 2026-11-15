@@ -15,7 +15,6 @@ import { logger } from '@/lib/server/logger'
 import { installationIdentity } from './identity'
 import {
   connectionIsDestination,
-  readSlackAssistantEnabled,
   routedChannelIds,
   syncHistoryAvailable,
   writesLedger,
@@ -150,7 +149,6 @@ export async function listSyncHistory(
     notificationChannels: row ? routedChannelIds(config, row.eventMappings) : [],
     writesLedger: writesLedger(definition),
     connectionIsDestination: connectionIsDestination(definition),
-    slackAssistantEnabled: await readSlackAssistantEnabled(input.provider),
   })
   if (!decision.available || !row) {
     log.debug({ provider: input.provider, reason: decision.reason }, 'sync history unavailable')

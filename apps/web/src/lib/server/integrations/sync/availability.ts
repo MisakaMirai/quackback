@@ -57,15 +57,11 @@ export function syncHistoryAvailable(input: {
   notificationChannels: { channelId: string }[]
   writesLedger: boolean
   connectionIsDestination: boolean
-  slackAssistantEnabled: boolean
 }): { available: boolean; reason: SyncHistoryReason } {
   if (!input.status) return { available: false, reason: 'no_installation' }
   if (input.status !== 'active') return { available: false, reason: 'not_active' }
   if (!input.writesLedger) return { available: false, reason: 'no_ledger' }
   if (input.connectionIsDestination) return { available: true, reason: 'ok' }
-  if (input.provider === 'slack' && input.slackAssistantEnabled)
-    return { available: true, reason: 'ok' }
-
   const channelId = selectedChannel(input.config.channelId)
   const routed = input.notificationChannels.some((channel) => selectedChannel(channel.channelId))
   if (input.provider === 'slack' || input.provider === 'discord') {
@@ -79,8 +75,4 @@ export function syncHistoryAvailable(input: {
   if (input.provider === 'azure_devops' && !azureDestinationSelected(channelId))
     return { available: false, reason: 'no_destination' }
   return { available: true, reason: 'ok' }
-}
-
-export async function readSlackAssistantEnabled(_provider: string): Promise<boolean> {
-  return false
 }

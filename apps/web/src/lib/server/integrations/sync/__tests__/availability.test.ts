@@ -62,10 +62,6 @@ describe('syncHistoryAvailable', () => {
     expect(
       syncHistoryAvailable({ ...base, provider: 'discord', config: { channelId: '' } }).available
     ).toBe(false)
-    expect(
-      syncHistoryAvailable({ ...base, provider: 'slack', config: {}, slackAssistantEnabled: true })
-        .available
-    ).toBe(true)
   })
 
   it('treats an active Segment connection as the destination', () => {
