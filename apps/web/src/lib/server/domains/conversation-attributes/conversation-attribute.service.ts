@@ -25,8 +25,6 @@ const log = logger.child({ component: 'conversation-attributes' })
 
 const SELECT_TYPES: ReadonlySet<string> = new Set(['select', 'multi_select'])
 
-export const ASSISTANT_ESCALATION_REASON_KEY = 'assistant_escalation_reason'
-
 export { normalizeAttributeKey }
 
 function rowToAttribute(
@@ -41,8 +39,6 @@ function rowToAttribute(
     options: row.options,
     requiredToClose: row.requiredToClose,
     sourceHint: row.sourceHint,
-    aiDetect: row.aiDetect,
-    detectOnClose: row.detectOnClose,
     archivedAt: row.archivedAt,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
@@ -71,39 +67,14 @@ function validateOptionsForType(fieldType: string, options: { label: string }[] 
 }
 
 /**
- * AI classification (`aiDetect`/`detectOnClose`) is `select`-only, matching
- * both competitor references (which classify enum attributes only) —
- * `multi_select` is a deliberate v1 exclusion, not yet supported by
- * the classifier. Only checked when a caller actually sets one of the flags
- * true, so a plain text/number/etc. attribute update untouched by this
- * feature never has to pass `false` explicitly.
- */
-function validateAiDetectForType(
-  fieldType: string,
-  aiDetect: boolean | undefined,
-  detectOnClose: boolean | undefined
-): void {
-  if ((aiDetect || detectOnClose) && fieldType !== 'select') {
-    throw new ValidationError(
-      'VALIDATION_ERROR',
-      'AI detection is only available on select attributes'
-    )
-  }
-}
-
-/**
  * Non-archived definitions by default; the settings page lists everything.
- * `aiDetectOnly` narrows to `aiDetect=true` definitions — the classifier's
- * enabled-definitions read.
  */
 export async function listConversationAttributes(opts?: {
   includeArchived?: boolean
-  aiDetectOnly?: boolean
 }): Promise<ConversationAttribute[]> {
   try {
     const conditions = [
       opts?.includeArchived ? undefined : isNull(conversationAttributeDefinitions.archivedAt),
-      opts?.aiDetectOnly ? eq(conversationAttributeDefinitions.aiDetect, true) : undefined,
     ].filter((c): c is NonNullable<typeof c> => c !== undefined)
     const rows = await db
       .select()
@@ -117,55 +88,6 @@ export async function listConversationAttributes(opts?: {
   }
 }
 
-/**
- * Seed the system select used by handoff so the builder can branch on it. A
- * definition seeded before a reason existed gets the missing options appended
- * (existing options and their labels are kept), so the hand-off can record
- * every reason.
- */
-export async function ensureAssistantEscalationReasonAttribute(): Promise<void> {
-  const { ASSISTANT_HANDOFF_REASONS } = await import('@/lib/server/db')
-  const { HANDOFF_REASON_LABELS } = await import('@/lib/shared/conversation/types')
-  const reasonOption = (reason: string): ConversationAttributeOption => ({
-    id: reason,
-    label: HANDOFF_REASON_LABELS[reason] ?? reason,
-  })
-  const [existing] = await db
-    .select({
-      id: conversationAttributeDefinitions.id,
-      options: conversationAttributeDefinitions.options,
-    })
-    .from(conversationAttributeDefinitions)
-    .where(eq(conversationAttributeDefinitions.key, ASSISTANT_ESCALATION_REASON_KEY))
-    .limit(1)
-  if (existing) {
-    const current = existing.options ?? []
-    const known = new Set(current.map((o) => o.id))
-    const missing = ASSISTANT_HANDOFF_REASONS.filter((reason) => !known.has(reason))
-    if (missing.length === 0) return
-    await db
-      .update(conversationAttributeDefinitions)
-      .set({ options: [...current, ...missing.map(reasonOption)] })
-      .where(eq(conversationAttributeDefinitions.id, existing.id))
-    return
-  }
-  try {
-    await db.insert(conversationAttributeDefinitions).values({
-      key: ASSISTANT_ESCALATION_REASON_KEY,
-      label: 'Escalation reason',
-      description: 'Why the AI agent handed this conversation to the team.',
-      fieldType: 'select',
-      options: ASSISTANT_HANDOFF_REASONS.map(reasonOption),
-      sourceHint: 'ai',
-      aiDetect: false,
-      detectOnClose: false,
-    })
-  } catch (err) {
-    if (isUniqueViolation(err)) return
-    throw err
-  }
-}
-
 export async function createConversationAttribute(
   input: CreateConversationAttributeInput
 ): Promise<ConversationAttribute> {
@@ -176,7 +98,6 @@ export async function createConversationAttribute(
       throw new ValidationError('VALIDATION_ERROR', 'Attribute label is required')
     }
     validateOptionsForType(input.fieldType, input.options)
-    validateAiDetectForType(input.fieldType, input.aiDetect, input.detectOnClose)
 
     const [row] = await db
       .insert(conversationAttributeDefinitions)
@@ -188,10 +109,6 @@ export async function createConversationAttribute(
         options: SELECT_TYPES.has(input.fieldType) ? buildOptions(input.options!) : null,
         requiredToClose: input.requiredToClose ?? false,
         sourceHint: input.sourceHint ?? null,
-        // AI classification is on by default where supported (select), so
-        // Quinn assigns attributes automatically unless the author opts out.
-        aiDetect: input.aiDetect ?? input.fieldType === 'select',
-        detectOnClose: input.detectOnClose ?? false,
       })
       .returning()
     return rowToAttribute(row)
@@ -268,14 +185,6 @@ export async function updateConversationAttribute(
     if (input.description !== undefined) updates.description = input.description?.trim() || null
     if (input.requiredToClose !== undefined) updates.requiredToClose = input.requiredToClose
     if (input.sourceHint !== undefined) updates.sourceHint = input.sourceHint
-    if (input.aiDetect !== undefined || input.detectOnClose !== undefined) {
-      // Field type is immutable, so the existing row's type is the one
-      // that ever needs checking, regardless of which of the two flags
-      // this call is touching.
-      validateAiDetectForType(existing.fieldType, input.aiDetect, input.detectOnClose)
-      if (input.aiDetect !== undefined) updates.aiDetect = input.aiDetect
-      if (input.detectOnClose !== undefined) updates.detectOnClose = input.detectOnClose
-    }
     if (input.options !== undefined) {
       if (!SELECT_TYPES.has(existing.fieldType)) {
         throw new ValidationError('VALIDATION_ERROR', 'Only select attributes can have options')

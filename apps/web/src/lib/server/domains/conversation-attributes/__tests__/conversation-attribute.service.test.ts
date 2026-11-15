@@ -6,8 +6,8 @@
  */
 import { describe, it, expect, beforeEach, afterEach, afterAll, vi } from 'vitest'
 
-import { createDbTestFixture, testDb } from '@/lib/server/__tests__/db-test-fixture'
-import { conversationAttributeDefinitions, eq } from '@/lib/server/db'
+import { createDbTestFixture } from '@/lib/server/__tests__/db-test-fixture'
+import { conversationAttributeDefinitions } from '@/lib/server/db'
 
 vi.mock('@/lib/server/db', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/server/db')>()),
@@ -21,7 +21,6 @@ import {
   updateConversationAttribute,
   archiveConversationAttribute,
   restoreConversationAttribute,
-  ensureAssistantEscalationReasonAttribute,
 } from '../conversation-attribute.service'
 
 const fixture = await createDbTestFixture({
@@ -160,119 +159,6 @@ describe.skipIf(!fixture.available)(
       ).rejects.toMatchObject({ code: 'VALIDATION_ERROR' })
     })
 
-    it('accepts aiDetect/detectOnClose on a select attribute and exposes them on the type', async () => {
-      const created = await createConversationAttribute({
-        key: 'issue_type_2',
-        label: 'Issue type 2',
-        fieldType: 'select',
-        options: [{ label: 'Billing' }, { label: 'Bug' }],
-        aiDetect: true,
-        detectOnClose: true,
-      })
-      expect(created.aiDetect).toBe(true)
-      expect(created.detectOnClose).toBe(true)
-    })
-
-    it('defaults aiDetect ON (and detectOnClose off) for a select attribute when omitted', async () => {
-      const created = await createConversationAttribute({
-        key: 'issue_type_3',
-        label: 'Issue type 3',
-        fieldType: 'select',
-        options: [{ label: 'Billing' }],
-      })
-      expect(created.aiDetect).toBe(true)
-      expect(created.detectOnClose).toBe(false)
-    })
-
-    it('defaults aiDetect off for a non-select attribute when omitted', async () => {
-      const created = await createConversationAttribute({
-        key: 'plan_default',
-        label: 'Plan',
-        fieldType: 'text',
-      })
-      expect(created.aiDetect).toBe(false)
-      expect(created.detectOnClose).toBe(false)
-    })
-
-    it('an explicit aiDetect=false on a select attribute overrides the default', async () => {
-      const created = await createConversationAttribute({
-        key: 'issue_type_optout',
-        label: 'Issue type opt-out',
-        fieldType: 'select',
-        options: [{ label: 'Billing' }],
-        aiDetect: false,
-      })
-      expect(created.aiDetect).toBe(false)
-    })
-
-    it('rejects aiDetect on a non-select field type', async () => {
-      await expect(
-        createConversationAttribute({
-          key: 'plan_ai',
-          label: 'Plan',
-          fieldType: 'text',
-          aiDetect: true,
-        })
-      ).rejects.toMatchObject({ code: 'VALIDATION_ERROR' })
-    })
-
-    it('rejects detectOnClose on a non-select field type', async () => {
-      await expect(
-        createConversationAttribute({
-          key: 'plan_close',
-          label: 'Plan',
-          fieldType: 'number',
-          detectOnClose: true,
-        })
-      ).rejects.toMatchObject({ code: 'VALIDATION_ERROR' })
-    })
-
-    it('allows updating aiDetect/detectOnClose on an existing select attribute', async () => {
-      const created = await createConversationAttribute({
-        key: 'issue_type_4',
-        label: 'Issue type 4',
-        fieldType: 'select',
-        options: [{ label: 'Billing' }],
-      })
-      const updated = await updateConversationAttribute(created.id, {
-        aiDetect: true,
-        detectOnClose: true,
-      })
-      expect(updated.aiDetect).toBe(true)
-      expect(updated.detectOnClose).toBe(true)
-    })
-
-    it('rejects updating aiDetect on a non-select existing attribute', async () => {
-      const created = await createConversationAttribute({
-        key: 'plan_update',
-        label: 'Plan',
-        fieldType: 'text',
-      })
-      await expect(
-        updateConversationAttribute(created.id, { aiDetect: true })
-      ).rejects.toMatchObject({ code: 'VALIDATION_ERROR' })
-    })
-
-    it('lists only aiDetect-enabled definitions when filtered', async () => {
-      await createConversationAttribute({
-        key: 'issue_type_5',
-        label: 'Issue type 5',
-        fieldType: 'select',
-        options: [{ label: 'Billing' }],
-        aiDetect: true,
-      })
-      await createConversationAttribute({
-        key: 'issue_type_6',
-        label: 'Issue type 6',
-        fieldType: 'select',
-        options: [{ label: 'Billing' }],
-        aiDetect: false,
-      })
-      const aiDetectOnly = await listConversationAttributes({ aiDetectOnly: true })
-      expect(aiDetectOnly.some((a) => a.key === 'issue_type_5')).toBe(true)
-      expect(aiDetectOnly.some((a) => a.key === 'issue_type_6')).toBe(false)
-    })
-
     it('archives (hidden from the default list) and restores', async () => {
       const created = await createConversationAttribute({
         key: 'plan',
@@ -291,39 +177,6 @@ describe.skipIf(!fixture.available)(
       expect(restored.archivedAt).toBeNull()
       const listAgain = await listConversationAttributes()
       expect(listAgain.find((a) => a.id === created.id)).toBeDefined()
-    })
-
-    it('tops up a seeded escalation reason select with reasons added since it was seeded', async () => {
-      await testDb
-        .delete(conversationAttributeDefinitions)
-        .where(eq(conversationAttributeDefinitions.key, 'assistant_escalation_reason'))
-      // A workspace seeded before awaiting_confirmation existed, with one
-      // option relabelled by an admin.
-      await testDb.insert(conversationAttributeDefinitions).values({
-        key: 'assistant_escalation_reason',
-        label: 'Escalation reason',
-        fieldType: 'select',
-        options: [
-          { id: 'frustration', label: 'Upset customer' },
-          { id: 'system_error', label: 'AI agent hit an error' },
-        ],
-        sourceHint: 'ai',
-        aiDetect: false,
-        detectOnClose: false,
-      })
-
-      await ensureAssistantEscalationReasonAttribute()
-
-      const [row] = await testDb
-        .select({ options: conversationAttributeDefinitions.options })
-        .from(conversationAttributeDefinitions)
-        .where(eq(conversationAttributeDefinitions.key, 'assistant_escalation_reason'))
-      const options = row.options ?? []
-      expect(options.find((o) => o.id === 'frustration')?.label).toBe('Upset customer')
-      expect(options.find((o) => o.id === 'awaiting_confirmation')?.label).toBe(
-        'AI agent is waiting for a teammate to confirm an action'
-      )
-      expect(options.map((o) => o.id).slice(0, 2)).toEqual(['frustration', 'system_error'])
     })
   }
 )

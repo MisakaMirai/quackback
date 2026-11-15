@@ -88,3 +88,7 @@ ALTER TABLE conversation_messages DROP COLUMN IF EXISTS citations;
 
 -- AI auto-tagging prompt rules.
 ALTER TABLE post_tags DROP COLUMN IF EXISTS ai_prompt;
+
+-- Deterministic AI classification of conversation attributes is removed.
+ALTER TABLE conversation_attribute_definitions DROP COLUMN IF EXISTS ai_detect;
+ALTER TABLE conversation_attribute_definitions DROP COLUMN IF EXISTS detect_on_close;

@@ -23,8 +23,6 @@ describe('Conversation attribute definitions schema', () => {
         'options',
         'requiredToClose',
         'sourceHint',
-        'aiDetect',
-        'detectOnClose',
         'archivedAt',
         'createdAt',
         'updatedAt',
@@ -51,19 +49,28 @@ describe('Conversation attribute definitions schema', () => {
     )
   })
 
-  it('0178 migration adds the ai_detect/detect_on_close columns and seeds the four system definitions', () => {
-    const sql = readFileSync(
+  it('0178 seeds the four system definitions and 0312 drops the AI detection columns', () => {
+    const seeded = readFileSync(
       join(__dirname, '../../drizzle/0178_ai_attribute_detection.sql'),
       'utf8'
     )
-    expect(sql).toMatch(/ADD COLUMN "ai_detect" boolean DEFAULT false NOT NULL/)
-    expect(sql).toMatch(/ADD COLUMN "detect_on_close" boolean DEFAULT false NOT NULL/)
     for (const key of ['issue_type', 'sentiment', 'urgency', 'spam']) {
-      expect(sql).toContain(`'${key}'`)
+      expect(seeded).toContain(`'${key}'`)
     }
-    // Seeded system definitions are select-only, opt-in (ai_detect false), and
-    // the classifier prompt hint (source_hint 'ai') so admins can find them.
-    expect(sql.match(/'select'/g)?.length).toBeGreaterThanOrEqual(4)
-    expect(sql).toContain('ON CONFLICT (key) DO NOTHING')
+    // Seeded system definitions are select-only with the prompt hint
+    // (source_hint 'ai') so admins can find them.
+    expect(seeded.match(/'select'/g)?.length).toBeGreaterThanOrEqual(4)
+    expect(seeded).toContain('ON CONFLICT (key) DO NOTHING')
+
+    const dropped = readFileSync(
+      join(__dirname, '../../drizzle/0312_drop_quackback_ai.sql'),
+      'utf8'
+    )
+    expect(dropped).toMatch(
+      /ALTER TABLE conversation_attribute_definitions DROP COLUMN IF EXISTS ai_detect;/
+    )
+    expect(dropped).toMatch(
+      /ALTER TABLE conversation_attribute_definitions DROP COLUMN IF EXISTS detect_on_close;/
+    )
   })
 })

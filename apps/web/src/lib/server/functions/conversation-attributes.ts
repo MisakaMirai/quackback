@@ -25,8 +25,6 @@ import {
   setConversationAttribute,
   type SetAttributeTarget,
 } from '@/lib/server/domains/conversation-attributes/set-attribute.service'
-import { previewAttributeDetection } from '@/lib/server/domains/conversation-attributes/attribute-preview.service'
-import { draftAttributeDescriptions } from '@/lib/server/domains/conversation-attributes/attribute-description-draft.service'
 import { attributeValueCounts } from '@/lib/server/domains/conversation-attributes/attribute-value-counts.service'
 
 const fieldTypeSchema = z.enum(['text', 'number', 'select', 'multi_select', 'checkbox', 'date'])
@@ -50,9 +48,6 @@ const createAttributeSchema = z.object({
   options: z.array(createOptionSchema).max(100).optional(),
   requiredToClose: z.boolean().optional(),
   sourceHint: sourceHintSchema.optional().nullable(),
-  // select-only, enforced at the service layer (createConversationAttribute).
-  aiDetect: z.boolean().optional(),
-  detectOnClose: z.boolean().optional(),
 })
 
 // Field type (and key) are immutable after creation, so neither is accepted.
@@ -63,9 +58,6 @@ const updateAttributeSchema = z.object({
   options: z.array(updateOptionSchema).max(100).optional(),
   requiredToClose: z.boolean().optional(),
   sourceHint: sourceHintSchema.optional().nullable(),
-  // select-only, enforced at the service layer (updateConversationAttribute).
-  aiDetect: z.boolean().optional(),
-  detectOnClose: z.boolean().optional(),
 })
 
 const attributeIdSchema = z.object({ id: z.string().min(1) })
@@ -156,71 +148,6 @@ export const setConversationAttributeValueFn = createServerFn({ method: 'POST' }
       'teammate'
     )
     return { customAttributes }
-  })
-
-const previewOptionSchema = z.object({
-  id: z.string().min(1).optional(),
-  label: z.string().min(1).max(100),
-  description: z.string().max(512).optional().nullable(),
-})
-
-const previewAttributeDetectionSchema = z.object({
-  definition: z.object({
-    // Absent/blank for an unsaved, mid-creation definition — the service
-    // falls back to an ephemeral key for the classification call itself.
-    key: z.string().max(64).optional(),
-    label: z.string().min(1).max(128),
-    description: z.string().max(512).optional().nullable(),
-    options: z.array(previewOptionSchema).max(100),
-  }),
-  sampleMessage: z.string().min(1).max(4000),
-})
-
-/**
- * Preview harness (AI-ATTRIBUTES-PARITY-SPEC.md Phase 3): test AI detection
- * against a sample message from inside the editor, before (or after) saving.
- * Gated conversation.manage, like every other definition-authoring fn — the
- * flag/AI-config/budget gates live in the service (previewAttributeDetection
- * throws a typed error for each, which the editor surfaces via toast).
- */
-export const previewAttributeDetectionFn = createServerFn({ method: 'POST' })
-  .validator(previewAttributeDetectionSchema)
-  .handler(async ({ data }) => {
-    await requireAuth({ permission: PERMISSIONS.CONVERSATION_MANAGE })
-    // New (not-yet-saved) options have no id; a positional placeholder is
-    // fine here since it's only ever used within this one ephemeral call,
-    // never persisted or compared across requests.
-    const options = data.definition.options.map((o, i) => ({
-      id: o.id ?? `preview_opt_${i}`,
-      label: o.label,
-      description: o.description ?? null,
-    }))
-    return await previewAttributeDetection({
-      definition: {
-        key: data.definition.key,
-        label: data.definition.label,
-        description: data.definition.description ?? null,
-        options,
-      },
-      sampleMessage: data.sampleMessage,
-    })
-  })
-
-const draftAttributeDescriptionsSchema = z.object({
-  label: z.string().min(1).max(128),
-  optionLabels: z.array(z.string().min(1).max(100)).min(1).max(100),
-})
-
-/**
- * "Draft descriptions" authoring assist (AI-ATTRIBUTES-PARITY-SPEC.md Phase
- * 3): fills the attribute + option description fields from just the labels,
- * for the admin to review/edit before saving. Gated conversation.manage.
- */
-export const draftAttributeDescriptionsFn = createServerFn({ method: 'POST' })
-  .validator(draftAttributeDescriptionsSchema)
-  .handler(async ({ data }) => {
-    await requireAuth({ permission: PERMISSIONS.CONVERSATION_MANAGE })
-    return await draftAttributeDescriptions(data)
   })
 
 const attributeValueCountsSchema = z.object({
