@@ -1,16 +1,12 @@
-import { useState } from 'react'
 import { FormattedMessage, useIntl } from 'react-intl'
-import { ChevronDownIcon, LockClosedIcon } from '@heroicons/react/24/solid'
-import { MagnifyingGlassIcon, ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline'
+import { LockClosedIcon } from '@heroicons/react/24/solid'
+import { ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline'
 import { cn } from '@/lib/shared/utils'
 import { getTimeAgo } from '@/components/ui/time-ago'
 import { MessageMarkdown } from './message-markdown'
 import { sanitizeUrl } from '@/lib/shared/utils/sanitize'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import type {
-  AssistantActivityStatus,
-  ConversationMessageCitation,
-} from '@/lib/shared/conversation/types'
+import type { ConversationMessageCitation } from '@/lib/shared/conversation/types'
 
 /**
  * The render path's citation shape: every persisted citation plus the
@@ -54,40 +50,6 @@ export function CitationFreshness({
         values={{ time: label }}
       />
     </span>
-  )
-}
-
-function Spinner() {
-  return (
-    <span
-      className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-muted-foreground/25 border-t-muted-foreground/80"
-      aria-hidden
-    />
-  )
-}
-
-const ACTIVITY: Record<AssistantActivityStatus, { id: string; defaultMessage: string }> = {
-  thinking: { id: 'widget.messenger.assistant.thinking', defaultMessage: 'Thinking…' },
-  searching_kb: {
-    id: 'widget.messenger.assistant.searching',
-    defaultMessage: 'Searching the knowledge base…',
-  },
-  reviewing_conversation: {
-    id: 'widget.messenger.assistant.reviewing',
-    defaultMessage: 'Reviewing the conversation…',
-  },
-}
-
-/** The live working trace shown while Quinn's turn runs (thinking → searching). */
-export function AssistantWorkingTrace({ status }: { status: AssistantActivityStatus }) {
-  const label = ACTIVITY[status]
-  return (
-    <div className="flex items-center gap-2 py-1" role="status" aria-live="polite">
-      <Spinner />
-      <span className="animate-pulse text-[13px] text-muted-foreground">
-        <FormattedMessage id={label.id} defaultMessage={label.defaultMessage} />
-      </span>
-    </div>
   )
 }
 
@@ -244,67 +206,5 @@ export function AssistantAnswer({
         )
       }}
     />
-  )
-}
-
-/** Quinn's answer as it streams, before the persisted message row lands.
- *  Citations resolve on the final message, so [n] markers render as nothing yet. */
-export function AssistantStreamingBubble({ text }: { text: string }) {
-  return (
-    <div className="flex flex-col items-start">
-      <div className="max-w-[85%] rounded-2xl bg-muted px-3.5 py-2.5 text-foreground">
-        <AssistantAnswer text={text} citations={[]} caret />
-      </div>
-    </div>
-  )
-}
-
-/** Collapsed "Searched the knowledge base · N sources" trace on a grounded reply. */
-export function AssistantSourcesTrace({ citations }: { citations: RenderableCitation[] }) {
-  const [open, setOpen] = useState(false)
-  if (citations.length === 0) return null
-  return (
-    <div className="mb-1 flex flex-col items-start gap-1">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        aria-expanded={open}
-        className="flex items-center gap-1.5 text-[12px] text-muted-foreground/70 transition-colors hover:text-muted-foreground"
-      >
-        <MagnifyingGlassIcon className="h-3 w-3" />
-        <FormattedMessage
-          id="widget.messenger.assistant.searched"
-          defaultMessage="Searched the knowledge base · {count, plural, one {# source} other {# sources}}"
-          values={{ count: citations.length }}
-        />
-        <ChevronDownIcon className={cn('h-3 w-3 transition-transform', open && 'rotate-180')} />
-      </button>
-      {open && (
-        <ul className="flex flex-col gap-1 ps-4">
-          {citations.map((c, i) => {
-            const url = sanitizeUrl(c.url)
-            const label = (
-              <>
-                <span className="tabular-nums text-muted-foreground/40">{i + 1}</span>
-                {c.title}
-              </>
-            )
-            const className =
-              'flex items-center gap-1.5 text-[12px] text-muted-foreground no-underline hover:text-foreground'
-            return (
-              <li key={c.id}>
-                {url ? (
-                  <a href={url} target="_blank" rel="noreferrer" className={className}>
-                    {label}
-                  </a>
-                ) : (
-                  <span className={className}>{label}</span>
-                )}
-              </li>
-            )
-          })}
-        </ul>
-      )}
-    </div>
   )
 }

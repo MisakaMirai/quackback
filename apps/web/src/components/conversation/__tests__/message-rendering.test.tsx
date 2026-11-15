@@ -1,12 +1,9 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it } from 'vitest'
-import { cleanup, fireEvent, render as renderRTL, screen } from '@testing-library/react'
+import { cleanup, render as renderRTL, screen } from '@testing-library/react'
 import { IntlProvider } from 'react-intl'
 import { AgentMessageBubble, VisitorMessageBubble } from '../message-bubble'
-import {
-  AssistantAnswer,
-  AssistantSourcesTrace,
-} from '@/components/shared/conversation/assistant-turn'
+import { AssistantAnswer } from '@/components/shared/conversation/assistant-turn'
 import type {
   AgentConversationMessageDTO,
   ConversationMessageCitation,
@@ -307,15 +304,9 @@ describe('citation rendering safety', () => {
     expect(container.textContent).toBe('Read this .')
   })
 
-  it('refuses unsafe citation URLs in inline dots and the expanded source trace', () => {
+  it('refuses unsafe citation URLs in inline dots', () => {
     const unsafe = { ...citation, url: 'javascript:alert(1)' }
-    const { container } = renderAnswer(
-      <IntlProvider locale="en" messages={{}}>
-        <AssistantAnswer text="Read [1]." citations={[unsafe]} />
-        <AssistantSourcesTrace citations={[unsafe]} />
-      </IntlProvider>
-    )
-    fireEvent.click(screen.getByRole('button', { name: /Searched the knowledge base/ }))
+    const { container } = renderAnswer(<AssistantAnswer text="Read [1]." citations={[unsafe]} />)
     expect(container.querySelector('a')).toBeNull()
     expect(container.textContent).toContain('AI features')
   })

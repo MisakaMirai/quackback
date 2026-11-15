@@ -64,10 +64,7 @@ import type {
 import { getChannelDescriptor } from '@/lib/shared/channels'
 import type { MessageTranslationDisplay } from '@/lib/shared/conversation/translation'
 import type { BlockState } from '@/components/shared/conversation/conversation-rows'
-import {
-  AssistantSourcesTrace,
-  AssistantAnswer,
-} from '@/components/shared/conversation/assistant-turn'
+import { AssistantAnswer } from '@/components/shared/conversation/assistant-turn'
 import { RichTextEditor } from '@/components/ui/rich-text-editor'
 import {
   CONVERSATION_EDITOR_FEATURES,
@@ -568,10 +565,6 @@ export const AgentMessageBubble = memo(function AgentMessageBubble({
           resolves against an indefinite box, collapsing short plain-text
           messages to min-content (one character per line). */}
       <div className={cn('flex min-w-0 flex-1 flex-col', self ? 'items-end' : 'items-start')}>
-        {message.isAssistant && message.citations.length > 0 && (
-          <AssistantSourcesTrace citations={message.citations} />
-        )}
-
         {/* The bubble and its hover toolbar share this positioning context so
             the toolbar anchors to the bubble's corner, not the row. The width
             cap lives HERE (a direct child of the definite-width column) and the
@@ -918,7 +911,6 @@ export function VisitorMessageBubble({
       data-message-id={messageId}
       className={self ? 'flex flex-col items-end' : 'flex flex-col items-start'}
     >
-      {cited && <AssistantSourcesTrace citations={cited} />}
       <div className={jumbo ? 'max-w-[85%]' : bubbleClasses(side)}>
         {jumbo ? (
           // A lone-emoji message renders large (no bubble chrome).

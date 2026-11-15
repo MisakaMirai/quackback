@@ -25,7 +25,6 @@ import { conversationAvailable } from '@/lib/shared/conversation/presence'
 import { ArrowUpIcon, ChevronDownIcon } from '@heroicons/react/24/solid'
 import { ChatBubbleLeftRightIcon, PaperClipIcon, BookOpenIcon } from '@heroicons/react/24/outline'
 import type { ConversationId } from '@quackback/ids'
-import { Avatar } from '@/components/ui/avatar'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { TypingDots } from '@/components/shared/typing-dots'
 import { personalizeMessage, firstNameOf } from '@/lib/shared/conversation/personalize'
@@ -230,11 +229,6 @@ export function VisitorConversationThread({
   // no header card — a plain chat is completely untouched by ticket-ness.
   const [linkedTicket, setLinkedTicket] = useState<RequesterTicketDTO | null>(null)
   const [teamName, setTeamName] = useState<string | null>(null)
-  // AI-assistant display identity (fronts new conversations); null when disabled.
-  const [assistant, setAssistant] = useState<{
-    name: string
-    avatarUrl: string | null
-  } | null>(null)
   // Pre-chat email capture (anonymous visitors). Data-driven: identified
   // visitors come back with visitorHasEmail=true, so the prompt never shows.
   // Whether an offline reply could actually reach this visitor by email — drives
@@ -383,7 +377,6 @@ export function VisitorConversationThread({
         setWelcomeMessage(res.welcomeMessage)
         setOfflineMessage(res.offlineMessage)
         setTeamName(res.teamName)
-        setAssistant(null)
         setCanEmailReply(res.canEmailVisitor)
         setLinkedTicket(res.linkedTicket ?? null)
         const conv = res.conversation
@@ -714,8 +707,7 @@ export function VisitorConversationThread({
   // relevant again when the assistant hands off to a human (future). Withheld
   // during the initial load: assistant/email-reply state is unknown until the
   // thread arrives, and a hint that shows then vanishes reads as a glitch.
-  const showOfflineHint =
-    !loading && !assistant && !available && (canEmailReply ? Boolean(offlineMessage) : true)
+  const showOfflineHint = !loading && !available && (canEmailReply ? Boolean(offlineMessage) : true)
 
   // Phase C conversational block layer: every block's derived state, computed
   // ONCE per [messages, conversationStatus] change and threaded into rows,
@@ -941,13 +933,10 @@ export function VisitorConversationThread({
           </div>
         )
       case 'greeting':
-        // The assistant fronts the greeting when enabled; the team name
-        // otherwise. Identity only — replies still come from the team.
         return (
           <VisitorMessageBubble
             side="peer"
-            authorName={assistant?.name ?? teamName ?? undefined}
-            isAssistant={!!assistant}
+            authorName={teamName ?? undefined}
             content={personalizeMessage(shownGreeting(welcomeMessage, intl) ?? '', firstName)}
             embedOpenMode={embedOpenMode}
           />
@@ -1155,28 +1144,11 @@ export function VisitorConversationThread({
 
   return (
     <div className="flex flex-col h-full">
-      {/* Header: with the assistant enabled the thread is always fronted by its
-          identity — the AI is always available, so no availability promise is
-          made at any point (matching the AI-first messenger model). Without an
-          assistant, the classic live presence strip shows. */}
-      {showHeader && assistant ? (
-        <div className="flex items-center gap-2.5 px-4 py-2 border-b border-border/40 shrink-0">
-          <Avatar src={assistant.avatarUrl} name={assistant.name} className="size-7 text-xs" />
-          <div className="min-w-0">
-            <p className="text-sm font-semibold leading-tight text-foreground">{assistant.name}</p>
-            <p className="text-[11px] leading-tight text-muted-foreground">
-              <FormattedMessage
-                id="widget.messenger.assistant.teamAlso"
-                defaultMessage="The team can also help"
-              />
-            </p>
-          </div>
-        </div>
-      ) : showHeader ? (
+      {showHeader && (
         <div className="flex items-center px-4 py-2 border-b border-border/40 shrink-0">
           <ConversationPresenceBadge available={available} />
         </div>
-      ) : null}
+      )}
 
       {/* The pair's ticket header (converged Messages): stage chip + tracker +
           watch bell + collapsed details. Only when a linked ticket exists —
