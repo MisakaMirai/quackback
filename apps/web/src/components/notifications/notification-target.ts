@@ -43,8 +43,7 @@ export function getNotificationTarget(
   if (
     (notification.type === 'chat_mention' ||
       notification.type === 'chat_message' ||
-      notification.type === 'conversation_assigned' ||
-      notification.type === 'assistant_handed_off') &&
+      notification.type === 'conversation_assigned') &&
     notification.conversationId
   ) {
     return { to: '/admin/inbox', search: { i: notification.conversationId } }

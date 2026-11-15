@@ -11,7 +11,6 @@ import {
   dispatchMessageNoteCreated,
   dispatchConversationCsatSubmitted,
   dispatchConversationCsatCommentAdded,
-  dispatchAssistantHandedOff,
 } from '../dispatch'
 import type { EventConversationData, EventConversationRef, EventMessageData } from '../types'
 
@@ -125,13 +124,5 @@ describe('conversation/message dispatch', () => {
       comment: 'great',
       submittedAt: '2026-06-05T01:00:00.000Z',
     })
-  })
-
-  it('dispatchAssistantHandedOff carries the conversation id + reason', async () => {
-    await dispatchAssistantHandedOff(actor, 'conversation_1', 'explicit_request')
-    const event = processEvent.mock.calls[0][0]
-    expect(event.type).toBe('assistant.handed_off')
-    expect(event.data).toEqual({ conversationId: 'conversation_1', reason: 'explicit_request' })
-    expect(event.actor).toEqual(actor)
   })
 })

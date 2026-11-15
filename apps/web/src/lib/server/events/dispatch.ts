@@ -658,30 +658,6 @@ export async function dispatchTicketNoteAdded(
   })
 }
 
-export async function dispatchAssistantHandedOff(
-  actor: EventActor,
-  conversationId: string,
-  reason: string
-): Promise<void> {
-  await dispatchEvent({
-    ...eventEnvelope(actor),
-    type: 'assistant.handed_off',
-    data: { conversationId, reason },
-  })
-}
-
-export async function dispatchAssistantResolved(
-  actor: EventActor,
-  conversationId: string,
-  outcome: string
-): Promise<void> {
-  await dispatchEvent({
-    ...eventEnvelope(actor),
-    type: 'assistant.resolved',
-    data: { conversationId, outcome },
-  })
-}
-
 // ---------------------------------------------------------------------------
 // Timer-driven workflow triggers (support platform §4.6): synthetic events
 // raised by workflow-sweep.ts's 5-minute tick or the SLA domain's deadline

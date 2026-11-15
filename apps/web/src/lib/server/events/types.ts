@@ -75,8 +75,6 @@ export const EVENT_TYPES = [
   // Notification-only: a linked tracker issue changed status upstream (fired by
   // the inbound integration webhook path, independent of any status mapping).
   'ticket.external_status_changed',
-  'assistant.handed_off',
-  'assistant.resolved',
   // Timer-driven triggers (see TIMER_DRIVEN_EVENT_TYPES above for the rationale).
   ...TIMER_DRIVEN_EVENT_TYPES,
 ] as const
@@ -742,14 +740,6 @@ export interface TicketExternalStatusChangedEvent extends EventBase<'ticket.exte
   data: TicketExternalStatusChangedPayload
 }
 
-export interface AssistantHandedOffEvent extends EventBase<'assistant.handed_off'> {
-  data: AssistantHandedOffPayload
-}
-
-export interface AssistantResolvedEvent extends EventBase<'assistant.resolved'> {
-  data: AssistantResolvedPayload
-}
-
 export interface ConversationCustomerUnresponsiveEvent extends EventBase<'conversation.customer_unresponsive'> {
   data: ConversationUnresponsivePayload
 }
@@ -811,8 +801,6 @@ export type EventData =
   | TicketRepliedEvent
   | TicketNoteAddedEvent
   | TicketExternalStatusChangedEvent
-  | AssistantHandedOffEvent
-  | AssistantResolvedEvent
   | ConversationCustomerUnresponsiveEvent
   | ConversationTeammateUnresponsiveEvent
   | SlaApproachingBreachEvent

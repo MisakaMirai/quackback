@@ -8,7 +8,6 @@ import {
   AtSymbolIcon,
   SignalIcon,
   InboxArrowDownIcon,
-  SparklesIcon,
   LinkIcon,
 } from '@heroicons/react/24/solid'
 import type { NotificationType } from '@/lib/shared/types'
@@ -115,11 +114,6 @@ export const notificationTypeConfigs: Record<NotificationType, NotificationTypeC
     icon: AtSymbolIcon,
     iconClass: 'text-fuchsia-500',
     bgClass: 'bg-fuchsia-500/10',
-  },
-  assistant_handed_off: {
-    icon: SparklesIcon,
-    iconClass: 'text-yellow-500',
-    bgClass: 'bg-yellow-500/10',
   },
   // Reuses icons this module already imports: a new one shared with the lazy
   // settings and feedback pages would split into a chunk of its own, loaded on

@@ -38,7 +38,6 @@ const {
   getConversationAssignedTargets,
   getTicketAssignedTargets,
   getPostOwnerAssignedTargets,
-  getAssistantHandedOffTargets,
   getConversationNoteMentionedTargets,
 } = await import('../targets')
 
@@ -342,70 +341,6 @@ describe('getPostOwnerAssignedTargets', () => {
   })
 })
 
-describe('getAssistantHandedOffTargets', () => {
-  it("targets the assigned team's members when the conversation has one", async () => {
-    conversationRows = [{ assignedTeamId: 'team_1' }]
-    listTeamMemberPrincipalIds.mockResolvedValue(['principal_a', 'principal_quinn'])
-    const event = {
-      id: 'evt-9',
-      type: 'assistant.handed_off',
-      timestamp: '2026-01-01T00:00:00Z',
-      actor: { type: 'service', principalId: 'principal_quinn', displayName: 'Quinn' },
-      data: { conversationId: 'conversation_1', reason: 'low confidence' },
-    } as EventData
-
-    const target = await getAssistantHandedOffTargets(event)
-    expect(listTeamMemberPrincipalIds).toHaveBeenCalledWith('team_1')
-    expect(listAssignableTeammates).not.toHaveBeenCalled()
-    // Quinn (the actor) is excluded.
-    expect(target).toEqual({
-      type: 'notification',
-      target: { principalIds: ['principal_a'] },
-      config: { conversationId: 'conversation_1', reason: 'low confidence' },
-    })
-  })
-
-  it('falls back to every admin/member principal when the conversation has no team', async () => {
-    conversationRows = [{ assignedTeamId: null }]
-    listAssignableTeammates.mockResolvedValue([
-      { principalId: 'principal_a', name: 'A', email: 'a@x.com' },
-      { principalId: 'principal_b', name: 'B', email: 'b@x.com' },
-    ])
-    const event = {
-      id: 'evt-10',
-      type: 'assistant.handed_off',
-      timestamp: '2026-01-01T00:00:00Z',
-      actor: { type: 'service', principalId: 'principal_quinn', displayName: 'Quinn' },
-      data: { conversationId: 'conversation_1', reason: 'escalation requested' },
-    } as EventData
-
-    const target = await getAssistantHandedOffTargets(event)
-    expect(listAssignableTeammates).toHaveBeenCalledTimes(1)
-    expect(target?.target).toEqual({ principalIds: ['principal_a', 'principal_b'] })
-  })
-
-  it('is a no-op when the only eligible recipient is the actor', async () => {
-    conversationRows = [{ assignedTeamId: null }]
-    listAssignableTeammates.mockResolvedValue([
-      { principalId: 'principal_quinn', name: 'Quinn', email: null },
-    ])
-    const event = {
-      id: 'evt-11',
-      type: 'assistant.handed_off',
-      timestamp: '2026-01-01T00:00:00Z',
-      actor: { type: 'service', principalId: 'principal_quinn', displayName: 'Quinn' },
-      data: { conversationId: 'conversation_1', reason: 'no one else around' },
-    } as EventData
-
-    expect(await getAssistantHandedOffTargets(event)).toBeNull()
-  })
-})
-
-// WO-3 slice 3 (ported characterization): replaces the deleted direct
-// createNotificationsBatch call in sync-conversation-mentions.ts. Recipients
-// are trusted straight from the payload (already eligibility-filtered +
-// author-excluded by the emit site) — no DB round-trip, unlike the other
-// resolvers above.
 describe('getConversationNoteMentionedTargets', () => {
   it('targets exactly the mentioned principals, carrying the note context in config', () => {
     const event = {

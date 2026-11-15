@@ -270,9 +270,7 @@ export const P = {
     externalStatus: z.string(),
     transition: z.enum(['closed', 'reopened']).nullable(),
   }),
-  // assistant + sla
-  'assistant.handed_off': z.looseObject({ conversationId: id, reason: z.string() }),
-  'assistant.resolved': z.looseObject({ conversationId: id, outcome: z.string() }),
+  // sla
   // SLA timer triggers (support platform §4.6). `ticketId`/`ticket` are
   // present only for the ticket-anchored time_to_resolve clock
   // (ticket-sla.service.ts); conversation clocks omit both.
