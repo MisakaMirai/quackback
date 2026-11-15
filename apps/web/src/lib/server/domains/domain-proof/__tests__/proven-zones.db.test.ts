@@ -13,7 +13,7 @@
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { TeamId } from '@quackback/ids'
 import { createDbTestFixture, testDb } from '@/lib/server/__tests__/db-test-fixture'
-import { emailSendingDomains, settings, ssoVerifiedDomain, teams } from '@/lib/server/db'
+import { emailSendingDomains, ssoVerifiedDomain, teams } from '@/lib/server/db'
 import type { SendingDomainDnsRecord } from '@/lib/server/db'
 
 vi.mock('@/lib/server/db', async (importOriginal) => ({
@@ -46,7 +46,6 @@ const fixture = await createDbTestFixture({
   probe: async (db) => {
     await db.select({ id: emailSendingDomains.dkimMode }).from(emailSendingDomains).limit(0)
     await db.select({ id: ssoVerifiedDomain.id }).from(ssoVerifiedDomain).limit(0)
-    await db.select({ c: settings.cloudIdentity }).from(settings).limit(0)
   },
 })
 
@@ -113,25 +112,6 @@ async function seedSsoDomain(name: string, verified: boolean) {
     })
     .returning()
   return row
-}
-
-async function seedOperatorHostnames(
-  hostnames: { hostname: string; readiness: 'pending' | 'ready' | 'failed' }[]
-): Promise<void> {
-  const at = '2026-10-01T12:00:00.000Z'
-  await testDb.insert(settings).values({
-    name: 'Acme',
-    slug: `acme-${suffix()}`,
-    createdAt: new Date(),
-    cloudIdentity: {
-      version: 1,
-      displayName: 'Acme',
-      canonicalOrigin: 'https://acme.example.com',
-      platformHostname: 'acme.example.com',
-      customDomains: hostnames.map((h, i) => ({ ...h, isPrimary: i === 0, updatedAt: at })),
-      updatedAt: at,
-    },
-  })
 }
 
 describe.skipIf(!fixture.available)('proven zones (real DB, rolled back)', () => {
@@ -221,15 +201,6 @@ describe.skipIf(!fixture.available)('proven zones (real DB, rolled back)', () =>
           record: { name: 'qb._domainkey.shared.example.com', value: SIGNING_KEY.value },
         },
       ])
-    })
-
-    it('leaves out pending SSO domains and operator hostnames that are not ready', async () => {
-      await seedSsoDomain('pending.example.org', false)
-      await seedOperatorHostnames([
-        { hostname: 'pending.example.net', readiness: 'pending' },
-        { hostname: 'failed.example.net', readiness: 'failed' },
-      ])
-      expect(await getProvenZones({ includeSso: true })).toEqual([])
     })
   })
 

@@ -121,7 +121,6 @@ if (fixture.available) {
         portalConfig: '{}',
         metadata: '{}',
         name: 'Acme',
-        cloudIdentity: null,
       })
       .where(eq(settings.id, settingsId))
   })
