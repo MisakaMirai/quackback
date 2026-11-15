@@ -139,8 +139,6 @@ export interface ArticleTranslationStatusEntry {
   locale: string
   status: TranslationStatus
   updatedAt: Date | null
-  /** Auto-translation is waiting for AI allowance before it runs. */
-  autoTranslatePaused: boolean
 }
 
 export interface CategoryTranslationStatusEntry {

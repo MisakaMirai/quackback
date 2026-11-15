@@ -11,7 +11,6 @@ import {
   hasCsatBlockMessage,
   type ConversationRow,
 } from './conversation-rows'
-import { AssistantWorkingTrace, AssistantStreamingBubble } from './assistant-turn'
 import {
   BlockButtonsRow,
   BlockCollectField,
@@ -34,7 +33,6 @@ import { shownGreeting } from '@/lib/shared/conversation/default-greeting'
 import { useConversationStream } from '@/lib/client/hooks/use-conversation-stream'
 import { useHostVisibleCount } from '@/lib/client/hooks/use-host-visible'
 import { useConversationTyping } from '@/lib/client/hooks/use-conversation-typing'
-import { useAssistantTurn } from '@/lib/client/hooks/use-assistant-turn'
 import {
   useConversationComposerAttachments,
   type ComposerUploadFn,
@@ -303,14 +301,6 @@ export function VisitorConversationThread({
   const sendTyping = useTypingSender(conversationId, getAuthHeaders)
   const { remoteTyping, onLocalInput, onRemoteTyping, clearRemoteTyping } =
     useConversationTyping(sendTyping)
-  const {
-    assistantActivity,
-    assistantStream,
-    onAssistantActivity,
-    onAssistantDelta,
-    clearAssistantTurn,
-  } = useAssistantTurn()
-
   // Every attached file stages its own tray tile with its own progress/error
   // (no toast on visitor surfaces) — uploadFile already carries the surface's
   // endpoint/headers/session-minting (the widget's flavour mints an anonymous
@@ -509,7 +499,6 @@ export function VisitorConversationThread({
       }
       if (evt.kind === 'message' && evt.message.senderType === 'agent') {
         clearRemoteTyping()
-        clearAssistantTurn() // the persisted reply replaces the live trace/stream
         onAgentActivity?.() // an agent is clearly here right now
       } else if (
         evt.kind === 'message' &&
@@ -522,18 +511,10 @@ export function VisitorConversationThread({
       } else if (evt.kind === 'typing' && evt.side === 'agent') {
         onRemoteTyping()
         onAgentActivity?.()
-      } else if (evt.kind === 'assistant_activity') {
-        onAssistantActivity(evt.status)
-      } else if (evt.kind === 'assistant_delta') {
-        onAssistantDelta(evt.text)
       }
     },
     onReconnect: () => void refreshMessages(),
   })
-
-  // Ephemeral turn state is component-local (not keyed by resetKey); drop it when
-  // switching threads so it can't bleed across conversations.
-  useEffect(() => clearAssistantTurn, [conversationId, clearAssistantTurn])
 
   // A star click records the rating immediately (so it's never lost), then the
   // surface offers an optional comment as a follow-up.
@@ -761,8 +742,6 @@ export function VisitorConversationThread({
         showEmpty,
         showSeen: lastVisitorSeen && !remoteTyping,
         showTyping: remoteTyping,
-        assistantActivity,
-        assistantStream,
         // Only while closed: a reopen (agent reply / new visitor message) must
         // drop the rating prompt, the comment follow-up, and the thanks notice.
         // Also suppressed whenever a request_csat block already asked (CF2) —
@@ -782,8 +761,6 @@ export function VisitorConversationThread({
       showEmpty,
       lastVisitorSeen,
       remoteTyping,
-      assistantActivity,
-      assistantStream,
       showCsatPrompt,
       csatRating,
       hasCsatBlock,
@@ -1091,13 +1068,6 @@ export function VisitorConversationThread({
             </div>
           </div>
         )
-      case 'assistant-activity':
-        // Quinn's live working trace (thinking → searching the knowledge base).
-        return <AssistantWorkingTrace status={row.status} />
-      case 'assistant-stream':
-        // Quinn's answer as it streams, before the persisted message lands.
-        return <AssistantStreamingBubble text={row.text} />
-
       case 'csat':
         return (
           <div className="rounded-lg border border-border/50 bg-muted/20 px-3 py-2.5 text-center">

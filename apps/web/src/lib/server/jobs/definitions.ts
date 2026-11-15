@@ -536,39 +536,6 @@ export const JOB_DEFINITIONS: readonly JobDefinition[] = [
   },
   {
     // Was `{help-center-translate}`. The 120s lease is the case §7.2 was built
-    // for, and the reason this tier runs a bounded pool instead of one serial
-    // drain — see runner.ts.
-    name: 'help-center-translate',
-    concurrency: 1,
-    maxAttempts: 3,
-    retryBackoffMs: 5_000,
-    leaseMs: 120_000,
-    retentionMs: DAY_MS,
-    failedRetentionMs: 14 * DAY_MS,
-    handler: () =>
-      import('@/lib/server/domains/help-center/help-center-translate-queue').then(
-        (m) => m.runHelpCenterTranslate
-      ),
-  },
-  {
-    // Releases auto-translations parked at the AI allowance once allowance is
-    // available again (an upgrade mid-window). Parked rows run on their own at
-    // the window's end; this only brings them forward. Inert while nothing is
-    // parked.
-    name: 'help-center-translate-resume',
-    cron: '25 * * * *',
-    maxAttempts: 1,
-    cronEnabled: () =>
-      import('@/lib/server/domains/help-center/help-center-translate-resume').then((m) =>
-        m.hasPausedTranslations()
-      ),
-    handler: () =>
-      import('@/lib/server/domains/help-center/help-center-translate-resume').then(
-        (m) => m.runHelpCenterTranslateResume
-      ),
-  },
-  {
-    // Was `{email-imap}`, a 60s repeatable poll. `cronEnabled` keeps the
     // schedule inert unless an IMAP mailbox is actually configured, which is
     // what the reference achieved by never constructing the worker.
     name: 'email-imap',

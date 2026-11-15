@@ -11,7 +11,6 @@ const statuses = vi.hoisted(() => ({
     locale: string
     status: 'untranslated' | 'draft' | 'published'
     updatedAt: Date | null
-    autoTranslatePaused: boolean
   }>,
 }))
 
@@ -50,9 +49,7 @@ function renderDialog(locale: string, messages: Record<string, string>) {
 
 describe('ArticleTranslationsDialog auto-translate pause', () => {
   it('says when auto-translate is waiting for AI allowance, in the viewer language', async () => {
-    statuses.rows = [
-      { locale: 'de', status: 'untranslated', updatedAt: null, autoTranslatePaused: true },
-    ]
+    statuses.rows = [{ locale: 'de', status: 'untranslated', updatedAt: null }]
     renderDialog('de', de)
     expect(
       await screen.findByText(
@@ -62,9 +59,7 @@ describe('ArticleTranslationsDialog auto-translate pause', () => {
   })
 
   it('stays quiet when nothing is paused', async () => {
-    statuses.rows = [
-      { locale: 'de', status: 'untranslated', updatedAt: null, autoTranslatePaused: false },
-    ]
+    statuses.rows = [{ locale: 'de', status: 'untranslated', updatedAt: null }]
     renderDialog('en', {})
     expect(await screen.findByText('Untranslated')).toBeTruthy()
     expect(screen.queryByText(/Paused/)).toBeNull()

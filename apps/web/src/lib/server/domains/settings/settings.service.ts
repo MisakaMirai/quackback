@@ -766,12 +766,11 @@ export async function getHelpCenterConfig(
 }
 
 /**
- * A help-center update. `seo` and `autoTranslate` may be partial: they are
- * merged over the stored section, so a caller never sends back a copy it read.
+ * A help-center update. `seo` may be partial: it is merged over the stored
+ * section, so a caller never sends back a copy it read.
  */
-export type HelpCenterConfigUpdate = Omit<Partial<HelpCenterConfig>, 'seo' | 'autoTranslate'> & {
+export type HelpCenterConfigUpdate = Omit<Partial<HelpCenterConfig>, 'seo'> & {
   seo?: Partial<HelpCenterConfig['seo']>
-  autoTranslate?: Partial<HelpCenterConfig['autoTranslate']>
 }
 
 export async function updateHelpCenterConfig(

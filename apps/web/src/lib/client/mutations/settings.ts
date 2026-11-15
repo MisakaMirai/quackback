@@ -35,7 +35,6 @@ import {
   enableHelpCenterLocaleFn,
   disableHelpCenterLocaleFn,
   updateHelpCenterLocaleChromeFn,
-  updateHelpCenterAutoTranslateFn,
 } from '@/lib/server/functions/help-center-settings'
 import {
   updateHelpCenterDomainFn,
@@ -401,19 +400,6 @@ export function useUpdateHelpCenterLocaleChrome() {
     meta: AUTOSAVE,
     mutationFn: (data: Parameters<typeof updateHelpCenterLocaleChromeFn>[0]['data']) =>
       updateHelpCenterLocaleChromeFn({ data }),
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: settingsQueries.helpCenterConfig().queryKey }),
-  })
-}
-
-export function useUpdateHelpCenterAutoTranslate() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    scope: HELP_CENTER_CONFIG_SCOPE,
-    meta: AUTOSAVE,
-    mutationFn: (data: Parameters<typeof updateHelpCenterAutoTranslateFn>[0]['data']) =>
-      updateHelpCenterAutoTranslateFn({ data }),
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: settingsQueries.helpCenterConfig().queryKey }),
   })
