@@ -161,7 +161,6 @@ describe('buildLaunchTasks', () => {
         brandingManage: false,
         integrationManage: false,
         helpCenterManage: false,
-        assistantManage: false,
       },
     })
     expect(tasks.filter((task) => task.href)).toHaveLength(0)
@@ -195,7 +194,6 @@ describe('buildLaunchTasks', () => {
         brandingManage: true,
         integrationManage: true,
         helpCenterManage: true,
-        assistantManage: true,
       },
     }
     const find = (status: LaunchStatus, id: string) =>

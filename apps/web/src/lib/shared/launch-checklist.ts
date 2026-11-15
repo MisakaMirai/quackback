@@ -15,7 +15,6 @@ export interface LaunchPermissions {
   brandingManage: boolean
   integrationManage: boolean
   helpCenterManage: boolean
-  assistantManage: boolean
 }
 
 export interface LaunchStatus {
@@ -67,8 +66,6 @@ export interface LaunchStatus {
     statusPage: boolean
     integrations: boolean
     changelog?: boolean
-    /** Quinn can answer: the plan includes the AI assistant and an AI model is configured. */
-    assistant?: boolean
   }
 }
 
@@ -187,7 +184,6 @@ const ALLOW_ALL: LaunchPermissions = {
   brandingManage: true,
   integrationManage: true,
   helpCenterManage: true,
-  assistantManage: true,
 }
 
 function resolvedFeatures(features?: LaunchStatus['features']) {
@@ -198,7 +194,6 @@ function resolvedFeatures(features?: LaunchStatus['features']) {
     // Integrations come with a higher plan: offered only when the plan says so.
     integrations: features?.integrations ?? false,
     changelog: features?.changelog ?? true,
-    assistant: features?.assistant ?? true,
   }
 }
 
@@ -251,8 +246,8 @@ export function withLaunchTaskResolution(
   return Object.keys(all).length > 0 ? all : undefined
 }
 
-/** Steps setup completes on its own: the seeded board and service, and Quinn, on by default. */
-const READY_TASK_IDS = new Set(['create-board', 'set-up-quinn', 'add-status-service'])
+/** Steps setup completes on its own: the seeded board and service. */
+const READY_TASK_IDS = new Set(['create-board', 'add-status-service'])
 
 function materializeTask(task: LaunchTaskInput, resolutions: TaskResolutionMap): LaunchTask {
   const stored = resolutions[task.id]
@@ -482,7 +477,7 @@ export function buildLaunchTasks(
   const taskIds: Record<OnboardingOutcome, readonly string[]> = {
     product_feedback: ['create-board', 'distribute-feedback'],
     internal: ['create-board', 'invite-team'],
-    customer_support: ['connect-messenger', 'set-up-quinn'],
+    customer_support: ['connect-messenger'],
     help_center: ['help-article'],
     status_page: ['share-status-page', 'add-status-service'],
   }
@@ -492,7 +487,7 @@ export function buildLaunchTasks(
     const outcome = goal === 'product_feedback' && status.feedbackPrivate ? 'internal' : goal
     for (const task of buildOutcomeTasks(status, outcome, resolutions)) {
       if (!taskIds[outcome].includes(task.id) || seen.has(task.id)) continue
-      tasks.push(task.id === 'set-up-quinn' ? { ...task, classification: 'polish' } : task)
+      tasks.push(task)
       seen.add(task.id)
     }
   }

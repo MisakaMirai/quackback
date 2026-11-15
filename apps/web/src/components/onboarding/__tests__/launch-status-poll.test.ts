@@ -13,7 +13,6 @@ const supportOnly: LaunchStatus = {
     helpCenter: false,
     statusPage: false,
     integrations: true,
-    assistant: false,
   },
 }
 

@@ -47,7 +47,6 @@ const status: LaunchStatus = {
     helpCenter: false,
     statusPage: false,
     integrations: true,
-    assistant: false,
     changelog: true,
   },
 }

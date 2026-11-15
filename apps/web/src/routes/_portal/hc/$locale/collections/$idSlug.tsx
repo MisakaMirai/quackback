@@ -16,7 +16,7 @@ import {
   helpCenterAbsoluteUrl,
   helpCenterHeadPortal,
 } from '@/components/help-center/help-center-head'
-import { useBaseUrl, useWorkspaceSettings } from '@/lib/client/hooks/use-root-context'
+import { useBaseUrl } from '@/lib/client/hooks/use-root-context'
 
 const MAX_ARTICLES_SHOWN = 8
 const AUTHOR_COLORS = [
@@ -150,8 +150,6 @@ function CollectionPage() {
   const { category, articles, allCategories, subcategories } = Route.useLoaderData()
   const { helpCenterConfig } = helpCenterApi.useLoaderData()
   const baseUrl = useBaseUrl()
-  const settings = useWorkspaceSettings()
-  const askAiEnabled = !!settings?.featureFlags?.helpCenter
 
   const breadcrumbs = buildCategoryBreadcrumbs({
     allCategories,
@@ -191,7 +189,7 @@ function CollectionPage() {
   return (
     <>
       <HelpCenterHero variant="compact">
-        <HelpCenterHeroSearch locale={locale} askAiEnabled={askAiEnabled} />
+        <HelpCenterHeroSearch locale={locale} />
       </HelpCenterHero>
 
       {seoEnabled && (

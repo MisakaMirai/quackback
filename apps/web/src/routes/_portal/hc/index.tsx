@@ -19,7 +19,6 @@ import {
 import { HC_LOCALE_COOKIE, resolveHcLandingLocale } from '@/lib/shared/help-center-url'
 import { DEFAULT_HELP_CENTER_CONFIG, type HelpCenterConfig } from '@/lib/shared/types/settings'
 import { resolvePortalOgImageUrl } from '@/lib/shared/portal-og-image'
-import { useWorkspaceSettings } from '@/lib/client/hooks/use-root-context'
 
 type Copy = { id: string; defaultMessage: string }
 
@@ -147,8 +146,6 @@ export const Route = createFileRoute('/_portal/hc/')({
 function HelpCenterLandingPage() {
   const intl = useIntl()
   const { categories, popularArticles, helpCenterConfig } = Route.useLoaderData()
-  const settings = useWorkspaceSettings()
-  const askAiEnabled = !!settings?.featureFlags?.helpCenter
 
   const { title, description } = landingCopy(helpCenterConfig, (copy) => intl.formatMessage(copy))
   const collectionCount = getTopLevelCategories(categories).length
@@ -156,7 +153,7 @@ function HelpCenterLandingPage() {
   return (
     <>
       <HelpCenterHero variant="home" title={title} description={description}>
-        <HelpCenterHeroSearch askAiEnabled={askAiEnabled} />
+        <HelpCenterHeroSearch />
       </HelpCenterHero>
 
       <section

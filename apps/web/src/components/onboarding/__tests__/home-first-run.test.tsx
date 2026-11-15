@@ -85,7 +85,6 @@ function status(overrides: Partial<LaunchStatus> = {}): LaunchStatus {
       helpCenter: false,
       statusPage: false,
       integrations: true,
-      assistant: false,
     },
     ...overrides,
   }
