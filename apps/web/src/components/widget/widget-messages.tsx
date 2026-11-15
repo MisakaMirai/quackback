@@ -17,8 +17,6 @@ import { WidgetConversationListSkeleton } from './widget-skeletons'
 interface WidgetMessagesProps {
   /** Team label used when a conversation has no assigned agent. */
   teamName: string | null
-  /** AI-assistant display identity; fronts unassigned conversations when set. */
-  assistant: { name: string; avatarUrl: string | null } | null
   /** Whether the messenger proper is on. False for tickets-only (email-first)
    *  workspaces: the list still shows their threads, but the "Ask a question"
    *  chat-start pill hides — agents and email initiate there. */
@@ -36,7 +34,6 @@ interface WidgetMessagesProps {
  */
 export function WidgetMessages({
   teamName,
-  assistant,
   canStartConversation = true,
   onOpenMessenger,
 }: WidgetMessagesProps) {
@@ -57,13 +54,10 @@ export function WidgetMessages({
   // Converged Messages: paired rows carry their ticket's stage chip +
   // reference (the row state keys off the TICKET, not the conversation).
   const linkedTickets = data?.linkedTickets ?? {}
-  // Unassigned conversations are fronted by the assistant identity (AI-first),
-  // falling back to the team label.
   const fallbackName =
-    assistant?.name ??
     teamName ??
     intl.formatMessage({ id: 'widget.messages.teamFallback', defaultMessage: 'Support' })
-  const fallbackAvatar = assistant?.avatarUrl ?? null
+  const fallbackAvatar = null
 
   return (
     <div className="relative flex h-full flex-col">

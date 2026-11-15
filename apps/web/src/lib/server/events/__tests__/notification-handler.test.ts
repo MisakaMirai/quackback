@@ -701,57 +701,6 @@ describe('notificationHook — ticket.status_changed (watcher audience)', () => 
   })
 })
 
-describe('notificationHook — assistant.handed_off', () => {
-  it('creates a hand-off bell with the truncated reason as the body', async () => {
-    const event = {
-      id: 'evt-handoff-1',
-      type: 'assistant.handed_off',
-      timestamp: new Date().toISOString(),
-      actor: { type: 'service', principalId: 'principal_quinn', displayName: 'Quinn' },
-      data: { conversationId: 'conversation_1', reason: 'Customer asked for a human' },
-    } as EventData
-
-    const target: NotificationTarget = { principalIds: ['principal_agent' as never] }
-    const config = { conversationId: 'conversation_1', reason: 'Customer asked for a human' }
-
-    await notificationHook.run(event, target, config)
-    expect(batchSpy).toHaveBeenCalledWith([
-      expect.objectContaining({
-        principalId: 'principal_agent',
-        type: 'assistant_handed_off',
-        title: 'The AI agent handed off a conversation',
-        body: 'Customer asked for a human',
-        metadata: { conversationId: 'conversation_1' },
-      }),
-    ])
-  })
-
-  it('shows a known hand-off reason by its label, not its id', async () => {
-    const event = {
-      id: 'evt-handoff-2',
-      type: 'assistant.handed_off',
-      timestamp: new Date().toISOString(),
-      actor: { type: 'service', principalId: 'principal_quinn', displayName: 'Quinn' },
-      data: { conversationId: 'conversation_1', reason: 'awaiting_confirmation' },
-    } as EventData
-
-    const target: NotificationTarget = { principalIds: ['principal_agent' as never] }
-    const config = { conversationId: 'conversation_1', reason: 'awaiting_confirmation' }
-
-    await notificationHook.run(event, target, config)
-    expect(batchSpy).toHaveBeenCalledWith([
-      expect.objectContaining({
-        body: 'AI agent is waiting for a teammate to confirm an action',
-      }),
-    ])
-  })
-})
-
-// WO-3 slice 3 (ported characterization): replaces the deleted direct
-// createNotificationsBatch call in sync-conversation-mentions.ts. Row shape
-// (type 'chat_mention', title, body, metadata) is IDENTICAL to the old direct
-// write — see conversation/__tests__/sync-conversation-mentions.test.ts for
-// the pre-move recipient/dispatch characterization this ports from.
 describe('notificationHook — conversation.note_mentioned', () => {
   function makeEvent(): EventData {
     return {

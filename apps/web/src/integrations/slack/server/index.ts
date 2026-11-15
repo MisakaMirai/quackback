@@ -1,5 +1,4 @@
 import { channelDestination } from '@/lib/server/integrations/destination'
-import { slackAppHooks } from './hooks'
 import type { IntegrationDefinition } from '@/lib/server/integrations/types'
 import { slackHook } from '@/integrations/slack/server/hook'
 import {
@@ -11,7 +10,6 @@ import { slackCatalog } from '@/integrations/slack/server/catalog'
 
 export const slackIntegration: IntegrationDefinition = {
   id: 'slack',
-  appHooks: slackAppHooks,
   install: {
     externalId: (c) => (typeof c.workspaceId === 'string' ? c.workspaceId : null),
     metadata: (c) => ({ bot_user_id: c.botUserId, enterprise_id: c.enterpriseId ?? null }),

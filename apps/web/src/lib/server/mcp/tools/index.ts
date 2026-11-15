@@ -16,7 +16,6 @@
  * - comments.ts      add_comment, update_comment, delete_comment,
  *                    react_to_comment
  * - changelog.ts     create_changelog, update_changelog, delete_changelog
- * - suggestions.ts   accept_suggestion, dismiss_suggestion, restore_suggestion
  * - help-center.ts   create_article, update_article, delete_article,
  *                    manage_category
  * - conversations.ts list_conversations, get_conversation,
@@ -37,7 +36,6 @@ import { registerSearchTools } from './search'
 import { registerPostTools } from './posts'
 import { registerCommentTools } from './comments'
 import { registerChangelogTools } from './changelog'
-import { registerSuggestionTools } from './suggestions'
 import { registerHelpCenterTools } from './help-center'
 import { registerConversationTools } from './conversations'
 import { registerTicketTools } from './tickets'
@@ -51,7 +49,6 @@ export function registerTools(server: McpServer, auth: McpAuthContext) {
   registerPostTools(server, auth)
   registerCommentTools(server, auth)
   registerChangelogTools(server, auth)
-  registerSuggestionTools(server, auth)
   registerHelpCenterTools(server, auth)
   registerConversationTools(server, auth)
   registerTicketTools(server, auth)

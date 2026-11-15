@@ -108,7 +108,6 @@ import {
   sortDescriptorFor,
   slaDueAtFor,
   slaDtoFor,
-  translationStateFrom,
 } from '../conversation.query'
 import { isNull, isNotNull, eq, ne } from '@/lib/server/db'
 import type { Actor } from '@/lib/server/policy/types'
@@ -319,65 +318,6 @@ describe('toConversationDTO', () => {
     )
     expect(dto.visitorLastReadAt).toBe('2026-02-01T00:00:00.000Z')
     expect(dto.agentLastReadAt).toBe('2026-02-02T00:00:00.000Z')
-  })
-
-  it('defaults translation to null when omitted (visitor-facing calls never pass it)', () => {
-    const dto = toConversationDTO(makeConversation(), visitorAuthor, null, 0)
-    expect(dto.translation).toBeNull()
-  })
-
-  it('passes the translation state through when the caller supplies it (agent-facing)', () => {
-    const state = translationStateFrom(
-      makeConversation({ translationEnabled: true, detectedCustomerLanguage: 'fr' })
-    )
-    const dto = toConversationDTO(
-      makeConversation(),
-      visitorAuthor,
-      null,
-      0,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      state
-    )
-    expect(dto.translation).toEqual(state)
-  })
-})
-
-describe('translationStateFrom', () => {
-  it('projects the conversation row into the DTO shape', () => {
-    const dto = translationStateFrom(
-      makeConversation({
-        translationEnabled: true,
-        detectedCustomerLanguage: 'fr',
-        translationDismissedAt: null,
-      })
-    )
-    expect(dto).toEqual({
-      enabled: true,
-      detectedCustomerLanguage: 'fr',
-      suggestionDismissed: false,
-    })
-  })
-
-  it('reports suggestionDismissed once a dismissal timestamp is set', () => {
-    const dto = translationStateFrom(makeConversation({ translationDismissedAt: new Date() }))
-    expect(dto.suggestionDismissed).toBe(true)
-  })
-
-  it('null-coalesces an undefined translationEnabled / detectedCustomerLanguage', () => {
-    // makeConversation casts a partial object, so a row shape from before
-    // this migration (missing the new columns) must still degrade cleanly.
-    const dto = translationStateFrom({} as Conversation)
-    expect(dto).toEqual({
-      enabled: false,
-      detectedCustomerLanguage: null,
-      suggestionDismissed: false,
-    })
   })
 })
 

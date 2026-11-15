@@ -69,7 +69,6 @@ const status: LaunchStatus = {
     helpCenter: false,
     statusPage: false,
     integrations: true,
-    assistant: false,
     changelog: false,
   },
 }
@@ -241,7 +240,6 @@ describe('Launch plan page', () => {
         brandingManage: false,
         integrationManage: false,
         helpCenterManage: false,
-        assistantManage: false,
       },
     }
     mount()
@@ -271,7 +269,6 @@ describe('Launch plan page', () => {
         brandingManage: true,
         integrationManage: true,
         helpCenterManage: true,
-        assistantManage: true,
       },
     }
     mount()

@@ -568,17 +568,6 @@ export interface UpdateDeveloperConfigInput {
  * and projected into PublicMessengerConfig; agent-only fields (routing) are
  * stripped from the public projection (see getPublicWidgetConfig).
  */
-/** Web-widget deployment flags. Shared identity lives in settings.assistant_config. */
-export interface AssistantDeploymentConfig {
-  enabled?: boolean
-  respond?: boolean
-}
-
-export interface PublicAssistantConfig extends AssistantDeploymentConfig {
-  name: string
-  avatarUrl: string | null
-}
-
 export interface MessengerConfig {
   /**
    * @deprecated Ignored at read time. Messenger is on when the `supportInbox`
@@ -600,8 +589,6 @@ export interface MessengerConfig {
    * (`reopenOnReply === 'configurable'` on the channel descriptor).
    */
   preventRepliesWhenClosed?: boolean
-  /** AI-assistant display identity (client-safe). */
-  assistant?: AssistantDeploymentConfig
   /**
    * @deprecated Migration-only. The canonical office-hours schedule now lives in
    * the `settings.metadata` bag (see settings.office-hours.ts). This field only
@@ -622,12 +609,7 @@ export interface MessengerConfig {
 }
 
 /** Client-safe subset of MessengerConfig (drops agent-only + deprecated fields). */
-export type PublicMessengerConfig = Omit<
-  MessengerConfig,
-  'routing' | 'officeHours' | 'assistant'
-> & {
-  assistant?: PublicAssistantConfig
-}
+export type PublicMessengerConfig = Omit<MessengerConfig, 'routing' | 'officeHours'>
 
 /**
  * Types of card the widget Home surface can show. Built-in types route to a
@@ -775,7 +757,6 @@ export const DEFAULT_MESSENGER_CONFIG: MessengerConfig = {
   // Admins pause replies under Automation → Agent. The widget master stays
   // off until Support is turned on (or Show on your website) so a pasted
   // snippet does not go live by itself.
-  assistant: { enabled: true, respond: true },
 }
 
 export const DEFAULT_WIDGET_CONFIG: WidgetConfig = {
@@ -806,7 +787,6 @@ export const LEGACY_WIDGET_CONFIG: WidgetConfig = {
   messenger: {
     ...DEFAULT_MESSENGER_CONFIG,
     enabled: false,
-    assistant: { enabled: true, respond: false },
   },
 }
 
@@ -933,24 +913,6 @@ export const DEFAULT_HELP_CENTER_LOCALES_CONFIG: HelpCenterLocalesConfig = {
   chrome: {},
 }
 
-/**
- * Auto-translate (domains/languages §H3, fast-follow). Off by default. When
- * on, publishing a base-locale article queues a per-additional-locale
- * translation job through the BYOK AI client; results are written as DRAFT
- * translations only (an editor must publish them). `protectedTerms` are
- * glossary entries (product name, technical terms) the translation prompt
- * is instructed never to translate.
- */
-export interface HelpCenterAutoTranslateConfig {
-  enabled: boolean
-  protectedTerms: string[]
-}
-
-export const DEFAULT_HELP_CENTER_AUTO_TRANSLATE_CONFIG: HelpCenterAutoTranslateConfig = {
-  enabled: false,
-  protectedTerms: [],
-}
-
 /** An admin-configured link rendered in the portal header on help center pages. */
 export interface HelpCenterHeaderLink {
   label: string
@@ -972,7 +934,6 @@ export interface HelpCenterConfig {
   headerLinks: HelpCenterHeaderLink[]
   domain: HelpCenterDomainConfig
   locales: HelpCenterLocalesConfig
-  autoTranslate: HelpCenterAutoTranslateConfig
   seo: HelpCenterSeoConfig
 }
 
@@ -983,7 +944,6 @@ export const DEFAULT_HELP_CENTER_CONFIG: HelpCenterConfig = {
   headerLinks: [],
   domain: DEFAULT_HELP_CENTER_DOMAIN_CONFIG,
   locales: DEFAULT_HELP_CENTER_LOCALES_CONFIG,
-  autoTranslate: DEFAULT_HELP_CENTER_AUTO_TRANSLATE_CONFIG,
   seo: DEFAULT_HELP_CENTER_SEO_CONFIG,
 }
 

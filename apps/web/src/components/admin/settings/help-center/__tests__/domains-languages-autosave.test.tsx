@@ -19,7 +19,6 @@ const fns = vi.hoisted(() => ({
   updateDomain: vi.fn(),
   verifyDomain: vi.fn(),
   updateChrome: vi.fn(),
-  updateAutoTranslate: vi.fn(),
   deleteRule: vi.fn(),
 }))
 
@@ -34,7 +33,6 @@ vi.mock('@/lib/server/functions/help-center-settings', () => ({
   enableHelpCenterLocaleFn: vi.fn(),
   disableHelpCenterLocaleFn: vi.fn(),
   updateHelpCenterLocaleChromeFn: fns.updateChrome,
-  updateHelpCenterAutoTranslateFn: fns.updateAutoTranslate,
 }))
 vi.mock('@/lib/server/functions/help-center-redirect-rules', () => ({
   listRedirectRulesFn: vi.fn(),
@@ -100,7 +98,6 @@ function typeAndBlur(input: HTMLElement, value: string) {
 beforeEach(() => {
   fns.updateDomain.mockResolvedValue({})
   fns.updateChrome.mockResolvedValue({})
-  fns.updateAutoTranslate.mockResolvedValue({})
   fns.deleteRule.mockResolvedValue({})
 })
 
@@ -209,37 +206,6 @@ describe('Help Center domains and languages autosave', () => {
     })
   })
 
-  describe('overlapping saves', () => {
-    it('runs a terms save and the auto-translate toggle one after another', async () => {
-      const order: string[] = []
-      let releaseFirst!: () => void
-      fns.updateAutoTranslate.mockImplementation(
-        (arg: { data: { enabled?: boolean; protectedTerms?: string[] } }) => {
-          const label = arg.data.protectedTerms ? 'terms' : 'toggle'
-          order.push(`start ${label}`)
-          return new Promise((resolve) => {
-            const done = () => {
-              order.push(`end ${label}`)
-              resolve({})
-            }
-            if (label === 'terms') releaseFirst = done
-            else done()
-          })
-        }
-      )
-      renderTab()
-      typeAndBlur(screen.getByLabelText('Protected terms'), 'API')
-      await waitFor(() => expect(order).toEqual(['start terms']))
-      fireEvent.click(screen.getByRole('switch', { name: /Auto-translate on publish/ }))
-      await new Promise((resolve) => setTimeout(resolve, 30))
-      expect(order).toEqual(['start terms'])
-      releaseFirst()
-      await waitFor(() =>
-        expect(order).toEqual(['start terms', 'end terms', 'start toggle', 'end toggle'])
-      )
-    })
-  })
-
   describe('language chrome', () => {
     function openChrome() {
       renderTab()
@@ -278,42 +244,6 @@ describe('Help Center domains and languages autosave', () => {
       await new Promise((resolve) => setTimeout(resolve, 30))
       expect(toastError).toHaveBeenCalledTimes(1)
       expect(toastError).toHaveBeenCalledWith("Couldn't save. Try again.")
-    })
-  })
-
-  describe('protected terms', () => {
-    it('saves the trimmed, non-empty lines on blur', async () => {
-      renderTab()
-      typeAndBlur(screen.getByLabelText('Protected terms'), ' Quackback \n\nAPI\n')
-      await waitFor(() => expect(fns.updateAutoTranslate).toHaveBeenCalledTimes(1))
-      expect(fns.updateAutoTranslate).toHaveBeenCalledWith({
-        data: { protectedTerms: ['Quackback', 'API'] },
-      })
-    })
-
-    it('never sends a term longer than 100 characters', async () => {
-      renderTab()
-      typeAndBlur(screen.getByLabelText('Protected terms'), `ok\n${'x'.repeat(101)}`)
-      await new Promise((resolve) => setTimeout(resolve, 30))
-      expect(fns.updateAutoTranslate).not.toHaveBeenCalled()
-      expect(screen.getByRole('alert').textContent).toMatch(/100/)
-    })
-
-    it('never sends more than 100 terms', async () => {
-      renderTab()
-      const many = Array.from({ length: 101 }, (_, i) => `t${i}`).join('\n')
-      typeAndBlur(screen.getByLabelText('Protected terms'), many)
-      await new Promise((resolve) => setTimeout(resolve, 30))
-      expect(fns.updateAutoTranslate).not.toHaveBeenCalled()
-    })
-
-    it('raises the shared toast exactly once when the save fails', async () => {
-      fns.updateAutoTranslate.mockRejectedValue(new Error('boom'))
-      renderTab()
-      typeAndBlur(screen.getByLabelText('Protected terms'), 'API')
-      await waitFor(() => expect(toastError).toHaveBeenCalledTimes(1))
-      await new Promise((resolve) => setTimeout(resolve, 30))
-      expect(toastError).toHaveBeenCalledTimes(1)
     })
   })
 

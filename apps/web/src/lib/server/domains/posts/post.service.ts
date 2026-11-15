@@ -303,15 +303,6 @@ export async function createPost(
     })
   }
 
-  // AI auto-tagging: evaluate the post against every tag carrying an AI
-  // prompt. Fire-and-forget like the embedding regen in updatePost — the
-  // service degrades to a no-op on any AI failure and never blocks creation.
-  // A test idea spends no AI tokens.
-  if (!testIdea)
-    import('./post.autotag')
-      .then(({ autoTagPost }) => autoTagPost(post.id, post.title, post.content ?? ''))
-      .catch((err) => log.error({ err, post_id: post.id }, 'ai auto-tag failed'))
-
   if (!options?.skipDispatch) {
     // Auto-subscribe the author to their own post. Runs even when held for
     // moderation so the author receives notifications on approval/rejection.
@@ -461,15 +452,6 @@ export async function updatePost(
     updatedPost = result
   } else {
     updatedPost = existingPost
-  }
-
-  // Regenerate embedding (and cascade to merge check) if title or content changed
-  if (input.title !== undefined || input.content !== undefined || input.contentJson !== undefined) {
-    import('@/lib/server/domains/embeddings/embedding.service')
-      .then(({ generatePostEmbedding }) =>
-        generatePostEmbedding(id, updatedPost.title, updatedPost.content)
-      )
-      .catch((err) => log.error({ err, post_id: id }, 'embedding regen failed'))
   }
 
   // Update tags if provided

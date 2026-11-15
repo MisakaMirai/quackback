@@ -25,62 +25,6 @@ import { integrations } from './integrations'
 import { companies } from './companies'
 import { roles } from './rbac'
 
-export interface StoredAssistantVoice {
-  tone: string
-  responseLength: string
-  additionalInstructions: string
-}
-
-/**
- * Structural twin of `AssistantConfig` (z.infer of `assistantConfigSchema` in
- * apps/web `lib/shared/assistant/config.ts`). packages/db can't import apps/web,
- * so this hand-written interface mirrors that schema's shape with widened
- * primitives (string/number instead of the enum/literal types). A drift tripwire
- * in apps/web (`lib/shared/assistant/__tests__/config.test.ts`) asserts the two
- * stay structurally identical — edit both sides together.
- */
-export interface StoredAssistantConfig {
-  version: number
-  identity: { name: string; avatarUrl: string | null }
-  agents: {
-    workspace: {
-      capabilities: { qa: boolean }
-      knowledge: StoredAssistantConfig['agents']['copilot']['knowledge']
-      toolRules: Record<string, string>
-      instructions: string
-      slack: { enabled: boolean; respondTo: string; allowUnlinkedPublicQa: boolean }
-    }
-    agent: {
-      voice: StoredAssistantVoice
-      knowledge: {
-        helpCenter: boolean
-        posts: boolean
-        changelog: boolean
-        documents: boolean
-        status: boolean
-      }
-      toolRules: Record<string, string>
-    }
-    copilot: {
-      capabilities: { qa: boolean }
-      knowledge: {
-        helpCenter: boolean
-        posts: boolean
-        pastConversations: boolean
-        internalNotes: boolean
-        tickets: boolean
-        changelog: boolean
-        documents: boolean
-        status: boolean
-      }
-      toolRules: Record<string, string>
-    }
-  }
-}
-
-/**
- * User table - User identities for the application
- */
 export const user = pgTable(
   'user',
   {
@@ -383,62 +327,6 @@ export const settings = pgTable('settings', {
    * packages/db/src/types.ts for the source-of-truth shape.
    */
   setupState: text('setup_state'),
-  /**
-   * Versioned AI-agent identity and behavior configuration. The application
-   * validates this JSONB value with the client-safe V3 schema before use.
-   */
-  assistantConfig: jsonb('assistant_config')
-    .$type<StoredAssistantConfig>()
-    .notNull()
-    .default({
-      version: 4,
-      identity: { name: 'Quinn', avatarUrl: null },
-      agents: {
-        workspace: {
-          capabilities: { qa: true },
-          knowledge: {
-            helpCenter: true,
-            posts: true,
-            pastConversations: true,
-            internalNotes: true,
-            tickets: true,
-            changelog: true,
-            documents: true,
-            status: true,
-          },
-          toolRules: {},
-          instructions: '',
-          slack: { enabled: false, respondTo: 'mentions_and_dms', allowUnlinkedPublicQa: false },
-        },
-        agent: {
-          voice: { tone: 'balanced', responseLength: 'balanced', additionalInstructions: '' },
-          knowledge: {
-            helpCenter: true,
-            posts: false,
-            changelog: false,
-            documents: true,
-            status: false,
-          },
-          toolRules: {},
-        },
-        copilot: {
-          capabilities: { qa: true },
-          knowledge: {
-            helpCenter: true,
-            posts: true,
-            pastConversations: true,
-            internalNotes: true,
-            tickets: true,
-            changelog: true,
-            documents: true,
-            status: true,
-          },
-          toolRules: {},
-        },
-      },
-    }),
-  /** Optimistic-concurrency token incremented with every assistant config write. */
-  assistantConfigRevision: integer('assistant_config_revision').notNull().default(1),
   /**
    * Widget configuration (JSON)
    * Structure: { enabled, defaultBoard?, position?, buttonText?, identifyVerification? }

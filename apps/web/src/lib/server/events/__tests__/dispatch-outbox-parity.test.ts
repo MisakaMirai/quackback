@@ -340,14 +340,6 @@ const cases: Array<{ type: string; run: () => Promise<void> }> = [
       ),
   },
   {
-    type: 'assistant.handed_off',
-    run: () => d.dispatchAssistantHandedOff(actor(), createId('conversation'), 'stuck'),
-  },
-  {
-    type: 'assistant.resolved',
-    run: () => d.dispatchAssistantResolved(actor(), createId('conversation'), 'resolved_confirmed'),
-  },
-  {
     type: 'conversation.customer_unresponsive',
     run: () => {
       const c = convRef()

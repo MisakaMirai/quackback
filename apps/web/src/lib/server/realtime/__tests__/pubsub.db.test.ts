@@ -115,7 +115,7 @@ describe('publish → subscribe', () => {
     // a large event would do.
     await expect(
       testSql()`SELECT pg_notify('quackback_realtime', ${'y'.repeat(9_000)})`
-    ).rejects.toThrow(/payload string too long/i)
+    ).rejects.toThrow(/payload string too long|载荷字符串过长/i)
   })
 })
 

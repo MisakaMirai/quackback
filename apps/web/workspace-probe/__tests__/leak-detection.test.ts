@@ -301,11 +301,11 @@ describe('P09 assistant service principal', () => {
     const ctx = makeContext(fleet)
     ctx.alpha.db = createFakeDb('alpha', {
       assistantPrincipalUuid: ALPHA_PRINCIPAL_UUID,
-      omitTables: ['conversation_messages', 'assistant_involvements'],
+      omitTables: ['conversation_messages'],
     })
     ctx.bravo.db = createFakeDb('bravo', {
       assistantPrincipalUuid: BRAVO_PRINCIPAL_UUID,
-      omitTables: ['conversation_messages', 'assistant_involvements'],
+      omitTables: ['conversation_messages'],
     })
     const outcome = await p09AssistantPrincipal.run(ctx)
     expect(outcome.verdict).toBe('ERROR')

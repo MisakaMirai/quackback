@@ -74,10 +74,7 @@ describe('the scanner is looking at something', () => {
       'apps/web/src/lib/server/storage/s3.ts#s3Clients',
       'apps/web/src/lib/server/domains/analytics/visitor-hash.ts#cachedSalts',
       'apps/web/src/lib/server/domains/settings/tier-limits.service.ts#cachedLimits',
-      'apps/web/src/lib/server/domains/ai/config.ts#openai',
       'apps/web/src/lib/server/jobs/worker.ts#loops',
-      'apps/web/src/lib/server/domains/workflows/workflow.service.ts#hasLiveWorkflowCache',
-      'apps/web/src/lib/server/domains/workflows/workflow.service.ts#liveAttributeKeysCache',
       'apps/web/src/lib/server/realtime/stream-connection-limit.ts#streamLimiter',
       'apps/web/src/routes/api/health.ready.ts#migrationsKnownUpToDate',
       'apps/web/src/routes/api/auth/$.ts#registrationAttempts',
@@ -163,7 +160,10 @@ describe('the ledger is a decision record, not a rubber stamp', () => {
 
 describe('MODULE-STATE.md', () => {
   it('matches the tree', () => {
-    const golden = readFileSync(join(__dirname, '..', 'MODULE-STATE.md'), 'utf8')
+    const golden = readFileSync(join(__dirname, '..', 'MODULE-STATE.md'), 'utf8').replace(
+      /\r\n/g,
+      '\n'
+    )
     expect(renderLedgerDoc(result) + '\n').toBe(golden)
   })
 })

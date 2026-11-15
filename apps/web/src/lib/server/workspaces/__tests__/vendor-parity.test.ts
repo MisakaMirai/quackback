@@ -58,7 +58,9 @@ const CP_TENANCY =
   process.env.QUACKBACK_CP_TENANCY_DIR ?? '/home/james/quackback-cp/src/lib/server/tenancy'
 
 function digest(path: string): string {
-  return createHash('sha256').update(readFileSync(path)).digest('hex')
+  return createHash('sha256')
+    .update(readFileSync(path, 'utf8').replace(/\r\n/g, '\n'))
+    .digest('hex')
 }
 
 describe('vendored control-plane contract', () => {
@@ -81,8 +83,8 @@ describe('vendored control-plane contract', () => {
   it.runIf(cpPresent).each(Object.keys(VENDORED))(
     '%s is byte-identical to the control plane copy',
     (file) => {
-      expect(readFileSync(join(vendorDir, file), 'utf8')).toBe(
-        readFileSync(join(CP_TENANCY, file), 'utf8')
+      expect(readFileSync(join(vendorDir, file), 'utf8').replace(/\r\n/g, '\n')).toBe(
+        readFileSync(join(CP_TENANCY, file), 'utf8').replace(/\r\n/g, '\n')
       )
     }
   )

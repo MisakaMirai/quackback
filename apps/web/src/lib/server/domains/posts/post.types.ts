@@ -153,7 +153,7 @@ export interface InboxPostListParams {
   searchMode?: PostSearchMode
   /** Show only soft-deleted posts (within 30-day restorable window) */
   showDeleted?: boolean
-  /** Leave out teammates' test ideas (API, MCP and Copilot reads). */
+  /** Leave out teammates' test ideas (API and MCP reads). */
   excludeTest?: boolean
   cursor?: string
   limit?: number

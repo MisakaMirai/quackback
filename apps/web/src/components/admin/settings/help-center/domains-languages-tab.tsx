@@ -35,9 +35,7 @@ import {
   useEnableHelpCenterLocale,
   useDisableHelpCenterLocale,
   useUpdateHelpCenterLocaleChrome,
-  useUpdateHelpCenterAutoTranslate,
 } from '@/lib/client/mutations/settings'
-import { Textarea } from '@/components/ui/textarea'
 import { listArticlesFn } from '@/lib/server/functions/help-center'
 import { SUPPORTED_LOCALES, type SupportedLocale } from '@/lib/shared/i18n'
 import type { HelpCenterConfig } from '@/lib/shared/types/settings'
@@ -133,7 +131,6 @@ export function DomainsLanguagesTab({ config }: DomainsLanguagesTabProps) {
       <RedirectRulesCard />
       <IndexingCard indexable={config.seo.indexable} />
       <LocalesCard locales={config.locales} />
-      <AutoTranslateCard autoTranslate={config.autoTranslate} />
     </div>
   )
 }
@@ -655,83 +652,5 @@ function LocaleRow({
         </div>
       )}
     </li>
-  )
-}
-
-// ============================================================================
-// Auto-translate (domains/languages §H3)
-// ============================================================================
-
-function AutoTranslateCard({
-  autoTranslate,
-}: {
-  autoTranslate: HelpCenterConfig['autoTranslate']
-}) {
-  const updateAutoTranslate = useUpdateHelpCenterAutoTranslate()
-  const [enabled, setEnabled] = useState(autoTranslate.enabled)
-  const [protectedTermsText, setProtectedTermsText] = useState(
-    autoTranslate.protectedTerms.join('\n')
-  )
-  const [termsError, setTermsError] = useState<string | null>(null)
-
-  function handleToggle(next: boolean) {
-    setEnabled(next)
-    updateAutoTranslate.mutate({ enabled: next }, { onError: () => setEnabled(!next) })
-  }
-
-  function handleSaveTerms() {
-    const terms = parseProtectedTerms(protectedTermsText)
-    if (terms.join('\n') === autoTranslate.protectedTerms.join('\n')) {
-      setTermsError(null)
-      return
-    }
-    const error = protectedTermsError(terms)
-    setTermsError(error)
-    if (error) return
-    updateAutoTranslate.mutate({ protectedTerms: terms })
-  }
-
-  return (
-    <SettingsCard
-      title="Auto-translate"
-      description="Queue an AI translation draft for each enabled language when you publish an article."
-    >
-      <div className="space-y-4">
-        <SettingRows>
-          <SettingRow
-            label="Auto-translate on publish"
-            htmlFor="hc-auto-translate"
-            description="Writes a draft translation per enabled language, never auto-published"
-            control={
-              <Switch id="hc-auto-translate" checked={enabled} onCheckedChange={handleToggle} />
-            }
-          />
-        </SettingRows>
-
-        <div className="space-y-1.5">
-          <Label htmlFor="hc-protected-terms">Protected terms</Label>
-          <p className="text-xs text-muted-foreground">
-            One per line. Never translated (product name, technical terms).
-          </p>
-          <Textarea
-            id="hc-protected-terms"
-            value={protectedTermsText}
-            onChange={(e) => {
-              setProtectedTermsText(e.target.value)
-              setTermsError(null)
-            }}
-            onBlur={handleSaveTerms}
-            rows={4}
-            placeholder="Quackback&#10;API&#10;webhook"
-            aria-invalid={termsError ? true : undefined}
-          />
-          {termsError && (
-            <p role="alert" className="text-xs text-destructive">
-              {termsError}
-            </p>
-          )}
-        </div>
-      </div>
-    </SettingsCard>
   )
 }

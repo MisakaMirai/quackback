@@ -27,12 +27,6 @@ const { dispatchConversationAttributeChanged } = vi.hoisted(() => ({
 }))
 vi.mock('@/lib/server/events/dispatch', () => ({ dispatchConversationAttributeChanged }))
 
-// attributeChangeActor resolves the AI actor's displayName from the same V2
-// runtime config snapshot as production assistant turns. Mock that boundary so
-// this service suite does not need a real settings row in every transaction.
-const { getAssistantRuntimeConfig } = vi.hoisted(() => ({ getAssistantRuntimeConfig: vi.fn() }))
-vi.mock('@/lib/server/domains/settings/settings.assistant', () => ({ getAssistantRuntimeConfig }))
-
 import { setConversationAttribute } from '../set-attribute.service'
 import {
   createConversationAttribute,
@@ -100,9 +94,6 @@ async function conversationAttributes(id: ConversationId): Promise<Record<string
 describe.skipIf(!fixture.available)('setConversationAttribute (real DB, rolled back)', () => {
   beforeEach(() => {
     dispatchConversationAttributeChanged.mockClear()
-    getAssistantRuntimeConfig.mockReset().mockResolvedValue({
-      config: { identity: { name: 'Quinn' } },
-    })
     return fixture.begin()
   })
   afterEach(fixture.rollback)
@@ -323,40 +314,6 @@ describe.skipIf(!fixture.available)('setConversationAttribute (real DB, rolled b
   // describe with its own fixture.close() in afterAll would tear down the
   // shared `fixture` singleton before this block's tests ever ran.
   describe('conversation.attribute_changed emission (workflow trigger source)', () => {
-    it('emits for an AI write, service-actored', async () => {
-      await createConversationAttribute({ key: 'plan', label: 'Plan', fieldType: 'text' })
-      const conversationId = await seedConversation()
-
-      await setConversationAttribute({ conversationId }, 'plan', 'starter', 'ai')
-
-      expect(dispatchConversationAttributeChanged).toHaveBeenCalledTimes(1)
-      expect(dispatchConversationAttributeChanged).toHaveBeenCalledWith(
-        { type: 'service', displayName: 'Quinn' },
-        conversationRef(conversationId),
-        'plan',
-        'starter',
-        'ai'
-      )
-    })
-
-    it('emits for an AI write with the CONFIGURED assistant name, not a hardcoded "Quinn"', async () => {
-      await createConversationAttribute({ key: 'plan', label: 'Plan', fieldType: 'text' })
-      const conversationId = await seedConversation()
-      getAssistantRuntimeConfig.mockResolvedValue({
-        config: { identity: { name: 'Aria' } },
-      })
-
-      await setConversationAttribute({ conversationId }, 'plan', 'starter', 'ai')
-
-      expect(dispatchConversationAttributeChanged).toHaveBeenCalledWith(
-        { type: 'service', displayName: 'Aria' },
-        conversationRef(conversationId),
-        'plan',
-        'starter',
-        'ai'
-      )
-    })
-
     it('emits for a teammate write, as a user actor', async () => {
       await createConversationAttribute({ key: 'plan', label: 'Plan', fieldType: 'text' })
       const conversationId = await seedConversation()

@@ -153,14 +153,7 @@ function SlaSettingsPage() {
 
   const archiveMutation = useMutation({
     mutationFn: (id: string) => archiveSlaPolicyFn({ data: { id } }),
-    onSuccess: (result) => {
-      if (!result.ok) {
-        toast.error(
-          `In use by live ${result.workflows.length === 1 ? 'workflow' : 'workflows'}: ` +
-            `${result.workflows.map((w) => w.name).join(', ')}. Pause or edit them first.`
-        )
-        return
-      }
+    onSuccess: () => {
       toast.success('Policy archived')
       refresh()
     },
@@ -302,7 +295,6 @@ function PolicyRow({
   onRestore: () => void
 }) {
   const isArchived = !!policy.archivedAt
-  const usedBy = policy.usedByWorkflows
   const details = [
     slaTargetsSummary(policy),
     policy.pauseOnSnooze ? 'Pauses on snooze' : null,
@@ -314,16 +306,6 @@ function PolicyRow({
       title={policy.name}
       meta={details.join(' · ')}
       badges={officeHoursEnabled && <Badge variant="secondary">Office hours</Badge>}
-      trailing={
-        usedBy.length > 0 && (
-          <span
-            className="cursor-default underline decoration-dotted underline-offset-2"
-            title={usedBy.map((w) => `${w.name} (${w.status})`).join('\n')}
-          >
-            Used by {usedBy.length} {usedBy.length === 1 ? 'workflow' : 'workflows'}
-          </span>
-        )
-      }
       actions={
         isArchived
           ? [{ label: 'Restore', onSelect: onRestore }]

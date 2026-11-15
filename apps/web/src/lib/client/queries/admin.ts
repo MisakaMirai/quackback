@@ -31,7 +31,6 @@ import { fetchPostWithDetails, fetchPostVotersFn } from '@/lib/server/functions/
 import { fetchMergePreviewFn } from '@/lib/server/functions/post-merge'
 import { fetchPublicStatuses } from '@/lib/server/functions/portal'
 import type { PortalUserListParams } from '@/lib/shared/types'
-import { mergeSuggestionQueries } from '@/lib/client/queries/signals'
 import { postOwnerQueries } from '@/lib/client/queries/post-owner'
 import { postExternalLinksQuery } from '@/lib/client/hooks/use-post-external-links-query'
 import { customerContextQuery } from '@/lib/client/queries/customer-context'
@@ -46,7 +45,6 @@ import { readsToLoad, seedReads } from '@/lib/client/queries/read-batch'
 function postPanelQueries(postId: PostId, authorEmail: string | null | undefined) {
   return {
     voters: adminQueries.postVoters(postId),
-    mergeSuggestions: mergeSuggestionQueries.forPost(postId),
     externalLinks: postExternalLinksQuery(postId),
     ownerCandidates: postOwnerQueries.candidates(),
     customerContext: authorEmail ? customerContextQuery(authorEmail) : null,
@@ -305,7 +303,6 @@ export const adminQueries = {
           updatedAt: new Date(data.updatedAt),
           deletedAt: data.deletedAt ? new Date(data.deletedAt) : null,
           eta: data.eta ? new Date(data.eta) : null,
-          summaryUpdatedAt: data.summaryUpdatedAt ? new Date(data.summaryUpdatedAt) : null,
           comments: data.comments.map(deserializeComment),
           pinnedComment: data.pinnedComment
             ? { ...data.pinnedComment, createdAt: new Date(data.pinnedComment.createdAt) }
@@ -352,9 +349,6 @@ export const adminQueries = {
             createdAt: new Date(data.post.createdAt),
             updatedAt: new Date(data.post.updatedAt),
             deletedAt: data.post.deletedAt ? new Date(data.post.deletedAt) : null,
-            summaryUpdatedAt: data.post.summaryUpdatedAt
-              ? new Date(data.post.summaryUpdatedAt)
-              : null,
             comments: data.post.comments.map(deserializeComment),
             pinnedComment: data.post.pinnedComment
               ? {

@@ -30,7 +30,6 @@ vi.mock('@/components/admin/users/block-person-control', () => ({
 }))
 vi.mock('@/lib/server/functions/conversation', () => ({
   listConversationsForUserFn: vi.fn().mockResolvedValue({ conversations: [], hasMore: false }),
-  getConversationAssistantActivityFn: vi.fn().mockResolvedValue(null),
 }))
 vi.mock('@/lib/server/functions/admin', () => ({
   getPortalUserFn: vi.fn().mockResolvedValue(null),
@@ -111,7 +110,7 @@ describe('InboxDetailPanel ticket date field', () => {
             onSelectItem={() => {}}
             onTrackAsFeedback={() => {}}
             onCreateTicket={() => {}}
-            onInsertFromCopilot={() => {}}
+
             visible
           />
         </QueryClientProvider>

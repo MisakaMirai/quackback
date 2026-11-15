@@ -301,7 +301,6 @@ export {
   conversations,
   conversationsRelations,
   conversationMessages,
-  workspaceAssistantThreads,
   conversationMessagesRelations,
   conversationTags,
   conversationTagsRelations,
@@ -314,14 +313,8 @@ export {
   conversationMessageReactionsRelations,
   conversationMessageFlags,
   conversationMessageFlagsRelations,
-  conversationMessageTranslations,
-  conversationMessageTranslationsRelations,
   // Schema tables - past-conversation summaries (Quinn grounding, P2-A.4)
-  conversationSummaries,
-  conversationSummariesRelations,
   // Schema tables - closed-ticket resolution summaries (Quinn grounding, Phase 4)
-  ticketSummaries,
-  ticketSummariesRelations,
   // Schema tables - custom saved inbox views + per-user pins
   conversationViews,
   conversationViewPins,
@@ -348,8 +341,6 @@ export {
   onboardingEmails,
   unsubscribeTokensRelations,
   // Schema tables - sentiment
-  postSentiment,
-  postSentimentRelations,
   // Schema tables - api keys
   apiKeys,
   apiKeysRelations,
@@ -391,13 +382,10 @@ export {
   // Schema tables - company attributes
   companyAttributeDefinitions,
   // Schema tables - merge suggestions
-  mergeSuggestions,
-  mergeSuggestionsRelations,
   // Schema tables - activity
   postActivity,
   postActivityRelations,
   // Schema tables - ai usage log
-  aiUsageLog,
   emailLog,
   // Schema tables - analytics
   analyticsDailyStats,
@@ -446,38 +434,10 @@ export {
   statusIncidentTemplates,
   // Schema tables - push devices
   pushDevices,
-  // Schema tables - assistant (Quinn) involvement record
-  assistantInvolvements,
-  ASSISTANT_INVOLVEMENT_TRIGGERS,
-  ASSISTANT_INVOLVEMENT_STATUSES,
-  ASSISTANT_HANDOFF_REASONS,
-  ASSISTANT_MODEL_HANDOFF_REASONS,
-  // Schema tables - assistant guidance rules
-  assistantGuidanceRules,
-  connectors,
-  connectorsRelations,
-  type CachedConnectorTool,
-  type ConnectorToolPolicies,
-  type ConnectorAssignments,
-  type ConnectorAuthMode,
-  type ConnectorStatus,
-  type ConnectorToolPolicy,
-  agentSkills,
-  agentSkillsRelations,
-  type SkillAssignments,
-  // Schema tables - assistant snippets
-  assistantSnippets,
-  assistantSnippetsRelations,
-  // Schema tables - assistant knowledge documents
-  assistantDocuments,
-  assistantDocumentsRelations,
   files,
   filesRelations,
   // Schema tables - assistant web sources
-  assistantWebSources,
   // Schema tables - assistant pending actions
-  assistantPendingActions,
-  ASSISTANT_PENDING_ACTION_STATUSES,
   APPROVAL_RISKS,
   APPROVAL_REQUEST_CHANNELS,
   APPROVAL_DECISION_CHANNELS,
@@ -487,12 +447,8 @@ export {
   type ApprovalDecisionChannel,
   type ApprovalExecutionState,
   // Schema tables - assistant tool-call audit log
-  assistantToolCalls,
-  ASSISTANT_TOOL_CALL_STATUSES,
-  // Schema tables - assistant usage events (Copilot outcome loop)
-  assistantEvents,
+  // Retired assistant tables are no longer exported.
   slackUserLinks,
-  slackThreadSessions,
   integrationDeliveries,
   integrationSyncOperations,
   integrationSyncAttempts,
@@ -536,21 +492,7 @@ export {
 } from '@quackback/db/schema-ops'
 
 // Re-export schema types not covered by @quackback/db/types
-export type {
-  AssistantInvolvementSource,
-  AssistantInvolvementStatus,
-  AssistantInvolvementTrigger,
-  AssistantHandoffReason,
-  AssistantPendingActionStatus,
-  AssistantToolCallStatus,
-  AssistantSnippet,
-  AssistantWebSource,
-  ConversationSummary,
-  MacroScope,
-  MacroPriority,
-  MacroSnoozePreset,
-  MacroAction,
-} from '@quackback/db'
+export type { MacroScope, MacroPriority, MacroSnoozePreset, MacroAction } from '@quackback/db'
 export type { ServiceMetadata } from '@quackback/db'
 export type { FileRecord, NewFileRecord } from '@quackback/db'
 export type { IdentityProviderClaimMapping, ClaimRoleMapping } from '@quackback/db'

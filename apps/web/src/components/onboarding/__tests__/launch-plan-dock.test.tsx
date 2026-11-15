@@ -71,7 +71,6 @@ const open: LaunchStatus = {
     helpCenter: true,
     statusPage: false,
     integrations: true,
-    assistant: false,
   },
 }
 // Every chore is done: the plan still waits for a customer.

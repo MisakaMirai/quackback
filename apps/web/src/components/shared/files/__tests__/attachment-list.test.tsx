@@ -82,7 +82,6 @@ describe('AttachmentList', () => {
         attachments: [pdf('a.pdf')],
         createdAt: '2026-01-01T00:00:00.000Z',
         senderType: 'visitor',
-        isAssistant: false,
         author: null,
       },
       {
@@ -91,7 +90,6 @@ describe('AttachmentList', () => {
         attachments: [pdf('b.pdf'), pdf('c.pdf')],
         createdAt: '2026-01-01T00:01:00.000Z',
         senderType: 'agent',
-        isAssistant: false,
         author: { displayName: 'Priya' },
       },
     ]

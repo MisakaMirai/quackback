@@ -25,7 +25,6 @@ import {
   AgentConversationThread,
   type ThreadComposerHandle,
 } from '@/components/conversation/agent-conversation-thread'
-import type { ComposerMode } from '@/components/conversation/composer-ai-actions'
 import {
   agentEventChangesInboxCounts,
   agentEventChangesInboxList,
@@ -116,7 +115,6 @@ import { useDebouncedValue } from '@/lib/client/hooks/use-debounced-value'
 import { useStableCallback } from '@/lib/client/hooks/use-stable-callback'
 import { useInboxListSource } from '@/lib/client/hooks/use-inbox-list-source'
 import { useMediaQuery } from '@/lib/client/hooks/use-media-query'
-import { useCopilotTabGate } from '@/lib/client/hooks/use-copilot-tab-gate'
 import { EmptyState } from '@/components/shared/empty-state'
 import { cn } from '@/lib/shared/utils'
 import {
@@ -125,7 +123,6 @@ import {
   type FeatureFlags,
 } from '@/lib/shared/types/settings'
 import { useFeatureFlag, useWorkspaceSettings } from '@/lib/client/hooks/use-root-context'
-import { QuinnViewHeader } from '@/components/admin/conversation/quinn-view-header'
 import { TestViewHeader } from '@/components/admin/conversation/test-view-header'
 
 // URL is the source of truth for open item + filters (refresh-safe, shareable).
@@ -181,11 +178,6 @@ function validateInboxSearch(search: Record<string, unknown>): InboxSearch {
     // ticket_type id is accepted (a junk value is dropped, never reaching
     // the uuid-backed ticket query).
     ttype: coerceTicketTypeId(typeof search.ttype === 'string' ? search.ttype : undefined),
-    // Quinn-view sub-filter by involvement outcome; only the canonical buckets.
-    ai:
-      search.ai === 'resolved' || search.ai === 'escalated' || search.ai === 'pending'
-        ? search.ai
-        : undefined,
     q:
       typeof search.q === 'string' && search.q
         ? search.q
@@ -209,6 +201,8 @@ function validateInboxSearch(search: Record<string, unknown>): InboxSearch {
         : undefined,
   }
 }
+
+type ComposerMode = 'reply' | 'note'
 
 export const Route = createFileRoute('/admin/inbox')({
   validateSearch: validateInboxSearch,
@@ -287,7 +281,6 @@ export const Route = createFileRoute('/admin/inbox')({
             company,
             sort,
             undefined,
-            search.ai,
             search.channel
           )
         )
@@ -428,7 +421,6 @@ function InboxPage() {
     q: urlQ,
     channel: urlChannel,
     company: urlCompany,
-    ai: urlAi,
     post: urlPost,
   } = Route.useSearch()
 
@@ -738,19 +730,14 @@ function InboxPage() {
 
       // Thread caches: the open thread and any hover-prefetched (or previously
       // opened) thread for this event. Unvisited rows stay untouched. Ephemeral
-      // typing / assistant frames have nothing in the cache to patch.
+      // typing frames have nothing in the cache to patch.
       const conversationId =
         evt.kind === 'conversation'
           ? evt.conversation.id
           : 'conversationId' in evt
             ? evt.conversationId
             : undefined
-      if (
-        conversationId &&
-        evt.kind !== 'typing' &&
-        evt.kind !== 'assistant_activity' &&
-        evt.kind !== 'assistant_delta'
-      ) {
+      if (conversationId && evt.kind !== 'typing') {
         reconcileCachedThread<AgentThreadCache>(
           queryClient,
           conversationKeys.agentThread(conversationId),
@@ -794,19 +781,12 @@ function InboxPage() {
     sort,
     ticketTypeId: urlTicketType,
     activeViewFilters: activeView?.filters,
-    aiBucket: nav.kind === 'view' && nav.view === 'quinn' ? urlAi : undefined,
     isSaved,
     streamConnected,
     channel: urlChannel,
   })
 
-  // Quinn-view sub-filter counts (only fetched while that view is open).
-  const isQuinnView = nav.kind === 'view' && nav.view === 'quinn'
   const isTestView = nav.kind === 'view' && nav.view === 'test'
-  const { data: assistantCounts } = useQuery({
-    ...conversationInboxQueries.assistantCounts(),
-    enabled: isQuinnView,
-  })
 
   // The ticket status catalogue, needed to resolve "close" → the default
   // closed-category status for a ticket target (§3.4). Gated on the same flag
@@ -836,14 +816,7 @@ function InboxPage() {
     return (registryTypes ?? []).filter((t) => !scopeCategory || t.category === scopeCategory)
   }, [isTicketScope, nav, registryTypes])
 
-  // Whether the detail panel's Copilot tab exists for this viewer right now —
-  // the SAME gate InboxDetailPanel renders the tab from (useCopilotTabGate:
-  // copilot.use) plus the ≥xl viewport that renders the panel at all. Gates
-  // the Ask Copilot command-bar row and makes the `q` shortcut a no-op when
-  // there is no panel to open.
-  const copilotTabGate = useCopilotTabGate()
   const isDetailPanelViewport = useMediaQuery(DETAIL_PANEL_MEDIA_QUERY)
-  const copilotAvailable = copilotTabGate && isDetailPanelViewport
 
   // Keep the active scope's memory in sync with what's open, so it's current the
   // moment you switch away. Only remember an item that's actually IN this
@@ -925,22 +898,6 @@ function InboxPage() {
   // target, see `isInboxActionEnabled`).
   const [createTicketToken, setCreateTicketToken] = useState(0)
   const [standaloneCreateTicketOpen, setStandaloneCreateTicketOpen] = useState(false)
-  // Ask Copilot ping (`q` / command bar): the open thread's detail panel
-  // switches to its Copilot tab and focuses the ask input on a bump — the
-  // same token idiom as `createTicketToken`, since only that subtree owns the
-  // tab state and the input node.
-  const [openCopilotToken, setOpenCopilotToken] = useState(0)
-  // A bump aimed at one item must never auto-open Copilot on the NEXT one, so
-  // the token resets to 0 whenever the selection changes. Reset during render
-  // (the adjust-state-while-rendering pattern), not in an effect: the detail
-  // subtree remounts under `key={selectedRef.id}` in this same commit, and its
-  // mount effects would otherwise observe the stale token before an effect
-  // here could clear it. The panel treats 0 as "no pending bump".
-  const copilotTokenItemRef = useRef(selectedId)
-  if (copilotTokenItemRef.current !== selectedId) {
-    copilotTokenItemRef.current = selectedId
-    if (openCopilotToken !== 0) setOpenCopilotToken(0)
-  }
   // Anchor for shift-click range selection.
   const selectAnchor = useRef<string | null>(null)
   // The open thread's composer seam, so the reply/note actions can put the
@@ -1427,12 +1384,6 @@ function InboxPage() {
           // thread the same way a cross-scope deep-link would.
           if (activeLinkedTicket) setSelectedId(activeLinkedTicket.id)
           break
-        case 'copilot':
-          // No-op unless the Copilot tab actually exists for this viewer and
-          // an item is open — never a broken state (mirrors the palette gate
-          // in isInboxActionEnabled).
-          if (copilotAvailable && selectedRef) setOpenCopilotToken((t) => t + 1)
-          break
       }
     },
     [
@@ -1448,7 +1399,6 @@ function InboxPage() {
       setSelectedId,
       applyClose,
       applyReopen,
-      copilotAvailable,
     ]
   )
 
@@ -1476,13 +1426,7 @@ function InboxPage() {
   // (memoized) list header as it was.
   const listHeaderSlot = useMemo(
     () =>
-      isQuinnView ? (
-        <QuinnViewHeader
-          value={urlAi}
-          counts={assistantCounts}
-          onChange={(ai) => updateSearch({ ai, i: undefined, m: undefined })}
-        />
-      ) : isTestView ? (
+      isTestView ? (
         <TestViewHeader
           onDeleted={() => {
             refreshInbox()
@@ -1490,7 +1434,7 @@ function InboxPage() {
           }}
         />
       ) : undefined,
-    [isQuinnView, isTestView, urlAi, assistantCounts, updateSearch, refreshInbox, setNav]
+    [isTestView, refreshInbox, setNav]
   )
 
   // The company refinement, offered only when the workspace has companies.
@@ -1580,7 +1524,6 @@ function InboxPage() {
             onOpenPost={openPost}
             isVisitorTyping={false}
             isOtherAgentTyping={false}
-            openCopilotToken={openCopilotToken}
             composerRef={composerHandleRef}
             detailPanelShown={isDetailPanelViewport}
           />
@@ -1596,7 +1539,6 @@ function InboxPage() {
             isVisitorTyping={visitorTyping}
             isOtherAgentTyping={otherAgentTyping}
             createTicketToken={createTicketToken}
-            openCopilotToken={openCopilotToken}
             composerRef={composerHandleRef}
             detailPanelShown={isDetailPanelViewport}
           />
@@ -1648,13 +1590,8 @@ function InboxPage() {
         hasTicketTarget={hasTicketTarget}
         hasLinkedTicket={!!activeLinkedTicket}
         linkedTicketNumber={activeLinkedTicket?.number}
-        copilotAvailable={copilotAvailable}
       />
-      <ShortcutHelpPanel
-        open={helpOpen}
-        onOpenChange={setHelpOpen}
-        copilotAvailable={copilotAvailable}
-      />
+      <ShortcutHelpPanel open={helpOpen} onOpenChange={setHelpOpen} />
     </div>
   )
 }

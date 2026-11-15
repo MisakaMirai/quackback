@@ -25,8 +25,8 @@ import {
   requireSettings,
   invalidateSettingsCache,
 } from '@/lib/server/domains/settings/settings.helpers'
-import { requireAreaPermission } from '@/lib/server/domains/assistant/settings-proposals.areas'
-import { prepareSettingsChanges } from '@/lib/server/domains/assistant/settings-proposals.service'
+import { requireAreaPermission } from './settings-change.areas'
+import { prepareSettingsChanges } from './settings-change.service'
 import {
   getSettingsArea,
   parseAreaPatch,

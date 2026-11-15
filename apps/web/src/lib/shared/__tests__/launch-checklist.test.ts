@@ -104,7 +104,6 @@ describe('buildLaunchTasks', () => {
       'create-board',
       'publish-changelog',
       'connect-messenger',
-      'set-up-quinn',
       'help-article',
       'add-status-service',
     ])
@@ -120,7 +119,7 @@ describe('buildLaunchTasks', () => {
     expect(configured.find((task) => task.id === 'connect-messenger')?.isCompleted).toBe(false)
     expect(
       configured.filter((task) => task.classification === 'prerequisite').map((t) => t.id)
-    ).toEqual(['create-board', 'connect-messenger', 'set-up-quinn'])
+    ).toEqual(['create-board', 'connect-messenger'])
   })
 
   it('completes Connect Messenger when the SDK is observed and the widget is on', () => {
@@ -131,61 +130,6 @@ describe('buildLaunchTasks', () => {
       features: { ...noExtraModules, supportInbox: true },
     }).find((row) => row.id === 'connect-messenger')
     expect(task?.isCompleted).toBe(true)
-  })
-
-  describe('Set up the AI agent', () => {
-    const withSupport = { ...base, features: { ...noExtraModules, supportInbox: true } }
-    const quinn = (status: LaunchStatus) =>
-      buildLaunchTasks(status).find((task) => task.id === 'set-up-quinn')
-
-    it('is offered only while the Support inbox is on', () => {
-      expect(quinn(base)).toBeUndefined()
-      expect(quinn(withSupport)).toBeDefined()
-    })
-
-    it('is left out when the plan lacks the assistant or no AI model is configured', () => {
-      expect(
-        quinn({ ...withSupport, features: { ...withSupport.features, assistant: false } })
-      ).toBe(undefined)
-      expect(
-        quinn({ ...withSupport, features: { ...withSupport.features, assistant: true } })
-      ).toBeDefined()
-    })
-
-    it('stays out while the Support inbox is off even when Quinn can answer', () => {
-      expect(quinn({ ...base, features: { ...noExtraModules, assistant: true } })).toBeUndefined()
-    })
-
-    it('is done when the Agent is on and answering, and open otherwise', () => {
-      expect(quinn({ ...withSupport, hasAgentAnswering: true })?.isCompleted).toBe(true)
-      expect(quinn({ ...withSupport, hasAgentAnswering: false })?.isCompleted).toBe(false)
-      expect(quinn(withSupport)?.isCompleted).toBe(false)
-    })
-
-    it('opens the Agent settings for an assistant manager', () => {
-      const task = quinn({ ...withSupport, hasAgentAnswering: false })
-      expect(task?.href).toBe('/admin/settings/agent')
-      expect(task?.actionLabel).toBe('Set up the AI agent')
-      expect(task?.availability).toBe('available')
-    })
-
-    it('is blocked without a link for someone who cannot manage the assistant', () => {
-      const task = quinn({
-        ...withSupport,
-        hasAgentAnswering: false,
-        permissions: {
-          settingsManage: true,
-          boardManage: true,
-          memberManage: true,
-          brandingManage: true,
-          integrationManage: true,
-          helpCenterManage: true,
-          assistantManage: false,
-        },
-      })
-      expect(task?.availability).toBe('blocked')
-      expect(task?.href).toBeUndefined()
-    })
   })
 
   it('blocks the board step at the plan limit', () => {
@@ -217,7 +161,6 @@ describe('buildLaunchTasks', () => {
         brandingManage: false,
         integrationManage: false,
         helpCenterManage: false,
-        assistantManage: false,
       },
     })
     expect(tasks.filter((task) => task.href)).toHaveLength(0)
@@ -251,7 +194,6 @@ describe('buildLaunchTasks', () => {
         brandingManage: true,
         integrationManage: true,
         helpCenterManage: true,
-        assistantManage: true,
       },
     }
     const find = (status: LaunchStatus, id: string) =>

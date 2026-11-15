@@ -224,15 +224,15 @@ describe('MCP tool-call audit', () => {
   })
 
   it('attributes an in-process call to the boundary it runs under', async () => {
-    // The assistant drives the same catalogue in-process for a teammate.
+    // A workflow drives the same catalogue in-process for a teammate.
     const call = register({ handler: async () => jsonResult({ id: COMMENT_ID }) })
     await runWithAuditAttribution(
-      { channel: 'assistant', clientName: 'Quinn', onBehalfOfPrincipalId: PRINCIPAL },
+      { channel: 'workflow', clientName: 'Quinn', onBehalfOfPrincipalId: PRINCIPAL },
       () => call({ postId: POST_ID, content: 'x' })
     )
     expect(mockInsertValues.mock.calls[0][0]).toMatchObject({
       eventType: 'mcp.tool_call',
-      channel: 'assistant',
+      channel: 'workflow',
       clientName: 'Quinn',
       onBehalfOfPrincipalId: PRINCIPAL,
       actorIp: null,

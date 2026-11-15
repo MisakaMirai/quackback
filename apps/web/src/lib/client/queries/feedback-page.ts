@@ -7,7 +7,6 @@ import {
   inboxFacetCountsOptions,
   inboxPostsInfiniteOptions,
 } from '@/lib/client/hooks/use-inbox-query'
-import { mergeSuggestionQueries } from '@/lib/client/queries/signals'
 
 /**
  * Warm what the admin feedback page renders on first paint, for its route
@@ -22,7 +21,6 @@ export function warmFeedbackPage(queryClient: QueryClient, permissions: readonly
     queryClient.ensureQueryData(adminQueries.tags()),
     queryClient.ensureQueryData(adminQueries.statuses()),
     queryClient.ensureQueryData(adminQueries.teamMembers()),
-    queryClient.ensureQueryData(mergeSuggestionQueries.summary()),
     // Warm the moderation count so the pending-moderation banner renders on
     // first paint instead of popping in once the query resolves.
     queryClient.ensureQueryData(adminQueries.moderationStatus()),

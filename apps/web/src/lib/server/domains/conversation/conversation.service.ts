@@ -19,19 +19,17 @@ import {
   sql,
   conversations,
   conversationMessages,
-  ticketConversations,
   principal,
   user,
   type Conversation,
   type ConversationSystemEvent,
   withWorkflowAttribution,
-  type AssistantPendingActionSurface,
   type ConversationMessageMetadata,
 } from '@/lib/server/db'
 import { resolveBlockReply, type BlockReplyInput, type ResolvedBlockReply } from './block-reply'
 import { isTeamMember } from '@/lib/shared/roles'
 import { conversationFilter } from '@/lib/server/policy/conversations'
-import type { ConversationAttachment, ConversationMessageCitation, Team } from '@/lib/server/db'
+import type { ConversationAttachment, Team } from '@/lib/server/db'
 import { getTeam } from '@/lib/server/domains/teams'
 import { isBlocked } from '@/lib/server/domains/principals/blocking'
 import type {
@@ -57,7 +55,6 @@ import {
 } from '@/lib/server/policy/conversation'
 import type { Actor } from '@/lib/server/policy/types'
 import {
-  HANDOFF_REASON_LABELS,
   CONVERSATION_SPAM_FILED_BY_LABELS,
   type ConversationStatus,
   type ConversationPriority,
@@ -66,7 +63,6 @@ import {
   type ConversationDTO,
   type ConversationSide,
   type AgentConversationMessageDTO,
-  type ConversationMessageDTO,
 } from '@/lib/shared/conversation/types'
 import {
   applyVisitorReopenStatus,
@@ -101,7 +97,6 @@ import { realEmail } from '@/lib/shared/anonymous-email'
 import {
   conversationToDTO,
   toMessageDTO,
-  authorFromInput,
   resolveAuthor,
   resolveAuthorAudiences,
 } from './conversation.query'
@@ -116,8 +111,6 @@ import {
   emitConversationCsatSubmitted,
   emitConversationCsatCommentAdded,
 } from './conversation.webhooks'
-import { dispatchAssistantHandedOff, buildEventActor } from '@/lib/server/events/dispatch'
-import { classifyConversationAttributes } from '@/lib/server/domains/conversation-attributes/ai-classification.service'
 import { extractMentions } from '@/lib/server/domains/posts/extract-mentions'
 import { syncConversationMessageMentions } from './sync-conversation-mentions'
 import { sanitizeTiptapContent } from '@/lib/server/sanitize-tiptap'
@@ -351,9 +344,6 @@ export async function sendVisitorMessage(
     : (input.metadata ?? null)
 
   let created = false
-  // The conversation's status BEFORE this message, so the assistant trigger can
-  // tell a genuinely reopened thread from one a human deliberately closed.
-  let priorStatus: ConversationStatus | null = null
   const txResult = await db.transaction(async (tx) => {
     let conversation: Conversation
     if (input.conversationId) {
@@ -374,7 +364,6 @@ export async function sendVisitorMessage(
         throw new ForbiddenError('FORBIDDEN', decision.reason)
       }
       conversation = existing
-      priorStatus = existing.status
     } else {
       const start = canStartConversation(actor)
       if (!start.allowed) throw new ForbiddenError('FORBIDDEN', start.reason)
@@ -511,50 +500,20 @@ export async function sendVisitorMessage(
 
   if (created) {
     void emitConversationCreated(actor, author, txResult.conversation)
+    // Deterministic spam signals still apply without the removed AI classifier.
+    // Fire-and-forget: a filing failure leaves the new thread in triage.
+    void import('./conversation.spam-signals')
+      .then((m) =>
+        m.maybeAutoFileSignaledSpam(txResult.conversation.id, {
+          senderEmail: txResult.conversation.visitorEmail ?? null,
+        })
+      )
+      .catch((err) => log.warn({ err }, 'deterministic spam filing failed'))
   }
   // `created` is exactly notifyVisitorMessage's own isFirstMessage above —
   // the team bell's anti-spam gate (WO-3 slice 5) now reads it off this
   // event instead of a direct call.
   void emitMessageCreated(actor, author, txResult.message, txResult.conversation, created)
-
-  // A brand-new conversation is a spam-classification candidate: the filter
-  // files only obvious spam (workspace-trusted senders bypass it), and every
-  // failure leaves the thread in triage. Fire-and-forget so a slow provider
-  // never delays the visitor's send.
-  if (created) {
-    void import('./conversation.spam-filter')
-      .then((m) =>
-        m.maybeAutoFileSpam(txResult.conversation.id, {
-          senderEmail: txResult.conversation.visitorEmail ?? null,
-          subject: null,
-          content: content || fallbackLabel,
-        })
-      )
-      .catch((err) => log.warn({ err }, 'spam classification failed'))
-  }
-
-  // Quinn, out of band: a widget customer message may trigger an assistant turn.
-  // Fire-and-forget with full error isolation so it never blocks or fails the
-  // customer's send; the deep gate (respond flag, AI configured, silence rule)
-  // lives inside the orchestration, which the assistant domain owns.
-  // CONVERGENCE PHASE 1b: pair conversations are gated OUT of the assistant
-  // (isPairedWithCustomerTicket — the doc there carries the rule). The probe
-  // rides the same fire-and-forget chain, so the send path stays sync-cheap
-  // and the gate applies identically to the intake opening message and every
-  // later visitor message on the pair. The workflow engine's explicit
-  // `let_assistant_answer` action is NOT gated — a graph that deliberately
-  // hands a thread to Quinn is the workspace's own choice, and the intake
-  // table's "workflows FIRE" row keeps those graphs working.
-  if (shouldConsiderAssistant(txResult.conversation, priorStatus)) {
-    void isPairedWithCustomerTicket(txResult.conversation.id)
-      .then((paired) => {
-        if (paired) return undefined
-        return import('@/lib/server/domains/assistant/assistant.orchestrator').then((m) =>
-          m.runAssistantTurnForConversation(txResult.conversation.id)
-        )
-      })
-      .catch((err) => log.warn({ err }, 'assistant turn failed'))
-  }
 
   // Return a VISITOR-side DTO to the caller — never leak the agent-only
   // visitorEmail back to the visitor in the send response.
@@ -728,10 +687,8 @@ export async function sendAgentMessage(
   actor: Actor,
   rawAttachments?: ConversationAttachment[],
   contentJson?: TiptapContent | null,
-  // P2-D.1 inbox translation: when the caller (sendAgentMessageFn) already
-  // translated `rawContent` into the customer's language before calling this,
-  // it passes the teammate's pre-translation original here so it lands on
-  // the new message's own metadata (agent-only, never sent to the visitor).
+  // Provenance carried onto the stored row (e.g. a ticket reply's email
+  // metadata). Agent-only; never includes translation state.
   extraMetadata?: ConversationMessageMetadata
 ): Promise<SendAgentMessageResult> {
   const decision = canActAsAgent(actor)
@@ -825,8 +782,7 @@ export async function sendAgentMessage(
 
   const authored = await resolveAuthorAudiences(agent)
   // Inbox sees the account name. The visitor channel keeps the public name,
-  // even though both are plain message DTOs (translatedFrom stays off this
-  // event — see the message_updated broadcast below).
+  // even though both are plain message DTOs.
   const messageDTO = toMessageDTO(txResult.message, authored.supportAuthor)
   // Agent-side DTO so the inbox keeps agent-only fields; publishConversationUpdate
   // strips them from the visitor's copy.
@@ -839,28 +795,16 @@ export async function sendAgentMessage(
     { conversationUpdated: true }
   )
 
-  // P2-D.1: surface translatedFrom on the DTO returned to the sending agent,
-  // and to every other agent's open thread, without leaking it to the visitor.
-  // Shaped the same way enrichMessagesForAgent upgrades a base DTO; a message
-  // just inserted this call has no reactions/flags/postSuggestion yet, so
-  // those are known-empty rather than re-read from the DB.
+  // Shape the DTO returned to the sending agent the same way
+  // enrichMessagesForAgent upgrades a base DTO; a message just inserted this
+  // call has no reactions/flags/postSuggestion yet, so those are known-empty
+  // rather than re-read from the DB.
   const agentMessageDTO: AgentConversationMessageDTO = {
     ...messageDTO,
     reactions: [],
     flaggedAt: null,
     postSuggestion: null,
-    translatedFrom: extraMetadata?.translatedFrom ?? null,
     channelDelivery: txResult.message.metadata?.channelDelivery ?? null,
-  }
-  if (agentMessageDTO.translatedFrom) {
-    // Inbox channel ONLY (never the visitor's conversation channel, unlike
-    // publishConversationEvent above) — mirrors message.actions.ts's
-    // publishMessageUpdated pattern for agent-only message enrichment.
-    publishAgentConversationEvent({
-      kind: 'message_updated',
-      conversationId: txResult.conversation.id,
-      message: agentMessageDTO,
-    })
   }
 
   void notifyAgentReply({
@@ -964,14 +908,13 @@ export async function addAgentNote(
 
   // A note is always agent-only content (isInternal=true, inbox-channel-only
   // broadcast below), so its DTO is shaped as an AgentConversationMessageDTO
-  // like sendAgentMessage's — a fresh note has no reactions/flags/suggestion/
-  // translation yet, so those are known-empty rather than re-read from the DB.
+  // like sendAgentMessage's — a fresh note has no reactions/flags/suggestion
+  // yet, so those are known-empty rather than re-read from the DB.
   const messageDTO: AgentConversationMessageDTO = {
     ...toMessageDTO(message, await resolveAuthor(agent)),
     reactions: [],
     flaggedAt: null,
     postSuggestion: null,
-    translatedFrom: null,
   }
 
   // Persist @-mentions from the note doc + alert the mentioned teammates BEFORE
@@ -1082,13 +1025,6 @@ export async function setConversationStatus(
       .catch((err) => {
         log.warn({ err, conversationId }, 'conversation reopen lifecycle delivery failed')
       })
-  }
-  if (status === 'closed' && previous !== 'closed' && actor.principalType === 'user') {
-    void classifyConversationAttributes(conversationId, { trigger: 'teammate_close' }).catch(
-      (err) => {
-        log.warn({ err, conversationId }, 'teammate-close attribute classification failed')
-      }
-    )
   }
   return updated
 }
@@ -1954,15 +1890,6 @@ export async function recordCsat(
       { internal: true }
     )
   }
-
-  // Mirror the CSAT rating onto Quinn's involvement when it was the last handler
-  // (best-effort — never fails the rating; the assistant domain owns it). The
-  // resolved_confirmed trigger rides the csat_submitted event instead: the
-  // assistant reaction in events/event-reactions.ts confirms the involvement off the
-  // first submission, keeping cross-domain outcome logic on the bus.
-  void import('@/lib/server/domains/assistant/assistant.orchestrator')
-    .then((m) => m.attributeCsatIfLastHandler(conversationId, updated.csatRating ?? rating))
-    .catch((err) => log.warn({ err }, 'attribute csat to assistant involvement failed'))
 }
 
 /**
@@ -2082,305 +2009,4 @@ export async function markConversationUnreadFromMessage(
     throw new NotFoundError('MESSAGE_NOT_FOUND', 'Message not found')
   }
   await applyAgentUnreadWatermark(conversation, message.createdAt)
-}
-
-// -------------------------------------------------------------- assistant (Quinn) ---
-
-/** Actor for an assistant-authored write: the system actor, carrying Quinn's principal id. */
-function assistantActor(principalId: PrincipalId): Actor {
-  return { ...systemActor(), principalId }
-}
-
-/**
- * Cheap synchronous gate before spending on an assistant turn: only the widget
- * channel triggers Quinn today (email + other sources join later phases), and a
- * thread a human deliberately closed must not summon Quinn on the reopen.
- *
- * CONVERGENCE PHASE 1b: a conversation PAIRED with a customer ticket (a
- * "backing conversation") is additionally gated out at the dispatch site via
- * `isPairedWithCustomerTicket` — an async probe, so it can't live in this sync
- * gate. Intake-created backing conversations also carry source 'ticket_form',
- * which fails the check above on its own; the pair probe is what covers LEGACY
- * widget-source pairs (a messenger conversation linked after the fact).
- */
-export function shouldConsiderAssistant(
-  conversation: Conversation,
-  priorStatus: ConversationStatus | null
-): boolean {
-  if (conversation.source !== 'widget') return false
-  if (priorStatus === 'closed') return false
-  return true
-}
-
-/**
- * CONVERGENCE PHASE 1b (convergence-design.md, side-effect model): whether
- * this conversation is PAIRED with a CUSTOMER ticket — one `ticket_conversations`
- * row, ticket_type 'customer' (at most one can exist, per the partial unique
- * index). Pair conversations are gated OUT of the assistant turn: the thread
- * is the ticket's, governed by the ticket workflow, and Quinn fronting it
- * would double up. This is the PRIMARY Quinn gate (the intake-time source
- * label only covers 1b-created rows) and it applies to every visitor message
- * on the pair, which closes the Phase 1a flag — a portal/widget requester
- * reply redirected onto the pair conversation no longer summons Quinn.
- *
- * The probe lives here rather than in the tickets domain's pair-thread.service
- * because conversation.service.ts imports nothing from the tickets domain
- * (the Phase 1a redirect deliberately keeps that edge one-directional);
- * `ticketConversations` is schema, not the domain. events/targets.ts carries
- * the identical probe for the team-bell suppression.
- */
-export async function isPairedWithCustomerTicket(conversationId: ConversationId): Promise<boolean> {
-  const [link] = await db
-    .select({ ticketId: ticketConversations.ticketId })
-    .from(ticketConversations)
-    .where(
-      and(
-        eq(ticketConversations.conversationId, conversationId),
-        eq(ticketConversations.ticketType, 'customer')
-      )
-    )
-    .limit(1)
-  return !!link
-}
-
-/**
- * Append a reply authored by the assistant service principal — the message-
- * append primitive for Quinn. Like an agent reply it bumps the last-message
- * preview and reopens a closed thread, but it never claims assignment (Quinn
- * fronts, it does not own) and it never marks the agent side read. `waiting`
- * controls the customer wait clock: an answer stops it; a hand-off restarts it
- * so the team sees a thread waiting on a human. Delivered over the normal
- * realtime publish; the visitor agent-reply NOTIFICATION is suppressed (an
- * assistant reply is instant and in-session, not an offline follow-up), but the
- * message still webhooks as an ordinary conversation message.
- *
- * `contentJson`/`metadata` (Phase C conversational block layer): a block send
- * carries its resolved rich body as contentJson and its structured payload as
- * metadata.block. Both default to null/undefined so Quinn's own two call
- * sites (a plain-text answer, the handover line) are unaffected. Returns the
- * posted message's DTO so a block send can read back its id (stamped onto an
- * InputWaitCursor when the plan parks right after).
- */
-export async function appendAssistantReply(
-  conversationId: ConversationId,
-  content: string,
-  author: ConversationAuthorInput,
-  opts: {
-    waiting: boolean
-    citations?: ConversationMessageCitation[]
-    contentJson?: TiptapContent | null
-    metadata?: ConversationMessageMetadata | null
-  }
-): Promise<ConversationMessageDTO> {
-  const txResult = await db.transaction(async (tx) => {
-    const [existing] = await tx
-      .select()
-      .from(conversations)
-      .where(eq(conversations.id, conversationId))
-      .limit(1)
-    if (!existing) throw new NotFoundError('CONVERSATION_NOT_FOUND', 'Conversation not found')
-    const [message] = await tx
-      .insert(conversationMessages)
-      .values({
-        conversationId,
-        principalId: author.principalId,
-        senderType: 'agent',
-        content,
-        contentJson: opts.contentJson ?? null,
-        citations: opts.citations?.length ? opts.citations : null,
-        metadata: opts.metadata ?? null,
-      })
-      .returning()
-    const nextStatus = applyAgentReopenStatus(
-      existing.status,
-      getChannelDescriptor(existing.channel)?.reopenOnReply ?? 'always'
-    )
-    const [updated] = await tx
-      .update(conversations)
-      .set({
-        lastMessageAt: message.createdAt,
-        lastMessagePreview: preview(content, []),
-        status: nextStatus,
-        waitingSince: opts.waiting ? message.createdAt : null,
-        resolvedAt: resolvedAtForStatus(nextStatus, message.createdAt),
-        updatedAt: message.createdAt,
-      })
-      .where(eq(conversations.id, conversationId))
-      .returning()
-    return { conversation: updated, message }
-  })
-
-  const authored = await resolveAuthorAudiences(author)
-  const messageDTO = toMessageDTO(txResult.message, authored.supportAuthor, author.principalId)
-  const conversationDTO = await conversationToDTO(txResult.conversation, 'agent')
-  await publishConversationUpdate(conversationDTO.id, conversationDTO)
-  publishConversationMessage(
-    txResult.conversation.id,
-    {
-      visitor: toMessageDTO(txResult.message, authored.publicAuthor, author.principalId),
-      agent: messageDTO,
-    },
-    { conversationUpdated: true }
-  )
-  // isFirstMessage only matters for a VISITOR message — this is Quinn's own
-  // reply, so false.
-  void emitMessageCreated(
-    assistantActor(author.principalId),
-    author,
-    txResult.message,
-    txResult.conversation,
-    false
-  )
-  return messageDTO
-}
-
-/**
- * Post an agent-only internal note (authored by Quinn) recording why it handed
- * off, so the teammate who picks the conversation up has context at a glance.
- * Inbox channel only — it never reaches the visitor, mirroring `addNote`.
- */
-export async function appendAssistantHandoffNote(
-  conversationId: ConversationId,
-  packet: {
-    reason: string
-    customerNeed: string
-    attempted: string[]
-    recommendedNextStep: string
-  },
-  author: ConversationAuthorInput
-): Promise<void> {
-  const sentence = (value: string) => value.trim().replace(/[.!?]+$/u, '')
-  const why = HANDOFF_REASON_LABELS[packet.reason] ?? packet.reason.replace(/_/g, ' ')
-  const attempted = packet.attempted.map(sentence).filter(Boolean)
-  const content = [
-    `The customer needs ${sentence(packet.customerNeed)}.`,
-    attempted.length > 0 ? `The AI agent tried: ${attempted.join('; ')}.` : null,
-    `Next step: ${sentence(packet.recommendedNextStep)}.`,
-    `Handoff reason: ${why}.`,
-  ]
-    .filter((part): part is string => part !== null)
-    .join(' ')
-  const [message] = await db
-    .insert(conversationMessages)
-    .values({
-      conversationId,
-      principalId: author.principalId,
-      senderType: 'agent',
-      isInternal: true,
-      content,
-    })
-    .returning()
-  const messageDTO = toMessageDTO(message, authorFromInput(author), author.principalId)
-  publishAgentConversationEvent({ kind: 'message', conversationId, message: messageDTO })
-}
-
-/**
- * Post an agent-only internal note (authored by Quinn) announcing a write-tool
- * proposal awaiting a teammate's approval. Inbox channel only, mirroring
- * `appendAssistantHandoffNote`; the note is a point-in-time snapshot, the
- * pending action row (not this message) drives the actual approve/reject.
- */
-export async function appendAssistantPendingActionNote(
-  conversationId: ConversationId,
-  pendingAction: AssistantPendingActionSurface,
-  author: ConversationAuthorInput
-): Promise<void> {
-  const [message] = await db
-    .insert(conversationMessages)
-    .values({
-      conversationId,
-      principalId: author.principalId,
-      senderType: 'agent',
-      isInternal: true,
-      content: `Waiting for a teammate to confirm: ${pendingAction.summary}`,
-      metadata: { assistantPendingAction: pendingAction },
-    })
-    .returning()
-  const messageDTO = toMessageDTO(message, authorFromInput(author), author.principalId)
-  publishAgentConversationEvent({ kind: 'message', conversationId, message: messageDTO })
-}
-
-/** "This request timed out…" customer-visible notice when a pending action expires unattended. */
-export async function emitAssistantActionExpiredSystemMessage(
-  conversationId: ConversationId
-): Promise<void> {
-  await emitSystemMessage(
-    conversationId,
-    'This request timed out before a teammate could review it.',
-    { kind: 'assistant_action_expired' }
-  )
-}
-
-/**
- * Execute a hand-off Quinn decided on: record the structured reason on the
- * conversation for the receiving human, keep it open, and route it to a
- * teammate via the existing auto-assign strategy (Quinn never opens a stream, so
- * it is never a routing candidate). If nobody is routable it stays in the
- * unassigned queue with the wait clock running.
- */
-export async function executeAssistantHandoff(
-  conversationId: ConversationId,
-  reason: string,
-  author: ConversationAuthorInput
-): Promise<void> {
-  await loadConversationOr404(conversationId)
-  const [updated] = await db
-    .update(conversations)
-    .set({
-      status: 'open',
-      // A conversation the assistant holds is released so routing can place
-      // it with a teammate; a teammate's assignment stays as it is.
-      assignedAgentPrincipalId: sql`CASE WHEN ${eq(conversations.assignedAgentPrincipalId, author.principalId)} THEN NULL ELSE ${conversations.assignedAgentPrincipalId} END`,
-      updatedAt: new Date(),
-    })
-    .where(eq(conversations.id, conversationId))
-    .returning()
-  try {
-    const { ensureAssistantEscalationReasonAttribute } =
-      await import('@/lib/server/domains/conversation-attributes/conversation-attribute.service')
-    const { setConversationAttribute } =
-      await import('@/lib/server/domains/conversation-attributes/set-attribute.service')
-    await ensureAssistantEscalationReasonAttribute()
-    await setConversationAttribute({ conversationId }, 'assistant_escalation_reason', reason, 'ai')
-  } catch (err) {
-    log.warn({ err, conversationId }, 'failed to write escalation reason attribute')
-  }
-  // A visitor-visible transition marker so the customer clearly sees the shift
-  // from Quinn to the human team (localized on the client via systemEvent.kind).
-  await emitSystemMessage(conversationId, 'Connecting you to the team', {
-    kind: 'assistant_handoff',
-  })
-  // A live assistant.handed_off workflow owns assignment. The deterministic
-  // router stands down so the customer does not see two assignment notices.
-  const { hasLiveWorkflowForTrigger } =
-    await import('@/lib/server/domains/workflows/workflow.service')
-  const routingWorkflowOwnsHandoff = await hasLiveWorkflowForTrigger('assistant.handed_off')
-  const assigned = routingWorkflowOwnsHandoff ? null : await assignRoutedConversation(updated)
-  // assignRoutedConversation broadcasts the assigned DTO itself on success; when
-  // routing declines (or a workflow owns the handoff), still surface the update.
-  if (!assigned) {
-    await publishConversationUpdate(updated.id, await conversationToDTO(updated, 'agent'))
-  }
-  // AI attribute classification (AI-ATTRIBUTES-PARITY-SPEC.md Phase 1) runs
-  // BEFORE the event dispatches below, so a workflow condition on
-  // assistant.handed_off sees freshly classified attribute values rather than
-  // a stale (or never-set) one. Flag-gated and non-blocking inside the
-  // service itself; a failure here must never block the hand-off, hence the
-  // defensive catch even though the service already never throws.
-  try {
-    await classifyConversationAttributes(conversationId, { trigger: 'handoff' })
-  } catch (err) {
-    log.warn({ err, conversationId }, 'pre-handoff attribute classification failed')
-  }
-  // Let workflows/webhooks react to the hand-off — Quinn (the assistant service
-  // principal) performed it, so the actor mirrors other service-authored events.
-  // The caller already holds Quinn's identity; no principal lookup needed here.
-  void dispatchAssistantHandedOff(
-    buildEventActor({
-      principalId: author.principalId,
-      displayName: author.displayName ?? undefined,
-    }),
-    conversationId,
-    reason
-  )
 }

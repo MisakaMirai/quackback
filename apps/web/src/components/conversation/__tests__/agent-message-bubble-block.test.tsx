@@ -24,8 +24,6 @@ function baseMessage(over: Partial<AgentConversationMessageDTO> = {}): AgentConv
     createdAt: '2026-07-01T00:00:00.000Z',
     author: { principalId: 'principal_a' as never, displayName: 'Quinn', avatarUrl: null },
     attachments: [],
-    citations: [],
-    isAssistant: true,
     isInternal: false,
     contentJson: null,
     viaEmail: false,
@@ -35,7 +33,6 @@ function baseMessage(over: Partial<AgentConversationMessageDTO> = {}): AgentConv
     reactions: [],
     flaggedAt: null,
     postSuggestion: null,
-    translatedFrom: null,
     ...over,
   }
 }

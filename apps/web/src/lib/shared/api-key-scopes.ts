@@ -250,7 +250,6 @@ const CATEGORY_SCOPES: Record<PermissionCategory, { read: ApiKeyScope; write: Ap
   analytics: { read: 'read:feedback', write: 'write:feedback' },
   integration: { read: 'read:feedback', write: 'write:feedback' },
   support: { read: 'read:chat', write: 'write:chat' },
-  ai: { read: 'read:feedback', write: 'write:feedback' },
   status_page: { read: 'read:feedback', write: 'write:feedback' },
 }
 

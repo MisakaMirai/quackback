@@ -43,12 +43,11 @@ import type { LinkedTicketSummary } from '@/lib/shared/inbox/items'
 afterEach(cleanup)
 
 // The composer seams the typing tests drive: the stub editor publishes the
-// latest onChange it was handed, the typing sender is one spy for every
-// render, and the AI-actions stub counts how often the thread re-rendered.
+// latest onChange it was handed, and the typing sender is one spy for every
+// render.
 const composerProbe = vi.hoisted(() => ({
   onChange: null as null | ((json: unknown, html: string, markdown: string) => void),
   sendTyping: (() => {}) as () => void,
-  threadRenders: 0,
   markRead: null as null | { readThrough?: string | null; onMarked?: () => void },
 }))
 
@@ -57,8 +56,6 @@ const composerProbe = vi.hoisted(() => ({
 const threadProbe = vi.hoisted(() => ({
   gate: null as null | Promise<void>,
   linkFetches: 0,
-  translationEnabled: [] as boolean[],
-  overAllowanceNotice: null as string | null,
   panelOnChanged: [] as unknown[],
   remeasure: () => {},
 }))
@@ -127,12 +124,6 @@ vi.mock('../macro-picker', () => ({
   MacroPicker: ({ open }: { open?: boolean }) => (
     <div data-testid="macro-picker" data-open={open ? 'true' : 'false'} />
   ),
-}))
-vi.mock('../composer-ai-actions', () => ({
-  ComposerAiActions: ({ activeMode }: { activeMode: string }) => {
-    composerProbe.threadRenders++
-    return <div data-testid="composer-ai-actions" data-active-mode={activeMode} />
-  },
 }))
 // Renders of the header's triage controls and tags row, by name.
 const headerRenders = vi.hoisted(() => ({ counts: {} as Record<string, number> }))
@@ -274,22 +265,6 @@ vi.mock('@/components/shared/empty-state', () => ({
 }))
 vi.mock('@/components/ui/avatar', () => ({ Avatar: () => null }))
 
-vi.mock('@/lib/client/hooks/use-inbox-translation', () => ({
-  useInboxTranslation: ({ enabledFlag }: { enabledFlag: boolean }) => {
-    threadProbe.translationEnabled.push(enabledFlag)
-    return {
-      translationFor: () => undefined,
-      showSuggestionBanner: false,
-      enabled: false,
-      togglePending: false,
-      toggleEnabled: vi.fn(),
-      dismissSuggestion: vi.fn(),
-      activateFromSuggestion: vi.fn(),
-      detectedLanguageLabel: '',
-      overAllowanceNotice: threadProbe.overAllowanceNotice,
-    }
-  },
-}))
 vi.mock('@/lib/client/hooks/use-copilot-insert', () => ({ useCopilotInsert: () => vi.fn() }))
 vi.mock('@/lib/client/hooks/use-file-upload', () => ({
   useAgentFileUpload: () => ({ upload: vi.fn() }),
@@ -371,8 +346,6 @@ const {
         createdAt: '2026-07-03T00:00:00.000Z',
         author: null,
         attachments: [],
-        citations: [],
-        isAssistant: false,
         isInternal: false,
         contentJson: null,
         viaEmail: false,
@@ -380,7 +353,6 @@ const {
         reactions: [],
         flaggedAt: null,
         postSuggestion: null,
-        translatedFrom: null,
       },
     ],
   }
@@ -503,7 +475,6 @@ function makeConversation(overrides: Partial<ConversationDTO> = {}): Conversatio
     tags: [],
     sla: null,
     customAttributes: {},
-    translation: null,
     ...overrides,
   }
 }
@@ -630,7 +601,6 @@ describe('AgentConversationThread — conversation kind unaffected', () => {
     fireEvent.click(trigger)
     expect(await screen.findByRole('menuitemradio', { name: 'Note' })).toBeInTheDocument()
     expect(screen.getByTestId('inbox-detail-panel')).toBeInTheDocument()
-    expect(screen.getByTestId('composer-ai-actions')).toHaveAttribute('data-active-mode', 'reply')
   })
 })
 
@@ -684,8 +654,6 @@ function makeMessage(
     createdAt: '2026-07-09T00:00:00.000Z',
     author: null,
     attachments: [],
-    citations: [],
-    isAssistant: false,
     isInternal: false,
     contentJson: null,
     viaEmail: false,
@@ -693,43 +661,9 @@ function makeMessage(
     reactions: [],
     flaggedAt: null,
     postSuggestion: null,
-    translatedFrom: null,
     ...overrides,
   } as AgentConversationMessageDTO
 }
-
-describe('AgentConversationThread — openCopilotToken forwarding', () => {
-  it("the route's openCopilotToken reaches the detail panel UNTOUCHED", async () => {
-    // The route owns the one open-Copilot signal; this component forwards it
-    // verbatim (no local counter merged in), so the panel's 0-sentinel
-    // semantics read the route's real token.
-    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-    client.setQueryData(['conv-thread', 'conversation_suggest'], {
-      hasMore: false,
-      conversation: makeConversation({ id: 'conversation_suggest' as ConversationDTO['id'] }),
-      messages: [makeMessage({ id: 'conversation_msg_1' as never, senderType: 'visitor' })],
-    })
-    render(
-      <QueryClientProvider client={client}>
-        <AgentConversationThread
-          item={{ kind: 'conversation', id: 'conversation_suggest' } as never}
-          targetMessageId={null}
-          onChanged={vi.fn()}
-          onBack={vi.fn()}
-          onSelectItem={vi.fn()}
-          onOpenPost={vi.fn()}
-          isVisitorTyping={false}
-          isOtherAgentTyping={false}
-          openCopilotToken={7}
-        />
-      </QueryClientProvider>
-    )
-    expect(await screen.findByTestId('inbox-detail-panel')).toHaveAttribute(
-      'data-open-copilot-token',
-      '7'
-    )
-  })
-})
 
 describe('AgentConversationThread — close with a linked ticket', () => {
   const openLink: LinkedTicketSummary = {
@@ -1015,19 +949,17 @@ describe('AgentConversationThread: typing signal', () => {
     content: [{ type: 'paragraph', content: [{ type: 'text', text }] }],
   })
 
-  it('an update that leaves the blank composer blank neither signals typing nor re-renders', async () => {
+  it('an update that leaves the blank composer blank does not signal typing', async () => {
     const sendTyping = vi.fn()
     composerProbe.sendTyping = sendTyping
     renderThread({ kind: 'conversation', id: 'conversation_1' })
     await screen.findByTestId('editor')
     await waitFor(() => expect(composerProbe.onChange).not.toBeNull())
-    const rendersBefore = composerProbe.threadRenders
 
     // What an editor reports when it mounts or toggles editable on an empty doc.
     act(() => composerProbe.onChange?.(blankDoc, '<p></p>', ''))
 
     expect(sendTyping).not.toHaveBeenCalled()
-    expect(composerProbe.threadRenders).toBe(rendersBefore)
   })
 
   it('typing into the reply composer still signals typing', async () => {
@@ -1120,43 +1052,21 @@ describe('AgentConversationThread: marking read', () => {
 })
 
 describe('AgentConversationThread: reads that ride with the thread', () => {
-  it('asks for the ticket link and the translation preference only once the thread has loaded', async () => {
+  it('asks for the ticket link only once the thread has loaded', async () => {
     let open!: () => void
     threadProbe.gate = new Promise<void>((resolve) => (open = resolve))
     threadProbe.linkFetches = 0
-    threadProbe.translationEnabled = []
     renderThread({ kind: 'conversation', id: 'conversation_gated' })
 
-    // The thread request loads both and seeds them, so while it is in
-    // flight neither asks on its own.
+    // The thread request loads it and seeds it, so while it is in flight the
+    // read does not ask on its own.
     await new Promise((r) => setTimeout(r, 20))
     expect(threadProbe.linkFetches).toBe(0)
-    expect(threadProbe.translationEnabled.length).toBeGreaterThan(0)
-    expect(threadProbe.translationEnabled.every((on) => !on)).toBe(true)
 
     act(() => open())
     await screen.findByTestId('editor')
-    expect(threadProbe.translationEnabled.at(-1)).toBe(true)
+    await waitFor(() => expect(threadProbe.linkFetches).toBeGreaterThan(0))
     threadProbe.gate = null
-  })
-})
-
-describe('AgentConversationThread: inbox translation past the AI allowance', () => {
-  it('shows the notice above the composer, and nothing when there is none', async () => {
-    threadProbe.overAllowanceNotice =
-      'AI usage for this period is used up. Translation keeps working. Upgrade your plan for more.'
-    renderThread({ kind: 'conversation', id: 'conversation_over_allowance' })
-    expect(
-      await screen.findByText(
-        'AI usage for this period is used up. Translation keeps working. Upgrade your plan for more.'
-      )
-    ).toBeTruthy()
-    cleanup()
-
-    threadProbe.overAllowanceNotice = null
-    renderThread({ kind: 'conversation', id: 'conversation_within_allowance' })
-    await screen.findByTestId('editor')
-    expect(screen.queryByText(/AI usage/)).toBeNull()
   })
 })
 
@@ -1179,20 +1089,6 @@ describe('AgentConversationThread: stable props for memoized children', () => {
 
     expect(threadProbe.panelOnChanged.length).toBeGreaterThan(rendersBefore)
     expect(new Set(threadProbe.panelOnChanged.slice(rendersBefore - 1)).size).toBe(1)
-  })
-})
-
-describe('AgentConversationThread: virtualizer re-renders', () => {
-  it('re-renders the message list, not the rest of the thread, when the list is measured', async () => {
-    renderThread({ kind: 'conversation', id: 'conversation_measured' })
-    await screen.findByTestId('thread-viewport')
-    await waitFor(() => expect(composerProbe.onChange).not.toBeNull())
-    const rendersBefore = composerProbe.threadRenders
-
-    act(() => threadProbe.remeasure())
-    act(() => threadProbe.remeasure())
-
-    expect(composerProbe.threadRenders).toBe(rendersBefore)
   })
 })
 

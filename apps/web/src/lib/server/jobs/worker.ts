@@ -829,16 +829,10 @@ export async function handleJobWake(request: JobWakeRequest): Promise<void> {
     'job wake received'
   )
   if (request.abort) {
-    const { abortSlackTurn } = await import('@/integrations/slack/server/agent/turns')
-    if (!abortSlackTurn(request.abort.team, request.abort.channel, request.abort.thread)) {
-      log.info(
-        {
-          event: 'job.wake_abort_missed',
-          workspace_key: request.workspaceKey,
-        },
-        'job-wake abort found no in-flight turn'
-      )
-    }
+    log.info(
+      { event: 'job.wake_abort_ignored', workspace_key: request.workspaceKey },
+      'job-wake abort received after the Slack agent was removed'
+    )
   }
   await wakeWorkspace(request.workspaceKey, request.jobIds ?? [])
 }

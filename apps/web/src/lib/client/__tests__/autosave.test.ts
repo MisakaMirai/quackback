@@ -6,7 +6,6 @@ const toastError = vi.hoisted(() => vi.fn())
 vi.mock('sonner', () => ({ toast: { error: toastError } }))
 
 const { AUTOSAVE, createAutosaveMutationCache, isRevisionConflict } = await import('../autosave')
-const { ASSISTANT_REVISION_CONFLICT_MESSAGE } = await import('@/lib/shared/assistant/config')
 
 afterEach(() => toastError.mockClear())
 
@@ -67,7 +66,9 @@ describe('autosave mutation errors', () => {
 describe('revision conflict detection', () => {
   // A failing server function reaches the client as a plain Error that carries
   // only the server's message; the typed error and its status do not survive.
-  const serverMessage = new Error(ASSISTANT_REVISION_CONFLICT_MESSAGE)
+  const serverMessage = new Error(
+    'AI agent settings changed in another session. Reload the latest settings and try again.'
+  )
 
   it('recognises the error as it arrives through the server function boundary', () => {
     expect(isRevisionConflict(serverMessage)).toBe(true)
@@ -75,11 +76,6 @@ describe('revision conflict detection', () => {
 
   it('also recognises the typed shapes', () => {
     expect(isRevisionConflict(Object.assign(new Error('x'), { statusCode: 409 }))).toBe(true)
-    expect(
-      isRevisionConflict(
-        Object.assign(new Error('x'), { code: 'ASSISTANT_CONFIG_REVISION_CONFLICT' })
-      )
-    ).toBe(true)
   })
 
   it('does not treat other failures as conflicts', () => {

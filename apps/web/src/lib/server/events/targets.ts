@@ -805,41 +805,6 @@ export async function getTicketAssignedTargets(event: EventData): Promise<HookTa
 }
 
 /**
- * Notification target for `assistant.handed_off`. The payload carries only
- * `{ conversationId, reason }`, so this re-reads the conversation for its
- * current team assignment — the assigned team's members when one is set,
- * else every admin/member principal (the whole agent team). The actor
- * (Quinn's service principal) is always excluded.
- */
-export async function getAssistantHandedOffTargets(event: EventData): Promise<HookTarget | null> {
-  if (event.type !== 'assistant.handed_off') return null
-  const { conversationId, reason } = event.data
-
-  const [conv] = await db
-    .select({ assignedTeamId: conversations.assignedTeamId })
-    .from(conversations)
-    .where(eq(conversations.id, conversationId as ConversationId))
-    .limit(1)
-
-  let recipientIds: PrincipalId[]
-  if (conv?.assignedTeamId) {
-    const { listTeamMemberPrincipalIds } = await import('@/lib/server/domains/teams')
-    recipientIds = await listTeamMemberPrincipalIds(conv.assignedTeamId as TeamId)
-  } else {
-    const { listAssignableTeammates } = await import('@/lib/server/domains/teams')
-    recipientIds = (await listAssignableTeammates()).map((t) => t.principalId as PrincipalId)
-  }
-
-  const filtered = recipientIds.filter((id) => id !== event.actor.principalId)
-  if (filtered.length === 0) return null
-  return {
-    type: 'notification',
-    target: { principalIds: filtered },
-    config: { conversationId, reason },
-  }
-}
-
-/**
  * Notification target for `post.owner_assigned`: the newly-assigned owner,
  * excluding the actor (never self-notify — a teammate assigning a post to
  * themselves gets no bell). The payload is self-contained, so this trusts it
@@ -2007,7 +1972,13 @@ export async function getStatusSubscriberTargets(
   // Affected components (for the per-subscriber visibility check + email
   // body), each with the status this incident set on it. A component whose
   // link is gone (edited after publish) shows its live status instead.
-  const affected = affectedComponentIds.length
+  const affected: Array<{
+    id: unknown
+    name: string
+    segmentIds: string[]
+    liveStatus: string
+    linkedStatus: string | null
+  }> = affectedComponentIds.length
     ? await db
         .select({
           id: statusComponents.id,
@@ -2099,7 +2070,7 @@ export async function getStatusSubscriberTargets(
     if (affected.length > 0 && followed.length === 0) return []
     const impact = deriveViewerImpact(
       incident.impact as StatusIncidentImpact,
-      visibleAffected.map((c) => c.linkedStatus ?? c.liveStatus),
+      visibleAffected.map((c) => c.linkedStatus ?? c.liveStatus) as never,
       visibleAffected.length < affectedInOrder.length
     )
     return [{ ...p, visibleAffected, impact }]
@@ -2122,7 +2093,10 @@ export async function getStatusSubscriberTargets(
   const affectedForEmail = (components: typeof affectedInOrder) =>
     components.map((c) => ({
       name: c.name,
-      status: STATUS_COMPONENT_STATUS_LABELS[c.linkedStatus ?? c.liveStatus],
+      status:
+        STATUS_COMPONENT_STATUS_LABELS[
+          (c.linkedStatus ?? c.liveStatus) as keyof typeof STATUS_COMPONENT_STATUS_LABELS
+        ],
     }))
 
   // In-app notification targets (all eligible; ignores emailsDisabled), one

@@ -22,7 +22,6 @@ function status(goals: OnboardingOutcome[], feedbackPrivate = false): LaunchStat
       helpCenter: true,
       statusPage: true,
       integrations: true,
-      assistant: false,
     },
   }
 }

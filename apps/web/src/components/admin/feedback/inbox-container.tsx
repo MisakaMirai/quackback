@@ -1,5 +1,5 @@
 import { useCallback, useMemo } from 'react'
-import { useQueryClient, useQueries } from '@tanstack/react-query'
+import { useQueryClient } from '@tanstack/react-query'
 import { InboxLayout } from '@/components/admin/feedback/inbox-layout'
 import { InboxFiltersPanel } from '@/components/admin/feedback/inbox-filters'
 import { FeedbackTableView } from '@/components/admin/feedback/table'
@@ -9,11 +9,9 @@ import { useInboxFilters, type InboxFilters } from '@/components/admin/feedback/
 import { SavedViewsMenu } from '@/components/admin/feedback/saved-views-menu'
 import { useInboxPosts, flattenInboxPosts, inboxKeys } from '@/lib/client/hooks/use-inbox-query'
 import { useSegments } from '@/lib/client/hooks/use-segments-queries'
-import { mergeSuggestionQueries } from '@/lib/client/queries/signals'
 import type { CurrentUser } from '@/lib/shared/types'
 import type { Board, PostTag, PostStatusEntity } from '@/lib/shared/db-types'
 import type { TeamMember } from '@/lib/shared/types'
-import type { PostId } from '@quackback/ids'
 import { useOpenPost } from '@/components/admin/feedback/use-open-post'
 
 interface InboxContainerProps {
@@ -60,33 +58,6 @@ export function InboxContainer({
   } = useInboxPosts({ filters })
 
   const posts = useMemo(() => flattenInboxPosts(postsData), [postsData])
-
-  // Fetch duplicate counts PER PAGE of the infinite query rather than keying one
-  // query on the ever-growing flattened id array (QC-5): each page's id set is
-  // stable once loaded, so its counts cache under a stable per-page key and only
-  // a freshly-loaded page fires a new request — previously every "load more"
-  // re-keyed and refetched counts for the entire accumulated list.
-  const pageIdLists = useMemo(
-    () => (postsData?.pages ?? []).map((page) => page.items.map((p) => p.id) as PostId[]),
-    [postsData]
-  )
-  const countsQueries = useQueries({
-    queries: pageIdLists.map((ids) => mergeSuggestionQueries.countsForPosts(ids)),
-  })
-
-  // Build a Map<postId, count> for efficient lookup, merging every page's counts.
-  const duplicateCountByPostId = useMemo(() => {
-    const map = new Map<PostId, number>()
-    for (const query of countsQueries) {
-      for (const item of query.data ?? []) {
-        map.set(item.postId, item.count)
-      }
-    }
-    return map.size > 0 ? map : undefined
-    // Keyed on a fingerprint of each page-query's last-updated stamp so the memo
-    // recomputes only when counts actually change (countsQueries is a fresh
-    // array each render).
-  }, [countsQueries.map((q) => q.dataUpdatedAt).join(',')])
 
   // Handlers
   const handleLoadMore = useCallback(() => {
@@ -167,7 +138,6 @@ export function InboxContainer({
         onToggleStatus={toggleStatus}
         onToggleBoard={toggleBoard}
         onToggleSegment={toggleSegment}
-        duplicateCountByPostId={duplicateCountByPostId}
         searchMode={postsData?.pages[0]?.searchMode}
         headerFilters={
           <SavedViewsMenu

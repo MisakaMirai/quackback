@@ -12,7 +12,6 @@ const status: LaunchStatus = {
     helpCenter: true,
     statusPage: true,
     integrations: true,
-    assistant: false,
     changelog: true,
   },
 }
@@ -124,12 +123,10 @@ it('puts every prerequisite first, ahead of polish a goal brought in earlier', (
   const tasks = buildLaunchTasks({
     ...status,
     goals: ['customer_support', 'help_center'],
-    features: { ...status.features!, assistant: true },
+    features: { ...status.features! },
   })
   const order = tasks.map((task) => task.id)
   expect(order.slice(0, 2)).toEqual(['connect-messenger', 'help-article'])
-  expect(order.indexOf('set-up-quinn')).toBeGreaterThan(order.indexOf('help-article'))
-  expect(tasks.find((task) => task.id === 'set-up-quinn')?.classification).toBe('polish')
   expect(order.at(-1)).toBe('first-win')
 })
 

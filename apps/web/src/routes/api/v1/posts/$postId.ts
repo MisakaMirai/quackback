@@ -85,8 +85,6 @@ export const Route = createFileRoute('/api/v1/posts/$postId')({
                   createdAt: post.pinnedComment.createdAt.toISOString(),
                 }
               : null,
-            summaryJson: post.summaryJson ?? null,
-            summaryUpdatedAt: post.summaryUpdatedAt?.toISOString() ?? null,
             canonicalPostId: post.canonicalPostId ?? null,
             mergedAt: post.mergedAt?.toISOString() ?? null,
             isCommentsLocked: post.isCommentsLocked,

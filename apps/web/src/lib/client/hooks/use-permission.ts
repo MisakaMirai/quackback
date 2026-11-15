@@ -11,7 +11,7 @@ import {
  * the mapping is unit-testable without mounting a router context.
  *
  * This is a coarse, client-only convenience check for gating UI affordances
- * (e.g. showing the Copilot tab) — the server independently enforces every
+ * (e.g. showing an admin tab) — the server independently enforces every
  * permission on its own routes/fns, so a false positive here can never grant
  * real access, only (at worst) show an affordance the server then refuses.
  */

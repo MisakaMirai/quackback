@@ -8,7 +8,6 @@
  * - request middleware: `ui` for a signed-in server function, and an empty
  *   slot for every other request, which REST key auth fills (`api`)
  * - the MCP handler: `mcp`, with the OAuth client or the API key
- * - the assistant runtime, while it runs a tool: `assistant`
  * - a workflow run, while its actions execute: `workflow`
  * - the job runner, around every job: `system`
  *
@@ -32,9 +31,9 @@ export interface AuditAttribution {
   credentialKind?: AuditCredentialKind | null
   /** The API key id or OAuth client id. */
   credentialId?: string | null
-  /** The key name, the OAuth client's registered name, the assistant or the workflow. */
+  /** The key name, the OAuth client's registered name, or the workflow. */
   clientName?: string | null
-  /** The person a credential or the assistant acts for. */
+  /** The person a credential acts for. */
   onBehalfOfPrincipalId?: PrincipalId | null
 }
 
@@ -188,20 +187,4 @@ export function oauthClientAttribution(input: {
 /** A workflow run acts as the workflow, named as it was when it ran. */
 export function workflowAttribution(workflow: { name: string }): AuditAttribution {
   return { channel: 'workflow', clientName: cleanName(workflow.name) }
-}
-
-/**
- * The assistant acts as itself. When it runs a tool for a teammate, as on Home
- * or for an approved proposal, it acts on that teammate's behalf; on its own
- * customer-support turns it acts for no one.
- */
-export function assistantAttribution(input: {
-  assistantName: string
-  actor: { principalId: PrincipalId | null; principalType: string }
-}): AuditAttribution {
-  return {
-    channel: 'assistant',
-    clientName: cleanName(input.assistantName),
-    onBehalfOfPrincipalId: input.actor.principalType === 'user' ? input.actor.principalId : null,
-  }
 }

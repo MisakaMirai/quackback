@@ -9,7 +9,7 @@ import {
   CommandItem,
   CommandList,
 } from '@/components/ui/command'
-import { MIN_SEARCH_LENGTH } from '@/lib/shared/assistant/ask-search'
+import { MIN_SEARCH_LENGTH } from '@/lib/shared/search'
 
 export interface AskComposerResult {
   id: string

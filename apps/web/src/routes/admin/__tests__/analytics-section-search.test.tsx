@@ -44,7 +44,6 @@ describe('analytics section search param', () => {
   ).options.validateSearch
 
   it('keeps a valid section and drops an invalid one', () => {
-    expect(validate({ section: 'ai' }).section).toBe('ai')
     expect(validate({ section: 'support' }).section).toBe('support')
     expect(validate({ section: 'bogus' }).section).toBeUndefined()
     expect(validate({}).section).toBeUndefined()
@@ -63,13 +62,6 @@ function renderPage() {
 }
 
 describe('AnalyticsPage section from the URL', () => {
-  it('opens the section named in the URL', () => {
-    hoisted.search.current = { section: 'ai' }
-    const { container } = renderPage()
-    const active = container.querySelector('[data-side-pane] [data-active]')
-    expect(active?.textContent).toBe('Quackback AI')
-  })
-
   it('opens the overview when the URL names no section', () => {
     hoisted.search.current = {}
     const { container } = renderPage()

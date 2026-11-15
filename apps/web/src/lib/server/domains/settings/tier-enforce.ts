@@ -1,5 +1,4 @@
 import { TierLimitError } from '../../errors/tier-limit-error'
-import { getAiBudgetStatus } from '../ai/ai-budget'
 import { getTierLimits } from './tier-limits.service'
 import type { TierFeatureFlags } from './tier-limits.types'
 import {
@@ -166,36 +165,6 @@ export async function enforceInboundEmailAddressLimit(
       return row?.count ?? 0
     },
   })
-}
-
-/**
- * Pre-call gate for any LLM-driven AI service. Refuses when the workspace
- * has used up its token allowance for the current window (the calendar
- * month, or the whole trial while one is running; see `ai-budget.ts`).
- * Token usage is recorded after each call by withUsageLogging, so this is a
- * "you're already at/over" check: small overruns are possible if many calls
- * fire concurrently.
- *
- * 0 budget blocks AI entirely. Null = unlimited (the OSS default).
- */
-export async function enforceAiTokenBudget(): Promise<void> {
-  const status = await getAiBudgetStatus()
-  if (status.cap === null || !status.exhausted) return
-  throw new TierLimitError({
-    limit: 'aiTokensPerMonth',
-    current: status.used,
-    max: status.cap,
-    message:
-      status.cap === 0
-        ? 'AI features are not included on your plan. Upgrade to enable them.'
-        : `AI usage for this month is used up. Upgrade your plan for more.`,
-  })
-}
-
-/** True when {@link enforceAiTokenBudget} would not throw. */
-export async function aiBudgetAvailable(): Promise<boolean> {
-  const status = await getAiBudgetStatus()
-  return !status.exhausted
 }
 
 /** True when {@link enforceEmailBudget} would not throw. */

@@ -3,14 +3,12 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import { useState, useTransition, useMemo } from 'react'
 import { FormattedMessage, useIntl } from 'react-intl'
 import { useTheme } from 'next-themes'
-import { SparklesIcon, TrashIcon, ArrowRightIcon, PhotoIcon } from '@heroicons/react/24/solid'
+import { TrashIcon, ArrowRightIcon, PhotoIcon } from '@heroicons/react/24/solid'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/shared/utils'
 import { SettingsPage } from '@/components/admin/settings/settings-page'
 import { SettingsCard } from '@/components/admin/settings/settings-card'
 import { SettingRow, SettingRows } from '@/components/admin/settings/setting-row'
-import { StateBadge } from '@/components/shared/state-badge'
-import { SettingsList, SettingsListRow, RowIcon } from '@/components/admin/settings/settings-list'
 import {
   WidgetConnectionRow,
   type WidgetConnectionStatus,
@@ -118,8 +116,6 @@ function WidgetSettingsPage() {
             heroImageUrl={config.home?.heroImageUrl ?? null}
             onHomeChange={setHomeDraft}
           />
-
-          <AssistantLinkCard assistant={config.messenger?.assistant} />
         </div>
 
         <WidgetPreviewColumn
@@ -1109,37 +1105,6 @@ function HomeCustomizationCard({
 
         <HomeCardsList cards={cards} onChange={commitCards} disabled={isBusy} />
       </div>
-    </SettingsCard>
-  )
-}
-
-export function AssistantLinkCard({
-  assistant,
-}: {
-  assistant?: { enabled?: boolean; respond?: boolean; name?: string } | undefined
-}) {
-  const off = assistant?.enabled === false
-  // Paused: switched on but not replying (the Agent page's Pause control).
-  const paused = !off && assistant?.respond === false
-  return (
-    <SettingsCard flush>
-      <SettingsList>
-        <SettingsListRow
-          to="/admin/settings/agent"
-          leading={<RowIcon icon={SparklesIcon} />}
-          title="AI agent"
-          badges={
-            off ? <StateBadge state="off" /> : paused ? <StateBadge state="paused" /> : undefined
-          }
-          meta={
-            off
-              ? 'Turn it on in AI & Automation'
-              : paused
-                ? 'Resume it in AI & Automation'
-                : 'Configure in AI & Automation'
-          }
-        />
-      </SettingsList>
     </SettingsCard>
   )
 }

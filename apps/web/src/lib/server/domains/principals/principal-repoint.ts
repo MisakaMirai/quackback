@@ -40,7 +40,6 @@ import {
   conversationMessages,
   files,
   conversationParticipants,
-  conversationSummaries,
   postSubscriptions,
   inAppNotifications,
   emailLog,
@@ -53,7 +52,6 @@ import {
   tickets,
   ticketActivity,
   ticketSubscriptions,
-  ticketSummaries,
   workflowRuns,
   workflowRunEvents,
   changelogSubscriptions,
@@ -307,12 +305,6 @@ export const REPOINT_STEPS: RepointStep[] = [
     'Added customers on a group thread (§4.8). An anonymous lead an agent added by email keeps receiving replies after identifying; unique (conversation_id, principal_id), so a collision (the identified principal is already a participant) drops the anon row and the identified participation wins. ON DELETE CASCADE: a missed re-point would silently drop the row at teardown.'
   ),
   simpleRepoint(
-    'conversation_summaries',
-    conversationSummaries,
-    'visitor_principal_id',
-    'Denormalized from conversations.visitor_principal_id for Quinn past-conversation grounding (P2-A.4) scoping. ON DELETE RESTRICT, same as conversations: a missed re-point would both strand the summary under the old identity (breaking the customer-scoped retrieval it exists for) and abort the merge at teardown.'
-  ),
-  simpleRepoint(
     'workflow_runs',
     workflowRuns,
     'subject_principal_id',
@@ -392,12 +384,6 @@ export const REPOINT_STEPS: RepointStep[] = [
     'requester_principal_id',
     'Ticket requester. A ticket filed while anonymous (portal/Messenger) follows the person on merge. Unlike conversations.visitor_principal_id (ON DELETE RESTRICT), this FK is ON DELETE SET NULL, so this re-point step (not the constraint) is what keeps the ticket attributed when the anonymous principal is torn down.'
   ),
-  simpleRepoint(
-    'ticket_summaries',
-    ticketSummaries,
-    'requester_principal_id',
-    'Denormalized tickets.requester_principal_id on the resolution-grounding snapshot: follows the person for the same reason the ticket itself does.'
-  ),
   collisionRepoint(
     'ticket_subscriptions',
     ticketSubscriptions,
@@ -462,8 +448,6 @@ export const REPOINT_STEPS: RepointStep[] = [
  * merge source.
  */
 export const REPOINT_EXEMPTIONS: Record<string, string> = {
-  'workspace_assistant_threads.owner_principal_id':
-    'Private Copilot threads belong to authenticated team users with copilot.use; anonymous visitor merges cannot own them.',
   'integration_sync_actions.principal_id':
     'Integration recovery requires INTEGRATION_MANAGE; anonymous principals cannot own these immutable action receipts.',
   'onboarding_emails.principal_id':
@@ -502,13 +486,6 @@ export const REPOINT_EXEMPTIONS: Record<string, string> = {
     'incident updates are posted by team members with status_page.publish (same reasoning as status_incidents.created_by)',
   'workflow_versions.created_by':
     'workflow versions are saved by authenticated team members; anonymous principals cannot author them',
-  'assistant_events.principal_id':
-    'assistant event attribution is the acting teammate; customer subjects are carried by conversation or ticket instead',
-  'assistant_documents.created_by_id':
-    'knowledge documents are ingested by team members with ai.customer.manage or ai.teammate.manage; ON DELETE SET NULL, so teardown detaches the uploader (same reasoning as assistant_snippets.created_by_id)',
-  'assistant_web_sources.created_by_id':
-    'web sources are added by team members with ai.customer.manage or ai.teammate.manage; ON DELETE SET NULL, so teardown detaches the author (same reasoning as assistant_snippets.created_by_id)',
-  'post_merge_suggestions.resolved_by_principal_id': 'suggestion resolution is a team action',
   'principal_role_assignments.principal_id':
     'role assignments are team-only; anonymous principals hold none',
   'principal_role_assignments.granted_by_principal_id': 'grant actor is a team member',
@@ -540,22 +517,6 @@ export const REPOINT_EXEMPTIONS: Record<string, string> = {
     'view pins belong to team members; the merge source is always anonymous',
   'macros.created_by_principal_id': 'macro authors are team members, never anonymous',
   'workflows.created_by': 'workflow authors are team members, never anonymous',
-  'assistant_guidance_rules.created_by_id':
-    'guidance rule authors are team members, never anonymous',
-  'assistant_snippets.created_by_id':
-    'snippet authors are team members with ai.customer.manage or ai.teammate.manage, never anonymous',
-  'connectors.created_by_principal_id':
-    'connector authors are team members with ai.customer.manage or ai.teammate.manage, never anonymous',
-  'agent_skills.created_by_principal_id':
-    'skill authors are team members with ai.customer.manage or ai.teammate.manage, never anonymous',
-  'assistant_pending_actions.decided_by_id':
-    'the agent who approves/rejects a pending action is a team member, never anonymous',
-  'assistant_pending_actions.requested_by_id':
-    'who filed an approval request: an API key service principal, the assistant or a signed-in teammate with the permission to ask, never the anonymous merge source; the row records history and is never rewritten',
-  'assistant_pending_actions.on_behalf_of_principal_id':
-    'the person whose authority the request borrows: a key creator, an OAuth grant holder or a teammate, never the anonymous merge source; the row records history and is never rewritten',
-  'assistant_tool_calls.principal_id':
-    'the actor attributed to a tool call is a team member or the assistant itself, never the anonymous merge source',
   'import_runs.initiated_by_principal_id':
     'import runs are launched by admins (route requires the admin role); the merge source is always anonymous',
   'export_runs.initiated_by_principal_id':

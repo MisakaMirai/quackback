@@ -42,10 +42,6 @@ export const conversationKeys = {
   agentContactDetail: (principalId: PrincipalId | undefined) =>
     ['admin', 'inbox', 'visitor', principalId] as const,
 
-  /** The detail panel's Quinn AI activity summary for one conversation. */
-  agentAssistantActivity: (conversationId: ConversationId | undefined) =>
-    ['admin', 'inbox', 'assistant-activity', conversationId] as const,
-
   /** The detail panel's Files section: every attachment across a
    *  conversation or ticket's whole thread. */
   agentConversationFiles: (id: ConversationId | TicketId | undefined) =>

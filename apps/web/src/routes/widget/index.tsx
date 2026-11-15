@@ -48,7 +48,6 @@ import {
 } from '@/components/widget/use-messenger-presence'
 import { conversationAvailable } from '@/lib/shared/conversation/presence'
 import { ConversationPresenceBadge } from '@/components/shared/conversation/conversation-presence-badge'
-import { Avatar } from '@/components/ui/avatar'
 import {
   WidgetArticleSkeleton,
   WidgetChangelogListSkeleton,
@@ -286,15 +285,6 @@ export const Route = createFileRoute('/widget/')({
       teamName: settings?.publicWidgetConfig?.messenger?.teamName || settings?.name || null,
       // Teammate avatars for the Home header cluster (empty when disabled).
       team,
-      // AI-assistant display identity — fronts unassigned conversations in the
-      // Messages list and the Home messages card. Null when disabled.
-      assistant:
-        messengerTabEnabled && settings?.publicWidgetConfig?.messenger?.assistant?.enabled
-          ? {
-              name: settings.publicWidgetConfig.messenger.assistant.name?.trim() || 'Quackback AI',
-              avatarUrl: settings.publicWidgetConfig.messenger.assistant.avatarUrl || null,
-            }
-          : null,
       defaultBoard: settings?.publicWidgetConfig?.defaultBoard,
       portalAccess: {
         isPrivate: settings?.publicPortalConfig?.portalAccess?.isPrivate ?? false,
@@ -410,7 +400,6 @@ function WidgetPage() {
     logoUrl,
     topArticles,
     teamName,
-    assistant,
     team,
     messengerEnabled,
   } = Route.useLoaderData()
@@ -856,35 +845,15 @@ function WidgetPage() {
   // Messenger thread header lives in the SHELL's top bar (single header row):
   // the assistant identity when enabled — always available, no presence — or
   // the live presence badge for assistant-less workspaces.
-  const presence = useConversationPresence(messengerEnabled && !assistant)
+  const presence = useConversationPresence(messengerEnabled)
   const messengerHeader =
     view === 'messenger' ? (
-      assistant ? (
-        <div className="flex min-w-0 items-center gap-2.5 ps-1">
-          <Avatar src={assistant.avatarUrl} name={assistant.name} className="size-8 text-xs" />
-          <div className="min-w-0">
-            <p className="truncate text-sm font-semibold leading-tight text-foreground">
-              {assistant.name}
-            </p>
-            <p className="truncate text-[11px] leading-tight text-muted-foreground">
-              <FormattedMessage
-                id="widget.messenger.assistant.teamAlso"
-                defaultMessage="The team can also help"
-              />
-            </p>
-          </div>
-        </div>
-      ) : (
-        <div className="min-w-0 ps-1">
-          <ConversationPresenceBadge
-            available={conversationAvailable(presence.agentsOnline, presence.withinOfficeHours)}
-            // When office hours are configured, the badge tells the visitor up
-            // front when the team is back; the thread body only says so once
-            // they have typed.
-            nextOpenAt={presence.nextOpenAt}
-          />
-        </div>
-      )
+      <div className="min-w-0 ps-1">
+        <ConversationPresenceBadge
+          available={conversationAvailable(presence.agentsOnline, presence.withinOfficeHours)}
+          nextOpenAt={presence.nextOpenAt}
+        />
+      </div>
     ) : undefined
 
   return (
@@ -916,7 +885,6 @@ function WidgetPage() {
           <WidgetOverview
             tabs={tabs}
             home={home}
-            assistant={assistant}
             team={team}
             topArticles={topArticles}
             canStartConversation={messengerEnabled}
@@ -989,7 +957,6 @@ function WidgetPage() {
         >
           <WidgetMessages
             teamName={teamName}
-            assistant={assistant}
             canStartConversation={messengerEnabled}
             onOpenMessenger={openMessenger}
           />

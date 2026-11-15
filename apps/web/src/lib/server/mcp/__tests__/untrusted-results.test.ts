@@ -279,7 +279,7 @@ describe('search', () => {
             authorName: 'Ada Customer',
             ownerPrincipalId: null,
             tags: [{ id: 'post_tag_1', name: 'Billing' }],
-            summary: 'Wants webhooks',
+            summary: null,
             canonicalPostId: null,
             isCommentsLocked: false,
             createdAt: ISO1,
@@ -309,12 +309,7 @@ describe('search', () => {
         hasMore: false,
       })
     )
-    expect(descriptor?.fields).toEqual([
-      'posts[].title',
-      'posts[].excerpt',
-      'posts[].authorName',
-      'posts[].summary',
-    ])
+    expect(descriptor?.fields).toEqual(['posts[].title', 'posts[].excerpt', 'posts[].authorName'])
     expectNote(descriptor)
   })
 
@@ -508,8 +503,6 @@ describe('get_details', () => {
           authorName: 'Jane Teammate',
           createdAt: ISO2,
         },
-        summaryJson: { summary: 'Wants webhooks', keyQuotes: ['add webhooks'] },
-        summaryUpdatedAt: ISO2,
         canonicalPostId: null,
         mergedAt: null,
         isCommentsLocked: false,
@@ -532,7 +525,6 @@ describe('get_details', () => {
       'title',
       'content',
       'authorName',
-      'summaryJson',
       'mergedPosts[].title',
       'mergedPosts[].authorName',
       'comments[0].content',
@@ -618,8 +610,6 @@ describe('get_details', () => {
           authorName: formerName,
           createdAt: ISO2,
         },
-        summaryJson: null,
-        summaryUpdatedAt: null,
         canonicalPostId: null,
         mergedAt: null,
         isCommentsLocked: false,

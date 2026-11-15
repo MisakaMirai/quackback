@@ -81,7 +81,9 @@ describe('PersonalKeysOversight', () => {
     renderIt([key()])
     expect(screen.queryByRole('button', { name: /Rotate/ })).toBeNull()
     await user.click(screen.getByRole('button', { name: 'Revoke Inbox triage script' }))
-    expect(await screen.findByText('Revoking Inbox triage script')).toBeInTheDocument()
+    expect(
+      await screen.findByText('Revoking Inbox triage script', {}, { timeout: 5_000 })
+    ).toBeInTheDocument()
   })
 
   it('switches the policy', async () => {

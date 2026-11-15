@@ -188,17 +188,7 @@ describe('buildListParams', () => {
 
   it('carries an explicit channel filter on conversation scopes', () => {
     expect(
-      buildListParams(
-        view('all'),
-        'open',
-        'all',
-        '',
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        'email'
-      )
+      buildListParams(view('all'), 'open', 'all', '', undefined, undefined, undefined, 'email')
     ).toMatchObject({
       assignee: 'all',
       channel: 'email',
@@ -209,7 +199,6 @@ describe('buildListParams', () => {
         'open',
         'all',
         '',
-        undefined,
         undefined,
         undefined,
         undefined,
@@ -299,7 +288,6 @@ describe('ticket inbox views', () => {
     expect(isTicketInboxView('tickets_back_office')).toBe(true)
     expect(isTicketInboxView('tickets_tracker')).toBe(true)
     expect(isTicketInboxView('mine')).toBe(false)
-    expect(isTicketInboxView('quinn')).toBe(false)
   })
 
   it('ticketTypeForView maps each view to its ticket type', () => {
@@ -331,9 +319,8 @@ describe('usesUnifiedInboxList', () => {
     expect(usesUnifiedInboxList({ kind: 'view', view: 'tickets_tracker' })).toBe(true)
   })
 
-  it('keeps mentions/quinn/saved and tag/segment/custom scopes on the legacy endpoint', () => {
+  it('keeps mentions/saved and tag/segment/custom scopes on the legacy endpoint', () => {
     expect(usesUnifiedInboxList({ kind: 'view', view: 'mentions' })).toBe(false)
-    expect(usesUnifiedInboxList({ kind: 'view', view: 'quinn' })).toBe(false)
     expect(usesUnifiedInboxList({ kind: 'view', view: 'saved' })).toBe(false)
     expect(usesUnifiedInboxList({ kind: 'tag', tagId })).toBe(false)
     expect(usesUnifiedInboxList({ kind: 'segment', segmentId: segId })).toBe(false)
@@ -423,7 +410,6 @@ describe('buildInboxListParams', () => {
           'open',
           'all',
           '',
-          undefined,
           undefined,
           undefined,
           undefined,

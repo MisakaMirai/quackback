@@ -7,7 +7,6 @@
 import type { ConversationMessageDTO, MessageSenderType } from '@/lib/shared/conversation/types'
 import type { TiptapContent } from '@/lib/server/db'
 import { tiptapJsonToText } from '@/lib/server/markdown-tiptap'
-import { displayAssistantName } from '@/lib/shared/assistant/config'
 
 export interface TranscriptMeta {
   id: string
@@ -22,14 +21,7 @@ export interface TranscriptMeta {
 /** The DTO subset the renderer reads; a ConversationMessageDTO satisfies it. */
 export type TranscriptMessage = Pick<
   ConversationMessageDTO,
-  | 'senderType'
-  | 'content'
-  | 'contentJson'
-  | 'createdAt'
-  | 'author'
-  | 'isInternal'
-  | 'isAssistant'
-  | 'attachments'
+  'senderType' | 'content' | 'contentJson' | 'createdAt' | 'author' | 'isInternal' | 'attachments'
 >
 
 /** `2026-07-04T09:15:30.000Z` -> `2026-07-04 09:15 UTC`; timezone-free so tests
@@ -41,22 +33,15 @@ function fmtUtc(value: string | Date | null | undefined): string {
   return m ? `${m[1]} ${m[2]} UTC` : iso
 }
 
-function defaultName(senderType: MessageSenderType, isAssistant: boolean): string {
-  if (senderType === 'visitor') return 'Visitor'
-  if (isAssistant) return 'Assistant'
-  return 'Agent'
+function defaultName(senderType: MessageSenderType): string {
+  return senderType === 'visitor' ? 'Visitor' : 'Agent'
 }
 
-/** "Jane (agent)", "Quackback AI (assistant)", "Jane (agent) · internal note", "System". */
+/** "Jane (agent)", "Jane (agent) · internal note", "System". */
 function speaker(m: TranscriptMessage): string {
   if (m.senderType === 'system') return 'System'
-  const roleLabel = m.senderType === 'visitor' ? 'visitor' : m.isAssistant ? 'assistant' : 'agent'
-  const authorName = m.author?.displayName?.trim()
-  const name = authorName
-    ? m.isAssistant
-      ? displayAssistantName(authorName)
-      : authorName
-    : defaultName(m.senderType, m.isAssistant)
+  const roleLabel = m.senderType === 'visitor' ? 'visitor' : 'agent'
+  const name = m.author?.displayName?.trim() || defaultName(m.senderType)
   return `${name} (${roleLabel})${m.isInternal ? ' · internal note' : ''}`
 }
 

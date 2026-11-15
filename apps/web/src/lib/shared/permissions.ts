@@ -121,11 +121,6 @@ export const PERMISSIONS = {
   WORKFLOW_MANAGE: 'workflow.manage',
   CHANNEL_ACCOUNT_MANAGE: 'channel_account.manage',
 
-  // ai
-  AI_CUSTOMER_MANAGE: 'ai.customer.manage',
-  AI_TEAMMATE_MANAGE: 'ai.teammate.manage',
-  COPILOT_USE: 'copilot.use',
-
   // status_page
   STATUS_PAGE_MANAGE: 'status_page.manage',
   STATUS_PAGE_PUBLISH: 'status_page.publish',
@@ -149,7 +144,6 @@ export const PERMISSION_CATEGORIES = [
   'analytics',
   'integration',
   'support',
-  'ai',
   'status_page',
 ] as const
 
@@ -191,8 +185,6 @@ export const WORKSPACE_ADMIN_PERMISSIONS: readonly PermissionKey[] = [
   PERMISSIONS.TEAM_MANAGE,
   PERMISSIONS.WORKFLOW_MANAGE,
   PERMISSIONS.CHANNEL_ACCOUNT_MANAGE,
-  PERMISSIONS.AI_CUSTOMER_MANAGE,
-  PERMISSIONS.AI_TEAMMATE_MANAGE,
   PERMISSIONS.STATUS_PAGE_MANAGE,
 ]
 
@@ -203,7 +195,6 @@ export const SUPPORT_LEAD_EXTRA_PERMISSIONS: readonly PermissionKey[] = [
   PERMISSIONS.OFFICE_HOURS_MANAGE,
   PERMISSIONS.CHANNEL_ACCOUNT_MANAGE,
   PERMISSIONS.CUSTOM_FIELD_MANAGE,
-  PERMISSIONS.AI_CUSTOMER_MANAGE,
 ]
 
 export const SYSTEM_ROLE_PERMISSIONS: Record<SystemRoleKey, PermissionKey[]> = {
@@ -231,7 +222,6 @@ export const SYSTEM_ROLE_PERMISSIONS: Record<SystemRoleKey, PermissionKey[]> = {
     PERMISSIONS.CONVERSATION_ASSIGN,
     PERMISSIONS.CONVERSATION_SET_STATUS,
     PERMISSIONS.CONVERSATION_SET_TAGS,
-    PERMISSIONS.COPILOT_USE,
     PERMISSIONS.CHANGELOG_VIEW_DRAFT,
     PERMISSIONS.PEOPLE_VIEW,
     PERMISSIONS.COMPANY_VIEW,
@@ -347,9 +337,6 @@ export const PERMISSION_CATALOGUE: ReadonlyArray<{
   { key: PERMISSIONS.TEAM_MANAGE, category: 'support' },
   { key: PERMISSIONS.WORKFLOW_MANAGE, category: 'support' },
   { key: PERMISSIONS.CHANNEL_ACCOUNT_MANAGE, category: 'support' },
-  { key: PERMISSIONS.AI_CUSTOMER_MANAGE, category: 'ai' },
-  { key: PERMISSIONS.AI_TEAMMATE_MANAGE, category: 'ai' },
-  { key: PERMISSIONS.COPILOT_USE, category: 'ai' },
   { key: PERMISSIONS.STATUS_PAGE_MANAGE, category: 'status_page' },
   { key: PERMISSIONS.STATUS_PAGE_PUBLISH, category: 'status_page' },
 ]

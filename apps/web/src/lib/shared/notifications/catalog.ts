@@ -88,13 +88,6 @@ export const NOTIFICATION_CATALOG: readonly NotificationTypeMeta[] = [
     surfaces: ['admin'],
   },
   {
-    type: 'assistant_handed_off',
-    label: 'AI handed off to you',
-    description: 'The AI assistant hands a conversation to the human inbox',
-    group: 'support',
-    surfaces: ['admin'],
-  },
-  {
     type: 'ticket_status_changed',
     label: 'Ticket status changed',
     description: 'A ticket you own changes status',

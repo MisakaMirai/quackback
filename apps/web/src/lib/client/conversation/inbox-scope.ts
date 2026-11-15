@@ -42,7 +42,6 @@ export type InboxView =
   | 'all'
   | 'mentions'
   | 'saved'
-  | 'quinn'
   | 'spam'
   | 'created_by_me'
   | 'test'
@@ -61,7 +60,6 @@ const INBOX_VIEWS: Record<InboxView, true> = {
   all: true,
   mentions: true,
   saved: true,
-  quinn: true,
   spam: true,
   created_by_me: true,
   test: true,
@@ -73,7 +71,7 @@ const INBOX_VIEWS: Record<InboxView, true> = {
 
 /**
  * URL-safe guard: is `v` one of the canonical inbox views (conversation scopes,
- * Quinn AI, or a Tickets-section scope)? The inbox route's `?view=` allowlist.
+ * or a Tickets-section scope)? The inbox route's `?view=` allowlist.
  * Lives here, not in the nav sidebar, because the route's validateSearch runs
  * from the route module, which every page loads eagerly.
  */
@@ -105,9 +103,6 @@ export function isTicketInboxView(view: InboxView): view is TicketInboxView {
 export function ticketTypeForView(view: TypedTicketInboxView): TicketType {
   return TICKET_VIEW_TYPE[view]
 }
-
-/** Quinn-inbox sub-filter by involvement outcome. */
-export type AiBucket = 'resolved' | 'escalated' | 'pending'
 
 /**
  * The active left-nav selection — one built-in view, one label, one segment,
@@ -164,8 +159,6 @@ export interface InboxSearch {
   /** Deep-link target message within the open item — scrolled to + flashed on open. */
   m?: string
   view?: InboxView
-  /** Quinn-view sub-filter by involvement outcome; omitted = any Quinn-engaged. */
-  ai?: AiBucket
   tag?: string
   segment?: string
   /** Per-team inbox scope (a team id). */
@@ -224,7 +217,6 @@ export function buildListParams(
   companyId?: CompanyId,
   sort?: ConversationSort,
   customParams?: ConversationViewListParams,
-  aiBucket?: AiBucket,
   channel?: Channel
 ) {
   const priority = priorityFilter === 'all' ? undefined : priorityFilter
@@ -280,17 +272,6 @@ export function buildListParams(
   // status/priority chips.
   if (nav.view === 'created_by_me')
     return { view: 'created_by_me' as const, search: q, companyId: company, sort: sortParam }
-  if (nav.view === 'quinn')
-    return {
-      view: 'quinn' as const,
-      ai: aiBucket,
-      status: statusParam,
-      priority,
-      search: q,
-      companyId: company,
-      sort: sortParam,
-      ...(channel ? { channel } : {}),
-    }
   const assignee =
     nav.view === 'mine'
       ? ('mine' as const)

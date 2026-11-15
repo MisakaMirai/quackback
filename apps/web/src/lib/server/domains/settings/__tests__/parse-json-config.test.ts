@@ -176,7 +176,6 @@ describe('parseWidgetConfig', () => {
     expect(parseWidgetConfig(null).tabs?.messenger).toBe(true)
     expect(parseWidgetConfig(null).tabs?.tickets).toBe(true)
     expect(parseWidgetConfig(null).tabs?.changelog).toBe(true)
-    expect(parseWidgetConfig(null).messenger?.assistant?.respond).toBe(true)
   })
 
   it('keeps missing messenger, changelog, and respond keys off on a stored config', () => {
@@ -185,7 +184,6 @@ describe('parseWidgetConfig', () => {
     expect(result.tabs?.feedback).toBe(true)
     expect(result.tabs?.messenger).toBe(false)
     expect(result.tabs?.changelog).toBe(false)
-    expect(result.messenger?.assistant?.respond).toBe(false)
   })
 })
 

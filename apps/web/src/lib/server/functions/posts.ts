@@ -358,7 +358,6 @@ export const fetchPostWithDetails = createServerFn({ method: 'GET' })
 
     return {
       ...serializePostDates(result),
-      summaryUpdatedAt: toIsoStringOrNull(result.summaryUpdatedAt),
       hasVoted: voted,
       comments: comments.map(serializeComment),
       commentsHasMore: commentsPage.hasMore,

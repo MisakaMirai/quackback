@@ -14,7 +14,6 @@ import {
 } from '@/lib/server/db'
 import type { KbArticleId, KbCategoryId } from '@quackback/ids'
 import { NotFoundError } from '@/lib/shared/errors'
-import { cancelPendingAutoTranslations } from './help-center-translate-jobs'
 import type {
   HelpCenterArticleTranslation,
   HelpCenterCategoryTranslation,
@@ -72,10 +71,8 @@ export async function getPublishedArticleTranslation(
  * Auto-translate passes `source: 'auto'`.
  */
 export async function upsertArticleTranslation(
-  input: UpsertArticleTranslationInput,
-  opts: { source?: 'manual' | 'auto' } = {}
+  input: UpsertArticleTranslationInput
 ): Promise<HelpCenterArticleTranslation> {
-  if (opts.source !== 'auto') await cancelPendingAutoTranslations(input.articleId, input.locale)
   const [row] = await db
     .insert(helpCenterArticleTranslations)
     .values({
@@ -148,7 +145,6 @@ export async function setArticleTranslationStatus(
   locale: string,
   status: 'draft' | 'published'
 ): Promise<HelpCenterArticleTranslation> {
-  await cancelPendingAutoTranslations(articleId, locale)
   const [row] = await db
     .update(helpCenterArticleTranslations)
     .set({ status, updatedAt: new Date() })
@@ -172,7 +168,6 @@ export async function deleteArticleTranslation(
   articleId: KbArticleId,
   locale: string
 ): Promise<void> {
-  await cancelPendingAutoTranslations(articleId, locale)
   await db
     .delete(helpCenterArticleTranslations)
     .where(
@@ -186,19 +181,16 @@ export async function deleteArticleTranslation(
 /** One entry per enabled additional locale, for the admin editor's status pills. */
 export async function getArticleTranslationStatuses(
   articleId: KbArticleId,
-  enabledLocales: string[],
-  pausedLocales: readonly string[] = []
+  enabledLocales: string[]
 ): Promise<ArticleTranslationStatusEntry[]> {
   const rows = await listArticleTranslations(articleId)
   const byLocale = new Map(rows.map((r) => [r.locale, r]))
-  const paused = new Set(pausedLocales)
   return enabledLocales.map((locale) => {
     const row = byLocale.get(locale)
     return {
       locale,
       status: row ? row.status : 'untranslated',
       updatedAt: row?.updatedAt ?? null,
-      autoTranslatePaused: paused.has(locale),
     }
   })
 }

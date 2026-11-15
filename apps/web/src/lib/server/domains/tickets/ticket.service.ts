@@ -110,7 +110,7 @@ export async function loadTicketOr404(id: TicketId): Promise<Ticket> {
  * NotFound rather than a Forbidden that would leak the ticket's existence.
  *
  * Named `assertTicketVisible` (not `assertTicketViewable`) to stay distinct
- * from the assistant domain's `copilot-gate.ts` helper of that name, which
+ * from the removed assistant domain helper of that name, which
  * predates this one and now just delegates here — see its doc comment.
  */
 export async function assertTicketVisible(id: TicketId, actor: Actor): Promise<Ticket> {

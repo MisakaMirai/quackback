@@ -5,8 +5,6 @@
  * that matches no post on every word is widened first (withInboxSearchMode),
  * and the page says how.
  */
-import type { PostId } from '@quackback/ids'
-import { getMergeSuggestionCountsForPosts } from '@/lib/server/domains/merge-suggestions/merge-suggestion.service'
 import { listInboxPosts } from './post.inbox'
 import { withInboxSearchMode } from './post.inbox.search'
 
@@ -16,13 +14,8 @@ export async function listAdminInboxPage(
 ) {
   const listParams = await withInboxSearchMode(params, options)
   const page = await listInboxPosts(listParams)
-  const duplicateCounts =
-    page.items.length > 0
-      ? await getMergeSuggestionCountsForPosts(page.items.map((p) => p.id as PostId))
-      : []
   return {
     ...page,
-    duplicateCounts,
     ...(listParams.searchMode !== 'all' && { searchMode: listParams.searchMode }),
   }
 }

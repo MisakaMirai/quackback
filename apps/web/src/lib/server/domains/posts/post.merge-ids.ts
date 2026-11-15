@@ -139,7 +139,6 @@ export async function recalculateCanonicalVoteCount(
     .set({
       voteCount: newCount,
       commentCount: newCommentCount,
-      ...(options?.resetMergeCheck && { mergeCheckedAt: null }),
     })
     .where(eq(posts.id, canonicalPostId))
 

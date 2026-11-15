@@ -25,7 +25,6 @@ function message(overrides: Partial<ConversationMessage> = {}): ConversationMess
     contentJson: null,
     isInternal: false,
     attachments: null,
-    citations: null,
     metadata: null,
     createdAt: new Date('2026-07-10T10:00:00Z'),
     updatedAt: null,
@@ -122,22 +121,5 @@ describe('toMessageDTO — block/blockReply projection', () => {
     }
     const dto = toMessageDTO(message({ senderType: 'visitor', metadata: { blockReply } }), null)
     expect(dto.blockReply).toEqual(blockReply)
-  })
-
-  it('isAssistant still derives independently of the block payload (same rule as an ordinary message)', () => {
-    const blockPayload = {
-      v: 1 as const,
-      runId: 'workflow_run_1',
-      nodeId: 'n1',
-      waiting: false,
-      kind: 'message' as const,
-    }
-    const dto = toMessageDTO(
-      message({ principalId: 'principal_quinn', metadata: { block: blockPayload } }),
-      null,
-      'principal_quinn' as ConversationMessage['principalId']
-    )
-    expect(dto.isAssistant).toBe(true)
-    expect(dto.block).toEqual(blockPayload)
   })
 })

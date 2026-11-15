@@ -7,9 +7,6 @@ vi.mock('@/lib/server/db', async (original) => ({
   ...(await original<typeof import('@/lib/server/db')>()),
   db: (await import('@/lib/server/__tests__/db-test-fixture')).testDb,
 }))
-vi.mock('../help-center-embedding.service', () => ({
-  generateArticleEmbedding: async () => undefined,
-}))
 
 import { createArticle } from '../help-center.article.service'
 

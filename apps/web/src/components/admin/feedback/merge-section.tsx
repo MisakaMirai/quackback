@@ -29,7 +29,6 @@ import { StatusBadge } from '@/components/ui/status-badge'
 import { useMergePost, useUnmergePost } from '@/lib/client/mutations/post-merge'
 import { findSimilarPostsFn, type SimilarPost } from '@/lib/server/functions/public-posts'
 import { getMergedPostsFn } from '@/lib/server/functions/post-merge'
-import { mergeSuggestionQueries } from '@/lib/client/queries/signals'
 import { inboxKeys } from '@/lib/client/hooks/use-inbox-query'
 import type { PostId } from '@quackback/ids'
 import type { MergedPostItem } from '@/lib/shared/types/inbox'
@@ -339,12 +338,6 @@ export function MergeOthersDialog({
     }
   }, [open])
 
-  // AI-suggested duplicates
-  const { data: aiSuggestions } = useQuery({
-    ...mergeSuggestionQueries.forPost(postId),
-    enabled: open,
-  })
-
   // Manual search results
   const { data: searchResults, isLoading } = useQuery({
     queryKey: ['merge-suggestions', 'search-others', postId, searchQuery],
@@ -355,32 +348,6 @@ export function MergeOthersDialog({
     enabled: open && searchQuery.length >= 3,
     staleTime: 30_000,
   })
-
-  // Build AI suggestion post list (deduplicated against search results)
-  const aiPosts: Array<{
-    id: string
-    title: string
-    voteCount: number
-    status: { name: string; color: string } | null
-    reasoning?: string
-  }> = (aiSuggestions ?? [])
-    .filter((suggestion) => suggestion.targetPostId === postId)
-    .map((suggestion) => ({
-      id: suggestion.sourcePostId,
-      title: suggestion.sourcePostTitle,
-      voteCount: suggestion.sourcePostVoteCount,
-      status: suggestion.sourcePostStatusName
-        ? {
-            name: suggestion.sourcePostStatusName,
-            color: suggestion.sourcePostStatusColor ?? '',
-          }
-        : null,
-      reasoning: suggestion.llmReasoning ?? undefined,
-    }))
-
-  // Filter out AI-suggested IDs from search results to avoid duplication
-  const aiPostIds = new Set(aiPosts.map((p) => p.id))
-  const filteredSearchResults = searchResults?.filter((p) => !aiPostIds.has(p.id))
 
   const toggleSelection = (id: string) => {
     setSelectedIds((prev) => {
@@ -415,8 +382,7 @@ export function MergeOthersDialog({
     }
   }
 
-  const hasAiSuggestions = aiPosts.length > 0
-  const hasSearchResults = filteredSearchResults && filteredSearchResults.length > 0
+  const hasSearchResults = searchResults && searchResults.length > 0
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -440,29 +406,6 @@ export function MergeOthersDialog({
         </div>
 
         <div className="min-h-[200px] max-h-[400px] overflow-y-auto border-t border-border/50">
-          {/* AI Suggested section */}
-          {hasAiSuggestions && (
-            <>
-              <div className="px-4 py-2 text-xs font-medium text-muted-foreground/60 uppercase tracking-wider bg-muted/20">
-                AI Suggested
-              </div>
-              <div className="divide-y divide-border/50">
-                {aiPosts.map((post) => (
-                  <MergeOthersRow
-                    key={post.id}
-                    title={post.title}
-                    voteCount={post.voteCount}
-                    status={post.status}
-                    subtitle={post.reasoning}
-                    selected={selectedIds.has(post.id)}
-                    disabled={isMerging}
-                    onToggle={() => toggleSelection(post.id)}
-                  />
-                ))}
-              </div>
-            </>
-          )}
-
           {/* Search results section */}
           {isLoading && searchQuery.length >= 3 && (
             <p className="text-sm text-muted-foreground py-6 text-center">Searching...</p>
@@ -470,13 +413,11 @@ export function MergeOthersDialog({
 
           {hasSearchResults && (
             <>
-              {(hasAiSuggestions || searchQuery.length >= 3) && (
-                <div className="px-4 py-2 text-xs font-medium text-muted-foreground/60 uppercase tracking-wider bg-muted/20">
-                  Search results
-                </div>
-              )}
+              <div className="px-4 py-2 text-xs font-medium text-muted-foreground/60 uppercase tracking-wider bg-muted/20">
+                Search results
+              </div>
               <div className="divide-y divide-border/50">
-                {filteredSearchResults.map((post) => (
+                {searchResults.map((post) => (
                   <MergeOthersRow
                     key={post.id}
                     title={post.title}
@@ -498,13 +439,13 @@ export function MergeOthersDialog({
             </>
           )}
 
-          {!hasAiSuggestions && !hasSearchResults && searchQuery.length >= 3 && !isLoading && (
+          {!hasSearchResults && searchQuery.length >= 3 && !isLoading && (
             <p className="text-sm text-muted-foreground py-6 text-center">
               No similar feedback found.
             </p>
           )}
 
-          {!hasAiSuggestions && searchQuery.length < 3 && !isLoading && (
+          {!hasSearchResults && searchQuery.length < 3 && !isLoading && (
             <p className="text-sm text-muted-foreground py-6 text-center">
               Type at least 3 characters to search.
             </p>

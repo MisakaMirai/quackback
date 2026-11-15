@@ -7,7 +7,7 @@ import {
   SEARCH_KINDS,
   SEARCH_PAGE_SIZE,
   type SearchKind,
-} from '@/lib/shared/assistant/ask-search'
+} from '@/lib/shared/search'
 
 interface SearchPageSearch {
   q: string

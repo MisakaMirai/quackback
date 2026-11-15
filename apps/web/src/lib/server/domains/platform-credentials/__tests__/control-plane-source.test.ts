@@ -26,7 +26,12 @@ it('requires complete settings and never returns unknown fields/providers', asyn
 it('pins the CP catalogue contract', () => {
   expect(
     createHash('sha256')
-      .update(readFileSync('apps/web/src/lib/shared/integration-credentials.ts'))
+      .update(
+        readFileSync('apps/web/src/lib/shared/integration-credentials.ts', 'utf8').replace(
+          /\r\n/g,
+          '\n'
+        )
+      )
       .digest('hex')
   ).toBe('2dc62547efbca3dc388594603dcf7a1f4301fca3989077b29a966c3c0cc6ec2b')
 })

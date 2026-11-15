@@ -22,7 +22,6 @@ const base: LaunchStatus = {
     helpCenter: true,
     statusPage: true,
     integrations: false,
-    assistant: true,
     changelog: true,
   },
 }

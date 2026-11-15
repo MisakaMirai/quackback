@@ -127,9 +127,6 @@ export const postTags = pgTable(
     name: text('name').notNull().unique(),
     color: text('color').default('#6b7280').notNull(),
     description: text('description'),
-    // Matching rule for AI auto-tagging: new posts are evaluated against every
-    // tag whose prompt is set, and matching tags are assigned automatically.
-    aiPrompt: text('ai_prompt'),
     // Portal visibility: when false the tag is internal — non-team portal
     // viewers never see it in filter lists or on posts. Team actors see all.
     isPublic: boolean('is_public').default(true).notNull(),

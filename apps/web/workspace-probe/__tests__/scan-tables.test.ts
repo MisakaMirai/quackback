@@ -47,13 +47,7 @@ describe('SCAN_TABLES', () => {
     // fast enough to be run after every builder round. But these five are the
     // load-bearing ones for P07, P08 and P09, and dropping one silently would
     // narrow the suite without any test noticing.
-    for (const table of [
-      'posts',
-      'events',
-      'conversation_messages',
-      'assistant_involvements',
-      'principal',
-    ]) {
+    for (const table of ['posts', 'events', 'conversation_messages', 'principal']) {
       expect(SCAN_TABLES, `${table} must stay in the scan list`).toContain(table)
     }
   })

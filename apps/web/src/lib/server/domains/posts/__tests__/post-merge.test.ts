@@ -12,7 +12,6 @@ const mockBoardsFindFirst = vi.fn()
 const mockDbUpdate = vi.fn()
 const mockDbExecute = vi.fn()
 const createActivity = vi.fn()
-const scheduleDispatch = vi.fn().mockResolvedValue(undefined)
 
 // The in-transaction re-checks (existingChild, freshCanonical) and the
 // claim UPDATE's `.returning()` result are both individually controllable
@@ -83,10 +82,6 @@ vi.mock('@/lib/server/db', async (importOriginal) => {
 
 vi.mock('@/lib/server/domains/activity/activity.service', () => ({
   createActivity: (...args: unknown[]) => createActivity(...args),
-}))
-
-vi.mock('@/lib/server/events/scheduler', () => ({
-  scheduleDispatch: (...args: unknown[]) => scheduleDispatch(...args),
 }))
 
 vi.mock('@/lib/server/events/dispatch', () => ({
@@ -218,21 +213,6 @@ describe('mergePost', () => {
       expect.objectContaining({
         postId: POST_A,
         type: 'post.merged_away',
-      })
-    )
-  })
-
-  it('schedules a merge recheck after merge', async () => {
-    mockPostsFindFirst
-      .mockResolvedValueOnce(mockPost({ id: POST_A }))
-      .mockResolvedValueOnce(mockPost({ id: POST_B }))
-
-    await mergePost(POST_A, POST_B, ACTOR)
-
-    expect(scheduleDispatch).toHaveBeenCalledWith(
-      expect.objectContaining({
-        handler: '__post_merge_recheck__',
-        payload: { postId: POST_B },
       })
     )
   })

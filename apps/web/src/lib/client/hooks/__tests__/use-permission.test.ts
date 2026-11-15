@@ -11,14 +11,14 @@ import { renderHook } from '@testing-library/react'
 import { PERMISSIONS } from '@/lib/shared/permissions'
 
 describe('resolvePermission', () => {
-  it('grants owner-preset permissions for the admin role (copilot.use included)', async () => {
+  it('grants owner-preset permissions for the admin role (conversation.view included)', async () => {
     const { resolvePermission } = await import('../use-permission')
-    expect(resolvePermission('admin', PERMISSIONS.COPILOT_USE)).toBe(true)
+    expect(resolvePermission('admin', PERMISSIONS.CONVERSATION_VIEW)).toBe(true)
   })
 
-  it('grants manager-preset permissions for the member role (copilot.use included, not workspace-admin-only)', async () => {
+  it('grants manager-preset permissions for the member role (conversation.view included, not workspace-admin-only)', async () => {
     const { resolvePermission } = await import('../use-permission')
-    expect(resolvePermission('member', PERMISSIONS.COPILOT_USE)).toBe(true)
+    expect(resolvePermission('member', PERMISSIONS.CONVERSATION_VIEW)).toBe(true)
   })
 
   it('withholds a workspace-admin-only permission from the member role', async () => {
@@ -28,13 +28,13 @@ describe('resolvePermission', () => {
 
   it('has no preset for an unrecognized legacy role', async () => {
     const { resolvePermission } = await import('../use-permission')
-    expect(resolvePermission('user', PERMISSIONS.COPILOT_USE)).toBe(false)
+    expect(resolvePermission('user', PERMISSIONS.CONVERSATION_VIEW)).toBe(false)
   })
 
   it('is false for a null/undefined role', async () => {
     const { resolvePermission } = await import('../use-permission')
-    expect(resolvePermission(null, PERMISSIONS.COPILOT_USE)).toBe(false)
-    expect(resolvePermission(undefined, PERMISSIONS.COPILOT_USE)).toBe(false)
+    expect(resolvePermission(null, PERMISSIONS.CONVERSATION_VIEW)).toBe(false)
+    expect(resolvePermission(undefined, PERMISSIONS.CONVERSATION_VIEW)).toBe(false)
   })
 })
 
@@ -47,7 +47,7 @@ describe('usePermission', () => {
     }))
     const { usePermission } = await import('../use-permission')
 
-    const { result } = renderHook(() => usePermission(PERMISSIONS.COPILOT_USE))
+    const { result } = renderHook(() => usePermission(PERMISSIONS.CONVERSATION_VIEW))
     expect(result.current).toBe(true)
 
     vi.doUnmock('@tanstack/react-router')
@@ -61,7 +61,7 @@ describe('usePermission', () => {
     }))
     const { usePermission } = await import('../use-permission')
 
-    const { result } = renderHook(() => usePermission(PERMISSIONS.COPILOT_USE))
+    const { result } = renderHook(() => usePermission(PERMISSIONS.CONVERSATION_VIEW))
     expect(result.current).toBe(false)
 
     vi.doUnmock('@tanstack/react-router')

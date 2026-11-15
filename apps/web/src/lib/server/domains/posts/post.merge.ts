@@ -23,7 +23,6 @@ import {
   principal as principalTable,
 } from '@/lib/server/db'
 import { type BoardId, type PostId, type PrincipalId, type UserId, toUuid } from '@quackback/ids'
-import { scheduleDispatch } from '@/lib/server/events/scheduler'
 import { getExecuteRows } from '@/lib/server/utils'
 import { NotFoundError, ValidationError, ConflictError } from '@/lib/shared/errors'
 import { createActivity } from '@/lib/server/domains/activity/activity.service'
@@ -44,10 +43,7 @@ import type {
   PostWithDetails,
 } from './post.types'
 import type { CommentTreeNode } from '@/lib/shared'
-import { logger } from '@/lib/server/logger'
 import { isTestPrincipalSql, notTestPrincipal } from '@/lib/server/test-data'
-
-const log = logger.child({ component: 'post-merge' })
 
 /**
  * Merge a duplicate post into a canonical post.
@@ -183,9 +179,6 @@ export async function mergePost(
     return recalculateCanonicalVoteCount(canonicalPostId, { resetMergeCheck: true }, tx)
   })
 
-  // Queue a delayed re-check for additional duplicates (e.g. 3 similar posts where only 1 was caught)
-  schedulePostMergeRecheck(canonicalPostId)
-
   // Look up the duplicate post's author name for activity metadata
   const duplicateAuthor = duplicatePost.principalId
     ? await db.query.principal.findFirst({
@@ -249,22 +242,6 @@ export async function mergePost(
 }
 
 /**
- * Schedule a delayed duplicate re-check for a canonical post after merge.
- * Uses BullMQ for persistence and retry. The 3s delay lets the DB transaction
- * settle and avoids re-finding just-dismissed suggestions.
- */
-function schedulePostMergeRecheck(canonicalPostId: PostId): void {
-  scheduleDispatch({
-    jobId: `merge-recheck:${canonicalPostId}`,
-    handler: '__post_merge_recheck__',
-    delayMs: 3000,
-    payload: { postId: canonicalPostId },
-  }).catch((err) =>
-    log.error({ err, post_id: canonicalPostId }, 'failed to schedule merge recheck')
-  )
-}
-
-/**
  * Unmerge a previously merged post, restoring it to independent state.
  *
  * - Validates the post exists and is currently merged
@@ -303,7 +280,6 @@ export async function unmergePost(
         canonicalPostId: null,
         mergedAt: null,
         mergedByPrincipalId: null,
-        mergeCheckedAt: null,
       })
       .where(eq(posts.id, postId))
 

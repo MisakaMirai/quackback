@@ -223,7 +223,6 @@ export const fetchMergePreviewFn = createServerFn({ method: 'GET' })
         createdAt: toIsoString(result.post.createdAt),
         updatedAt: toIsoString(result.post.updatedAt),
         deletedAt: toIsoStringOrNull(result.post.deletedAt),
-        summaryUpdatedAt: toIsoStringOrNull(result.post.summaryUpdatedAt),
         comments: result.post.comments.map(serializeComment),
         pinnedComment: serializedPinnedComment,
       },

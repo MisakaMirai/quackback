@@ -36,12 +36,6 @@ const MergeResultSchema = z.object({
   duplicatePost: z.object({ id: TypeIdSchema }),
 })
 
-const AcceptBodySchema = createRequestBodySchema({
-  swapDirection: z.boolean().optional().meta({
-    description: 'Merge the suggestion target into the source instead of the reverse',
-  }),
-})
-
 const postIdParam = {
   name: 'postId',
   in: 'path',
@@ -49,28 +43,6 @@ const postIdParam = {
   schema: { type: 'string' },
   description: 'Post ID',
 } as const
-
-const suggestionIdParam = {
-  name: 'suggestionId',
-  in: 'path',
-  required: true,
-  schema: { type: 'string' },
-  description: 'Merge suggestion ID (post_merge_sug_...)',
-} as const
-
-const suggestionResult = (flag: string, description: string) => ({
-  200: {
-    description,
-    content: {
-      'application/json': {
-        schema: createItemResponseSchema(
-          z.object({ [flag]: z.literal(true), id: z.string() }),
-          description
-        ),
-      },
-    },
-  },
-})
 
 registerPath('/posts/{postId}/activity', {
   get: {
@@ -109,51 +81,6 @@ registerPath('/posts/{postId}/merge', {
           },
         },
       },
-      ...errorResponses(400, 403, 404, 409),
-    },
-  },
-})
-
-registerPath('/suggestions/{suggestionId}/accept', {
-  post: {
-    tags: ['Posts'],
-    summary: 'Accept a merge suggestion',
-    description:
-      'Accepts a suggested post-to-post merge. The body is optional. Requires the suggestion.manage permission.',
-    parameters: [suggestionIdParam],
-    requestBody: {
-      required: false,
-      content: { 'application/json': { schema: asSchema(AcceptBodySchema) } },
-    },
-    responses: {
-      ...suggestionResult('accepted', 'Suggestion accepted'),
-      ...errorResponses(400, 403, 404, 409),
-    },
-  },
-})
-
-registerPath('/suggestions/{suggestionId}/dismiss', {
-  post: {
-    tags: ['Posts'],
-    summary: 'Dismiss a merge suggestion',
-    description: 'Requires the suggestion.manage permission.',
-    parameters: [suggestionIdParam],
-    responses: {
-      ...suggestionResult('dismissed', 'Suggestion dismissed'),
-      ...errorResponses(400, 403, 404, 409),
-    },
-  },
-})
-
-registerPath('/suggestions/{suggestionId}/restore', {
-  post: {
-    tags: ['Posts'],
-    summary: 'Restore a dismissed merge suggestion',
-    description:
-      'Returns a dismissed suggestion to pending. Requires the suggestion.manage permission.',
-    parameters: [suggestionIdParam],
-    responses: {
-      ...suggestionResult('restored', 'Suggestion restored'),
       ...errorResponses(400, 403, 404, 409),
     },
   },

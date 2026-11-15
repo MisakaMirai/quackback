@@ -1,10 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-vi.mock('../help-center-embedding.service', () => ({
-  generateKbEmbedding: vi.fn(),
-  generateKbQueryEmbedding: vi.fn(),
-}))
-
 // Each query the service runs ends in .limit(); the queue feeds one result set
 // per query, in order: source-article lookup, ranked candidates, same-category
 // padding.

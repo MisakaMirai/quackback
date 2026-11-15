@@ -1,3 +1,6 @@
+// Calendar-day comparisons use the process timezone; pin UTC so this is host-independent.
+process.env.TZ = 'UTC'
+
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { ChangelogId } from '@quackback/ids'
 import { ValidationError } from '@/lib/shared/errors'

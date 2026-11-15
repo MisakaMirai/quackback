@@ -40,7 +40,7 @@ describe('the sweep inventory', () => {
   const jobsSource = read('cron/fleet-jobs.ts')
   const startupSource = read('startup.ts')
 
-  it('is exactly the eleven locks the fleet has, all defined in one module', () => {
+  it('is exactly the eight locks the fleet has, all defined in one module', () => {
     const names = sweepLockNames(jobsSource)
     // Written out rather than derived, so a sweep deleted from the module makes
     // this fail instead of quietly shrinking both sides of a comparison.
@@ -51,11 +51,8 @@ describe('the sweep inventory', () => {
       'events_prune',
       'invite_sweep',
       'kv_sweep',
-      'logs_retention',
-      'merge_sweep',
       'status_maintenance_sweep',
       'status_notify',
-      'summary_sweep',
     ])
   })
 

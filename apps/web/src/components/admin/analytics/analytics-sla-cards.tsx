@@ -73,32 +73,20 @@ function BreachHeatmap({ cells }: { cells: SlaBreachHeatmapCell[] }) {
   )
 }
 
-/** The Support section's SLA and workflow cards: attainment per clock and per
- *  policy, breaches by hour, time after a miss, and workflow run outcomes. */
+/** The Support section's SLA cards: attainment per clock and per policy,
+ *  breaches by hour, and time after a miss. */
 export function AnalyticsSlaCards({ range }: { range: DateRange }) {
   const { data, isError, refetch } = useQuery(supportReportingQuery(range.from, range.to))
 
   if (isError && !data) {
     return (
       <Card className="overflow-hidden py-0">
-        <LoadError
-          message="SLA and workflow results could not be loaded."
-          onRetry={() => void refetch()}
-        />
+        <LoadError message="SLA results could not be loaded." onRetry={() => void refetch()} />
       </Card>
     )
   }
   if (!data) return <ChartSkeleton className="h-64 rounded-xl" />
 
-  const runs = data.workflows.reduce(
-    (acc, w) => ({
-      started: acc.started + w.started,
-      completed: acc.completed + w.completed,
-      interrupted: acc.interrupted + w.interrupted,
-      waiting: acc.waiting + w.waiting,
-    }),
-    { started: 0, completed: 0, interrupted: 0, waiting: 0 }
-  )
   const missed = CLOCKS.filter((c) => data.slaTimeAfterMiss[c.key].count > 0)
 
   return (
@@ -155,41 +143,6 @@ export function AnalyticsSlaCards({ range }: { range: DateRange }) {
                           {rateLabel(p[c.key].rate)}
                         </TableCell>
                       ))}
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Workflow runs</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {runs.started === 0 ? (
-              <AnalyticsEmpty message="No workflow runs in this period" />
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Outcome</TableHead>
-                    <TableHead className="text-right">Runs</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {(
-                    [
-                      ['Started', runs.started],
-                      ['Completed', runs.completed],
-                      ['Interrupted', runs.interrupted],
-                      ['Waiting', runs.waiting],
-                    ] as const
-                  ).map(([label, value]) => (
-                    <TableRow key={label}>
-                      <TableCell>{label}</TableCell>
-                      <TableCell className="text-right tabular-nums">{value}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

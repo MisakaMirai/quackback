@@ -1,72 +1,34 @@
-import { createContext, useContext, useId, type ComponentProps, type ReactNode } from 'react'
-import Markdown, { type Components, type ExtraProps } from 'react-markdown'
+import { useId } from 'react'
+import Markdown, { type Components } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import type { Element, Root, RootContent } from 'hast'
+import type { Element, Root } from 'hast'
 import { cn } from '@/lib/shared/utils'
 import { sanitizeImageUrl, sanitizeUrl } from '@/lib/shared/utils/sanitize'
-import { CITATION_MARKER_RE } from '@/lib/shared/assistant/citation-markers'
 
-/** Scope footnote labels per message and add citation placeholders after Markdown
- * has resolved links and code. This
- * keeps numeric link labels intact and never inserts an anchor inside another
- * anchor, or interprets examples inside code as source references. */
-function messageReferences(options: { footnotePrefix: string; citations: boolean }) {
+/** Scope footnote labels per message: remark-rehype gives every document the
+ *  same footnote heading ID, so two messages in one thread would otherwise
+ *  collide on it (and on the backlink aria-describedby). */
+function scopeFootnotes(footnotePrefix: string) {
   return (tree: Root) => {
     function walk(parent: Root | Element) {
       if (parent.type === 'element') {
-        // remark-rehype gives every document the same footnote heading ID.
         const properties = parent.properties
-        if (properties.id === 'footnote-label')
-          properties.id = `${options.footnotePrefix}footnote-label`
+        if (properties.id === 'footnote-label') properties.id = `${footnotePrefix}footnote-label`
         if (Array.isArray(properties.ariaDescribedBy))
           properties.ariaDescribedBy = properties.ariaDescribedBy.map((id) =>
-            id === 'footnote-label' ? `${options.footnotePrefix}footnote-label` : id
+            id === 'footnote-label' ? `${footnotePrefix}footnote-label` : id
           )
-        if (['a', 'code', 'pre'].includes(parent.tagName)) return
       }
-      const children: RootContent[] = []
       for (const child of parent.children) {
-        if (child.type === 'text' && options.citations) {
-          let last = 0
-          for (const match of child.value.matchAll(CITATION_MARKER_RE)) {
-            const index = match.index
-            if (index > last) children.push({ type: 'text', value: child.value.slice(last, index) })
-            children.push({
-              type: 'element',
-              tagName: 'span',
-              properties: { 'data-citation': Number(match[1]) },
-              children: [{ type: 'text', value: match[0] }],
-            })
-            last = index + match[0].length
-          }
-          if (last < child.value.length)
-            children.push({ type: 'text', value: child.value.slice(last) })
-        } else {
-          if (child.type === 'element') walk(child)
-          children.push(child)
-        }
+        if (child.type === 'element') walk(child)
       }
-      parent.children = children
     }
     walk(tree)
   }
 }
 
-type CitationRenderer = (number: number) => ReactNode
-const CitationRendererContext = createContext<CitationRenderer | undefined>(undefined)
-
-function CitationSpan({ node, children }: ComponentProps<'span'> & ExtraProps) {
-  const renderCitation = useContext(CitationRendererContext)
-  const number = node?.properties['data-citation']
-  return typeof number === 'number' && renderCitation ? (
-    renderCitation(number)
-  ) : (
-    <span>{children}</span>
-  )
-}
-
-// Keep component identities stable across text/citation updates, preserving DOM
-// nodes, selections and focus while an answer streams or its sources refresh.
+// Keep component identities stable across text updates, preserving DOM nodes,
+// selections and focus while a message re-renders.
 const components: Components = {
   a: ({ node: _node, href, children, className, ...props }) =>
     href ? (
@@ -100,23 +62,12 @@ const components: Components = {
       <table>{children}</table>
     </div>
   ),
-  span: CitationSpan,
 }
 
 /** Shared by admin and visitor messages. Render Markdown as React elements;
  * raw HTML stays escaped and URL protocols are checked before creating links or
  * images. Keep canonical TipTap documents on the rich-text render path. */
-export function MessageMarkdown({
-  text,
-  className,
-  renderCitation,
-  trailing,
-}: {
-  text: string
-  className?: string
-  renderCitation?: (number: number) => ReactNode
-  trailing?: ReactNode
-}) {
+export function MessageMarkdown({ text, className }: { text: string; className?: string }) {
   const footnotePrefix = `message-${useId()}-`
   return (
     <div
@@ -132,18 +83,15 @@ export function MessageMarkdown({
         className
       )}
     >
-      <CitationRendererContext value={renderCitation}>
-        <Markdown
-          remarkPlugins={[remarkGfm]}
-          remarkRehypeOptions={{ clobberPrefix: footnotePrefix }}
-          rehypePlugins={[[messageReferences, { footnotePrefix, citations: !!renderCitation }]]}
-          components={components}
-          urlTransform={(url, key) => (key === 'src' ? sanitizeImageUrl(url) : sanitizeUrl(url))}
-        >
-          {text}
-        </Markdown>
-      </CitationRendererContext>
-      {trailing}
+      <Markdown
+        remarkPlugins={[remarkGfm]}
+        remarkRehypeOptions={{ clobberPrefix: footnotePrefix }}
+        rehypePlugins={[[scopeFootnotes, footnotePrefix]]}
+        components={components}
+        urlTransform={(url, key) => (key === 'src' ? sanitizeImageUrl(url) : sanitizeUrl(url))}
+      >
+        {text}
+      </Markdown>
     </div>
   )
 }

@@ -5,7 +5,7 @@
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { PERMISSIONS } from '@/lib/shared/permissions'
-import type { SlaPolicy, Workflow } from '@/lib/server/db'
+import type { SlaPolicy } from '@/lib/server/db'
 
 // createServerFn → directly-callable fns (mirrors conversation-bulk.test.ts),
 // with the real zod validator applied so boundary rules are exercised too.
@@ -39,7 +39,6 @@ const hoisted = vi.hoisted(() => ({
   softDeleteSlaPolicy: vi.fn(),
   updateSlaPolicy: vi.fn(),
   removeSlaFromConversation: vi.fn(),
-  listWorkflows: vi.fn(),
   getOfficeHoursSchedule: vi.fn(),
   conversationToDTO: vi.fn(),
   publishConversationUpdate: vi.fn(),
@@ -57,9 +56,6 @@ vi.mock('@/lib/server/domains/sla/sla-policy.service', () => ({
 }))
 vi.mock('@/lib/server/domains/sla/sla.service', () => ({
   removeSlaFromConversation: hoisted.removeSlaFromConversation,
-}))
-vi.mock('@/lib/server/domains/workflows/workflow.service', () => ({
-  listWorkflows: hoisted.listWorkflows,
 }))
 vi.mock('@/lib/server/domains/settings/settings.office-hours', () => ({
   getOfficeHoursSchedule: hoisted.getOfficeHoursSchedule,
@@ -80,7 +76,6 @@ import {
   removeConversationSlaFn,
   restoreSlaPolicyFn,
   updateSlaPolicyFn,
-  workflowsReferencingPolicy,
 } from '../sla'
 
 function makePolicy(extra: Partial<SlaPolicy> = {}): SlaPolicy {
@@ -101,54 +96,11 @@ function makePolicy(extra: Partial<SlaPolicy> = {}): SlaPolicy {
   } as SlaPolicy
 }
 
-function makeWorkflow(
-  extra: Partial<Workflow> & { policyId?: string; status?: string } = {}
-): Workflow {
-  const { policyId, ...rest } = extra
-  return {
-    id: 'workflow_1',
-    name: 'Route VIPs',
-    status: 'live',
-    graph: policyId
-      ? {
-          nodes: [
-            { id: 't', type: 'trigger' },
-            { id: 'a', type: 'action', action: { type: 'apply_sla', policyId } },
-          ],
-          edges: [{ from: 't', to: 'a' }],
-        }
-      : { nodes: [{ id: 't', type: 'trigger' }], edges: [] },
-    ...rest,
-  } as unknown as Workflow
-}
-
 beforeEach(() => {
   vi.clearAllMocks()
   hoisted.requireAuth.mockResolvedValue({ principal: { id: 'principal_admin' } })
-  hoisted.listWorkflows.mockResolvedValue([])
   hoisted.listSlaPolicies.mockResolvedValue([])
   hoisted.listSlaPoliciesIncludingArchived.mockResolvedValue([])
-})
-
-describe('workflowsReferencingPolicy', () => {
-  it('matches apply_sla actions for the policy and ignores everything else', () => {
-    const workflows = [
-      makeWorkflow({ id: 'workflow_1', policyId: 'sla_policy_1' }),
-      makeWorkflow({ id: 'workflow_2', policyId: 'sla_policy_other' }),
-      makeWorkflow({ id: 'workflow_3' }),
-    ] as Workflow[]
-    expect(workflowsReferencingPolicy(workflows, 'sla_policy_1')).toEqual([
-      { id: 'workflow_1', name: 'Route VIPs', status: 'live' },
-    ])
-  })
-
-  it('never matches on a malformed graph', () => {
-    const broken = [
-      { id: 'w', name: 'Broken', status: 'live', graph: null },
-      { id: 'w2', name: 'Odd', status: 'live', graph: { nodes: 'nope' } },
-    ] as unknown as Workflow[]
-    expect(workflowsReferencingPolicy(broken, 'sla_policy_1')).toEqual([])
-  })
 })
 
 describe('permission gates', () => {
@@ -180,25 +132,16 @@ describe('permission gates', () => {
 })
 
 describe('listSlaPoliciesFn', () => {
-  it('returns live + archived policies with their workflow references', async () => {
+  it('returns live + archived policies', async () => {
     hoisted.listSlaPoliciesIncludingArchived.mockResolvedValue([
       makePolicy(),
       makePolicy({ id: 'sla_policy_2', name: 'Old', deletedAt: new Date('2026-06-01T00:00:00Z') }),
     ])
-    hoisted.listWorkflows.mockResolvedValue([makeWorkflow({ policyId: 'sla_policy_1' })])
 
-    const result = (await listSlaPoliciesFn()) as Array<{
-      id: string
-      archivedAt: string | null
-      usedByWorkflows: unknown[]
-    }>
+    const result = await listSlaPoliciesFn()
     expect(result).toHaveLength(2)
-    expect(result[0].usedByWorkflows).toEqual([
-      { id: 'workflow_1', name: 'Route VIPs', status: 'live' },
-    ])
     expect(result[0].archivedAt).toBeNull()
     expect(result[1].archivedAt).toBe('2026-06-01T00:00:00.000Z')
-    expect(result[1].usedByWorkflows).toEqual([])
   })
 })
 
@@ -352,30 +295,7 @@ describe('updateSlaPolicyFn', () => {
 })
 
 describe('archiveSlaPolicyFn', () => {
-  it('refuses with SLA_IN_USE while a live workflow references the policy', async () => {
-    hoisted.listWorkflows.mockResolvedValue([
-      makeWorkflow({ id: 'workflow_live', name: 'Live one', policyId: 'sla_policy_1' }),
-      makeWorkflow({
-        id: 'workflow_draft',
-        name: 'Draft one',
-        status: 'draft',
-        policyId: 'sla_policy_1',
-      }),
-    ])
-    const result = await archiveSlaPolicyFn({ data: { id: 'sla_policy_1' } })
-    expect(result).toEqual({
-      ok: false,
-      code: 'SLA_IN_USE',
-      workflows: [{ id: 'workflow_live', name: 'Live one' }],
-    })
-    expect(hoisted.softDeleteSlaPolicy).not.toHaveBeenCalled()
-  })
-
-  it('archives when only non-live workflows reference it', async () => {
-    hoisted.listWorkflows.mockResolvedValue([
-      makeWorkflow({ id: 'workflow_draft', status: 'draft', policyId: 'sla_policy_1' }),
-      makeWorkflow({ id: 'workflow_paused', status: 'paused', policyId: 'sla_policy_1' }),
-    ])
+  it('archives the policy', async () => {
     const result = await archiveSlaPolicyFn({ data: { id: 'sla_policy_1' } })
     expect(result).toEqual({ ok: true })
     expect(hoisted.softDeleteSlaPolicy).toHaveBeenCalledWith('sla_policy_1')

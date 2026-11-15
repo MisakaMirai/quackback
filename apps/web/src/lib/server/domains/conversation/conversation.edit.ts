@@ -20,7 +20,6 @@ import {
   conversationMessages,
   conversationMessageMentions,
   type ConversationMessage,
-  type ConversationMessageMetadata,
 } from '@/lib/server/db'
 import type { ConversationMessageId, PrincipalId } from '@quackback/ids'
 import { NotFoundError, ForbiddenError, ValidationError } from '@/lib/shared/errors'
@@ -43,7 +42,6 @@ import {
 } from '@/lib/server/messages/message-core'
 import { sanitizeTiptapContent } from '@/lib/server/sanitize-tiptap'
 import { extractMentions } from '@/lib/server/domains/posts/extract-mentions'
-import { assistantPrincipalIdOnce } from '@/lib/server/messages/assistant-principal'
 import { resolveMessageParent } from './message-parent'
 import { syncConversationMessageMentions } from './sync-conversation-mentions'
 import {
@@ -66,31 +64,12 @@ async function toAgentDto(
   if (message.metadata?.postSuggestion) {
     suggestions.set(message.id, message.metadata.postSuggestion)
   }
-  const pending = new Map()
-  if (message.metadata?.assistantPendingAction) {
-    pending.set(message.id, message.metadata.assistantPendingAction)
-  }
-  const translated = new Map()
-  if (message.metadata?.translatedFrom) {
-    translated.set(message.id, message.metadata.translatedFrom)
-  }
   const [enriched] = await enrichMessagesForAgent(
     [toMessageDTO(message, author)],
     viewerPrincipalId,
-    suggestions,
-    pending,
-    translated
+    suggestions
   )
   return enriched
-}
-
-function withoutTranslatedFrom(
-  metadata: ConversationMessageMetadata | null
-): ConversationMessageMetadata | null {
-  if (!metadata?.translatedFrom) return metadata
-  const next: ConversationMessageMetadata = { ...metadata }
-  delete next.translatedFrom
-  return Object.keys(next).length > 0 ? next : null
 }
 
 function bodyUnchanged(
@@ -149,10 +128,6 @@ export async function editConversationMessage(
   }
   if (message.metadata?.block) {
     throw new ForbiddenError('FORBIDDEN', 'This message cannot be edited')
-  }
-  const assistantId = await assistantPrincipalIdOnce()
-  if (assistantId && message.principalId === assistantId) {
-    throw new ForbiddenError('FORBIDDEN', 'Assistant messages cannot be edited')
   }
 
   const viewerId = actor.principalId
@@ -222,7 +197,7 @@ async function applyEdit(
   }
 
   const now = new Date()
-  const metadata = withoutTranslatedFrom(message.metadata ?? null)
+  const metadata = message.metadata ?? null
   const updated = await db.transaction(async (tx) => {
     const [row] = await tx
       .update(conversationMessages)

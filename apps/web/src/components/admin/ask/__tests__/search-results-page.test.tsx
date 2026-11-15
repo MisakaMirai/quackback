@@ -87,9 +87,7 @@ it('lists every kind in one ranked list with excerpts, searching by meaning too'
   ])
   expect(links[0].textContent).toContain('Person')
   expect(links[1].textContent).toContain('Customers want a refund when exports fail')
-  expect(state.calls).toEqual([
-    { query: 'refund', kind: undefined, offset: 0, limit: 20, semantic: true },
-  ])
+  expect(state.calls).toEqual([{ query: 'refund', kind: undefined, offset: 0, limit: 20 }])
 })
 
 it('offers a filter for each kind the viewer may search', async () => {

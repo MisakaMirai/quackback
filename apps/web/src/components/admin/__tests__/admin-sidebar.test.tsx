@@ -243,18 +243,9 @@ describe('AdminSidebar: settings entry', () => {
     expect(container.querySelectorAll('a[href="/admin/settings"]').length).toBe(0)
   })
 
-  it('shows Settings to an assistant manager, who has no legacy admin role', () => {
-    const { container } = renderSidebar('member', { permissions: [PERMISSIONS.AI_CUSTOMER_MANAGE] })
+  it('shows Settings to a member who can open a workspace page', () => {
+    const { container } = renderSidebar('member', { permissions: [PERMISSIONS.MEMBER_VIEW] })
     expect(container.querySelectorAll('a[href="/admin/settings"]').length).toBeGreaterThan(0)
-  })
-
-  it('shows Settings to a workflow manager only while the Support inbox is on', () => {
-    const permissions = [PERMISSIONS.WORKFLOW_MANAGE]
-    const on = renderSidebar('member', { permissions, flags: { supportInbox: true } })
-    expect(on.container.querySelectorAll('a[href="/admin/settings"]').length).toBeGreaterThan(0)
-    cleanup()
-    const off = renderSidebar('member', { permissions, flags: { supportInbox: false } })
-    expect(off.container.querySelectorAll('a[href="/admin/settings"]').length).toBe(0)
   })
 })
 
@@ -297,7 +288,7 @@ describe('AdminSidebar: labeled rail', () => {
 describe('AdminSidebar: AI & Automation', () => {
   afterEach(() => cleanup())
 
-  it('has no rail item: the pages live under Settings', () => {
+  it('has no rail item and no settings section', () => {
     const { container } = renderSidebar('admin', { flags: ALL_ON })
     expect(container.querySelector('a[href^="/admin/automation"]')).toBeNull()
     expect(container.textContent).not.toContain('AI & Automation')

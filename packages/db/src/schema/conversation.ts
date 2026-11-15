@@ -15,7 +15,6 @@ import {
 import { relations, sql } from 'drizzle-orm'
 import { typeIdWithDefault, typeIdColumn, typeIdColumnNullable } from '@quackback/ids/drizzle'
 import { principal } from './auth'
-import { workspaceAssistantThreads } from './workspace-assistant'
 import { teams } from './teams'
 import { channelAccounts } from './channel-accounts'
 // conversation <-> tickets is a mutual import cycle (tickets FKs conversations,
@@ -29,12 +28,7 @@ import {
   CHANNELS,
   CONVERSATION_PRIORITIES,
 } from '../types'
-import type {
-  ConversationAttachment,
-  ConversationMessageCitation,
-  ConversationMessageMetadata,
-  TiptapContent,
-} from '../types'
+import type { ConversationAttachment, ConversationMessageMetadata, TiptapContent } from '../types'
 
 // Full-text search vector (generated column), mirroring posts/kb.
 const tsvector = customType<{ data: string }>({
@@ -132,20 +126,6 @@ export const conversations = pgTable(
     // The one active SLA applied to this conversation (§4.6 reserved seam), or
     // null. The Apply-SLA workflow action (a later slice) owns the shape.
     slaApplied: jsonb('sla_applied').$type<Record<string, unknown>>(),
-    // Two-way inbox translation (P2-D.1). Detected once (best-effort, from the
-    // visitor's recent messages) and cached here rather than re-run on every
-    // read; null until a detection attempt has succeeded. Plain columns, not a
-    // bundled jsonb blob, mirroring how the conversation row already stores
-    // other per-conversation UI state (priority, snoozedUntil, assignedTeamId).
-    detectedCustomerLanguage: text('detected_customer_language'),
-    // Per-conversation manual activation toggle. Independent of detection: a
-    // teammate can turn translation on/off regardless of whether (or what)
-    // language was detected.
-    translationEnabled: boolean('translation_enabled').notNull().default(false),
-    // Set when a teammate dismisses the auto-suggest banner ("This customer
-    // writes in French. Translate this conversation?") so it never resurfaces
-    // for this conversation. Null = never dismissed (or translation already on).
-    translationDismissedAt: timestamp('translation_dismissed_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true }),
   },
@@ -270,9 +250,6 @@ export const conversationMessages = pgTable(
     // below guarantees precisely one is set.
     conversationId: typeIdColumnNullable('conversation')('conversation_id'),
     ticketId: typeIdColumnNullable('ticket')('ticket_id'),
-    // Retired Home chat transcripts only. Nothing writes it now; existing rows
-    // stay and remain hidden from every public read.
-    workspaceThreadKey: text('workspace_thread_key'),
     // Nullable: system events (e.g. assignment notices) have no human author.
     principalId: typeIdColumnNullable('principal')('principal_id'),
     // Explicit sender side for rendering + authorization, independent of the
@@ -287,9 +264,6 @@ export const conversationMessages = pgTable(
     isInternal: boolean('is_internal').notNull().default(false),
     // Image/file attachments (client-safe refs); null/empty for text-only messages.
     attachments: jsonb('attachments').$type<ConversationAttachment[]>(),
-    // KB sources the AI assistant grounded this reply in; the content carries
-    // inline [n] markers that index this ordered list. Null for human messages.
-    citations: jsonb('citations').$type<ConversationMessageCitation[]>(),
     // Channel provenance (e.g. inbound email message-id for retry dedupe); null
     // for ordinary in-app messenger messages.
     metadata: jsonb('metadata').$type<ConversationMessageMetadata>(),
@@ -319,30 +293,6 @@ export const conversationMessages = pgTable(
       columns: [table.ticketId],
       foreignColumns: [tickets.id],
     }).onDelete('cascade'),
-    // Exactly one parent: a message belongs to a conversation XOR a ticket.
-    check(
-      'conversation_messages_parent_check',
-      sql`num_nonnulls(${table.conversationId}, ${table.ticketId}, ${table.workspaceThreadKey}) = 1`
-    ),
-    foreignKey({
-      name: 'conversation_messages_workspace_thread_key_fkey',
-      columns: [table.workspaceThreadKey],
-      foreignColumns: [workspaceAssistantThreads.key],
-    }).onDelete('cascade'),
-    check(
-      'conversation_messages_workspace_internal_check',
-      sql`${table.workspaceThreadKey} IS NULL OR ${table.isInternal} = true`
-    ),
-    index('conversation_messages_workspace_created_idx')
-      .on(table.workspaceThreadKey, table.createdAt, table.id)
-      .where(sql`${table.workspaceThreadKey} IS NOT NULL`),
-    uniqueIndex('conversation_messages_workspace_run_sender_idx')
-      .on(
-        table.workspaceThreadKey,
-        sql`(${table.metadata}->'workspaceTurn'->>'runId')`,
-        table.senderType
-      )
-      .where(sql`${table.workspaceThreadKey} IS NOT NULL`),
     foreignKey({
       name: 'conversation_messages_principal_id_fkey',
       columns: [table.principalId],
@@ -353,12 +303,15 @@ export const conversationMessages = pgTable(
       columns: [table.deletedByPrincipalId],
       foreignColumns: [principal.id],
     }).onDelete('set null'),
-    // Live feed + keyset pagination on the composite (conversationId, createdAt, id);
-    // id is the tie-break so same-microsecond siblings page deterministically.
     index('conversation_messages_conversation_created_idx').on(
       table.conversationId,
       table.createdAt,
       table.id
+    ),
+    // Exactly one parent: a message belongs to a conversation XOR a ticket.
+    check(
+      'conversation_messages_parent_check',
+      sql`num_nonnulls(${table.conversationId}, ${table.ticketId}) = 1`
     ),
     // Ticket-thread keyset pagination, mirroring the conversation index.
     index('conversation_messages_ticket_created_idx').on(table.ticketId, table.createdAt, table.id),
@@ -410,51 +363,6 @@ export const conversationMessages = pgTable(
     uniqueIndex('conversation_messages_inbound_delivery_key_idx')
       .using('btree', table.ticketId, sql`(metadata ->> 'inboundDeliveryKey')`)
       .where(sql`(metadata ->> 'inboundDeliveryKey') IS NOT NULL`),
-  ]
-)
-
-/**
- * Per-(message, locale) translation cache for the INCOMING direction of P2-D.1
- * two-way inbox translation, mirroring kb_article_translations' (parentId,
- * locale) -> content shape. `conversation_messages.content`/`content_json` are
- * NEVER mutated by a display translation — this table is the only place a
- * translated rendering of a customer message lives. Keyed by locale (not just
- * "the" translation) because different teammates viewing the same message may
- * have different preferred languages. The OUTGOING direction (a teammate's
- * reply translated to the customer's language before sending) does not use
- * this table: the translation IS the stored message content there, and the
- * teammate's pre-translation original is preserved on that message's own
- * `metadata.translatedFrom` instead — a per-viewer-language cache row makes no
- * sense for a value that's always read back in the one customer language.
- */
-export const conversationMessageTranslations = pgTable(
-  'conversation_message_translations',
-  {
-    id: typeIdWithDefault('conversation_msg_translation')('id').primaryKey(),
-    conversationMessageId: typeIdColumn('conversation_msg')('conversation_message_id').notNull(),
-    locale: text('locale').notNull(),
-    content: text('content').notNull(),
-    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
-  },
-  (table) => [
-    // Named explicitly (rather than inline .references()) because the
-    // conventional auto-derived name for this table+column combination is
-    // over Postgres's 63-byte identifier limit and gets silently truncated —
-    // an explicit short name keeps the schema and the hand-written SQL
-    // migration in exact agreement.
-    foreignKey({
-      name: 'conversation_message_translations_message_id_fkey',
-      columns: [table.conversationMessageId],
-      foreignColumns: [conversationMessages.id],
-    }).onDelete('cascade'),
-    uniqueIndex('conversation_message_translations_unique_idx').on(
-      table.conversationMessageId,
-      table.locale
-    ),
-    // Backs the 180-day retention sweep's DELETE ... WHERE created_at < cutoff
-    // (mirrors assistant_tool_calls_created_at_idx / tool-audit.ts's pattern).
-    index('conversation_message_translations_created_at_idx').on(table.createdAt),
   ]
 )
 
@@ -736,15 +644,4 @@ export const conversationMessagesRelations = relations(conversationMessages, ({ 
   mentions: many(conversationMessageMentions),
   reactions: many(conversationMessageReactions),
   flags: many(conversationMessageFlags),
-  translations: many(conversationMessageTranslations),
 }))
-
-export const conversationMessageTranslationsRelations = relations(
-  conversationMessageTranslations,
-  ({ one }) => ({
-    message: one(conversationMessages, {
-      fields: [conversationMessageTranslations.conversationMessageId],
-      references: [conversationMessages.id],
-    }),
-  })
-)

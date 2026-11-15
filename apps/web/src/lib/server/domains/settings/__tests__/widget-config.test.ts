@@ -1,7 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import {
   DEFAULT_WIDGET_CONFIG,
-  DEFAULT_MESSENGER_CONFIG,
   DEFAULT_WIDGET_HOME_CARDS,
   type WidgetConfig,
   type UpdateWidgetConfigInput,
@@ -37,15 +36,6 @@ function fixtureRow(widget: WidgetConfig, featureFlags?: Record<string, boolean>
 }
 
 describe('Widget Config Types', () => {
-  describe('DEFAULT_MESSENGER_CONFIG', () => {
-    it('is AI-first by default: assistant identity and replies are on', () => {
-      expect(DEFAULT_MESSENGER_CONFIG.assistant).toEqual({
-        enabled: true,
-        respond: true,
-      })
-    })
-  })
-
   describe('DEFAULT_WIDGET_CONFIG', () => {
     it('should have enabled set to false', () => {
       expect(DEFAULT_WIDGET_CONFIG.enabled).toBe(false)
@@ -147,28 +137,13 @@ describe('Widget Config Types', () => {
   })
 
   describe('publicMessengerConfig', () => {
-    it('projects the assistant identity but strips agent-only fields', () => {
-      const projected = publicMessengerConfig(
-        {
-          enabled: true,
-          assistant: { enabled: true },
-          routing: { enabled: true, strategy: 'auto_assign_active' },
-        },
-        {
-          name: 'Quinn',
-          avatarUrl: null,
-        }
-      )
-      expect(projected.assistant).toEqual({
+    it('strips agent-only fields', () => {
+      const projected = publicMessengerConfig({
         enabled: true,
-        name: 'Quinn',
-        avatarUrl: null,
+        routing: { enabled: true, strategy: 'auto_assign_active' },
       })
       expect('routing' in projected).toBe(false)
     })
-  })
-
-  describe('home config merge semantics', () => {
     it('replaces the ordered cards array wholesale (remove/reorder must persist)', () => {
       // deepMerge is the widget-config write path; arrays must REPLACE, not
       // element-merge, or removing/reordering Home cards silently breaks.

@@ -24,9 +24,6 @@
  *   later status move standing. That narrows what a late or retried reaction
  *   can do without removing it; JOBS.md §10 lists what can still differ from
  *   an in-order run. Its handler is `event-reactions-queue.ts`.
- * - `event-summaries` holds the close summaries: slow AI calls that do not
- *   depend on order, kept off the serial queue so a slow provider cannot hold
- *   up an SLA clock. Its handler is `event-summaries-queue.ts`.
  *
  * This module is the table `emit()` reads, kept free of the reactions' own
  * imports, plus the job runner both handlers share.
@@ -42,7 +39,6 @@ import { isTestEvent } from './test-event'
 const log = logger.child({ component: 'event-reactions' })
 
 export const EVENT_REACTIONS_QUEUE = 'event-reactions'
-export const EVENT_SUMMARIES_QUEUE = 'event-summaries'
 
 /** Each queue's reactions, and the event types each reaction handles. */
 export const EVENT_REACTIONS = {
@@ -52,14 +48,6 @@ export const EVENT_REACTIONS = {
     // A visitor message on a conversation paired with a customer ticket
     // reopens that ticket.
     'pair-ticket-reopen': ['message.created'],
-    // Confirm the assistant's resolution off a positive first CSAT rating.
-    'assistant-csat-confirm': ['conversation.csat_submitted'],
-  },
-  [EVENT_SUMMARIES_QUEUE]: {
-    // Summarize a closed conversation for future assistant grounding.
-    'conversation-summary': ['conversation.status_changed'],
-    // Summarize a closed ticket for future assistant grounding.
-    'ticket-summary': ['ticket.status_changed'],
   },
 } as const satisfies Record<string, Record<string, readonly EventData['type'][]>>
 
@@ -81,7 +69,6 @@ export type ReactionRun = (event: EventData, signal: AbortSignal) => Promise<voi
  */
 export const REACTION_DEADLINE_MS: Record<ReactionQueue, number> = {
   [EVENT_REACTIONS_QUEUE]: 30_000,
-  [EVENT_SUMMARIES_QUEUE]: 120_000,
 }
 
 const QUEUES = Object.keys(EVENT_REACTIONS) as ReactionQueue[]

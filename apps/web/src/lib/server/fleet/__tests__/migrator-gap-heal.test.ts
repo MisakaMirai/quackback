@@ -170,9 +170,12 @@ const whenOf = (prefix: string) =>
 const SAFE_SUFFIX = (() => {
   const verdictOf = (tag: string) =>
     assessReplaySafety(tag, readFileSync(join(MIGRATIONS_DIR, `${tag}.sql`), 'utf8')).verdict
-  let i = BUNDLED_MIGRATIONS.length
-  while (i > 0 && verdictOf(BUNDLED_MIGRATIONS[i - 1]!.tag) === 'safe') i--
-  return BUNDLED_MIGRATIONS.slice(i)
+  // The tip is the destructive 0312 AI drop, which is not replayable; the
+  // healable window is the safe suffix immediately before it.
+  const replayable = BUNDLED_MIGRATIONS.filter((m) => m.tag !== '0312_drop_quackback_ai')
+  let i = replayable.length
+  while (i > 0 && verdictOf(replayable[i - 1]!.tag) === 'safe') i--
+  return replayable.slice(i)
 })()
 
 /** The row withheld from below the mark: the hole itself. */
@@ -181,13 +184,16 @@ const HEAL_HOLE = SAFE_SUFFIX[0]
 const HEAL_MARK = SAFE_SUFFIX[1]
 /** Rows withheld from above the mark: an ordinary forward rollout tail. */
 const HEAL_TAIL = SAFE_SUFFIX.slice(2)
+/** Everything above the mark, including the unsafe tip the migrator still replays. */
+const HEAL_REPLAY = BUNDLED_MIGRATIONS.slice(BUNDLED_MIGRATIONS.indexOf(HEAL_MARK!) + 1)
 
 /**
  * The measured shape, rebuilt inside the healable window: a hole below the
  * mark, a rollout tail above it, and every migration in the span a no-op.
  */
 async function applyHealableDrift(db: string): Promise<void> {
-  const withheld = [HEAL_HOLE!.when, ...HEAL_TAIL.map((e) => e.when)]
+  const tip = BUNDLED_MIGRATIONS.find((e) => e.tag === '0312_drop_quackback_ai')
+  const withheld = [HEAL_HOLE!.when, ...HEAL_TAIL.map((e) => e.when), ...(tip ? [tip.when] : [])]
   await withSql(db, (sql) =>
     sql.unsafe(`DELETE FROM drizzle.__drizzle_migrations WHERE created_at = ANY($1::bigint[])`, [
       withheld,
@@ -296,8 +302,12 @@ describe('a hole the whole of which is replay-safe', () => {
     // The instrument that could not see this, kept as the control: it reports
     // only the tail above the mark, on a ledger that is also missing the hole
     // beneath it.
-    expect(replaySetFor(before)).toEqual(HEAL_TAIL.map((e) => e.tag))
-    expect(planFor(before).tags).toEqual(SAFE_SUFFIX.map((e) => e.tag))
+    expect(replaySetFor(before)).toEqual(HEAL_REPLAY.map((e) => e.tag))
+    expect(planFor(before).tags).toEqual([
+      HEAL_HOLE!.tag,
+      HEAL_MARK!.tag,
+      ...HEAL_REPLAY.map((e) => e.tag),
+    ])
     expect(planFor(before).tags.length).toBeGreaterThan(replaySetFor(before).length)
     const digestBefore = await catalogueDigest(db)
 
@@ -307,7 +317,11 @@ describe('a hole the whole of which is replay-safe', () => {
     expect(result.code).toBe('healed_ledger_gap')
     expect(result.gap!.missing).toEqual([HEAL_HOLE!.tag])
     // The whole span executed, not just the tail — and the ledger ends complete.
-    expect(result.replaySet).toEqual(SAFE_SUFFIX.map((e) => e.tag))
+    expect(result.replaySet).toEqual([
+      HEAL_HOLE!.tag,
+      HEAL_MARK!.tag,
+      ...HEAL_REPLAY.map((e) => e.tag),
+    ])
     expect(result.after!.count).toBe(BUNDLED_MIGRATIONS.length)
     expect(ledgerGapFor(result.after!)).toBeNull()
     expect(result.postconditions!.ok).toBe(true)
@@ -399,7 +413,7 @@ describe('the run has to do what it planned, not merely report that it did', () 
     expect(result.ok).toBe(false)
     expect(result.code).toBe('migration_failed')
     expect(result.detail).toContain(
-      `the ledger does not record ${SAFE_SUFFIX.length} of the ${SAFE_SUFFIX.length}`
+      `the ledger does not record ${2 + HEAL_REPLAY.length} of the ${2 + HEAL_REPLAY.length} migration(s)`
     )
     expect(result.detail).toContain(HEAL_HOLE!.tag)
     // Green post-conditions do not rescue it. That combination — a passing
@@ -590,7 +604,11 @@ describe('the ledgers that are not holes — the controls', () => {
     // rollout path untouched.
     expect(result.code).toBe('reconciled')
     expect(result.gap).toBeNull()
-    expect(result.replaySet).toEqual(SAFE_SUFFIX.map((e) => e.tag))
+    expect(result.replaySet).toEqual([
+      HEAL_HOLE!.tag,
+      HEAL_MARK!.tag,
+      ...HEAL_REPLAY.map((e) => e.tag),
+    ])
     expect(result.after!.count).toBe(BUNDLED_MIGRATIONS.length)
   }, 120_000)
 

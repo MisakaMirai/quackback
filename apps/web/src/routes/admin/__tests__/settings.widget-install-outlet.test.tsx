@@ -68,6 +68,6 @@ describe('widget settings child outlet', () => {
       </QueryClientProvider>
     )
     expect(screen.queryByText('install-outlet')).toBeNull()
-    expect(screen.getByText('AI agent')).toBeTruthy()
+    expect(screen.queryByText('AI agent')).toBeNull()
   })
 })

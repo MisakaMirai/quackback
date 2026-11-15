@@ -43,8 +43,6 @@ export interface UseInboxListSourceParams {
    *  list — the legacy query stays disabled until then, mirroring the
    *  pre-extraction `!!activeView` guard). */
   activeViewFilters?: ConversationViewFilters
-  /** Quinn-view sub-filter (Resolved / Escalated / Pending) — legacy path only. */
-  aiBucket?: 'resolved' | 'escalated' | 'pending'
   /** The "Saved for later" scope shows flagged MESSAGES, not a list — both
    *  queries stay idle there (the route renders `SavedMessagesColumn` instead). */
   isSaved: boolean
@@ -77,7 +75,6 @@ export function useInboxListSource({
   sort,
   ticketTypeId,
   activeViewFilters,
-  aiBucket,
   isSaved,
   streamConnected,
   channel,
@@ -123,7 +120,6 @@ export function useInboxListSource({
       companyId,
       sort,
       customParams,
-      aiBucket,
       channel
     ),
     // Polling fallback if the stream drops; skipped while connected (same

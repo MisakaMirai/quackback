@@ -59,52 +59,36 @@ describe('applyMacroActions', () => {
       { type: 'set_priority', priority: 'high' },
       { type: 'snooze', preset: 'tomorrow' },
       { type: 'close' },
+      { type: 'set_attribute', key: 'issue_type', value: 'bug' },
     ]
     const applied = await applyMacroActions(conversationId, actions, actor)
 
-    // The trailing arg on assignment/status ops is workflow attribution — a
-    // macro has no workflow name, so it arrives as undefined.
-    expect(assignConversation).toHaveBeenCalledWith(conversationId, 'principal_x', actor, undefined)
-    expect(assignTeam).toHaveBeenCalledWith(conversationId, 'team_1', actor, undefined)
+    expect(assignConversation).toHaveBeenCalledWith(conversationId, 'principal_x', actor)
+    expect(assignTeam).toHaveBeenCalledWith(conversationId, 'team_1', actor)
     expect(attachTag).toHaveBeenCalledWith(conversationId, 'ctag_1')
     expect(setConversationPriority).toHaveBeenCalledWith(conversationId, 'high', actor)
     expect(snoozeConversation).toHaveBeenCalledWith(conversationId, expect.any(Date), actor)
-    // The 5th argument is the close lifecycle: an explicit close, not an auto-close.
-    expect(setConversationStatus).toHaveBeenCalledWith(
-      conversationId,
-      'closed',
-      actor,
-      undefined,
-      'closed'
+    expect(setConversationStatus).toHaveBeenCalledWith(conversationId, 'closed', actor)
+    expect(setConversationAttribute).toHaveBeenCalledWith(
+      { conversationId },
+      'issue_type',
+      'bug',
+      'teammate'
     )
     expect(applied).toEqual([
-      'assigned',
-      'assigned to team',
-      'tagged',
-      'priority high',
-      'snoozed',
-      'closed',
+      'Assigned',
+      'Assigned to team',
+      'Tagged',
+      'Priority: high',
+      'Snoozed',
+      'Closed',
+      'Set issue_type',
     ])
   })
 
   it('snooze until_reply defers with a null wake time', async () => {
     await applyMacroActions(conversationId, [{ type: 'snooze', preset: 'until_reply' }], actor)
     expect(snoozeConversation).toHaveBeenCalledWith(conversationId, null, actor)
-  })
-
-  it('applies set_attribute as the invoking teammate (macros run as the agent)', async () => {
-    const applied = await applyMacroActions(
-      conversationId,
-      [{ type: 'set_attribute', key: 'plan', value: 'scale' }],
-      actor
-    )
-    expect(setConversationAttribute).toHaveBeenCalledWith(
-      { conversationId },
-      'plan',
-      'scale',
-      'teammate'
-    )
-    expect(applied).toEqual(['set plan'])
   })
 
   it('continues past a failing action', async () => {
@@ -114,7 +98,7 @@ describe('applyMacroActions', () => {
       [{ type: 'assign_agent', principalId: 'principal_x' }, { type: 'close' }],
       actor
     )
-    expect(applied).toEqual(['closed'])
+    expect(applied).toEqual(['Closed'])
     expect(setConversationStatus).toHaveBeenCalled()
   })
 })

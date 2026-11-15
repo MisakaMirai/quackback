@@ -125,7 +125,7 @@ function resolveImport(from: string, specifier: string): string | null {
   return null
 }
 
-const rel = (path: string) => relative(SRC, path)
+const rel = (path: string) => relative(SRC, path).replace(/\\/g, '/')
 const files = sourceFiles(SRC).map(rel)
 const sources = new Map(files.map((path) => [path, readFileSync(join(SRC, path), 'utf8')]))
 

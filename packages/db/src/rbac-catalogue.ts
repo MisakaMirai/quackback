@@ -132,9 +132,6 @@ export const PERMISSIONS = {
   CHANNEL_ACCOUNT_MANAGE: 'channel_account.manage', // manage connected inbox channels (workspace-admin; was inbox.manage)
 
   // category 'ai'
-  AI_CUSTOMER_MANAGE: 'ai.customer.manage', // customer-facing AI (answers customers): identity, voice, knowledge, guidance, tools, who answers
-  AI_TEAMMATE_MANAGE: 'ai.teammate.manage', // teammate AI (Home chat, inbox assist, Slack): Copilot knowledge, capabilities, Slack agent
-  COPILOT_USE: 'copilot.use', // use the agent-facing Copilot assistant in the inbox
 
   // category 'status_page' — the Status page product (Status Product Spec §6).
   // Named status_page.* (not status.*) to avoid colliding with the existing
@@ -163,7 +160,6 @@ export const PERMISSION_CATEGORIES = [
   'analytics',
   'integration',
   'support',
-  'ai',
   'status_page',
 ] as const
 
@@ -563,23 +559,6 @@ export const PERMISSION_CATALOGUE: ReadonlyArray<{
     category: 'support',
     description: 'Manage connected inbox channels (email / widget accounts)',
   },
-
-  {
-    key: PERMISSIONS.AI_CUSTOMER_MANAGE,
-    category: 'ai',
-    description: 'Manage the customer-facing AI: identity, voice, knowledge, guidance, and tools',
-  },
-  {
-    key: PERMISSIONS.AI_TEAMMATE_MANAGE,
-    category: 'ai',
-    description: 'Manage the teammate AI: Copilot knowledge and capabilities, and the Slack agent',
-  },
-  {
-    key: PERMISSIONS.COPILOT_USE,
-    category: 'ai',
-    description: 'Use the agent-facing Copilot assistant in the inbox',
-  },
-
   {
     key: PERMISSIONS.STATUS_PAGE_MANAGE,
     category: 'status_page',
@@ -635,8 +614,6 @@ export const WORKSPACE_ADMIN_PERMISSIONS: readonly PermissionKey[] = [
   PERMISSIONS.WORKFLOW_MANAGE,
   PERMISSIONS.CHANNEL_ACCOUNT_MANAGE,
   // AI infrastructure config (admin-only)
-  PERMISSIONS.AI_CUSTOMER_MANAGE,
-  PERMISSIONS.AI_TEAMMATE_MANAGE,
   // Status page structure (components/groups/settings/templates) is
   // admin-only; publishing incidents is a broader operator action (below).
   PERMISSIONS.STATUS_PAGE_MANAGE,
@@ -656,7 +633,6 @@ export const SUPPORT_LEAD_EXTRA_PERMISSIONS: readonly PermissionKey[] = [
   PERMISSIONS.OFFICE_HOURS_MANAGE,
   PERMISSIONS.CHANNEL_ACCOUNT_MANAGE,
   PERMISSIONS.CUSTOM_FIELD_MANAGE,
-  PERMISSIONS.AI_CUSTOMER_MANAGE,
 ]
 
 /**
@@ -707,7 +683,6 @@ export const SYSTEM_ROLE_PERMISSIONS: Record<SystemRoleKey, PermissionKey[]> = {
     PERMISSIONS.CONVERSATION_ASSIGN,
     PERMISSIONS.CONVERSATION_SET_STATUS,
     PERMISSIONS.CONVERSATION_SET_TAGS,
-    PERMISSIONS.COPILOT_USE,
     // reads + triage intake
     PERMISSIONS.CHANGELOG_VIEW_DRAFT,
     PERMISSIONS.PEOPLE_VIEW,

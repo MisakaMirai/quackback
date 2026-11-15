@@ -101,14 +101,14 @@ function heavyReachableFrom(
   const chain = (file: string) => {
     const links: string[] = []
     for (let at: string | null = file; at; at = parent.get(at) ?? null) {
-      links.unshift(path.relative(SRC, at))
+      links.unshift(path.relative(SRC, at).replace(/\\/g, '/'))
     }
     return links.join(' -> ')
   }
 
   while (queue.length > 0) {
     const file = queue.shift()!
-    const rel = path.relative(SRC, file)
+    const rel = path.relative(SRC, file).replace(/\\/g, '/')
     if (heavy.modules[rel]) {
       found.push(`${heavy.modules[rel]}: ${chain(file)}`)
       continue

@@ -1,6 +1,5 @@
 /**
- * Rolling back to a build that predates the `event-reactions` and
- * `event-summaries` queues (JOBS.md §10, "Rolling back to a build that
+ * Rolling back to a build that predates the `event-reactions` queue (JOBS.md §10, "Rolling back to a build that
  * predates the reaction queues"). A worker without their definitions never
  * claims their rows, so they wait, pending, for the runbook's drain check and
  * purge. This pins that premise against the real runner, and runs the
@@ -25,7 +24,7 @@ vi.mock('@/lib/server/db', async (importOriginal) => ({
 }))
 
 import * as dispatch from '../dispatch'
-import { EVENT_REACTIONS_QUEUE, EVENT_SUMMARIES_QUEUE } from '../event-reactions'
+import { EVENT_REACTIONS_QUEUE } from '../event-reactions'
 import { __setJobDefinitionsForTests, type JobDefinition } from '@/lib/server/jobs/definitions'
 import { drainOnce, runnerConfig, resetJobHandlers } from '@/lib/server/jobs/runner'
 
@@ -83,7 +82,7 @@ async function reactionJobs(eventId: string) {
   return getExecuteRows<{ queue: string; status: string; attempts: number }>(
     await testDb.execute(sql`
       SELECT queue, status, attempts FROM job_queue
-      WHERE queue IN (${EVENT_REACTIONS_QUEUE}, ${EVENT_SUMMARIES_QUEUE})
+      WHERE queue = ${EVENT_REACTIONS_QUEUE}
         AND payload->>'eventId' = ${eventId}
       ORDER BY queue
     `)
@@ -109,7 +108,6 @@ describe.skipIf(!fixture.available)('rolling back past the reaction queues', () 
 
     expect(await reactionJobs(eventId)).toEqual([
       { queue: EVENT_REACTIONS_QUEUE, status: 'pending', attempts: 0 },
-      { queue: EVENT_SUMMARIES_QUEUE, status: 'pending', attempts: 0 },
     ])
   })
 
@@ -122,7 +120,7 @@ describe.skipIf(!fixture.available)('rolling back past the reaction queues', () 
         )[0].count
       )
 
-    expect(await count()).toBe(2)
+    expect(await count()).toBe(1)
     await testDb.execute(forEvent(runbook.purge, eventId))
 
     expect(await count()).toBe(0)

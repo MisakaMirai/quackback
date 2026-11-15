@@ -3,7 +3,7 @@ import { createServerFn } from '@tanstack/react-start'
 /**
  * What the client should know about this deployment's realtime capabilities,
  * fetched once at widget/portal boot. Kept deliberately small and serializable
- * so the native SDKs (and, later, a Quinn copilot) can consume the same shape.
+ * so the native SDKs can consume the same shape.
  */
 export interface WidgetCapabilities {
   chat: {

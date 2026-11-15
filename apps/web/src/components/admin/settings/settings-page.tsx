@@ -1,20 +1,13 @@
 import { createContext, useContext, useEffect, useRef, type ReactNode } from 'react'
-import { useIntl } from 'react-intl'
 import { Link } from '@tanstack/react-router'
 import { BackLink } from '@/components/ui/back-link'
 import { PageHeader, type PageCrumb } from '@/components/shared/page-header'
 import { cn } from '@/lib/shared/utils'
 import { SaveStatus } from './save-status'
 import { moduleOfPage, type NavModule, type NavSection } from './settings-nav-sections'
-import {
-  AUTOMATION_PAGES,
-  SETTINGS_PAGES,
-  type AutomationPagePath,
-  type SettingsPagePath,
-} from './settings-pages'
+import { SETTINGS_PAGES, type SettingsPagePath } from './settings-pages'
 
-type PageTitle =
-  { page: SettingsPagePath | AutomationPagePath; title?: never } | { title: string; page?: never }
+type PageTitle = { page: SettingsPagePath; title?: never } | { title: string; page?: never }
 
 type SettingsPageProps = PageTitle & {
   description?: string
@@ -68,20 +61,12 @@ export function SettingsPage({
   backLink = true,
   children,
 }: SettingsPageProps) {
-  const intl = useIntl()
   const module = useSettingsModule(page)
   if ((page === undefined) === (title === undefined)) {
     throw new Error('SettingsPage takes exactly one of `page` or `title`')
   }
 
-  let resolvedTitle = title
-  if (page !== undefined) {
-    if (page in AUTOMATION_PAGES) {
-      resolvedTitle = intl.formatMessage(AUTOMATION_PAGES[page as AutomationPagePath])
-    } else {
-      resolvedTitle = SETTINGS_PAGES[page as SettingsPagePath].label
-    }
-  }
+  const resolvedTitle = page === undefined ? title : SETTINGS_PAGES[page].label
 
   const shownCrumbs = module ? undefined : crumbs
   // A linked crumb is itself the way back.

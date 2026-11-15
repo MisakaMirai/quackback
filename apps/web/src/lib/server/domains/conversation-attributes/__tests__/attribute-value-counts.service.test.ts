@@ -76,7 +76,6 @@ describe.skipIf(!fixture.available)('attributeValueCounts (real DB, rolled back)
       label: 'Issue type',
       fieldType: 'select',
       options: [{ label: 'Billing' }, { label: 'Bug' }],
-      aiDetect: true,
     })
     const [billing, bug] = attr.options!
 
@@ -101,7 +100,6 @@ describe.skipIf(!fixture.available)('attributeValueCounts (real DB, rolled back)
       label: 'Issue type',
       fieldType: 'select',
       options: [{ label: 'Billing' }],
-      aiDetect: true,
     })
     const [billing] = attr.options!
 
@@ -123,7 +121,6 @@ describe.skipIf(!fixture.available)('attributeValueCounts (real DB, rolled back)
       label: 'Issue type',
       fieldType: 'select',
       options: [{ label: 'Billing' }],
-      aiDetect: true,
     })
     const [billing] = attr.options!
     const old = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000)

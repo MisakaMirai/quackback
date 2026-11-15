@@ -23,7 +23,6 @@ import {
 import { DEFAULT_LOCALE } from '@/lib/shared/i18n'
 import { ANONYMOUS_ACTOR, type Actor } from '@/lib/server/policy/types'
 import { segmentGateFilter } from '@/lib/server/policy/segment-gate'
-import { generateKbQueryEmbedding } from './help-center-embedding.service'
 import { logSearchQuery } from './help-center.search-analytics'
 
 export const KEYWORD_WEIGHT = 0.4
@@ -195,109 +194,17 @@ export async function hybridSearch(
   limit = 10,
   viewer: Actor = ANONYMOUS_ACTOR
 ): Promise<HybridSearchResult[]> {
-  const queryEmbedding = await generateKbQueryEmbedding(query, {
-    pipelineStep: 'kb_search_query_embedding',
-  })
-
-  if (queryEmbedding) {
-    return hybridQuery(query, queryEmbedding, limit, viewer)
-  }
-
   return keywordOnlyQuery(query, limit, viewer)
 }
 
-/**
- * Hybrid query: combines tsvector keyword search with pgvector semantic similarity.
- */
-async function hybridQuery(
-  query: string,
-  embedding: number[],
-  limit: number,
-  viewer: Actor
-): Promise<HybridSearchResult[]> {
-  const vectorStr = `[${embedding.join(',')}]`
-  const tsQuery = orTermsTsQuery(query)
-
-  const results = await db
-    .select({
-      id: helpCenterArticles.id,
-      urlId: helpCenterArticles.urlId,
-      slug: helpCenterArticles.slug,
-      title: helpCenterArticles.title,
-      description: helpCenterArticles.description,
-      content: helpCenterArticles.content,
-      categoryId: helpCenterArticles.categoryId,
-      categorySlug: helpCenterCategories.slug,
-      categoryName: helpCenterCategories.name,
-      combinedScore: sql<number>`(
-        ${KEYWORD_WEIGHT} * COALESCE(ts_rank(${helpCenterArticles.searchVector}, ${tsQuery}), 0) +
-        ${SEMANTIC_WEIGHT} * COALESCE(1 - (${helpCenterArticles.embedding} <=> ${vectorStr}::vector), 0)
-      )`.as('combined_score'),
-    })
-    .from(helpCenterArticles)
-    .innerJoin(
-      helpCenterCategories,
-      sql`${helpCenterArticles.categoryId} = ${helpCenterCategories.id}`
-    )
-    .where(
-      and(
-        // Public slice via the shared owner (helpCenterVisibilityConditions):
-        // search must match direct lookup or a hidden slug becomes
-        // discoverable via search even when direct lookup denies. The viewer
-        // drives the segment gate IN SQL, so restricted rows never enter the
-        // ranked pool (pagination stays correct; nothing leaks post-slice).
-        ...helpCenterVisibilityConditions('public', viewer),
-        // A keyword hit must clear the ts_rank floor (OR-of-terms otherwise
-        // admits a lone incidental term); a semantic hit above the cosine
-        // floor always qualifies.
-        sql`(
-          (
-            ${helpCenterArticles.searchVector} @@ ${tsQuery}
-            AND ts_rank(${helpCenterArticles.searchVector}, ${tsQuery}) > ${KEYWORD_RANK_FLOOR}
-          )
-          OR (
-            ${helpCenterArticles.embedding} IS NOT NULL
-            AND 1 - (${helpCenterArticles.embedding} <=> ${vectorStr}::vector) > ${SEMANTIC_SIMILARITY_FLOOR}
-          )
-        )`
-      )
-    )
-    .orderBy(sql`combined_score DESC`)
-    .limit(limit)
-
-  return results.map((r) => ({
-    id: r.id,
-    urlId: r.urlId,
-    slug: r.slug,
-    title: r.title,
-    description: r.description,
-    content: r.content,
-    categoryId: r.categoryId,
-    categorySlug: r.categorySlug,
-    categoryName: r.categoryName,
-    score: Number(r.combinedScore),
-  }))
-}
-
-// ============================================================================
-// Ranked id search (REST + MCP parity)
-// ============================================================================
-
 export interface RankedArticleSearchOptions {
   audience: HelpCenterAudience
-  /**
-   * Viewer for the 'public' audience's segment gate. Defaults to
-   * ANONYMOUS_ACTOR (fail closed: only ungated content). Irrelevant for
-   * 'team', which bypasses the gate.
-   */
   viewer?: Actor
-  /** Size of the ranked pool. Callers paginate by slicing into it. */
   limit?: number
   categoryId?: string
   status?: 'draft' | 'published' | 'all'
 }
 
-/** Ranked pool size for list-search pagination. */
 export const RANKED_SEARCH_POOL = 50
 
 /**
@@ -329,36 +236,13 @@ export async function searchArticleIdsRanked(
   }
 
   const tsQuery = orTermsTsQuery(query)
-  const queryEmbedding = await generateKbQueryEmbedding(query, {
-    pipelineStep: 'kb_search_query_embedding',
-  })
-
-  const keywordMatch = sql`(
+  const scoreExpr = sql<number>`ts_rank(${helpCenterArticles.searchVector}, ${tsQuery})`.as(
+    'rank_score'
+  )
+  const matchCondition = sql`(
     ${helpCenterArticles.searchVector} @@ ${tsQuery}
     AND ts_rank(${helpCenterArticles.searchVector}, ${tsQuery}) > ${KEYWORD_RANK_FLOOR}
   )`
-
-  let scoreExpr
-  let matchCondition
-  if (queryEmbedding) {
-    const vectorStr = `[${queryEmbedding.join(',')}]`
-    scoreExpr = sql<number>`(
-      ${KEYWORD_WEIGHT} * COALESCE(ts_rank(${helpCenterArticles.searchVector}, ${tsQuery}), 0) +
-      ${SEMANTIC_WEIGHT} * COALESCE(1 - (${helpCenterArticles.embedding} <=> ${vectorStr}::vector), 0)
-    )`.as('rank_score')
-    matchCondition = sql`(
-      ${keywordMatch}
-      OR (
-        ${helpCenterArticles.embedding} IS NOT NULL
-        AND 1 - (${helpCenterArticles.embedding} <=> ${vectorStr}::vector) > ${SEMANTIC_SIMILARITY_FLOOR}
-      )
-    )`
-  } else {
-    scoreExpr = sql<number>`ts_rank(${helpCenterArticles.searchVector}, ${tsQuery})`.as(
-      'rank_score'
-    )
-    matchCondition = keywordMatch
-  }
 
   const rows = await db
     .select({ id: helpCenterArticles.id, score: scoreExpr })

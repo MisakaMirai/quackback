@@ -11,7 +11,6 @@ import {
   hasCsatBlockMessage,
   type ConversationRow,
 } from './conversation-rows'
-import { AssistantWorkingTrace, AssistantStreamingBubble } from './assistant-turn'
 import {
   BlockButtonsRow,
   BlockCollectField,
@@ -26,7 +25,6 @@ import { conversationAvailable } from '@/lib/shared/conversation/presence'
 import { ArrowUpIcon, ChevronDownIcon } from '@heroicons/react/24/solid'
 import { ChatBubbleLeftRightIcon, PaperClipIcon, BookOpenIcon } from '@heroicons/react/24/outline'
 import type { ConversationId } from '@quackback/ids'
-import { Avatar } from '@/components/ui/avatar'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { TypingDots } from '@/components/shared/typing-dots'
 import { personalizeMessage, firstNameOf } from '@/lib/shared/conversation/personalize'
@@ -34,7 +32,6 @@ import { shownGreeting } from '@/lib/shared/conversation/default-greeting'
 import { useConversationStream } from '@/lib/client/hooks/use-conversation-stream'
 import { useHostVisibleCount } from '@/lib/client/hooks/use-host-visible'
 import { useConversationTyping } from '@/lib/client/hooks/use-conversation-typing'
-import { useAssistantTurn } from '@/lib/client/hooks/use-assistant-turn'
 import {
   useConversationComposerAttachments,
   type ComposerUploadFn,
@@ -232,11 +229,6 @@ export function VisitorConversationThread({
   // no header card — a plain chat is completely untouched by ticket-ness.
   const [linkedTicket, setLinkedTicket] = useState<RequesterTicketDTO | null>(null)
   const [teamName, setTeamName] = useState<string | null>(null)
-  // AI-assistant display identity (fronts new conversations); null when disabled.
-  const [assistant, setAssistant] = useState<{
-    name: string
-    avatarUrl: string | null
-  } | null>(null)
   // Pre-chat email capture (anonymous visitors). Data-driven: identified
   // visitors come back with visitorHasEmail=true, so the prompt never shows.
   // Whether an offline reply could actually reach this visitor by email — drives
@@ -303,14 +295,6 @@ export function VisitorConversationThread({
   const sendTyping = useTypingSender(conversationId, getAuthHeaders)
   const { remoteTyping, onLocalInput, onRemoteTyping, clearRemoteTyping } =
     useConversationTyping(sendTyping)
-  const {
-    assistantActivity,
-    assistantStream,
-    onAssistantActivity,
-    onAssistantDelta,
-    clearAssistantTurn,
-  } = useAssistantTurn()
-
   // Every attached file stages its own tray tile with its own progress/error
   // (no toast on visitor surfaces) — uploadFile already carries the surface's
   // endpoint/headers/session-minting (the widget's flavour mints an anonymous
@@ -393,7 +377,6 @@ export function VisitorConversationThread({
         setWelcomeMessage(res.welcomeMessage)
         setOfflineMessage(res.offlineMessage)
         setTeamName(res.teamName)
-        setAssistant(res.assistant ?? null)
         setCanEmailReply(res.canEmailVisitor)
         setLinkedTicket(res.linkedTicket ?? null)
         const conv = res.conversation
@@ -509,7 +492,6 @@ export function VisitorConversationThread({
       }
       if (evt.kind === 'message' && evt.message.senderType === 'agent') {
         clearRemoteTyping()
-        clearAssistantTurn() // the persisted reply replaces the live trace/stream
         onAgentActivity?.() // an agent is clearly here right now
       } else if (
         evt.kind === 'message' &&
@@ -522,18 +504,10 @@ export function VisitorConversationThread({
       } else if (evt.kind === 'typing' && evt.side === 'agent') {
         onRemoteTyping()
         onAgentActivity?.()
-      } else if (evt.kind === 'assistant_activity') {
-        onAssistantActivity(evt.status)
-      } else if (evt.kind === 'assistant_delta') {
-        onAssistantDelta(evt.text)
       }
     },
     onReconnect: () => void refreshMessages(),
   })
-
-  // Ephemeral turn state is component-local (not keyed by resetKey); drop it when
-  // switching threads so it can't bleed across conversations.
-  useEffect(() => clearAssistantTurn, [conversationId, clearAssistantTurn])
 
   // A star click records the rating immediately (so it's never lost), then the
   // surface offers an optional comment as a follow-up.
@@ -733,8 +707,7 @@ export function VisitorConversationThread({
   // relevant again when the assistant hands off to a human (future). Withheld
   // during the initial load: assistant/email-reply state is unknown until the
   // thread arrives, and a hint that shows then vanishes reads as a glitch.
-  const showOfflineHint =
-    !loading && !assistant && !available && (canEmailReply ? Boolean(offlineMessage) : true)
+  const showOfflineHint = !loading && !available && (canEmailReply ? Boolean(offlineMessage) : true)
 
   // Phase C conversational block layer: every block's derived state, computed
   // ONCE per [messages, conversationStatus] change and threaded into rows,
@@ -761,8 +734,6 @@ export function VisitorConversationThread({
         showEmpty,
         showSeen: lastVisitorSeen && !remoteTyping,
         showTyping: remoteTyping,
-        assistantActivity,
-        assistantStream,
         // Only while closed: a reopen (agent reply / new visitor message) must
         // drop the rating prompt, the comment follow-up, and the thanks notice.
         // Also suppressed whenever a request_csat block already asked (CF2) —
@@ -782,8 +753,6 @@ export function VisitorConversationThread({
       showEmpty,
       lastVisitorSeen,
       remoteTyping,
-      assistantActivity,
-      assistantStream,
       showCsatPrompt,
       csatRating,
       hasCsatBlock,
@@ -964,13 +933,10 @@ export function VisitorConversationThread({
           </div>
         )
       case 'greeting':
-        // The assistant fronts the greeting when enabled; the team name
-        // otherwise. Identity only — replies still come from the team.
         return (
           <VisitorMessageBubble
             side="peer"
-            authorName={assistant?.name ?? teamName ?? undefined}
-            isAssistant={!!assistant}
+            authorName={teamName ?? undefined}
             content={personalizeMessage(shownGreeting(welcomeMessage, intl) ?? '', firstName)}
             embedOpenMode={embedOpenMode}
           />
@@ -989,14 +955,12 @@ export function VisitorConversationThread({
           <VisitorMessageBubble
             side={isVisitor ? 'self' : 'peer'}
             authorName={isVisitor ? undefined : (m.author?.displayName ?? teamName ?? undefined)}
-            isAssistant={m.isAssistant}
             content={m.content}
             contentJson={m.contentJson}
             attachments={m.attachments}
             messageId={m.id}
             sentAt={m.createdAt}
             compact={compact}
-            citations={m.citations}
             time={formatDate(m.createdAt, TIME_LABEL)}
             editedLabel={
               m.editedAt
@@ -1091,13 +1055,6 @@ export function VisitorConversationThread({
             </div>
           </div>
         )
-      case 'assistant-activity':
-        // Quinn's live working trace (thinking → searching the knowledge base).
-        return <AssistantWorkingTrace status={row.status} />
-      case 'assistant-stream':
-        // Quinn's answer as it streams, before the persisted message lands.
-        return <AssistantStreamingBubble text={row.text} />
-
       case 'csat':
         return (
           <div className="rounded-lg border border-border/50 bg-muted/20 px-3 py-2.5 text-center">
@@ -1185,28 +1142,11 @@ export function VisitorConversationThread({
 
   return (
     <div className="flex flex-col h-full">
-      {/* Header: with the assistant enabled the thread is always fronted by its
-          identity — the AI is always available, so no availability promise is
-          made at any point (matching the AI-first messenger model). Without an
-          assistant, the classic live presence strip shows. */}
-      {showHeader && assistant ? (
-        <div className="flex items-center gap-2.5 px-4 py-2 border-b border-border/40 shrink-0">
-          <Avatar src={assistant.avatarUrl} name={assistant.name} className="size-7 text-xs" />
-          <div className="min-w-0">
-            <p className="text-sm font-semibold leading-tight text-foreground">{assistant.name}</p>
-            <p className="text-[11px] leading-tight text-muted-foreground">
-              <FormattedMessage
-                id="widget.messenger.assistant.teamAlso"
-                defaultMessage="The team can also help"
-              />
-            </p>
-          </div>
-        </div>
-      ) : showHeader ? (
+      {showHeader && (
         <div className="flex items-center px-4 py-2 border-b border-border/40 shrink-0">
           <ConversationPresenceBadge available={available} />
         </div>
-      ) : null}
+      )}
 
       {/* The pair's ticket header (converged Messages): stage chip + tracker +
           watch bell + collapsed details. Only when a linked ticket exists —

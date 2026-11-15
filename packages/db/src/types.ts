@@ -19,7 +19,6 @@ import type {
   conversationMessageMentions,
   conversationMessageReactions,
   conversationMessageFlags,
-  conversationMessageTranslations,
 } from './schema/conversation'
 import type { teams, teamMembers } from './schema/teams'
 import type { tickets, ticketStatuses, ticketConversations, ticketLinks } from './schema/tickets'
@@ -875,17 +874,6 @@ export interface FilePreviewMeta {
   macro?: boolean
 }
 
-// A source the AI assistant grounded a message in (conversation_messages.citations).
-// The message text carries inline [n] markers that index into this ordered list.
-// `type` mirrors ASSISTANT_CITATION_TYPES (apps/web citation-types.ts); a
-// standalone copy here so the db package owns no dependency on the app.
-export interface ConversationMessageCitation {
-  type: 'article' | 'post' | 'snippet' | 'summary' | 'ticket' | 'changelog' | 'document' | 'webpage'
-  id: string
-  title: string
-  url: string
-}
-
 // Channel provenance stored on a conversation message (conversation_messages.metadata).
 // Null for ordinary in-app messenger messages; set when a message arrives over
 // another channel so the inbox can render it and dedupe provider retries.
@@ -967,16 +955,6 @@ export interface PostSuggestion {
   boardId: string
   title: string
   content: string
-}
-
-// A write-tool call Quinn proposed but has not executed, surfaced on an
-// internal note (conversation_messages.metadata) so the team sees it without
-// polling. A point-in-time snapshot only — the pending action row is the live
-// source of truth an agent approves/rejects from.
-export interface AssistantPendingActionSurface {
-  pendingActionId: string
-  toolName: string
-  summary: string
 }
 
 // Workflow conversational-block layer (Phase C, slice C-1). A block is an
@@ -1149,9 +1127,6 @@ export interface ConversationMessageMetadata {
   /** Agent-only suggestion (on an internal note) to track this conversation as a
    *  feedback post. Surfaced only via the agent DTO, never to the visitor. */
   postSuggestion?: PostSuggestion
-  /** Agent-only snapshot (on an internal note) of a write-tool proposal Quinn
-   *  surfaced for approval. Surfaced only via the agent DTO, never to the visitor. */
-  assistantPendingAction?: AssistantPendingActionSurface
   /** Agent-only (P2-D.1 inbox translation): set on an OUTGOING reply sent while
    *  translation was active for the conversation. `content`/`content_json` on
    *  this row are the customer-language translation actually sent; this
@@ -1202,13 +1177,6 @@ export type ConversationMessageReaction = InferSelectModel<typeof conversationMe
 export type NewConversationMessageReaction = InferInsertModel<typeof conversationMessageReactions>
 export type ConversationMessageFlag = InferSelectModel<typeof conversationMessageFlags>
 export type NewConversationMessageFlag = InferInsertModel<typeof conversationMessageFlags>
-export type ConversationMessageTranslation = InferSelectModel<
-  typeof conversationMessageTranslations
->
-export type NewConversationMessageTranslation = InferInsertModel<
-  typeof conversationMessageTranslations
->
-
 // Teams (§4.12) row types
 export type Team = InferSelectModel<typeof teams>
 export type NewTeam = InferInsertModel<typeof teams>

@@ -25,7 +25,7 @@ Hard rule (test-enforced, not just snapshotted): no package imports app code.
 Top-level directories of src, with lib split one level deeper; root-level files form `(root)`. The components -> lib/server edge is the TanStack Start server-function pattern, recorded as reality.
 
 Nodes (12): (root), components, integrations, lib/build, lib/client, lib/server, lib/shared, locales, routes, styles, test, types
-Edges (28):
+Edges (27):
 
 - (root) -> components
 - (root) -> lib/client
@@ -54,46 +54,23 @@ Edges (28):
 - routes -> lib/client
 - routes -> lib/server
 - routes -> lib/shared
-- test -> lib/client
 
 ## 3. Server domains (lib/server/domains)
 
-Nodes (54): activity, admin-overview, ai, analytics, api, api-keys, assistant, attribute-definitions, boards, changelog, channel-accounts, channels, comments, companies, company-attributes, conversation, conversation-attributes, conversation-views, domain-proof, embeddings, export, files, help-center, import, inbox, macros, merge-suggestions, moderation, notifications, office-hours, onboarding, platform-credentials, post-tags, post-views, posts, principals, push-devices, roadmaps, roles, segments, sentiment, settings, settings-registry, sla, status, statuses, subscriptions, summary, teams, tickets, user-attributes, users, webhooks, workflows
-Edges (140):
+Nodes (48): activity, admin-overview, analytics, api, api-keys, attribute-definitions, boards, changelog, channel-accounts, channels, comments, companies, company-attributes, conversation, conversation-attributes, conversation-views, domain-proof, export, files, help-center, import, inbox, macros, moderation, notifications, office-hours, onboarding, platform-credentials, post-tags, post-views, posts, principals, push-devices, roadmaps, roles, search, segments, settings, settings-registry, sla, status, statuses, subscriptions, teams, tickets, user-attributes, users, webhooks
+Edges (88):
 
 - activity -> principals
 - admin-overview -> changelog
-- ai -> settings
 - analytics -> api
-- analytics -> assistant
-- analytics -> principals
 - analytics -> settings
-- analytics -> workflows
 - api -> api-keys
 - api -> settings
 - api -> webhooks
 - api-keys -> principals
 - api-keys -> roles
-- assistant -> ai
-- assistant -> api
-- assistant -> boards
-- assistant -> conversation
-- assistant -> conversation-attributes
-- assistant -> embeddings
-- assistant -> files
-- assistant -> help-center
-- assistant -> post-tags
-- assistant -> posts
-- assistant -> principals
-- assistant -> settings
-- assistant -> status
-- assistant -> statuses
-- assistant -> tickets
-- assistant -> workflows
 - boards -> posts
 - boards -> settings
-- changelog -> ai
-- changelog -> embeddings
 - changelog -> settings
 - channel-accounts -> conversation
 - channel-accounts -> notifications
@@ -107,13 +84,10 @@ Edges (140):
 - comments -> subscriptions
 - companies -> principals
 - company-attributes -> attribute-definitions
-- conversation -> ai
-- conversation -> assistant
 - conversation -> changelog
 - conversation -> channel-accounts
 - conversation -> channels
 - conversation -> comments
-- conversation -> conversation-attributes
 - conversation -> files
 - conversation -> posts
 - conversation -> principals
@@ -121,42 +95,29 @@ Edges (140):
 - conversation -> sla
 - conversation -> teams
 - conversation -> tickets
-- conversation -> workflows
-- conversation-attributes -> ai
-- conversation-attributes -> assistant
 - conversation-attributes -> conversation
 - conversation-attributes -> settings
-- conversation-attributes -> workflows
 - domain-proof -> channel-accounts
-- embeddings -> ai
-- embeddings -> merge-suggestions
 - export -> companies
 - export -> conversation
 - export -> users
 - files -> principals
-- help-center -> ai
 - help-center -> principals
 - help-center -> settings
 - import -> principals
 - inbox -> conversation
 - inbox -> tickets
-- macros -> workflows
-- merge-suggestions -> ai
-- merge-suggestions -> posts
-- merge-suggestions -> settings
+- macros -> conversation
+- macros -> conversation-attributes
 - moderation -> comments
 - moderation -> posts
 - onboarding -> api
 - onboarding -> api-keys
-- onboarding -> assistant
 - onboarding -> principals
 - onboarding -> settings
 - onboarding -> users
 - posts -> activity
-- posts -> ai
 - posts -> changelog
-- posts -> embeddings
-- posts -> merge-suggestions
 - posts -> principals
 - posts -> settings
 - posts -> subscriptions
@@ -165,14 +126,12 @@ Edges (140):
 - principals -> teams
 - roadmaps -> posts
 - roles -> settings
-- sentiment -> ai
-- sentiment -> settings
-- settings -> ai
+- search -> help-center
+- search -> posts
 - settings -> platform-credentials
 - settings -> sla
 - settings-registry -> api
 - settings-registry -> api-keys
-- settings-registry -> assistant
 - settings-registry -> settings
 - sla -> office-hours
 - sla -> settings
@@ -180,8 +139,6 @@ Edges (140):
 - subscriptions -> changelog
 - subscriptions -> posts
 - subscriptions -> status
-- summary -> ai
-- summary -> settings
 - tickets -> conversation
 - tickets -> files
 - tickets -> principals
@@ -191,21 +148,11 @@ Edges (140):
 - user-attributes -> attribute-definitions
 - users -> principals
 - webhooks -> settings
-- workflows -> assistant
-- workflows -> conversation
-- workflows -> conversation-attributes
-- workflows -> inbox
-- workflows -> office-hours
-- workflows -> segments
-- workflows -> settings
-- workflows -> sla
-- workflows -> tickets
-- workflows -> users
 
 ### Cycles
 
 Strongly connected components with more than one domain. A new entry here is a new cycle and needs an explicit decision.
 
-- ai <-> settings <-> sla
-- assistant <-> channel-accounts <-> channels <-> conversation <-> conversation-attributes <-> inbox <-> tickets <-> workflows
-- changelog <-> embeddings <-> merge-suggestions <-> posts <-> subscriptions
+- channel-accounts <-> channels <-> conversation <-> tickets
+- posts <-> subscriptions
+- settings <-> sla

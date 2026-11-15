@@ -30,8 +30,6 @@ export const SETTINGS_SQL_COLUMNS = [
   'header_display_mode',
   'header_display_name',
   'setup_state',
-  'assistant_config',
-  'assistant_config_revision',
   'widget_config',
   'widget_secret',
   'widget_installed_first_seen_at',

@@ -26,7 +26,6 @@ import { getSetupState } from '@/lib/shared/db-types'
 import { permissionsForLegacyRole } from '@/lib/server/policy/permissions'
 import { resolveFeatureFlags } from '@/lib/server/domains/settings/settings.types'
 import { getTierLimits } from '@/lib/server/domains/settings/tier-limits.service'
-import { isAssistantConfigured } from '@/lib/server/domains/assistant'
 import { detectFirstWin, internalWinScope, winOutcome } from '@/lib/server/activation-wins'
 import { isLaunchWindowOpen, launchWindowFor } from '@/lib/shared/launch-window'
 import { CURRENT_WIDGET_SDK_VERSION, widgetSdkNeedsUpdate } from '@/lib/shared/widget/sdk-version'
@@ -54,7 +53,6 @@ export async function loadLaunchStatus(caller: LaunchStatusCaller) {
     publishedChangelog,
     statusComponent,
     tierLimits,
-    assistantEntitled,
   ] = await Promise.all([
     db.query.boards.findMany({
       columns: { id: true, slug: true, access: true },
@@ -89,7 +87,6 @@ export async function loadLaunchStatus(caller: LaunchStatusCaller) {
       where: isNull(statusComponents.deletedAt),
     }),
     getTierLimits(),
-    true,
   ])
 
   const setupState = getSetupState(orgSettings?.setupState ?? null)
@@ -102,10 +99,7 @@ export async function loadLaunchStatus(caller: LaunchStatusCaller) {
   // Messenger is "live" when the widget is on and the Messages tab is shown.
   const hasMessengerEnabled = hasWidgetEnabled && (widgetConfig.tabs?.messenger ?? true)
   const hasIntegration = Boolean(connectedIntegration)
-  // The Agent answers unless it is switched off or paused; both default to on.
-  const assistantDeployment = widgetConfig.messenger?.assistant
-  const hasAgentAnswering =
-    (assistantDeployment?.enabled ?? true) && (assistantDeployment?.respond ?? true)
+  const hasAgentAnswering = false
   const hasInternalBoard = orgBoards.some((board) => board.access.view === 'team')
   const publicBoard = orgBoards.find((board) => board.access.view === 'anonymous')
   const hasPublicBoard = Boolean(publicBoard)
@@ -184,7 +178,6 @@ export async function loadLaunchStatus(caller: LaunchStatusCaller) {
       brandingManage: permissions.has(PERMISSIONS.SETTINGS_BRANDING),
       integrationManage: permissions.has(PERMISSIONS.INTEGRATION_MANAGE),
       helpCenterManage: permissions.has(PERMISSIONS.HELP_CENTER_MANAGE),
-      assistantManage: permissions.has(PERMISSIONS.AI_CUSTOMER_MANAGE),
     },
     features: {
       supportInbox: flags.supportInbox,
@@ -192,8 +185,6 @@ export async function loadLaunchStatus(caller: LaunchStatusCaller) {
       statusPage: flags.statusPage,
       changelog: flags.changelog,
       integrations: tierLimits.features.integrations,
-      // Quinn can answer only on a plan that includes it and with a model configured.
-      assistant: assistantEntitled && isAssistantConfigured(),
     },
   }
 }

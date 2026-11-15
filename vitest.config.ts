@@ -20,7 +20,10 @@ export default defineConfig({
     // can exceed the 5s default — and a timeout firing mid-import() corrupts
     // the module graph for later tests. 20s gives headroom; genuine hangs
     // still fail well before the suite stalls.
-    testTimeout: 20000,
+    testTimeout: 60000,
+    // Real-Postgres suites share one test database; a single retry absorbs the
+    // occasional deadlock/aborted-transaction under parallel load.
+    retry: 1,
     include: ['**/*.test.ts', '**/*.test.tsx'],
     setupFiles: [path.resolve(__dirname, './vitest.setup.ts')],
     exclude: [

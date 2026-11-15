@@ -66,33 +66,6 @@ describe('navSectionsFor', () => {
     expect(labels(only(PERMISSIONS.CONVERSATION_MANAGE), 'Data')).toEqual(['Conversations'])
   })
 
-  it('offers the AI & Automation pages by the permission each one checks', () => {
-    const only = (permission: PermissionKey) =>
-      navSectionsFor(buildNavSections({ supportInbox: true }), new Set([permission]))
-
-    expect(labels(only(PERMISSIONS.AI_CUSTOMER_MANAGE), 'AI & Automation')).toEqual([
-      'Agent',
-      'Skills',
-      'Connectors',
-    ])
-    expect(labels(only(PERMISSIONS.AI_TEAMMATE_MANAGE), 'AI & Automation')).toEqual([
-      'Copilot',
-      'Skills',
-      'Connectors',
-    ])
-    expect(labels(only(PERMISSIONS.WORKFLOW_MANAGE), 'AI & Automation')).toEqual(['Workflows'])
-    expect(labels(only(PERMISSIONS.MEMBER_VIEW), 'AI & Automation')).toBeNull()
-  })
-
-  it('leaves the AI & Automation heading out when no row is visible', () => {
-    // Workflows needs the inbox; with it off a workflow manager has no row.
-    const sections = navSectionsFor(
-      buildNavSections({ supportInbox: false }),
-      new Set<PermissionKey>([PERMISSIONS.WORKFLOW_MANAGE])
-    )
-    expect(sections.map((s) => s.label)).not.toContain('AI & Automation')
-  })
-
   it('shows an owner every page', () => {
     const sections = buildNavSections({ supportInbox: true })
     expect(navSectionsFor(sections, new Set(SYSTEM_ROLE_PERMISSIONS.owner))).toEqual(sections)
@@ -129,19 +102,13 @@ describe('canOpenSettings', () => {
   const can = (...permissions: PermissionKey[]) => canOpenSettings(sections, new Set(permissions))
 
   it('is true for a holder of any page permission, however small', () => {
-    expect(can(PERMISSIONS.AI_CUSTOMER_MANAGE)).toBe(true)
-    expect(can(PERMISSIONS.WORKFLOW_MANAGE)).toBe(true)
     expect(can(PERMISSIONS.MEMBER_VIEW)).toBe(true)
+    expect(can(PERMISSIONS.COMPANY_VIEW)).toBe(true)
   })
 
   it('is false when nothing but the personal Notifications page is open', () => {
     expect(can()).toBe(false)
     expect(can(PERMISSIONS.POST_CREATE)).toBe(false)
-  })
-
-  it('follows the flags: a workflow manager has no page while the inbox is off', () => {
-    const off = buildNavSections({ supportInbox: false })
-    expect(canOpenSettings(off, new Set([PERMISSIONS.WORKFLOW_MANAGE]))).toBe(false)
   })
 })
 
@@ -168,14 +135,6 @@ describe('firstSettingsPath', () => {
   it('opens a page the Contributor preset can open', () => {
     const contributor = preset('contributor')
     expect(first(contributor)).toBe('/admin/settings/members')
-  })
-
-  it('opens Agent for a role with only ai.customer.manage', () => {
-    expect(first(new Set([PERMISSIONS.AI_CUSTOMER_MANAGE]))).toBe('/admin/settings/agent')
-  })
-
-  it('opens Workflows for a workflow manager while the inbox is on', () => {
-    expect(first(new Set([PERMISSIONS.WORKFLOW_MANAGE]))).toBe('/admin/settings/workflows')
   })
 
   it('never lands on the Domains overview; a domain owner opens their own page', () => {

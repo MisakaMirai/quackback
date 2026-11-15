@@ -66,12 +66,12 @@ describe.skipIf(!haveTree)('routeChunksImportTheirParent', () => {
     const result = await transform([route('admin/feedback.tsx')])(
       `${route('admin/feedback.index.tsx')}?tsr-split=errorComponent`
     )
-    expect(result?.code).toContain(`${route('admin/feedback.tsx')}?tsr-split=component`)
+    expect(result?.code).toContain(JSON.stringify(`${route('admin/feedback.tsx')}?tsr-split=component`))
   })
 
   it('skips a parent without a component for the nearest ancestor with one', async () => {
     const result = await transform([route('admin.tsx')])(page)
-    expect(result?.code).toContain(`${JSON.stringify(`${route('admin.tsx')}?tsr-split=component`)}`)
+    expect(result?.code).toContain(JSON.stringify(`${route('admin.tsx')}?tsr-split=component`))
     expect(result?.code).not.toContain('admin/feedback.tsx?')
     // No ancestor with a component: nothing to link to.
     expect(await transform([])(page)).toBeNull()

@@ -277,10 +277,6 @@ export const UNTRUSTED_TOOL_FIELDS = {
   update_changelog: NONE,
   delete_changelog: NONE,
 
-  accept_suggestion: NONE,
-  dismiss_suggestion: NONE,
-  restore_suggestion: NONE,
-
   create_article: [ARTICLE_AUTHOR],
   update_article: [ARTICLE_AUTHOR],
   delete_article: NONE,

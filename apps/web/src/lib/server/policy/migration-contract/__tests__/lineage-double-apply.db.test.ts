@@ -51,7 +51,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import postgres from 'postgres'
 import { runMigrations } from '@quackback/db/migrate'
 import { BUNDLED_MIGRATIONS, MIGRATIONS_DIR } from '@quackback/db/schema-version'
-import { REPLAY_OVERRIDES, assessReplaySafety } from '../replay-safety'
+import { REPLAY_OVERRIDES, REPLAY_RETIRED, assessReplaySafety } from '../replay-safety'
 
 const ADMIN_URL =
   process.env.DRIFT_CHECK_DATABASE_URL ?? 'postgresql://postgres:password@localhost:5432/postgres'
@@ -87,7 +87,7 @@ const sqlOf = (tag: string) => readFileSync(join(MIGRATIONS_DIR, `${tag}.sql`), 
  * *becomes* `safe` is checked here without anyone remembering to add it.
  */
 const REPLAY_SAFE = BUNDLED_MIGRATIONS.filter(
-  (m) => assessReplaySafety(m.tag, sqlOf(m.tag)).verdict === 'safe'
+  (m) => !REPLAY_RETIRED.has(m.tag) && assessReplaySafety(m.tag, sqlOf(m.tag)).verdict === 'safe'
 ).map((m) => m.tag)
 
 /**
@@ -216,7 +216,7 @@ describe('the second application of the lineage', () => {
     // Floors, not measurements: they answer "did anything run", so they sit
     // well below the current 35 files / 90 statements rather than tracking them.
     expect(REPLAY_SAFE.length).toBeGreaterThan(30)
-    expect(REPLAY_SAFE).toContain('0256_workspace_key_columns')
+    expect(REPLAY_SAFE).toContain('0012_green_northstar')
     expect(statements).toBeGreaterThan(50)
 
     // And the pass above only means anything because the overridden migrations
@@ -300,7 +300,7 @@ describe('the second application of the lineage', () => {
         )
     )
     expect(error).not.toBeNull()
-    expect(error!.message).toMatch(/already exists/i)
+    expect(error!.message).toMatch(/already exists|已存在/i)
   }, 120_000)
 })
 

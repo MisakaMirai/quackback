@@ -57,8 +57,6 @@ function findAppDir(start: string): string {
 
 const APP_DIR = findAppDir(import.meta.dirname)
 
-const CONFIG_SOURCE_PATH = join(APP_DIR, 'src/lib/server/config.ts')
-
 export const ARTIFACT_PATH = join(APP_DIR, 'src/lib/shared/platform-schema.generated.json')
 
 // =============================================================================
@@ -66,20 +64,6 @@ export const ARTIFACT_PATH = join(APP_DIR, 'src/lib/shared/platform-schema.gener
 // =============================================================================
 
 /** How a value is entered and displayed. Drives input type and masking. */
-export type AiKeyKind = 'secret' | 'url' | 'model' | 'tristate' | 'text'
-
-/** Presentation grouping for the AI keys. */
-export type AiKeyGroup = 'connection' | 'models' | 'advanced'
-
-export interface AiKeySchema {
-  /** Environment variable name, e.g. `OPENAI_API_KEY`. */
-  key: string
-  kind: AiKeyKind
-  group: AiKeyGroup
-  /** true when the value must never be displayed after it is set. */
-  sensitive: boolean
-}
-
 export interface PlatformFieldSchema {
   /** Property key on the credentials object, e.g. `clientId`. */
   key: string
@@ -114,7 +98,6 @@ export interface PlatformProviderSchema {
 export interface PlatformSchema {
   /** Version of the app package this was generated from. */
   workspaceVersion: string
-  ai: { keys: AiKeySchema[] }
   providers: PlatformProviderSchema[]
 }
 
@@ -137,112 +120,6 @@ export function envSuffixFor(fieldKey: string): string {
 /** 'slack' + 'clientSecret' -> 'INTEGRATION_SLACK_CLIENT_SECRET'. */
 export function envKeyFor(integrationType: string, fieldKey: string): string {
   return `${envPrefixFor(integrationType)}${envSuffixFor(fieldKey)}`
-}
-
-// =============================================================================
-// AI keys, read out of the config env mapping
-// =============================================================================
-
-/**
- * Every AI variable name is either `OPENAI_*` or `AI_*`. The derivation asserts
- * this in both directions so a key filed under the wrong comment section, or an
- * AI-shaped key added outside the AI section, fails rather than quietly dropping
- * out of the artifact.
- */
-const AI_KEY_PATTERN = /^(?:AI|OPENAI)_/
-
-/** Body of `function name(...) { ... }`, matched on the closing brace at column 0. */
-function extractFunctionBody(source: string, name: string): string {
-  const start = source.indexOf(`function ${name}(`)
-  if (start === -1) throw new Error(`config.ts: no function ${name}`)
-  const end = source.indexOf('\n}', start)
-  if (end === -1) throw new Error(`config.ts: unterminated function ${name}`)
-  return source.slice(start, end)
-}
-
-/** The lines of a `// <heading>` comment block, up to the next comment or blank-line break. */
-function extractCommentSection(body: string, heading: string): string[] {
-  const lines = body.split('\n')
-  const start = lines.findIndex((l) => l.trim() === `// ${heading}`)
-  if (start === -1) throw new Error(`config.ts: no "// ${heading}" section`)
-  const out: string[] = []
-  for (const line of lines.slice(start + 1)) {
-    if (line.trim().startsWith('//') || line.trim() === '') break
-    out.push(line)
-  }
-  if (out.length === 0) throw new Error(`config.ts: "// ${heading}" section is empty`)
-  return out
-}
-
-/** camelCase property -> env var name, for one line of `buildConfigFromEnv`. */
-function parseMappingLine(line: string): { prop: string; envKey: string } | null {
-  const match = /^\s*([A-Za-z0-9]+):\s*(?:env\('([A-Z0-9_]+)'\)|process\.env\.([A-Z0-9_]+))/.exec(
-    line
-  )
-  if (!match) return null
-  return { prop: match[1], envKey: match[2] ?? match[3] }
-}
-
-/** camelCase property -> declared zod type expression, for one line of the schema object. */
-function parseSchemaLine(line: string): { prop: string; type: string } | null {
-  const match = /^\s*([A-Za-z0-9]+):\s*(.+?),?\s*$/.exec(line)
-  if (!match) return null
-  return { prop: match[1], type: match[2].replace(/,$/, '') }
-}
-
-function classify(envKey: string, zodType: string): { kind: AiKeyKind; group: AiKeyGroup } {
-  // envBoolean accepts only true/false/1/0, and a rejected value fails the whole
-  // config schema rather than just this key, so the value is a fixed set of
-  // states to choose from and never free text.
-  if (zodType === 'envBoolean') return { kind: 'tristate', group: 'advanced' }
-  if (envKey.endsWith('_MODEL')) return { kind: 'model', group: 'models' }
-  if (envKey.endsWith('_API_KEY')) return { kind: 'secret', group: 'connection' }
-  if (envKey.endsWith('_URL')) return { kind: 'url', group: 'connection' }
-  return { kind: 'text', group: 'connection' }
-}
-
-export function deriveAiKeys(configSource: string): AiKeySchema[] {
-  const mappingBody = extractFunctionBody(configSource, 'buildConfigFromEnv')
-  const mapping = extractCommentSection(mappingBody, 'AI')
-    .map(parseMappingLine)
-    .filter((e): e is { prop: string; envKey: string } => e !== null)
-  if (mapping.length === 0) throw new Error('config.ts: the AI env mapping parsed to nothing')
-
-  // Nothing AI-shaped may live outside the AI section, and nothing inside it may
-  // be shaped otherwise. Either direction would silently shrink the artifact.
-  for (const { envKey } of mapping) {
-    if (!AI_KEY_PATTERN.test(envKey)) {
-      throw new Error(`config.ts: ${envKey} is in the AI section but is not an AI_/OPENAI_ key`)
-    }
-  }
-  const inAiSection = new Set(mapping.map((e) => e.envKey))
-  for (const line of mappingBody.split('\n')) {
-    const entry = parseMappingLine(line)
-    if (entry && AI_KEY_PATTERN.test(entry.envKey) && !inAiSection.has(entry.envKey)) {
-      throw new Error(`config.ts: ${entry.envKey} is an AI key outside the "// AI" section`)
-    }
-  }
-
-  // The zod declaration supplies the type. The two blocks must list the same
-  // properties in the same order, or one of them was edited alone.
-  const schemaTypes = new Map(
-    extractCommentSection(configSource, 'AI (optional)')
-      .map(parseSchemaLine)
-      .filter((e): e is { prop: string; type: string } => e !== null)
-      .map((e) => [e.prop, e.type] as const)
-  )
-  const schemaProps = [...schemaTypes.keys()].join(',')
-  const mappingProps = mapping.map((e) => e.prop).join(',')
-  if (schemaProps !== mappingProps) {
-    throw new Error(
-      `config.ts: the AI schema block and the AI env mapping disagree (${schemaProps} vs ${mappingProps})`
-    )
-  }
-
-  return mapping.map(({ prop, envKey }) => {
-    const { kind, group } = classify(envKey, schemaTypes.get(prop) ?? '')
-    return { key: envKey, kind, group, sensitive: kind === 'secret' }
-  })
 }
 
 // =============================================================================
@@ -313,7 +190,6 @@ export function derivePlatformSchema(): PlatformSchema {
 
   return {
     workspaceVersion: pkg.version,
-    ai: { keys: deriveAiKeys(readFileSync(CONFIG_SOURCE_PATH, 'utf8')) },
     providers: deriveProviders(),
   }
 }

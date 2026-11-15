@@ -47,7 +47,6 @@ describe('selectActivationAction', () => {
           brandingManage: false,
           integrationManage: false,
           helpCenterManage: false,
-          assistantManage: false,
         },
       })
     ).toBeNull()

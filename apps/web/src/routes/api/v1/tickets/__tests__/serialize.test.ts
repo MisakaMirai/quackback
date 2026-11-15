@@ -23,10 +23,12 @@ function baseMessage(overrides: Partial<ConversationMessageDTO> = {}): Conversat
     senderType: 'agent',
     content: 'plain text',
     createdAt: '2026-07-05T00:00:00.000Z',
-    author: { principalId: 'principal_01h455vb4pex5vsknk084sn02q' as PrincipalId, displayName: 'Grace', avatarUrl: null },
+    author: {
+      principalId: 'principal_01h455vb4pex5vsknk084sn02q' as PrincipalId,
+      displayName: 'Grace',
+      avatarUrl: null,
+    },
     attachments: [],
-    citations: [],
-    isAssistant: false,
     isInternal: false,
     contentJson: null,
     viaEmail: false,
@@ -75,13 +77,16 @@ describe('serializeTicketMessage', () => {
     expect(result.attachments).toBeNull()
   })
 
-  it('pins the rest of the shape: id/ticketId/senderType/isInternal/author fields pass through unchanged, no citations key', () => {
+  it('pins the rest of the shape: id/ticketId/senderType/isInternal/author fields pass through unchanged', () => {
     const dto = baseMessage({
       senderType: 'agent',
       isInternal: true,
-      author: { principalId: 'principal_note_author' as PrincipalId, displayName: 'Ada', avatarUrl: null },
+      author: {
+        principalId: 'principal_note_author' as PrincipalId,
+        displayName: 'Ada',
+        avatarUrl: null,
+      },
       content: 'internal note text',
-      citations: [{ type: 'article', id: 'kb_1', title: 'Reset your password', url: 'https://x.test/a' }],
     })
 
     const result = serializeTicketMessage(dto)
@@ -98,7 +103,6 @@ describe('serializeTicketMessage', () => {
       attachments: null,
       createdAt: dto.createdAt,
     })
-    expect(result).not.toHaveProperty('citations')
   })
 
   it('falls back to null authorPrincipalId/authorName for an authorless system message', () => {

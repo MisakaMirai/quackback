@@ -30,14 +30,10 @@ import {
   user,
   userSegments,
   segments,
-  assistantInvolvements,
   ticketConversations,
   type Conversation,
   type ConversationMessage,
   type PostSuggestion,
-  type AssistantPendingActionSurface,
-  type AssistantInvolvementStatus,
-  type TranslatedFromMetadata,
 } from '@/lib/server/db'
 import {
   toUuid,
@@ -59,7 +55,6 @@ import {
 } from '@/lib/shared/conversation/views'
 import { nextSlaDue } from '@/lib/shared/conversation/sla'
 import type { SlaApplied } from '@/lib/server/domains/sla/sla.service'
-import { assistantPrincipalIdOnce } from '@/lib/server/messages/assistant-principal'
 import { hasLinkedCustomerTicketSql } from '@/lib/server/messages/pair-link'
 import { conversationFilter } from '@/lib/server/policy/conversations'
 import { isTestThreadSql } from './conversation.test-data'
@@ -79,7 +74,6 @@ import { loadAuthors, loadAuthorAudiences, fallbackAuthor } from '../principals/
 import { toMessageDTO } from '@/lib/server/messages/message-core'
 import { aggregateReactions } from '@/lib/shared'
 import { supportContactName } from '@/lib/shared/support-contact-name'
-import { displayAssistantName } from '@/lib/shared/assistant/config'
 import { truncate } from '@/lib/shared/utils/string'
 import type { Channel } from '@/lib/shared/channels'
 import { keywordInContext, type TermSegment } from '@/lib/shared/utils/keyword-context'
@@ -97,7 +91,6 @@ import type {
   ConversationStatus,
   ConversationEndReason,
   ConversationSpamFiledBy,
-  ConversationTranslationStateDTO,
 } from '@/lib/shared/conversation/types'
 
 const MESSAGE_PAGE_SIZE = 30
@@ -240,20 +233,12 @@ async function loadFlagsForMessages(
  * The post suggestion is supplied in-memory via `postSuggestions` (built by
  * `listMessages` from the rows it already loaded) — it is NOT re-read here, so
  * there's no second `SELECT metadata` round-trip. The map is keyed by message id
- * and only ever carries internal-note suggestions. `pendingActionPointers`
- * mirrors it for Quinn's approval-gated proposals: a pointer only, not the
- * live status — the approval card re-fetches the pending-action row itself.
+ * and only ever carries internal-note suggestions.
  */
 export async function enrichMessagesForAgent(
   messages: ConversationMessageDTO[],
   viewerPrincipalId: PrincipalId,
-  postSuggestions: Map<ConversationMessageId, PostSuggestion>,
-  pendingActionPointers: Map<ConversationMessageId, AssistantPendingActionSurface> = new Map(),
-  // Agent-only (P2-D.1 inbox translation): the pre-translation original of an
-  // OUTGOING message sent while translation was active, carried in-memory off
-  // `metadata.translatedFrom` the same way postSuggestion/pendingAction are —
-  // no second `SELECT metadata` round-trip.
-  translatedFromPointers: Map<ConversationMessageId, TranslatedFromMetadata> = new Map()
+  postSuggestions: Map<ConversationMessageId, PostSuggestion>
 ): Promise<AgentConversationMessageDTO[]> {
   const ids = messages.map((m) => m.id)
   const [reactions, flags] = await Promise.all([
@@ -265,8 +250,6 @@ export async function enrichMessagesForAgent(
     reactions: reactions.get(m.id) ?? [],
     flaggedAt: flags.get(m.id) ?? null,
     postSuggestion: postSuggestions.get(m.id) ?? null,
-    assistantPendingAction: pendingActionPointers.get(m.id) ?? undefined,
-    translatedFrom: translatedFromPointers.get(m.id) ?? null,
   }))
 }
 
@@ -325,7 +308,6 @@ export async function listFlaggedMessages(actor: Actor): Promise<FlaggedMessageD
         content: conversationMessages.content,
         senderType: conversationMessages.senderType,
         authorPublicName: principal.displayName,
-        authorIsAssistant: sql<boolean>`${principal.serviceMetadata}->>'integrationType' = 'assistant'`,
         authorAccountName: user.name,
         visitorPrincipalId: conversations.visitorPrincipalId,
         flaggedAt: conversationMessageFlags.flaggedAt,
@@ -351,7 +333,6 @@ export async function listFlaggedMessages(actor: Actor): Promise<FlaggedMessageD
         content: conversationMessages.content,
         senderType: conversationMessages.senderType,
         authorPublicName: principal.displayName,
-        authorIsAssistant: sql<boolean>`${principal.serviceMetadata}->>'integrationType' = 'assistant'`,
         authorAccountName: user.name,
         ticketTitle: tickets.title,
         ticketNumber: tickets.number,
@@ -380,15 +361,11 @@ export async function listFlaggedMessages(actor: Actor): Promise<FlaggedMessageD
   const flaggedAuthor = (row: {
     authorAccountName: string | null
     authorPublicName: string | null
-    authorIsAssistant: boolean | null
     senderType: string
   }) =>
     supportContactName({
       accountName: row.authorAccountName,
-      publicName:
-        row.authorIsAssistant && row.authorPublicName
-          ? displayAssistantName(row.authorPublicName)
-          : row.authorPublicName,
+      publicName: row.authorPublicName,
       fallback: row.senderType === 'agent' ? 'Agent' : 'Visitor',
     })
   const fromConversations: FlaggedMessageDTO[] = conversationRows.map((r) => ({
@@ -448,26 +425,6 @@ export function slaDueAtFor(conversation: Pick<Conversation, 'slaApplied'>): Dat
   return dto ? (nextSlaDue(dto)?.dueAt ?? null) : null
 }
 
-/**
- * Project a conversation row's P2-D.1 inbox-translation columns into the
- * client DTO shape. Defined here (rather than in
- * conversation-translation.service.ts) so that service can import
- * `conversationToDTO` from this module without a circular import —
- * conversation-translation.service.ts re-exports this for convenience.
- */
-export function translationStateFrom(
-  conversation: Pick<
-    Conversation,
-    'translationEnabled' | 'detectedCustomerLanguage' | 'translationDismissedAt'
-  >
-): ConversationTranslationStateDTO {
-  return {
-    enabled: conversation.translationEnabled ?? false,
-    detectedCustomerLanguage: conversation.detectedCustomerLanguage ?? null,
-    suggestionDismissed: conversation.translationDismissedAt != null,
-  }
-}
-
 export function toConversationDTO(
   conversation: Pick<
     Conversation,
@@ -503,9 +460,6 @@ export function toConversationDTO(
   // Custom attribute values (agent-only); callers pass {} on visitor paths.
   // jsonb is JSON-safe by construction, hence the serializable value type.
   customAttributes: Record<string, JsonValue> = {},
-  // Two-way inbox translation state (agent-only); callers pass null on
-  // visitor paths — the widget has no UI for this feature.
-  translation: ConversationTranslationStateDTO | null = null,
   // Which rule/classifier filed a spam-ended thread (agent-only); callers
   // pass null on visitor paths.
   spamReason: ConversationSpamFiledBy | null = null,
@@ -540,7 +494,6 @@ export function toConversationDTO(
     tags,
     sla,
     customAttributes,
-    translation,
     isTest,
   }
 }
@@ -646,7 +599,6 @@ export async function conversationToDTO(
     side === 'agent' ? (conversation.assignedTeamId ?? null) : null,
     side === 'agent' ? slaDtoFor(conversation) : null,
     side === 'agent' ? ((conversation.customAttributes ?? {}) as Record<string, JsonValue>) : {},
-    side === 'agent' ? translationStateFrom(conversation) : null,
     // App-constrained taxonomy (CONVERSATION_SPAM_FILED_BY), like endReason.
     side === 'agent' ? ((conversation.spamReason as ConversationSpamFiledBy | null) ?? null) : null,
     testOwner !== null
@@ -842,18 +794,6 @@ export interface MessagePage {
    *  client response — the suggestion is agent-only. Empty whenever internal
    *  notes aren't loaded (every visitor path). */
   postSuggestions: Map<ConversationMessageId, PostSuggestion>
-  /** Agent-only pending-action pointers carried on internal notes, keyed by
-   *  message id — the same in-memory idiom as `postSuggestions` (no extra
-   *  query). Consumed by `enrichMessagesForAgent`; MUST NOT be serialized to a
-   *  client response. Empty whenever internal notes aren't loaded. */
-  pendingActionPointers: Map<ConversationMessageId, AssistantPendingActionSurface>
-  /** Agent-only (P2-D.1 inbox translation): the pre-translation original of
-   *  an OUTGOING message sent while translation was active, keyed by message
-   *  id — the same in-memory idiom as `postSuggestions`. Populated for every
-   *  message (not just internal notes) since a translated reply is an
-   *  ordinary agent message. Consumed by `enrichMessagesForAgent`; MUST NOT
-   *  be serialized to a client response. */
-  translatedFromPointers: Map<ConversationMessageId, TranslatedFromMetadata>
 }
 
 /**
@@ -952,10 +892,6 @@ function compareMessagesNewestFirst(a: ConversationMessage, b: ConversationMessa
  * visitor/grounding/realtime path) or no linked ticket degenerates to the
  * pre-convergence conversation-only read, byte-identical.
  */
-// The assistant's service principal is a workspace singleton; the memoized id
-// resolver lives in messages/assistant-principal (shared with the pair-thread
-// union loader) so message loads can flag Quinn's turns (`isAssistant`)
-// without a per-load lookup.
 export async function listMessages(
   conversationId: ConversationId,
   opts?: {
@@ -1041,58 +977,44 @@ export async function listMessages(
   // page below the cursor anchor).
   const hasMore = merged.length > limit
   const page = hasMore ? merged.slice(0, limit) : merged
-  const [authors, assistantPrincipalId] = await Promise.all([
-    loadAuthors(
-      page.map((m) => m.principalId),
-      {
-        // Agent threads (internal notes, or an explicit ask) show the account
-        // name. The visitor widget leaves this off and keeps the public name.
-        preferAccountName: opts?.preferAccountName ?? !!opts?.includeInternal,
-      }
-    ),
-    assistantPrincipalIdOnce(),
-  ])
+  const authors = await loadAuthors(
+    page.map((m) => m.principalId),
+    {
+      // Agent threads (internal notes, or an explicit ask) show the account
+      // name. The visitor widget leaves this off and keeps the public name.
+      preferAccountName: opts?.preferAccountName ?? !!opts?.includeInternal,
+    }
+  )
   const ordered = [...page].reverse() // oldest-first for rendering
   // Stash the agent-only suggestion off each internal note's metadata while we
   // still have the raw rows, so the agent enrichment can attach it without a
   // second `SELECT metadata` round-trip. `toMessageDTO` forwards ordinary
   // client-safe metadata (e.g. `block`/`blockReply`, Phase C's conversational
   // block layer) but still never exposes these agent-only extras
-  // (postSuggestion, assistantPendingAction, translatedFrom) — this map is
-  // their only carrier, and it never leaves the server.
+  // (postSuggestion) — this map is their only carrier, and it never leaves the
+  // server.
   const postSuggestions = new Map<ConversationMessageId, PostSuggestion>()
-  const pendingActionPointers = new Map<ConversationMessageId, AssistantPendingActionSurface>()
-  const translatedFromPointers = new Map<ConversationMessageId, TranslatedFromMetadata>()
   for (const m of page) {
     const suggestion = m.metadata?.postSuggestion
     if (m.isInternal && suggestion) postSuggestions.set(m.id, suggestion)
-    const pendingAction = m.metadata?.assistantPendingAction
-    if (m.isInternal && pendingAction) pendingActionPointers.set(m.id, pendingAction)
-    // Not internal-note-gated (unlike the two above): a translated reply is
-    // an ordinary agent message, not a note.
-    const translatedFrom = m.metadata?.translatedFrom
-    if (translatedFrom) translatedFromPointers.set(m.id, translatedFrom)
   }
   return {
     messages: ordered.map((m) =>
       // System events have a null principal and therefore no author.
       toMessageDTO(
         m,
-        m.principalId ? (authors.get(m.principalId) ?? fallbackAuthor(m.principalId)) : null,
-        assistantPrincipalId
+        m.principalId ? (authors.get(m.principalId) ?? fallbackAuthor(m.principalId)) : null
       )
     ),
     hasMore,
     nextCursor: page.length > 0 ? page[page.length - 1].id : null,
     postSuggestions,
-    pendingActionPointers,
-    translatedFromPointers,
   }
 }
 
 /**
  * Load a conversation's ENTIRE thread (oldest-first, no page window) as message
- * DTOs, for the copilot grounding block (`loadConversationGroundingContext`).
+ * DTOs.
  * Grounding must see the thread head as well as its tail: the windowed
  * `listMessages` read returns only the newest page (capped at 100), which would
  * silently drop the customer's original request on a long conversation. The
@@ -1118,18 +1040,14 @@ export async function listConversationMessagesForGrounding(
     )
     .orderBy(asc(conversationMessages.createdAt), asc(conversationMessages.id))
 
-  const [authors, assistantPrincipalId] = await Promise.all([
-    loadAuthors(
-      rows.map((m) => m.principalId),
-      { preferAccountName: true }
-    ),
-    assistantPrincipalIdOnce(),
-  ])
+  const authors = await loadAuthors(
+    rows.map((m) => m.principalId),
+    { preferAccountName: true }
+  )
   return rows.map((m) =>
     toMessageDTO(
       m,
-      m.principalId ? (authors.get(m.principalId) ?? fallbackAuthor(m.principalId)) : null,
-      assistantPrincipalId
+      m.principalId ? (authors.get(m.principalId) ?? fallbackAuthor(m.principalId)) : null
     )
   )
 }
@@ -1173,9 +1091,6 @@ export interface ConversationListFilter {
    *  does not count — the opener owns the thread's origin. Always the
    *  requesting agent, resolved server-side like mentionedPrincipalId. */
   startedByPrincipalId?: PrincipalId
-  /** "Quinn AI" view: only conversations with an `assistant_involvements` row in
-   *  ANY of these lifecycle statuses (Resolved / Escalated / Pending buckets). */
-  assistantStatuses?: AssistantInvolvementStatus[]
   /** Custom-attribute view rules (§C2.7): every entry ANDs an additional
    *  predicate against `custom_attributes`. See `attributeFilterCondition`. */
   attributeFilters?: ConversationAttributeFilterParam[]
@@ -1631,8 +1546,8 @@ export async function listConversationsForAgent(
 
   const rows = await db
     // Explicit projection of only the columns the list DTO consumes
-    // (toConversationDTO + slaDtoFor + translationStateFrom + the author/
-    // unread/email lookups). Skips the wide/JSONB columns the list never reads
+    // (toConversationDTO + slaDtoFor + the author/unread/email lookups). Skips
+    // the wide/JSONB columns the list never reads
     // — customAttributes, csatComment/csatSubmittedAt, source, channelAccountId,
     // waitingSince, updatedAt — so the inbox page doesn't haul unused payload
     // (esp. the customAttributes JSONB) over every fetch.
@@ -1658,9 +1573,6 @@ export async function listConversationsForAgent(
       snoozedUntil: conversations.snoozedUntil,
       visitorEmail: conversations.visitorEmail,
       slaApplied: conversations.slaApplied,
-      translationEnabled: conversations.translationEnabled,
-      detectedCustomerLanguage: conversations.detectedCustomerLanguage,
-      translationDismissedAt: conversations.translationDismissedAt,
       isTest: isTestThreadSql(conversations.visitorPrincipalId).mapWith(Boolean),
     })
     .from(conversations)
@@ -1772,18 +1684,6 @@ export async function listConversationsForAgent(
                 )
             )
           : undefined,
-        // Quinn AI view: restrict to conversations Quinn engaged whose involvement
-        // is in one of the requested lifecycle buckets. Distinct subquery keeps the
-        // outer select shape (conversations only), like the mentions predicate.
-        filter.assistantStatuses && filter.assistantStatuses.length > 0
-          ? inArray(
-              conversations.id,
-              db
-                .selectDistinct({ id: assistantInvolvements.conversationId })
-                .from(assistantInvolvements)
-                .where(inArray(assistantInvolvements.status, filter.assistantStatuses))
-            )
-          : undefined,
         // Created-by-me view: the conversation's earliest non-deleted message is
         // an agent message by this principal. EXISTS over conversation_messages
         // keeps the select shape; the MIN(created_at) inner query pins "first".
@@ -1888,7 +1788,6 @@ export async function listConversationsForAgent(
         // customAttributes intentionally omitted here (unchanged pre-existing
         // behavior for the inbox list) — the caller's default (`{}`) applies.
         undefined,
-        translationStateFrom(c),
         (c.spamReason as ConversationSpamFiledBy | null) ?? null
       ),
       isTest: c.isTest,

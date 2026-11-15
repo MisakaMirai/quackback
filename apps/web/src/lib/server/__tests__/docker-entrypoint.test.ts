@@ -119,7 +119,7 @@ describe('docker-entrypoint.sh source', () => {
   })
 })
 
-describe('docker-entrypoint.sh migrator role', () => {
+describe.skipIf(process.platform === 'win32')('docker-entrypoint.sh migrator role', () => {
   it('runs fleet-migrator enrol+run, exits 2 with no control DB, and never starts the server', async () => {
     const result = await runEntrypoint({ QUACKBACK_ROLE: 'migrator' }, BUN_SHIM)
 

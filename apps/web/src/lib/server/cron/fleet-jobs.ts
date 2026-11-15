@@ -48,17 +48,11 @@ export async function runDailyMaintenance(): Promise<void> {
     { pruneAuditLog },
     { sweepExpiredPortalInvites },
     { pruneEventsOutbox },
-    { cleanupExpiredLogs },
-    { cleanupExpiredToolCalls, cleanupExpiredAssistantEvents },
-    { cleanupExpiredMessageTranslations },
     { withSweepLock },
   ] = await Promise.all([
     import('@/lib/server/audit/log'),
     import('@/lib/server/audit/invite-sweep'),
     import('@/lib/server/events/events-sweep'),
-    import('@/lib/server/domains/ai/usage-log'),
-    import('@/lib/server/domains/assistant/tool-audit'),
-    import('@/lib/server/domains/conversation/conversation-translation.service'),
     import('@/lib/server/sweep-lock'),
   ])
 
@@ -73,38 +67,6 @@ export async function runDailyMaintenance(): Promise<void> {
   await withSweepLock('events_prune', ONE_HOUR, async () => {
     await pruneEventsOutbox().catch((err) => log.error({ err }, 'events outbox prune failed'))
   })
-  // ai_usage_log + operational tables (hook deliveries, unsubscribe tokens,
-  // in-app notifications), assistant tool-audit + events, message translations.
-  await withSweepLock('logs_retention', ONE_HOUR, async () => {
-    await Promise.all([
-      cleanupExpiredLogs(),
-      cleanupExpiredToolCalls(),
-      cleanupExpiredAssistantEvents(),
-      cleanupExpiredMessageTranslations(),
-    ]).catch((err) => log.error({ err }, 'logs retention cleanup failed'))
-  })
-}
-
-/** Stale/missing post summaries. AI calls, so one replica per tick. */
-export async function runSummarySweep(): Promise<void> {
-  const [{ refreshStaleSummaries }, { withSweepLock }] = await Promise.all([
-    import('@/lib/server/domains/summary/summary.service'),
-    import('@/lib/server/sweep-lock'),
-  ])
-  await withSweepLock('summary_sweep', ONE_HOUR, () =>
-    refreshStaleSummaries().catch((err) => log.error({ err }, 'summary sweep failed'))
-  )
-}
-
-/** Duplicate-post detection. AI calls and user-visible output; same shape. */
-export async function runMergeSweep(): Promise<void> {
-  const [{ sweepMergeSuggestions }, { withSweepLock }] = await Promise.all([
-    import('@/lib/server/domains/merge-suggestions/merge-check.service'),
-    import('@/lib/server/sweep-lock'),
-  ])
-  await withSweepLock('merge_sweep', ONE_HOUR, () =>
-    sweepMergeSuggestions().catch((err) => log.error({ err }, 'merge suggestion sweep failed'))
-  )
 }
 
 /** Announces any live changelog entry whose notification was missed. */
@@ -164,8 +126,6 @@ export const FLEET_CRON_JOBS = {
   },
   hourly: async () => {
     await runKvSweep()
-    await runSummarySweep()
-    await runMergeSweep()
     await runChangelogNotifyReconcile()
     await runStatusNotifyReconcile()
     await runStatusMaintenanceSweep()

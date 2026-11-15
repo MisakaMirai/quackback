@@ -4,7 +4,7 @@
 
 import { z } from 'zod'
 import { createServerFn } from '@tanstack/react-start'
-import type { BoardId, PostTagId } from '@quackback/ids'
+import type { PostTagId } from '@quackback/ids'
 import { requireAuth } from './auth-helpers'
 import { PERMISSIONS } from '@/lib/shared/permissions'
 import {
@@ -32,7 +32,6 @@ const createTagSchema = z.object({
   name: z.string().min(1, 'Name is required').max(50, 'Name must be 50 characters or less'),
   color: HexColorWithDefaultSchema,
   description: z.string().max(200).optional(),
-  aiPrompt: z.string().max(500).optional(),
   isPublic: z.boolean().optional(),
 })
 
@@ -43,15 +42,10 @@ const updateTagSchema = z.object({
   name: TaxonomyNameSchema.optional(),
   color: OptionalHexColorPatternSchema,
   description: z.string().max(200).optional().nullable(),
-  aiPrompt: z.string().max(500).optional().nullable(),
   isPublic: z.boolean().optional(),
 })
 
 const deleteTagSchema = EntityIdSchema
-
-const backfillAiTagsSchema = z.object({
-  boardId: z.string(),
-})
 
 // ============================================
 // Type Exports
@@ -61,7 +55,6 @@ export type CreateTagInput = z.infer<typeof createTagSchema>
 export type GetTagInput = z.infer<typeof getTagSchema>
 export type UpdateTagInput = z.infer<typeof updateTagSchema>
 export type DeleteTagInput = z.infer<typeof deleteTagSchema>
-export type BackfillAiTagsInput = z.infer<typeof backfillAiTagsSchema>
 
 // ============================================
 // Read Operations
@@ -110,7 +103,6 @@ export const createPostTagFn = createServerFn({ method: 'POST' })
       name: data.name,
       color: data.color,
       description: data.description,
-      aiPrompt: data.aiPrompt,
       isPublic: data.isPublic,
     })
     log.info({ tag_id: tag.id }, 'tag created')
@@ -126,28 +118,14 @@ export const updatePostTagFn = createServerFn({ method: 'POST' })
     log.debug({ tag_id: data.id }, 'update tag')
     await requireAuth({ permission: PERMISSIONS.TAG_MANAGE })
 
-    const before = await getTagById(data.id as PostTagId)
     const tag = await updatePostTag(data.id as PostTagId, {
       name: data.name,
       color: data.color,
       description: data.description,
-      aiPrompt: data.aiPrompt,
       isPublic: data.isPublic,
     })
     log.info({ tag_id: tag.id }, 'tag updated')
 
-    // A changed, non-empty AI prompt re-evaluates the tag against recent
-    // posts so the new rule takes effect on existing feedback. Best-effort:
-    // a re-evaluation failure never fails the tag save.
-    if (data.aiPrompt !== undefined && tag.aiPrompt && tag.aiPrompt !== before.aiPrompt) {
-      try {
-        const { reevaluateAiTag } = await import('@/lib/server/domains/posts/post.autotag')
-        const result = await reevaluateAiTag(tag.id)
-        log.info({ tag_id: tag.id, ...result }, 'ai tag re-evaluated after prompt change')
-      } catch (err) {
-        log.warn({ err, tag_id: tag.id }, 'ai tag re-evaluation failed')
-      }
-    }
     return tag
   })
 
@@ -163,20 +141,4 @@ export const deletePostTagFn = createServerFn({ method: 'POST' })
     await deletePostTag(data.id as PostTagId)
     log.info({ tag_id: data.id }, 'tag deleted')
     return { id: data.id as PostTagId }
-  })
-
-/**
- * Apply the AI-prompted tags to a board's existing untagged posts in one
- * action. Batched — the result's `hasMore` tells the caller to run again.
- */
-export const backfillAiTagsFn = createServerFn({ method: 'POST' })
-  .validator(backfillAiTagsSchema)
-  .handler(async ({ data }) => {
-    log.debug({ board_id: data.boardId }, 'ai tag backfill')
-    await requireAuth({ permission: PERMISSIONS.TAG_MANAGE })
-
-    const { backfillAiTagsForBoard } = await import('@/lib/server/domains/posts/post.autotag')
-    const result = await backfillAiTagsForBoard(data.boardId as BoardId)
-    log.info({ board_id: data.boardId, ...result }, 'ai tag backfill applied')
-    return result
   })

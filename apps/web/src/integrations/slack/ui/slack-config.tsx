@@ -1,4 +1,3 @@
-import { SlackAgentCard } from './slack-agent-card'
 import { missingSlackScopes } from '../scopes'
 import { useState } from 'react'
 import { ArrowPathIcon, HashtagIcon, LockClosedIcon } from '@heroicons/react/24/solid'
@@ -147,14 +146,13 @@ export function SlackConfig({
         <div className="rounded-lg border p-4 text-sm">
           <p className="font-medium">Reconnect to enable @Quackback</p>
           <p className="text-muted-foreground">
-            Grant the new Slack permissions to use the assistant. Your notifications keep working.
+            Grant the new Slack permissions to use the integration. Your notifications keep working.
           </p>
           <a className="underline" href="/oauth/slack/connect">
             Reconnect Slack
           </a>
         </div>
       )}
-      <SlackAgentCard />
       {/* Enable/Disable Toggle */}
       <div className="flex items-center justify-between">
         <div>

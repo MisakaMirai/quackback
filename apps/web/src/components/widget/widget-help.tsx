@@ -6,7 +6,6 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import {
   MagnifyingGlassIcon,
   QuestionMarkCircleIcon,
-  ArrowRightIcon,
   ChevronRightIcon,
   XMarkIcon,
 } from '@heroicons/react/24/outline'
@@ -15,13 +14,6 @@ import { useWidgetAuth } from './widget-auth-provider'
 import { getWidgetAuthHeaders } from '@/lib/client/widget-auth'
 import { getTopLevelCategories } from '@/components/help-center/help-center-utils'
 import { CategoryIcon } from '@/components/help-center/category-icon'
-import {
-  AskAiAnswerPanel,
-  AskAiRow,
-  HighlightedText,
-  useAskAiAvailable,
-  useAskAiSearchController,
-} from '@/components/help-center/ask-ai'
 import { useKbSearch } from '@/components/help-center/use-kb-search'
 import { useDebouncedValue } from '@/lib/client/hooks/use-debounced-value'
 import { cn } from '@/lib/shared/utils'
@@ -54,10 +46,6 @@ export function WidgetHelp({
   const categoriesQuery = useQuery(widgetHelpCategoriesQuery(sessionVersion, intl.locale))
   const topLevelCategories = categoriesQuery.data ? getTopLevelCategories(categoriesQuery.data) : []
 
-  const askAiAvailable = useAskAiAvailable(true, {
-    getHeaders: getWidgetAuthHeaders,
-    sessionVersion,
-  })
   // Widget locale passthrough (domains/languages §2): the search API falls
   // back to the default locale server-side if this locale isn't enabled.
   const { results, isSearching } = useKbSearch({
@@ -73,27 +61,6 @@ export function WidgetHelp({
   // a fresh query never flashes "No results" before its search has begun.
   const settledSearch = useDebouncedValue(search, 300)
   const searchPending = isSearching || settledSearch !== search
-  const {
-    askAiState,
-    selectedIndex,
-    hasAskRow,
-    answerOpen,
-    askRowOffset,
-    triggerAsk,
-    dismissAnswer,
-    handleKeyDown,
-  } = useAskAiSearchController({
-    query: search,
-    askAiAvailable,
-    resultCount: results.length,
-    onSelectResult: (idx) => {
-      const article = results[idx]
-      if (article) onArticleSelect?.(article.slug)
-    },
-    onClearQuery: () => setSearch(''),
-    getHeaders: getWidgetAuthHeaders,
-    sessionVersion,
-  })
 
   const showCategories = !search && !isSearching
 
@@ -107,27 +74,17 @@ export function WidgetHelp({
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            onKeyDown={handleKeyDown}
             aria-label={intl.formatMessage({
               id: 'widget.help.searchAria',
               defaultMessage: 'Search help articles',
             })}
-            // The portal's Ask-AI placeholder is a full sentence that truncates
-            // at the widget's width; the widget gets a shorter one.
-            placeholder={
-              askAiAvailable
-                ? intl.formatMessage({
-                    id: 'widget.help.askAiSearchPlaceholder',
-                    defaultMessage: 'Ask AI or search articles…',
-                  })
-                : intl.formatMessage({
-                    id: 'widget.help.searchPlaceholder',
-                    defaultMessage: 'Search help articles...',
-                  })
-            }
+            placeholder={intl.formatMessage({
+              id: 'widget.help.searchPlaceholder',
+              defaultMessage: 'Search help articles...',
+            })}
             className={cn(
               'w-full ps-8 py-2 text-sm bg-muted/30 border border-border/50 rounded-lg placeholder:text-muted-foreground/40 focus:outline-none focus:ring-2 focus:ring-ring/50 focus:border-transparent',
-              hasAskRow ? 'pe-16' : 'pe-9'
+              'pe-9'
             )}
           />
           {search && (
@@ -140,23 +97,10 @@ export function WidgetHelp({
               })}
               className={cn(
                 'absolute top-1/2 -translate-y-1/2 flex size-6 items-center justify-center rounded-md text-muted-foreground/60 hover:text-foreground hover:bg-muted/50 transition-colors',
-                hasAskRow ? 'end-8' : 'end-1.5'
+                'end-1.5'
               )}
             >
               <XMarkIcon className="w-3.5 h-3.5" />
-            </button>
-          )}
-          {hasAskRow && (
-            <button
-              type="button"
-              onClick={triggerAsk}
-              aria-label={intl.formatMessage({
-                id: 'helpAskAi.rowSubtitle',
-                defaultMessage: 'Use AI to answer your question in seconds',
-              })}
-              className="absolute end-1.5 top-1/2 -translate-y-1/2 flex size-6 items-center justify-center rounded-md bg-primary text-primary-foreground hover:opacity-90 transition-opacity cursor-pointer"
-            >
-              <ArrowRightIcon className="w-3.5 h-3.5 rtl:rotate-180" />
             </button>
           )}
         </div>
@@ -240,31 +184,9 @@ export function WidgetHelp({
             </>
           )}
 
-          {/* Answer mode: the panel replaces the autocomplete results. */}
-          {search && answerOpen && (
-            <div className="pt-1">
-              <AskAiAnswerPanel
-                state={askAiState}
-                onDismiss={dismissAnswer}
-                onSourceClick={(source) => onArticleSelect?.(source.slug)}
-              />
-            </div>
-          )}
-
           {/* Autocomplete mode */}
-          {search && !answerOpen && (
+          {search && (
             <>
-              {/* Pinned Ask AI row: present whenever a query is typed. */}
-              {hasAskRow && (
-                <div className="pt-1 pb-1">
-                  <AskAiRow
-                    query={search}
-                    onSelect={triggerAsk}
-                    highlighted={selectedIndex === 0}
-                  />
-                </div>
-              )}
-
               {/* First search for a query: nothing to keep on screen, so the
                   hit-shaped skeleton stands in. Refinements keep the previous
                   hits visible (dimmed) so the list never blinks empty. */}
@@ -296,15 +218,12 @@ export function WidgetHelp({
                   )}
                   aria-busy={searchPending || undefined}
                 >
-                  {results.map((article, idx) => (
+                  {results.map((article) => (
                     <button
                       key={article.id}
                       type="button"
                       onClick={() => onArticleSelect?.(article.slug)}
-                      data-highlighted={selectedIndex === idx + askRowOffset || undefined}
-                      className={`w-full text-start rounded-lg transition-colors px-2.5 py-2.5 cursor-pointer ${
-                        selectedIndex === idx + askRowOffset ? 'bg-muted/50' : 'hover:bg-muted/30'
-                      }`}
+                      className="w-full text-start rounded-lg transition-colors px-2.5 py-2.5 cursor-pointer hover:bg-muted/30"
                     >
                       <div className="flex items-center gap-2 mb-0.5">
                         <span className="text-[11px] font-medium text-muted-foreground/60 uppercase tracking-wide">
@@ -312,10 +231,10 @@ export function WidgetHelp({
                         </span>
                       </div>
                       <h3 className="text-sm font-medium text-foreground line-clamp-2 leading-snug">
-                        <HighlightedText text={article.title} query={search} />
+                        {article.title}
                       </h3>
                       <p className="text-xs text-muted-foreground/70 mt-1 line-clamp-2 leading-relaxed">
-                        <HighlightedText text={contentPreview(article.content)} query={search} />
+                        {contentPreview(article.content)}
                       </p>
                     </button>
                   ))}

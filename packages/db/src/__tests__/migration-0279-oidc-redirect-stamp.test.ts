@@ -101,8 +101,9 @@ describe.skipIf(!dbAvailable)('migration 0279 OIDC redirect stamp', () => {
       await tx.execute(sql`INSERT INTO "_m0279_settings" (auth_config) VALUES (NULL)`)
       await tx.execute(sql.raw(STAMP_SQL))
       // Invalid JSON is left alone rather than overwritten; null gains the stamp.
-      const [invalid, fromNull] = await authConfigs(tx)
-      expect(invalid).toBe('not json')
+      const configs = await authConfigs(tx)
+      expect(configs).toContain('not json')
+      const fromNull = configs.find((c) => c !== 'not json')
       expect(JSON.parse(fromNull!)).toEqual({ oidcRedirectStyles: { sso: 'legacy' } })
     })
   })

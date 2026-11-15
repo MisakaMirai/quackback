@@ -52,8 +52,6 @@ function baseMessage(id: string, overrides: Partial<ConversationMessageDTO> = {}
     createdAt: '2026-07-01T10:00:00.000Z',
     author: null,
     attachments: [],
-    citations: [],
-    isAssistant: false,
     isInternal: false,
     contentJson: null,
     viaEmail: false,
@@ -68,7 +66,6 @@ function agentMessage(id: string, overrides: Partial<AgentConversationMessageDTO
     reactions: [],
     flaggedAt: null,
     postSuggestion: null,
-    translatedFrom: null,
     ...overrides,
   } satisfies AgentConversationMessageDTO
 }
@@ -99,7 +96,6 @@ function conversation(overrides: Partial<ConversationDTO> = {}): ConversationDTO
     tags: [],
     sla: null,
     customAttributes: {},
-    translation: null,
     ...overrides,
   }
 }
