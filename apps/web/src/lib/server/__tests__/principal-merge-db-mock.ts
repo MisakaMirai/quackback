@@ -190,7 +190,6 @@ export function mockDbModule(): Record<string, unknown> {
       id: 'principal.id',
       userId: 'principal.userId',
       contactEmail: 'principal.contactEmail',
-      companyId: 'principal.companyId',
       blockedAt: 'principal.blockedAt',
       blockedByPrincipalId: 'principal.blockedByPrincipalId',
       __name: 'principal',

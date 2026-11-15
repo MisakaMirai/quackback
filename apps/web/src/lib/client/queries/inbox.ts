@@ -46,7 +46,6 @@ export function ticketListKey(filter: TicketListFilter): string {
     filter.assignee ?? 'all',
     filter.teamId ?? '',
     filter.requesterPrincipalId ?? '',
-    filter.companyId ?? '',
     filter.sort ?? 'recent',
     filter.limit ?? '',
   ].join('|')
@@ -183,7 +182,6 @@ function inboxListParamsKey(params: InboxListParams): string {
     params.search ?? '',
     params.assignee ?? '',
     params.teamId ?? '',
-    params.companyId ?? '',
     params.sort ?? '',
     // A custom view can produce the same kinds+ticketType with this unset —
     // key it so the two never share a cache entry.

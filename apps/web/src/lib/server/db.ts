@@ -231,9 +231,6 @@ export {
   postTagAssignmentsRelations,
   postVotes,
   postVotesRelations,
-  // Schema tables - companies
-  companies,
-  companiesRelations,
   // Schema tables - teams
   teams,
   teamsRelations,
@@ -379,8 +376,6 @@ export {
   userTagsRelations,
   userTagAssignments,
   userTagAssignmentsRelations,
-  // Schema tables - company attributes
-  companyAttributeDefinitions,
   // Schema tables - merge suggestions
   // Schema tables - activity
   postActivity,

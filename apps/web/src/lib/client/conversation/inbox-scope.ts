@@ -5,13 +5,7 @@
  * and lib/ may not import components/. Free of React/server imports so it's
  * unit-tested directly; the nav-sidebar component re-exports the nav types.
  */
-import type {
-  ConversationTagId,
-  SegmentId,
-  CompanyId,
-  TeamId,
-  ConversationViewId,
-} from '@quackback/ids'
+import type { ConversationTagId, SegmentId, TeamId, ConversationViewId } from '@quackback/ids'
 import type { ConversationStatus, ConversationPriority } from '@/lib/shared/conversation/types'
 import { parseChannel, type Channel } from '@/lib/shared/channels'
 import type {
@@ -126,7 +120,7 @@ export function inboxNavKey(nav: InboxNavItem): string {
 }
 
 /**
- * Whether the list offers the status, priority and company refinements. A
+ * Whether the list offers the status and priority refinements. A
  * custom view owns its own rules, and Mentions, Spam, Created by me and Test are
  * self-contained feeds, so a refinement carried into them would narrow the
  * list with no control to undo it.
@@ -179,9 +173,6 @@ export interface InboxSearch {
   q?: string
   /** Conversation channel filter. Values come from the descriptor registry. */
   channel?: Channel
-  /** Company refinement (deep-linked from the conversation CompanyCard): restrict
-   *  the list to conversations whose visitor belongs to this company. */
-  company?: string
   /** Open post for the shared `?post=` modal (the whole admin layout mounts it).
    *  Set when an embedded post card in a conversation message is clicked; must be carried
    *  here or this route's validateSearch would strip it before the modal sees it. */
@@ -207,14 +198,13 @@ export function navFromSearch(search: InboxSearch): InboxNavItem {
  * feed; a Label/Segment/team scope refines by tag/segment/team; a custom view
  * carries its own pre-translated rule set (`customParams`). Status + priority are
  * optional chips ('all' = unset), applied within any non-Mentions built-in
- * scope. The optional company refinement + sort narrow/order any scope.
+ * scope. The optional sort orders any scope.
  */
 export function buildListParams(
   nav: InboxNavItem,
   status: StatusFilter,
   priorityFilter: ConversationPriority | 'all',
   search: string,
-  companyId?: CompanyId,
   sort?: ConversationSort,
   customParams?: ConversationViewListParams,
   channel?: Channel
@@ -222,20 +212,17 @@ export function buildListParams(
   const priority = priorityFilter === 'all' ? undefined : priorityFilter
   const statusParam = status === 'all' ? undefined : status
   const q = search || undefined
-  const company = companyId || undefined
   // The implicit default is dropped to keep query keys + params byte-stable.
   // Which sort IS implicit depends on whether a term is active (relevance ranks
   // a searched list), so a pinned 'recent' is an explicit choice there.
   const sortParam = explicitConversationSort(sort, !!q)
-  if (nav.kind === 'custom')
-    return { ...(customParams ?? {}), search: q, companyId: company, sort: sortParam }
+  if (nav.kind === 'custom') return { ...(customParams ?? {}), search: q, sort: sortParam }
   if (nav.kind === 'team')
     return {
       teamId: nav.teamId,
       status: statusParam,
       priority,
       search: q,
-      companyId: company,
       sort: sortParam,
       ...(channel ? { channel } : {}),
     }
@@ -245,7 +232,6 @@ export function buildListParams(
       status: statusParam,
       priority,
       search: q,
-      companyId: company,
       sort: sortParam,
       ...(channel ? { channel } : {}),
     }
@@ -255,23 +241,19 @@ export function buildListParams(
       status: statusParam,
       priority,
       search: q,
-      companyId: company,
       sort: sortParam,
       ...(channel ? { channel } : {}),
     }
-  if (nav.view === 'mentions')
-    return { view: 'mentions' as const, search: q, companyId: company, sort: sortParam }
+  if (nav.view === 'mentions') return { view: 'mentions' as const, search: q, sort: sortParam }
   // The Spam view is self-contained (like Mentions): the list owns its
   // spam-only scope, so status/priority chips don't apply within it.
-  if (nav.view === 'spam')
-    return { view: 'spam' as const, search: q, companyId: company, sort: sortParam }
+  if (nav.view === 'spam') return { view: 'spam' as const, search: q, sort: sortParam }
   // Test threads are listed whatever their status, so they can be cleared out.
-  if (nav.view === 'test')
-    return { view: 'test' as const, search: q, companyId: company, sort: sortParam }
+  if (nav.view === 'test') return { view: 'test' as const, search: q, sort: sortParam }
   // Created-by-me is a personal feed (like Mentions): self-contained, no
   // status/priority chips.
   if (nav.view === 'created_by_me')
-    return { view: 'created_by_me' as const, search: q, companyId: company, sort: sortParam }
+    return { view: 'created_by_me' as const, search: q, sort: sortParam }
   const assignee =
     nav.view === 'mine'
       ? ('mine' as const)
@@ -283,7 +265,6 @@ export function buildListParams(
     priority,
     assignee,
     search: q,
-    companyId: company,
     sort: sortParam,
     ...(channel ? { channel } : {}),
   }
@@ -355,7 +336,6 @@ export interface InboxListParams {
   search?: string
   assignee?: string
   teamId?: string
-  companyId?: string
   sort?: 'recent' | 'oldest' | 'created' | 'priority' | 'relevance'
   channel?: Channel
 }
@@ -399,7 +379,6 @@ export function buildInboxListParams(
   facet: InboxTriageFacet,
   priorityFilter: ConversationPriority | 'all',
   search: string,
-  companyId?: CompanyId,
   sort?: ConversationSort,
   activeViewFilters?: ConversationViewFilters,
   /** The tickets-branch registry-type dropdown (Phase 4); only meaningful on
@@ -409,7 +388,6 @@ export function buildInboxListParams(
 ): InboxListParams {
   const priority = priorityFilter === 'all' ? undefined : priorityFilter
   const searchParam = search || undefined
-  const company = companyId || undefined
   // Same implicit-default rule as `buildListParams`, then the endpoint's own
   // clamp for the conversation-only sorts its schema rejects.
   const pinned = explicitConversationSort(sort, !!searchParam)
@@ -427,7 +405,6 @@ export function buildInboxListParams(
       teamId: view.teamId,
       priority: view.priority,
       search: searchParam,
-      companyId: company,
       sort: sortParam,
       ...(channel ? { channel } : {}),
     }
@@ -439,7 +416,6 @@ export function buildInboxListParams(
       teamId: nav.teamId,
       priority,
       search: searchParam,
-      companyId: company,
       sort: sortParam,
       ...(channel ? { channel } : {}),
     }
@@ -460,7 +436,6 @@ export function buildInboxListParams(
       linkedPairsOnly: customerCategory || undefined,
       priority,
       search: searchParam,
-      companyId: company,
       sort: sortParam,
       ...(channel ? { channel } : {}),
     }
@@ -471,7 +446,6 @@ export function buildInboxListParams(
       kinds: ['conversation'],
       priority,
       search: searchParam,
-      companyId: company,
       sort: sortParam,
       ...(channel ? { channel } : {}),
     }
@@ -489,7 +463,6 @@ export function buildInboxListParams(
     assignee,
     priority,
     search: searchParam,
-    companyId: company,
     sort: sortParam,
     ...(channel ? { channel } : {}),
   }

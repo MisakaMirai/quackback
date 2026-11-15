@@ -455,19 +455,6 @@
       "htmlTransferKB": 31.5,
       "componentRenders": 425
     },
-    "sweep:doc:admin:/admin/settings/companies": {
-      "dbQueries": 7,
-      "htmlKB": 78.4
-    },
-    "sweep:ui:admin:/admin/settings/companies": {
-      "dbQueries": 7,
-      "serverRequests": 1,
-      "requests": 124,
-      "jsRequests": 119,
-      "jsKB": 417.1,
-      "htmlTransferKB": 30.6,
-      "componentRenders": 416
-    },
     "sweep:doc:admin:/admin/settings/conversation-data": {
       "dbQueries": 7,
       "htmlKB": 84

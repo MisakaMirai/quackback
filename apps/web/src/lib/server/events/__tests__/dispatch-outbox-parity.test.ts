@@ -16,7 +16,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
  * payload/schema mismatch fails here loudly instead of dropping events in prod.
  *
  * The ~19 native-`emit()` catalogue types (status.* / board.* / tag.* /
- * article.* / company.* / apikey.* / settings.updated) are NOT covered here on
+ * article.* / apikey.* / settings.updated) are NOT covered here on
  * purpose: their services call the generic `emit<P>()` whose payload is
  * type-checked against the def at the call site, so a mismatch is a typecheck
  * error, not a runtime drop.
@@ -123,7 +123,6 @@ const ticketData = (): EventTicketData => ({
   status: 'open',
   stage: null,
   requesterPrincipalId: createId('principal'),
-  companyId: null,
   createdAt: new Date('2026-01-01').toISOString(),
   updatedAt: new Date('2026-01-01').toISOString(),
   resolvedAt: null,

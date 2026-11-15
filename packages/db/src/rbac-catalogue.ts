@@ -39,10 +39,6 @@ export const PERMISSIONS = {
   PEOPLE_VIEW: 'people.view', // browse people + their lifecycle stage
   PEOPLE_MANAGE: 'people.manage', // edit + the lead -> user merge
 
-  // category 'company' — the Companies directory (the B2B companies object)
-  COMPANY_VIEW: 'company.view', // browse companies + plan / MRR context in the inbox
-  COMPANY_MANAGE: 'company.manage', // edit company records + person <-> company links
-
   // category 'audience' — targeting
   SEGMENT_VIEW: 'segment.view',
   SEGMENT_MANAGE: 'segment.manage',
@@ -150,7 +146,6 @@ export const PERMISSION_CATEGORIES = [
   'workspace',
   'members',
   'people',
-  'company',
   'audience',
   'feedback',
   'changelog',
@@ -249,17 +244,6 @@ export const PERMISSION_CATALOGUE: ReadonlyArray<{
     key: PERMISSIONS.PEOPLE_MANAGE,
     category: 'people',
     description: 'Edit people and merge a lead into an identified user',
-  },
-
-  {
-    key: PERMISSIONS.COMPANY_VIEW,
-    category: 'company',
-    description: 'Browse companies and their plan / MRR context',
-  },
-  {
-    key: PERMISSIONS.COMPANY_MANAGE,
-    category: 'company',
-    description: 'Edit company records and person-to-company links',
   },
 
   { key: PERMISSIONS.SEGMENT_VIEW, category: 'audience', description: 'View segments' },
@@ -686,7 +670,6 @@ export const SYSTEM_ROLE_PERMISSIONS: Record<SystemRoleKey, PermissionKey[]> = {
     // reads + triage intake
     PERMISSIONS.CHANGELOG_VIEW_DRAFT,
     PERMISSIONS.PEOPLE_VIEW,
-    PERMISSIONS.COMPANY_VIEW,
     PERMISSIONS.MEMBER_VIEW,
     PERMISSIONS.SEGMENT_VIEW,
     PERMISSIONS.INTEGRATION_VIEW,

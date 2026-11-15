@@ -153,7 +153,6 @@ const SETTINGS_TOUR = [
   ['/admin/settings/developers', 'Developers'],
   ['/admin/settings/integrations', 'Integrations'],
   ['/admin/settings/people', 'Users'],
-  ['/admin/settings/companies', 'Companies'],
   ['/admin/settings/imports', 'Imports & exports'],
 ] as const
 
@@ -195,7 +194,6 @@ const SWEEP_PAGES: { path: string; as: Actor }[] = [
     'channels/email',
     'channels/github',
     'channels/messenger',
-    'companies',
     'conversation-data',
     'developers',
     'domains',

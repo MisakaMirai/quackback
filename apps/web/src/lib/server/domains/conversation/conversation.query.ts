@@ -43,7 +43,6 @@ import {
   type ConversationTagId,
   type ConversationMessageId,
   type SegmentId,
-  type CompanyId,
   type TeamId,
   type TicketId,
 } from '@quackback/ids'
@@ -1071,8 +1070,6 @@ export interface ConversationListFilter {
    *  (OR semantics). Exclusive-scope today sends a single id, but the array keeps
    *  it symmetric with tagIds. */
   segmentIds?: SegmentId[]
-  /** Restrict to conversations whose visitor principal belongs to this company. */
-  companyId?: CompanyId
   /** Per-team inbox: conversations assigned to this team. Applied via a raw
    *  `assigned_team_id` predicate so the read stays decoupled from the sibling
    *  team-assignment schema change; only set once teams exist. */
@@ -1405,7 +1402,6 @@ export function attributeFilterCondition(
         : []
       if (values.length === 0) return undefined
       // jsonb_array_elements_text unnests the stored option-id array so a
-      // plain IN-list (parameter-bound, same idiom as company_attr's 'in'
       // operator in segment.evaluation.ts) can match against it.
       const placeholders = sql.join(
         values.map((val) => sql`${val}`),
@@ -1645,19 +1641,6 @@ export async function listConversationsForAgent(
                     isNull(segments.deletedAt)
                   )
                 )
-            )
-          : undefined,
-        // Company filter: conversations whose visitor principal belongs to the
-        // given company. A subquery over principal (served by
-        // principal_company_id_idx) keeps the outer select shape (conversations
-        // only) — same idiom as the segment filter above.
-        filter.companyId
-          ? inArray(
-              conversations.visitorPrincipalId,
-              db
-                .select({ id: principal.id })
-                .from(principal)
-                .where(eq(principal.companyId, filter.companyId))
             )
           : undefined,
         // Mentions view: conversations carrying an internal note that @-mentions

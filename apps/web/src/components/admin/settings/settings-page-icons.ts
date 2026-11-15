@@ -3,7 +3,6 @@ import {
   ArrowDownTrayIcon,
   BellIcon,
   BookOpenIcon,
-  BuildingOfficeIcon,
   ChatBubbleLeftIcon,
   ChatBubbleLeftRightIcon,
   ClockIcon,
@@ -65,7 +64,6 @@ export const SETTINGS_PAGE_ICONS: Record<
   '/admin/settings/developers': CommandLineIcon,
   '/admin/settings/integrations': PuzzlePieceIcon,
   '/admin/settings/people': UserGroupIcon,
-  '/admin/settings/companies': BuildingOfficeIcon,
   '/admin/settings/conversation-data': ChatBubbleLeftIcon,
   '/admin/settings/imports': ArrowDownTrayIcon,
 }

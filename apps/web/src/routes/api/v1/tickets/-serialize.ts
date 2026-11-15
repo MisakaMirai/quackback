@@ -20,7 +20,6 @@ export function serializeTicket(dto: TicketDTO) {
     requesterPrincipalId: dto.requester?.principalId ?? null,
     assigneePrincipalId: dto.assignee.principalId,
     assigneeTeamId: dto.assignee.teamId,
-    companyId: dto.company?.id ?? null,
     firstResponseAt: dto.firstResponseAt,
     dueAt: dto.dueAt,
     resolvedAt: dto.resolvedAt,

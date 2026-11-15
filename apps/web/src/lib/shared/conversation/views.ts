@@ -229,7 +229,7 @@ export interface ConversationViewDTO {
 
 /**
  * The subset of the conversation-list params a view can drive. Mirrors the
- * fields `listConversationsFn` accepts; sort + search + company ride alongside
+ * fields `listConversationsFn` accepts; sort + search ride alongside
  * from the URL, not the view.
  */
 /** One `conversation.attr.<key>` predicate the list query ANDs in. Mirrors

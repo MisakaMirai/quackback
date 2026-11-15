@@ -216,21 +216,11 @@ describe('buildNavSections', () => {
   })
 
   it('Data contains Users and Imports & exports (always), Conversations under support', () => {
-    expect(itemLabels(buildNavSections(), 'Data')).toEqual([
-      'Users',
-      'Companies',
-      'Imports & exports',
-    ])
+    expect(itemLabels(buildNavSections(), 'Data')).toEqual(['Users', 'Imports & exports'])
     const sections = buildNavSections({ supportInbox: true })
-    expect(itemLabels(sections, 'Data')).toEqual([
-      'Users',
-      'Companies',
-      'Conversations',
-      'Imports & exports',
-    ])
+    expect(itemLabels(sections, 'Data')).toEqual(['Users', 'Conversations', 'Imports & exports'])
     expect(itemLabels(buildNavSections({ supportTickets: true }), 'Data')).toEqual([
       'Users',
-      'Companies',
       'Conversations',
       'Imports & exports',
     ])

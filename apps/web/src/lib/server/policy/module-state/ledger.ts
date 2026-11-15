@@ -1225,15 +1225,6 @@ export const MODULE_STATE_LEDGER: readonly LedgerEntry[] = [
       'each call; it caches nothing, so a cross-workspace hit cannot return another tenant\u2019s data.',
   },
   {
-    file: 'apps/web/src/lib/server/domains/company-attributes/company-attribute.service.ts',
-    name: 'service',
-    category: 'process-lifetime',
-    reason:
-      'A stateless closure bundle from createAttributeDefinitionService. Every method reads and ' +
-      'writes the ACTIVE workspace\u2019s company_attribute_definitions rows through the db proxy ' +
-      'on each call; it caches nothing, so a cross-workspace hit cannot return another tenant\u2019s data.',
-  },
-  {
     file: 'apps/web/src/lib/server/auth/provider-trust.ts',
     name: 'reportedObservations',
     category: 'workspace-scoped-key',

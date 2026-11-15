@@ -10,7 +10,6 @@ import {
   BoltIcon,
   ArrowPathIcon,
   EnvelopeIcon,
-  BuildingOffice2Icon,
 } from '@heroicons/react/24/solid'
 import { Link, useNavigate } from '@tanstack/react-router'
 import { FilterSection } from '@/components/shared/filter-section'
@@ -42,10 +41,6 @@ interface UsersSegmentNavProps {
   inLeadsMode?: boolean
   /** Lead count for the All-leads entry badge. */
   totalLeadCount?: number
-  /** `?lifecycle=companies` is set: the Companies entry renders active. */
-  inCompaniesMode?: boolean
-  /** Company count for the Companies entry badge. */
-  totalCompanyCount?: number
 }
 
 export function UsersSegmentNav({
@@ -69,8 +64,6 @@ export function UsersSegmentNav({
   invitesPendingCount,
   inLeadsMode,
   totalLeadCount,
-  inCompaniesMode,
-  totalCompanyCount,
 }: UsersSegmentNavProps) {
   const hasSelection = selectedSegmentIds.length > 0
   const navigate = useNavigate()
@@ -79,8 +72,8 @@ export function UsersSegmentNav({
     <div className="space-y-0">
       <div className="pb-4">
         <FilterSection title="Directory">
-          {/* Directory group: the main user list, leads, companies and the
-            standalone Invitations view. */}
+          {/* Directory group: the main user list, leads and the standalone
+            Invitations view. */}
           <div className="space-y-1">
             {/* All users: clearing both segment selection and invites mode
               brings the user back here. Both can be active at once
@@ -93,7 +86,7 @@ export function UsersSegmentNav({
             <button
               type="button"
               onClick={() => {
-                if (!inInvitesMode && !hasSelection && !inLeadsMode && !inCompaniesMode) return
+                if (!inInvitesMode && !hasSelection && !inLeadsMode) return
                 void navigate({
                   from: '/admin/users',
                   search: (prev) => ({
@@ -101,7 +94,6 @@ export function UsersSegmentNav({
                     invites: undefined,
                     segments: undefined,
                     lifecycle: undefined,
-                    company: undefined,
                   }),
                   replace: true,
                 })
@@ -109,7 +101,7 @@ export function UsersSegmentNav({
               className={cn(
                 MENU_ROW,
                 'w-full text-left',
-                !hasSelection && !inInvitesMode && !inLeadsMode && !inCompaniesMode
+                !hasSelection && !inInvitesMode && !inLeadsMode
                   ? 'bg-muted text-foreground font-medium'
                   : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
               )}
@@ -135,7 +127,6 @@ export function UsersSegmentNav({
                     invites: undefined,
                     segments: undefined,
                     lifecycle: 'leads' as const,
-                    company: undefined,
                   }),
                   replace: true,
                 })
@@ -153,42 +144,6 @@ export function UsersSegmentNav({
               {totalLeadCount !== undefined && (
                 <span className="text-xs text-muted-foreground/60 shrink-0 tabular-nums">
                   {totalLeadCount}
-                </span>
-              )}
-            </button>
-
-            {/* All companies: the directory tab over the B2B company object.
-              A lifecycle view like leads: it swaps the pane's population, so
-              segments and invites mode are cleared with it. */}
-            <button
-              type="button"
-              onClick={() => {
-                if (inCompaniesMode) return
-                void navigate({
-                  from: '/admin/users',
-                  search: (prev) => ({
-                    ...prev,
-                    invites: undefined,
-                    segments: undefined,
-                    lifecycle: 'companies' as const,
-                    company: undefined,
-                  }),
-                  replace: true,
-                })
-              }}
-              className={cn(
-                MENU_ROW,
-                'w-full text-left',
-                inCompaniesMode
-                  ? 'bg-muted text-foreground font-medium'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-              )}
-            >
-              <BuildingOffice2Icon className={MENU_ICON} />
-              <span className="flex-1 truncate">All companies</span>
-              {totalCompanyCount !== undefined && (
-                <span className="text-xs text-muted-foreground/60 shrink-0 tabular-nums">
-                  {totalCompanyCount}
                 </span>
               )}
             </button>

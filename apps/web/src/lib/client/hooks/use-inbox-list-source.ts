@@ -10,7 +10,6 @@
  */
 import { useMemo } from 'react'
 import { useQuery, keepPreviousData } from '@tanstack/react-query'
-import type { CompanyId } from '@quackback/ids'
 import type { ConversationPriority } from '@/lib/shared/conversation/types'
 import type { Channel } from '@/lib/shared/channels'
 import {
@@ -33,7 +32,6 @@ export interface UseInboxListSourceParams {
   facet: InboxTriageFacet
   priorityFilter: ConversationPriority | 'all'
   search: string
-  companyId?: CompanyId
   sort: ConversationSort
   /** The tickets-branch registry-type dropdown (Phase 4) — only applied on the
    *  Tickets-section scopes (see buildInboxListParams). */
@@ -71,7 +69,6 @@ export function useInboxListSource({
   facet,
   priorityFilter,
   search,
-  companyId,
   sort,
   ticketTypeId,
   activeViewFilters,
@@ -95,7 +92,6 @@ export function useInboxListSource({
         facet,
         priorityFilter,
         search,
-        companyId,
         sort,
         activeViewFilters,
         ticketTypeId,
@@ -117,7 +113,6 @@ export function useInboxListSource({
       facetToStatusFilter(facet),
       priorityFilter,
       search,
-      companyId,
       sort,
       customParams,
       channel

@@ -62,7 +62,6 @@ describe('navSectionsFor', () => {
       'Integrations',
     ])
     expect(labels(only(PERMISSIONS.USER_ATTRIBUTE_VIEW), 'Data')).toEqual(['Users'])
-    expect(labels(only(PERMISSIONS.COMPANY_VIEW), 'Data')).toEqual(['Companies'])
     expect(labels(only(PERMISSIONS.CONVERSATION_MANAGE), 'Data')).toEqual(['Conversations'])
   })
 
@@ -103,7 +102,7 @@ describe('canOpenSettings', () => {
 
   it('is true for a holder of any page permission, however small', () => {
     expect(can(PERMISSIONS.MEMBER_VIEW)).toBe(true)
-    expect(can(PERMISSIONS.COMPANY_VIEW)).toBe(true)
+    expect(can(PERMISSIONS.USER_ATTRIBUTE_VIEW)).toBe(true)
   })
 
   it('is false when nothing but the personal Notifications page is open', () => {

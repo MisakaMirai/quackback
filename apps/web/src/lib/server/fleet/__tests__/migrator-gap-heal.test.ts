@@ -170,12 +170,13 @@ const whenOf = (prefix: string) =>
 const SAFE_SUFFIX = (() => {
   const verdictOf = (tag: string) =>
     assessReplaySafety(tag, readFileSync(join(MIGRATIONS_DIR, `${tag}.sql`), 'utf8')).verdict
-  // The tip is the destructive 0312 AI drop, which is not replayable; the
-  // healable window is the safe suffix immediately before it.
-  const replayable = BUNDLED_MIGRATIONS.filter((m) => m.tag !== '0312_drop_quackback_ai')
-  let i = replayable.length
-  while (i > 0 && verdictOf(replayable[i - 1]!.tag) === 'safe') i--
-  return replayable.slice(i)
+  // The corpus ends in destructive drops (0312 AI, 0313 companies) that are not
+  // replayable; the healable window is the safe run immediately before them.
+  let end = BUNDLED_MIGRATIONS.length
+  while (end > 0 && verdictOf(BUNDLED_MIGRATIONS[end - 1]!.tag) !== 'safe') end--
+  let start = end
+  while (start > 0 && verdictOf(BUNDLED_MIGRATIONS[start - 1]!.tag) === 'safe') start--
+  return BUNDLED_MIGRATIONS.slice(start, end)
 })()
 
 /** The row withheld from below the mark: the hole itself. */
@@ -192,8 +193,9 @@ const HEAL_REPLAY = BUNDLED_MIGRATIONS.slice(BUNDLED_MIGRATIONS.indexOf(HEAL_MAR
  * mark, a rollout tail above it, and every migration in the span a no-op.
  */
 async function applyHealableDrift(db: string): Promise<void> {
-  const tip = BUNDLED_MIGRATIONS.find((e) => e.tag === '0312_drop_quackback_ai')
-  const withheld = [HEAL_HOLE!.when, ...HEAL_TAIL.map((e) => e.when), ...(tip ? [tip.when] : [])]
+  // Withhold the hole plus every row above the kept mark, whatever the corpus
+  // above the window is today.
+  const withheld = [HEAL_HOLE!.when, ...HEAL_REPLAY.map((e) => e.when)]
   await withSql(db, (sql) =>
     sql.unsafe(`DELETE FROM drizzle.__drizzle_migrations WHERE created_at = ANY($1::bigint[])`, [
       withheld,

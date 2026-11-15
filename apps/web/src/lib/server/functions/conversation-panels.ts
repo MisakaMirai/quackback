@@ -21,7 +21,6 @@ import type { TicketStageLabels } from '@/lib/shared/tickets'
 import type { AgentConversationPanel } from '@/lib/shared/conversation/agent-panels'
 import { PERMISSIONS, type PermissionKey } from '@/lib/shared/permissions'
 import { logger } from '@/lib/server/logger'
-import type { CompanyDTO } from './companies'
 import type { PortalUserDetailDTO } from './admin'
 
 const log = logger.child({ component: 'conversation-panels' })
@@ -33,7 +32,6 @@ export interface AgentConversationPanels {
   blockStatus?: { blockedAt: string | null }
   contact?: PortalUserDetailDTO | null
   history?: ConversationListPage
-  company?: CompanyDTO | null
   languagePreference?: string | null
   macros?: { macros: MacroDTO[] }
   teamMembers?: TeamMember[]
@@ -45,7 +43,6 @@ const PANEL_PERMISSION: Partial<Record<AgentConversationPanel, PermissionKey>> =
   ticketStageLabels: PERMISSIONS.TICKET_VIEW,
   blockStatus: PERMISSIONS.PEOPLE_VIEW,
   contact: PERMISSIONS.PEOPLE_VIEW,
-  company: PERMISSIONS.COMPANY_VIEW,
   macros: PERMISSIONS.CONVERSATION_REPLY,
   teamMembers: PERMISSIONS.MEMBER_VIEW,
 }
@@ -108,14 +105,6 @@ export async function loadAgentConversationPanels(
         await import('@/lib/server/domains/conversation/conversation.query')
       return listConversationsForAgent({ visitorPrincipalId: visitor }, caller.actor)
     },
-    company: async () => {
-      const [{ getForPrincipal }, { serializeCompany }] = await Promise.all([
-        import('@/lib/server/domains/companies/company.service'),
-        import('./companies'),
-      ])
-      const company = await getForPrincipal(visitor)
-      return company ? serializeCompany(company) : null
-    },
     languagePreference: async () => {
       const { readPreferredLanguage } = await import('./teammate-preferences')
       return readPreferredLanguage(caller.userId)
@@ -146,7 +135,7 @@ export async function loadAgentConversationPanels(
 
   const panels: Record<string, unknown> = {}
   for (const [panel, value] of loaded) {
-    // null is an answer (no link, no company, no preference); undefined is not.
+    // null is an answer (no link, no preference); undefined is not.
     // A ticket read with no linked ticket has nothing to seed.
     if (value === undefined) continue
     if ((panel === 'linkedTicket' || panel === 'ticketStageLabels') && value === null) continue

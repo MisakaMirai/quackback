@@ -45,7 +45,6 @@ export const SETTINGS_PAGES = {
   '/admin/settings/integrations': { label: 'Integrations' },
   // Data
   '/admin/settings/people': { label: 'Users' },
-  '/admin/settings/companies': { label: 'Companies' },
   '/admin/settings/conversation-data': { label: 'Conversations' },
   '/admin/settings/imports': { label: 'Imports & exports' },
 } as const satisfies Record<string, SettingsPageEntry>

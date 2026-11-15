@@ -49,26 +49,7 @@ describe('conversationInboxQueries key parity', () => {
     ).toEqual(['admin', 'inbox', 'conversations', `segment:${segId}`, 'open', 'all', ''])
   })
 
-  it('appends the companyId to the base key only when a company is selected', () => {
-    const base = conversationInboxQueries.conversationList(
-      { kind: 'view', view: 'all' },
-      'open',
-      'all',
-      ''
-    ).queryKey
-    expect(base).toEqual(['admin', 'inbox', 'conversations', 'view:all', 'open', 'all', ''])
-    expect(
-      conversationInboxQueries.conversationList(
-        { kind: 'view', view: 'all' },
-        'open',
-        'all',
-        '',
-        'company_z' as never
-      ).queryKey
-    ).toEqual([...base, 'company_z'])
-  })
-
-  it('appends a non-default sort before the company, and omits the default', () => {
+  it('appends a non-default sort, and omits the default', () => {
     const base = ['admin', 'inbox', 'conversations', 'view:all', 'open', 'all', '']
     // Default 'recent' leaves the key byte-identical (parity preserved).
     expect(
@@ -77,7 +58,6 @@ describe('conversationInboxQueries key parity', () => {
         'open',
         'all',
         '',
-        undefined,
         'recent'
       ).queryKey
     ).toEqual(base)
@@ -87,7 +67,6 @@ describe('conversationInboxQueries key parity', () => {
         'open',
         'all',
         '',
-        undefined,
         'waiting'
       ).queryKey
     ).toEqual([...base, 'sort:waiting'])
@@ -97,10 +76,9 @@ describe('conversationInboxQueries key parity', () => {
         'open',
         'all',
         '',
-        'company_z' as never,
         'oldest'
       ).queryKey
-    ).toEqual([...base, 'sort:oldest', 'company_z'])
+    ).toEqual([...base, 'sort:oldest'])
   })
 
   it('appends a channel filter to the list key', () => {
@@ -116,7 +94,6 @@ describe('conversationInboxQueries key parity', () => {
         'open',
         'all',
         '',
-        undefined,
         undefined,
         undefined,
         'email'

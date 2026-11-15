@@ -10,7 +10,6 @@ import type { ConversationId, PrincipalId, TicketId } from '@quackback/ids'
 import { listConversationsForUserFn } from '@/lib/server/functions/conversation'
 import { listConversationFilesFn } from '@/lib/server/functions/conversation-files'
 import { getPortalUserFn } from '@/lib/server/functions/admin'
-import { getCompanyForPrincipalFn } from '@/lib/server/functions/companies'
 import { getPersonBlockStatusFn } from '@/lib/server/functions/blocking'
 import { getMyLanguagePreferenceFn } from '@/lib/server/functions/teammate-preferences'
 import { conversationPanelEntries as entries } from '@/lib/client/queries/conversation-panel-cache'
@@ -29,13 +28,6 @@ export const conversationPanelQueries = {
     queryOptions({
       ...entries.history(principalId),
       queryFn: () => listConversationsForUserFn({ data: { principalId } }),
-    }),
-
-  /** The contact's company (null when they have none yet). */
-  company: (principalId: string) =>
-    queryOptions({
-      ...entries.company(principalId),
-      queryFn: () => getCompanyForPrincipalFn({ data: { principalId } }),
     }),
 
   /** Whether a person is blocked; shared by every badge and block control. */

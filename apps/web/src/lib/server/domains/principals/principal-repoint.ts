@@ -401,17 +401,13 @@ export const REPOINT_STEPS: RepointStep[] = [
     'contact_email',
     'Attribute consolidation, not a re-point: contact_email fills the target only when the target has none (user wins, lead fills gaps).'
   ),
-  fillIfEmpty(
-    'company_id',
-    'Attribute consolidation, not a re-point: company_id fills the target only when the target has none (user wins, source fills gaps), mirroring contact_email.'
-  ),
   // A block follows the person: if a blocked anonymous visitor identifies, the
   // block must transfer so they cannot escape it by signing in. Fill-if-empty
   // (user wins) — an already-blocked target keeps its own record; an unblocked
   // target inherits the source's. `blocked_at` and `blocked_by` move together so
   // the "who blocked them" trail survives. Both live on the `principal` table,
-  // which the completeness walk skips, so they are steps (like contact_email /
-  // company_id), never REPOINT_EXEMPTIONS entries.
+  // which the completeness walk skips, so they are steps (like contact_email),
+  // never REPOINT_EXEMPTIONS entries.
   fillIfEmpty(
     'blocked_at',
     'Attribute consolidation, not a re-point: a blocked source blocks the target when the target is not already blocked (user wins). Stops a merged visitor from shedding a block by identifying. Skipped when the target is a teammate (team members cannot be blocked).',

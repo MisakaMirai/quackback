@@ -6,7 +6,7 @@
  *   - Hovering fetches the public profile AND the people.view-gated team
  *     context on open (not on mount).
  *   - A null public profile shows no card body.
- *   - Team rows (company, last seen, segments with a +N cap) render from
+ *   - Team rows (last seen, segments with a +N cap) render from
  *     the team payload; clicking the trigger navigates to the admin profile.
  */
 import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest'
@@ -53,7 +53,6 @@ const TEAM = {
   emailVerified: true,
   blocked: false,
   lastSeenAt: '2026-04-01T12:00:00.000Z',
-  company: { id: 'company_1', name: 'Northwind', plan: 'Growth', mrrCents: 49900 },
   segments: [
     { id: 'segment_1', name: 'Beta cohort', color: '#a855f7' },
     { id: 'segment_2', name: 'High MRR', color: '#22c55e' },
@@ -103,8 +102,6 @@ describe('AdminAuthorHoverCard', () => {
 
     const body = await screen.findByTestId('admin-author-hover-card-body')
     expect(body).toHaveTextContent('ada@example.com')
-    expect(body).toHaveTextContent('Northwind')
-    expect(body).toHaveTextContent('Growth')
     expect(body).toHaveTextContent('Beta cohort')
     expect(body).toHaveTextContent('High MRR')
     expect(body).toHaveTextContent('Votes')
@@ -196,7 +193,6 @@ describe('AdminAuthorHoverCard', () => {
     expect(getProfileTeamContextFn).not.toHaveBeenCalled()
     expect(body).not.toHaveTextContent('ada@example.com')
     expect(body).not.toHaveTextContent('Open full profile')
-    expect(body).not.toHaveTextContent('Company')
   })
 
   it('falls back to the public profile when the caller lacks people.view', () => {

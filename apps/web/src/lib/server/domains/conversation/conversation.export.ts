@@ -2,7 +2,7 @@
  * Conversation export (Imports & exports hub §I3): full message content as
  * NDJSON — an OSS differentiator versus tools that gate full-content export
  * behind a paid tier.
- * Capped like the posts/companies CSV exports so a very large workspace
+ * Capped like the posts CSV export so a very large workspace
  * can't exhaust memory building the response.
  */
 import {

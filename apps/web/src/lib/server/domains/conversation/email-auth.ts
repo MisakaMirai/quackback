@@ -7,7 +7,7 @@
  * simply untrusted.
  *
  * The verdict is consumed split-by-action by the cold-inbound path:
- *   - pass       → DMARC-aligned; may ATTACH to an identified principal/company.
+ *   - pass       → DMARC-aligned; may ATTACH to an identified principal.
  *   - unverified → create a standalone contact with an "unverified sender" badge;
  *                  never auto-attach to an existing identity.
  *   - reject     → hard DMARC reject (fail under a p=reject policy); drop outright.

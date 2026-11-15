@@ -25,8 +25,6 @@ Profiles: **Owner** = admin class + an admin-owned full API key (scoped keys hol
 | member.manage | members | ✓ | · |
 | people.view | people | ✓ | ✓ |
 | people.manage | people | ✓ | ✓ |
-| company.view | company | ✓ | ✓ |
-| company.manage | company | ✓ | ✓ |
 | segment.view | audience | ✓ | ✓ |
 | segment.manage | audience | ✓ | ✓ |
 | user_attribute.view | audience | ✓ | ✓ |
@@ -97,7 +95,7 @@ Profiles: **Owner** = admin class + an admin-owned full API key (scoped keys hol
 
 ## 2. Surfaces and their enforced authorization
 
-### Server functions (`requireAuth`) — 646 surfaces
+### Server functions (`requireAuth`) — 629 surfaces
 
 | Surface | Enforces |
 | --- | --- |
@@ -201,7 +199,7 @@ Profiles: **Owner** = admin class + an admin-owned full API key (scoped keys hol
 | `lib/server/functions/api-keys.ts`::rotateApiKeyFn | api_key.manage |
 | `lib/server/functions/api-keys.ts`::revokeApiKeyFn | api_key.manage |
 | `lib/server/functions/api-keys.ts`::setWorkspaceKeyRoleFn | api_key.manage |
-| `lib/server/functions/ask-search.ts`::searchWorkspaceFn | DYNAMIC (post.view_private | help_center.manage | changelog.view_draft | changelog.manage | conversation.view | conversation.view_all | ticket.view | ticket.view_all | people.view | member.view | company.view) |
+| `lib/server/functions/ask-search.ts`::searchWorkspaceFn | DYNAMIC (post.view_private | help_center.manage | changelog.view_draft | changelog.manage | conversation.view | conversation.view_all | ticket.view | ticket.view_all | people.view | member.view) |
 | `lib/server/functions/audit-log.ts`::listAuditEventsFn | audit.view |
 | `lib/server/functions/auth-provider-credentials.ts`::saveAuthProviderCredentialsFn | auth.manage |
 | `lib/server/functions/auth-provider-credentials.ts`::deleteAuthProviderCredentialsFn | auth.manage |
@@ -253,23 +251,6 @@ Profiles: **Owner** = admin class + an admin-owned full API key (scoped keys hol
 | `lib/server/functions/comments.ts`::restoreCommentFn | comment.moderate |
 | `lib/server/functions/comments.ts`::pinCommentFn | comment.pin |
 | `lib/server/functions/comments.ts`::unpinCommentFn | comment.pin |
-| `lib/server/functions/companies.ts`::listCompaniesFn | company.view |
-| `lib/server/functions/companies.ts`::listCompaniesPageFn | company.view |
-| `lib/server/functions/companies.ts`::countCompaniesFn | company.view |
-| `lib/server/functions/companies.ts`::listCompanyMembersFn | company.view |
-| `lib/server/functions/companies.ts`::getCompanyActivityFn | company.view |
-| `lib/server/functions/companies.ts`::getCompanyFn | company.view |
-| `lib/server/functions/companies.ts`::getCompanyForPrincipalFn | company.view |
-| `lib/server/functions/companies.ts`::createCompanyFn | company.manage |
-| `lib/server/functions/companies.ts`::updateCompanyFn | company.manage |
-| `lib/server/functions/companies.ts`::deleteCompanyFn | company.manage |
-| `lib/server/functions/companies.ts`::attachPrincipalToCompanyFn | company.manage |
-| `lib/server/functions/companies.ts`::detachPrincipalFromCompanyFn | company.manage |
-| `lib/server/functions/companies.ts`::qualifyCompanyFn | company.manage |
-| `lib/server/functions/company-attributes.ts`::listCompanyAttributesFn | company.view |
-| `lib/server/functions/company-attributes.ts`::createCompanyAttributeFn | company.manage |
-| `lib/server/functions/company-attributes.ts`::updateCompanyAttributeFn | company.manage |
-| `lib/server/functions/company-attributes.ts`::deleteCompanyAttributeFn | company.manage |
 | `lib/server/functions/contact-email.ts`::getEmailChangeStateFn | END_USER (any authenticated) |
 | `lib/server/functions/contact-email.ts`::sendCurrentAddressCodeFn | END_USER (any authenticated) |
 | `lib/server/functions/contact-email.ts`::requestEmailChangeFn | END_USER (any authenticated) |
@@ -748,11 +729,10 @@ Profiles: **Owner** = admin class + an admin-owned full API key (scoped keys hol
 | `lib/server/functions/widget/user.ts`::widgetGetUserStatsFn | END_USER (any authenticated) |
 | `lib/server/functions/workspace-api-key-settings.ts`::fetchWorkspaceKeyRolesFn | api_key.manage |
 
-### Public REST API (`withApiKeyAuth`) — 125 surfaces
+### Public REST API (`withApiKeyAuth`) — 122 surfaces
 
 | Surface | Enforces |
 | --- | --- |
-| `routes/api/export.companies.ts`::GET | company.view |
 | `routes/api/export.ts`::GET | post.export |
 | `routes/api/export.users.ts`::handleExportUsers | people.view |
 | `routes/api/v1/apps/boards.ts`::GET | PUBLIC (any valid key) |
@@ -774,8 +754,6 @@ Profiles: **Owner** = admin class + an admin-owned full API key (scoped keys hol
 | `routes/api/v1/comments/$commentId.ts`::GET | post.view_private |
 | `routes/api/v1/comments/$commentId.ts`::PATCH | comment.edit |
 | `routes/api/v1/comments/$commentId.ts`::DELETE | comment.edit |
-| `routes/api/v1/companies/$companyId.ts`::GET | company.view |
-| `routes/api/v1/companies/index.ts`::GET | company.view |
 | `routes/api/v1/conversations/$conversationId.assign.ts`::POST | conversation.assign |
 | `routes/api/v1/conversations/$conversationId.messages.ts`::GET | conversation.view |
 | `routes/api/v1/conversations/$conversationId.note.ts`::POST | conversation.note |
@@ -949,7 +927,7 @@ Key scopes are enforced: an API key holds exactly its stored scopes (owner permi
 
 ## 4. Entry points without a requireAuth/key gate
 
-213 of 964 entry points hold no `requireAuth` / `withApiKeyAuth` / `requireTeamAuth` gate.
+213 of 944 entry points hold no `requireAuth` / `withApiKeyAuth` / `requireTeamAuth` gate.
 Each is expected to be intentionally public, a pre-auth flow, a signature-verified webhook, or a handler that delegates auth (e.g. the MCP route).
 **Adding a row here is an access-control change** — confirm the new entry point is meant to be reachable without a gate.
 

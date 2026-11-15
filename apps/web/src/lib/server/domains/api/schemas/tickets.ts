@@ -70,10 +70,6 @@ export const TicketSchema = z.object({
     description: 'ID of the assigned team, null if unassigned',
     example: null,
   }),
-  companyId: TypeIdSchema.nullable().meta({
-    description: 'ID of the associated company, null if none',
-    example: null,
-  }),
   firstResponseAt: NullableTimestampSchema.meta({
     description: 'When a teammate first responded, null until then',
   }),
@@ -212,12 +208,6 @@ registerPath('/tickets', {
         in: 'query',
         schema: { type: 'string' },
         description: 'Filter by requester principal ID',
-      },
-      {
-        name: 'companyId',
-        in: 'query',
-        schema: { type: 'string' },
-        description: 'Filter by company ID',
       },
       {
         name: 'sort',

@@ -22,7 +22,6 @@ import { sql } from 'drizzle-orm'
 import { typeIdWithDefault, typeIdColumn, typeIdColumnNullable } from '@quackback/ids/drizzle'
 import { apiKeys } from './api-keys'
 import { integrations } from './integrations'
-import { companies } from './companies'
 import { roles } from './rbac'
 
 export const user = pgTable(
@@ -717,13 +716,6 @@ export const principal = pgTable(
     chatAvailability: text('chat_availability', { enum: ['online', 'away'] })
       .notNull()
       .default('online'),
-    // The B2B company this person belongs to (support platform §4.4). Soft-owned
-    // FK: set null on company delete so people are never orphaned. Filled on
-    // anonymous-to-identified merge via the contact_email rule (user wins,
-    // source only fills a gap).
-    companyId: typeIdColumnNullable('company')('company_id').references(() => companies.id, {
-      onDelete: 'set null',
-    }),
     testOwnerPrincipalId: typeIdColumnNullable('principal')('test_owner_principal_id'),
     // Blocking (support platform §4.6). `blocked_at` = when the person was
     // blocked (null = not blocked, the enforcement flag); `blocked_by_principal_id`
@@ -775,10 +767,6 @@ export const principal = pgTable(
     index('principal_display_name_trgm_idx')
       .using('gin', sql`${table.displayName} gin_trgm_ops`)
       .where(sql`${table.displayName} IS NOT NULL`),
-    // Company -> people lookups (sidebar roster, member counts).
-    index('principal_company_id_idx')
-      .on(table.companyId)
-      .where(sql`"company_id" IS NOT NULL`),
   ]
 )
 
@@ -1130,10 +1118,6 @@ export const principalRelations = relations(principal, ({ one, many }) => ({
   user: one(user, {
     fields: [principal.userId],
     references: [user.id],
-  }),
-  company: one(companies, {
-    fields: [principal.companyId],
-    references: [companies.id],
   }),
   createdApiKeys: many(apiKeys, { relationName: 'apiKeyCreator' }),
   apiKey: many(apiKeys, { relationName: 'apiKeyPrincipal' }),

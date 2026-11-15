@@ -70,7 +70,6 @@ const ticketDTO = {
   priority: 'high',
   requester: { principalId: 'principal_r', displayName: 'Ada', avatarUrl: null },
   assignee: { principalId: 'principal_a', displayName: 'Grace', teamId: null, teamName: null },
-  company: { id: 'company_1', name: 'Acme' },
   firstResponseAt: null,
   dueAt: null,
   resolvedAt: null,

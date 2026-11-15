@@ -47,7 +47,7 @@ export function formatBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
-/** "1,204 posts · 86 companies · 5,632 votes +4 more" */
+/** "1,204 posts · 5,632 votes · 86 tags +4 more" */
 export function summarizeEntityCounts(
   counts: Record<string, number>,
   formatNumber: NumberFormatter = (n) => formatNumberIn(DEFAULT_LOCALE, n)

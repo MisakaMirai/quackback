@@ -3,7 +3,7 @@
  *
  * Admin sibling of the portal author hover card. Same lazy 200ms open /
  * fetch-on-open / null-payload = no card contract, plus people.view-gated
- * team rows (email, company, last seen, segments) and a footer that opens
+ * team rows (email, last seen, segments) and a footer that opens
  * the admin user profile (`/admin/users?selected=`).
  *
  * Anonymous and service principals never resolve a public profile, so they
@@ -217,24 +217,6 @@ function TeamInfoRows({
 
   return (
     <div className="mt-3 flex flex-col gap-[5px] border-t border-border/50 pt-2.5 text-xs leading-4">
-      <div className="flex items-center justify-between gap-2">
-        <span className="shrink-0 text-muted-foreground">Company</span>
-        <span className="min-w-0 truncate font-medium">
-          {team.company ? (
-            <>
-              {team.company.name}
-              {team.company.plan ? (
-                <span className="font-normal text-muted-foreground">
-                  {' '}
-                  &middot; {team.company.plan}
-                </span>
-              ) : null}
-            </>
-          ) : (
-            <span className="font-normal text-muted-foreground">-</span>
-          )}
-        </span>
-      </div>
       <div className="flex items-center justify-between gap-2">
         <span className="shrink-0 text-muted-foreground">Last seen</span>
         <span className="min-w-0 truncate">

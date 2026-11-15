@@ -10,7 +10,7 @@
  * per-scope conversation memory keep matching.
  */
 import { queryOptions } from '@tanstack/react-query'
-import type { ConversationId, CompanyId } from '@quackback/ids'
+import type { ConversationId } from '@quackback/ids'
 import { listConversationsFn, getConversationFn } from '@/lib/server/functions/conversation'
 import { fetchConversationTagsWithCountsFn } from '@/lib/server/functions/conversation-tags'
 import { fetchInboxSegmentsWithCountsFn } from '@/lib/server/functions/conversation-segments'
@@ -35,17 +35,16 @@ import {
 } from '@/lib/shared/conversation/views'
 
 export const conversationInboxQueries = {
-  /** The conversation list for a scope + status/priority/search refinement,
-   *  optionally narrowed to one company. The base key stays byte-identical to
-   *  the unfiltered inline key (so the loader's SSR prefetch still hydrates);
-   *  a company appends to it, staying under the agentConversations() prefix so
-   *  SSE invalidations keep matching. */
+  /** The conversation list for a scope + status/priority/search refinement.
+   *  The base key stays byte-identical to the unfiltered inline key (so the
+   *  loader's SSR prefetch still hydrates); the optional sort/channel append
+   *  to it, staying under the agentConversations() prefix so SSE
+   *  invalidations keep matching. */
   conversationList: (
     nav: InboxNavItem,
     status: StatusFilter,
     priority: ConversationPriority | 'all',
     search: string,
-    companyId?: CompanyId,
     // The active sort (default 'recent') and, for a custom view, its
     // pre-translated rule set. Both leave the base key byte-identical when
     // absent/default, so the loader's SSR prefetch keeps hydrating existing
@@ -60,29 +59,19 @@ export const conversationInboxQueries = {
       priority,
       search
     )
-    // Append the non-default sort then the company (fixed order) — both stay
+    // Append the non-default sort then the channel (fixed order) — both stay
     // under the agentConversations() prefix SSE invalidations target. Which
     // sort is the default depends on the search term, mirroring buildListParams
     // so the key and the params it encodes never disagree.
     const key = [...baseKey]
     const pinnedSort = explicitConversationSort(sort, !!search)
     if (pinnedSort) key.push(`sort:${pinnedSort}`)
-    if (companyId) key.push(companyId)
     if (channel) key.push(`channel:${channel}`)
     return queryOptions({
       queryKey: key,
       queryFn: () =>
         listConversationsFn({
-          data: buildListParams(
-            nav,
-            status,
-            priority,
-            search,
-            companyId,
-            sort,
-            customParams,
-            channel
-          ),
+          data: buildListParams(nav, status, priority, search, sort, customParams, channel),
         }),
     })
   },

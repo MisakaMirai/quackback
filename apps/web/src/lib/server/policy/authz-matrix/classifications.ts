@@ -125,7 +125,6 @@ export const BARE_GATE_CLASSIFICATIONS: Record<string, Classification> = {
       PERMISSIONS.TICKET_VIEW_ALL,
       PERMISSIONS.PEOPLE_VIEW,
       PERMISSIONS.MEMBER_VIEW,
-      PERMISSIONS.COMPANY_VIEW,
     ],
     "team dashboard search: each kind needs its page permission and reads through that kind's row visibility (posts, conversations, tickets, help center audience, changelog drafts) for the effective actor, full text and semantic alike"
   ),

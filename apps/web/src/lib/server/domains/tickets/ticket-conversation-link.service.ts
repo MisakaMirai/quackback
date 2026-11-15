@@ -155,7 +155,7 @@ export async function linkTicketToConversation(
       // a provenance link can trip. Discriminate which. Drizzle wraps the
       // driver error; the pg fields live on `cause`, and the driver may expose
       // the violated index as `constraint`, `constraint_name`, or only in the
-      // `detail` text (same idiom as company.service's translateUniqueError).
+      // `detail` text.
       const pgErr = (err as { cause?: unknown }).cause ?? err
       const e = pgErr as { constraint?: string; constraint_name?: string; detail?: string }
       const marker = `${e.constraint ?? ''} ${e.constraint_name ?? ''} ${e.detail ?? ''}`

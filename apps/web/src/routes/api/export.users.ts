@@ -59,7 +59,7 @@ export async function handleExportUsers(request: Request): Promise<Response> {
       return Response.json({ error: 'Access denied' }, { status: 403 })
     }
 
-    // Tier gate: data exports are a Pro+ feature (same gate as posts/companies).
+    // Tier gate: data exports are a Pro+ feature (same gate as posts).
     const { assertTierFeature } = await import('@/lib/server/domains/settings/tier-enforce')
     await assertTierFeature('analyticsExports', 'Data export')
 

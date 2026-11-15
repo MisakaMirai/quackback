@@ -8,7 +8,7 @@
  *  - every activity query (lists AND counts) composes postViewFilter(actor),
  *    so a viewer never sees activity on boards outside their own visibility;
  *  - zero viewer-visible activity → null (anti-enumeration);
- *  - the public payload carries NO email / company / segments / lastSeenAt.
+ *  - the public payload carries NO email / segments / lastSeenAt.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { PrincipalId } from '@quackback/ids'
@@ -44,7 +44,6 @@ const TABLES = vi.hoisted(() => ({
     type: 'principal.type',
     createdAt: 'principal.createdAt',
     contactEmail: 'principal.contactEmail',
-    companyId: 'principal.companyId',
     blockedAt: 'principal.blockedAt',
     testOwnerPrincipalId: 'principal.testOwnerPrincipalId',
   },
@@ -86,12 +85,6 @@ const TABLES = vi.hoisted(() => ({
     name: 'segments.name',
     color: 'segments.color',
     deletedAt: 'segments.deletedAt',
-  },
-  companies: {
-    id: 'companies.id',
-    name: 'companies.name',
-    plan: 'companies.plan',
-    mrrCents: 'companies.mrrCents',
   },
   session: {
     userId: 'session.userId',
@@ -275,7 +268,7 @@ describe('getPublicUserProfile', () => {
     expect(hoisted.mockEq).toHaveBeenCalledWith(TABLES.postComments.isPrivate, false)
   })
 
-  it('returns the sanitized payload with no email/company/segments/lastSeenAt', async () => {
+  it('returns the sanitized payload with no email/segments/lastSeenAt', async () => {
     queueProfileQueries({
       owner: [{ ...OWNER_ROW, role: 'member' }],
       posts: [POST_ROW],
@@ -296,7 +289,6 @@ describe('getPublicUserProfile', () => {
     const keys = Object.keys(result!)
     expect(keys).not.toContain('email')
     expect(keys).not.toContain('contactEmail')
-    expect(keys).not.toContain('company')
     expect(keys).not.toContain('segments')
     expect(keys).not.toContain('lastSeenAt')
     expect(keys).not.toContain('role')
@@ -330,10 +322,6 @@ describe('getProfileTeamContext', () => {
           emailVerified: false,
           blockedAt: null,
           contactEmail: null,
-          companyId: null,
-          companyName: null,
-          companyPlan: null,
-          companyMrrCents: null,
         },
       ],
       [], // segments
@@ -345,7 +333,7 @@ describe('getProfileTeamContext', () => {
     expect(result!.email).toBeNull()
   })
 
-  it('returns email, company, segments, lastSeenAt, and flags for a full profile', async () => {
+  it('returns email, segments, lastSeenAt, and flags for a full profile', async () => {
     const lastSeen = new Date('2026-04-01T12:00:00Z')
     hoisted.selectResults.push(
       [
@@ -356,10 +344,6 @@ describe('getProfileTeamContext', () => {
           emailVerified: true,
           blockedAt: null,
           contactEmail: null,
-          companyId: 'company_1',
-          companyName: 'Acme',
-          companyPlan: 'Scale',
-          companyMrrCents: 129900,
         },
       ],
       [{ id: 'segment_1', name: 'Beta users', color: '#f00' }],
@@ -369,7 +353,6 @@ describe('getProfileTeamContext', () => {
     const result = await getProfileTeamContext(PRINCIPAL_ID)
     expect(result).toEqual({
       email: 'alice@acme.com',
-      company: { id: 'company_1', name: 'Acme', plan: 'Scale', mrrCents: 129900 },
       segments: [{ id: 'segment_1', name: 'Beta users', color: '#f00' }],
       lastSeenAt: lastSeen,
       emailVerified: true,

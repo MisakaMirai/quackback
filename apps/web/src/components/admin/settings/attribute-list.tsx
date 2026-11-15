@@ -44,7 +44,7 @@ interface AttributeListProps {
 }
 
 /**
- * The attribute registry card shared by Users, Companies and Conversations:
+ * The attribute registry card shared by Users and Conversations:
  * header with the create action, one row per field, and the empty state. The
  * entity lists own their dialogs, built-in field sets and mutations.
  */

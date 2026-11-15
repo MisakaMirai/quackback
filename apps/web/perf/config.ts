@@ -16,8 +16,7 @@ export interface PerfProfile {
   teams: number
   /** Spread over the teams, one team each. */
   teammates: number
-  companies: number
-  /** Customers the conversations belong to; most belong to a company. */
+  /** Customers the conversations belong to. */
   customers: number
   conversations: number
   /** Messages per conversation, between these bounds (inclusive). */
@@ -28,14 +27,13 @@ export interface PerfProfile {
 }
 
 /**
- * A busy install: about 200k conversations, 2.5M messages, 50k tickets, 2k
- * companies and 200 teammates in 20 teams. Big enough that a missing index or
- * a scan shows in a plan.
+ * A busy install: about 200k conversations, 2.5M messages, 50k tickets and 200
+ * teammates in 20 teams. Big enough that a missing index or a scan shows in a
+ * plan.
  */
 export const LARGE_PROFILE: PerfProfile = {
   teams: 20,
   teammates: 200,
-  companies: 2_000,
   customers: 50_000,
   conversations: 200_000,
   messagesPerConversation: { min: 5, max: 20 },
