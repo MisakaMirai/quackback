@@ -307,9 +307,6 @@ const configSchema = z
     aiReasoningEffort: z.string().optional(),
     aiCombinedToolsAndSchema: envBoolean,
 
-    // Telemetry (optional)
-    disableTelemetry: envBoolean,
-
     // Automatic website branding for new workspaces (optional)
     disableAutomaticBranding: envBoolean,
 
@@ -493,9 +490,6 @@ function buildConfigFromEnv(): unknown {
     aiReasoningExclude: env('AI_REASONING_EXCLUDE'),
     aiReasoningEffort: env('AI_REASONING_EFFORT'),
     aiCombinedToolsAndSchema: env('AI_COMBINED_TOOLS_AND_SCHEMA'),
-
-    // Telemetry
-    disableTelemetry: env('DISABLE_TELEMETRY'),
 
     // Automatic website branding
     disableAutomaticBranding: env('DISABLE_AUTOMATIC_BRANDING'),
@@ -806,11 +800,6 @@ export const config = {
     return loadConfig().aiCombinedToolsAndSchema
   },
 
-  // Telemetry
-  get disableTelemetry() {
-    return loadConfig().disableTelemetry
-  },
-
   // Automatic website branding: true stops the first-run lookup of the
   // administrator's company website.
   get disableAutomaticBranding() {
@@ -865,14 +854,6 @@ export const config = {
   //   'db'  (default) — self-host: the integration_platform_credentials table + admin UI.
   //   'env' — optional single-tenancy: app creds from INTEGRATION_<PROVIDER>_<FIELD> env
   //           supplied by the deployment environment.
-  // Direct process.env read (like helpCenterDev) so it works without a full config load.
-  get integrationOAuthGatewayUrl(): string | undefined {
-    return process.env.INTEGRATION_OAUTH_GATEWAY_URL
-  },
-  get integrationGatewayForwardSecret(): string | undefined {
-    return process.env.INTEGRATION_GATEWAY_FORWARD_SECRET
-  },
-
   get platformCredentialsSource(): 'db' | 'env' | 'control-plane' {
     if (process.env.QUACKBACK_TENANCY === 'pooled') return 'control-plane'
     return process.env.PLATFORM_CREDENTIALS_SOURCE === 'env' ? 'env' : 'db'

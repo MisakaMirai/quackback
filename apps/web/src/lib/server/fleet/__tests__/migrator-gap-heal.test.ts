@@ -106,8 +106,8 @@ vi.mock('@quackback/db/migrate', async (importOriginal) => {
   }
 })
 
-const { ledgerGapFor, migrateWorkspace, planFor, replaySetFor } = await import('../migrator')
-type WorkspaceDescriptor = Parameters<typeof migrateWorkspace>[0]
+const { ledgerGapFor, migrateDirect, planFor, replaySetFor } = await import('../migrator')
+type MigrateWorkspaceOptions = Parameters<typeof migrateDirect>[2]
 
 const ADMIN_URL =
   process.env.DRIFT_CHECK_DATABASE_URL ?? 'postgresql://postgres:password@localhost:5432/postgres'
@@ -118,16 +118,18 @@ let admin: postgres.Sql
 const created: string[] = []
 
 const dsnFor = (db: string) => ADMIN_URL.replace(/\/[^/]+$/, `/${db}`)
+/** A workspace key and the session-mode DSN of its scratch database. */
+const workspaceOn = (db: string) => ({
+  workspaceKey: `inst_gapheal_${db.slice(-6)}`,
+  dsn: dsnFor(db),
+})
 
-/** A descriptor whose direct URL carries no password, so `withPassword` supplies one. */
-const workspaceOn = (db: string): WorkspaceDescriptor =>
-  ({
-    workspaceKey: `inst_gapheal_${db.slice(-6)}`,
-    database: {
-      directUrl: dsnFor(db).replace(/:\/\/([^:@]+):[^@]*@/, '://$1@'),
-      credentialRef: 'literal://unused',
-    },
-  }) as unknown as WorkspaceDescriptor
+function migrateWorkspace(
+  workspace: ReturnType<typeof workspaceOn>,
+  options: MigrateWorkspaceOptions = {}
+) {
+  return migrateDirect(workspace.workspaceKey, workspace.dsn, options)
+}
 
 /** A copy of the fully migrated template, for one test to ruin however it likes. */
 async function scratch(): Promise<string> {

@@ -36,11 +36,10 @@ import {
   InviteLinkRow,
 } from '@/components/admin/settings/team/pending-invitations'
 import { MemberActions } from '@/components/admin/settings/team/member-actions'
-import { CloudOwnershipActions } from '@/components/admin/settings/team/cloud-ownership-actions'
 import { seatInviteBlocked } from '@/components/admin/settings/team/seat-usage'
 import type { UserId, PrincipalId } from '@quackback/ids'
 import { isAdmin } from '@/lib/shared/roles'
-import { useSessionContext, useWorkspaceSettings } from '@/lib/client/hooks/use-root-context'
+import { useWorkspaceSettings } from '@/lib/client/hooks/use-root-context'
 import { useOpenedOnce } from '@/lib/client/hooks/use-opened-once'
 
 // Loads the first time it opens, not with the roster.
@@ -158,7 +157,6 @@ interface MembersTabProps {
 
 /** The teammate roster + pending invitations (the Members tab of Members & Teams). */
 export function MembersTab({ currentMember, canManageMembers, initialSearch }: MembersTabProps) {
-  const session = useSessionContext()
   const workspaceName = useWorkspaceSettings()?.name
   const teamDataQuery = useSuspenseQuery(settingsQueries.teamMembersAndInvitations())
   const { members, avatarMap, formattedInvitations, seatUsage } = teamDataQuery.data
@@ -363,13 +361,6 @@ export function MembersTab({ currentMember, canManageMembers, initialSearch }: M
   return (
     <div className="space-y-6">
       {error && <FormError message={error} />}
-
-      <CloudOwnershipActions
-        sessionEmail={session?.user?.email ?? null}
-        memberEmails={members
-          .map((member) => member.userEmail)
-          .filter((email): email is string => Boolean(email))}
-      />
 
       <div className="flex flex-wrap items-center gap-3">
         <div className="min-w-[220px] flex-1 sm:max-w-md">

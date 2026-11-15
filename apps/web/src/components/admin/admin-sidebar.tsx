@@ -1,7 +1,4 @@
 import { LaunchPlanDock, LaunchPlanInHelp } from '@/components/onboarding/launch-plan-dock'
-import { openHelpLauncher } from '@/components/shared/cloud-quackback-widget'
-import { PlanNoticeQuiet } from '@/components/admin/plan-notice-banner'
-import type { PlanNotice } from '@/lib/server/domains/settings/tier-limits.types'
 import { SearchTrigger } from '@/components/admin/ask/search-palette'
 import { useProductTour } from '@/components/onboarding/product-tour'
 import { FormattedMessage, useIntl } from 'react-intl'
@@ -12,7 +9,6 @@ import { useMemo, useState, type ComponentType } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { Link, useRouter, useRouterState } from '@tanstack/react-router'
 import {
-  ChatBubbleLeftRightIcon,
   MapIcon,
   UsersIcon,
   Cog6ToothIcon,
@@ -44,11 +40,6 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import type { LatestVersionResult } from '@/lib/server/functions/version'
 import type { SettingsBrandingData } from '@/lib/server/domains/settings/settings.types'
 import { setAgentAvailabilityFn } from '@/lib/server/functions/conversation'
-import {
-  listOwnerWorkspacesFn,
-  openOwnerWorkspaceFn,
-} from '@/lib/server/functions/owner-workspaces'
-import { friendlySiblingAddress, WorkspaceSwitcher } from '@/components/admin/workspace-switcher'
 import { usePermission } from '@/lib/client/hooks/use-permission'
 import {
   buildNavSections,
@@ -59,9 +50,6 @@ import { isProductEnabled, type FeatureFlags, type ProductId } from '@/lib/share
 import { adminQueries } from '@/lib/client/queries/admin'
 import { ENTITY_ICONS } from '@/components/admin/entity-icon'
 import {
-  useBillingEnabled,
-  useCloudEnabled,
-  useGithubStarPrompt,
   useSessionContext,
   useWorkspaceSettings,
   usePermissions,
@@ -92,20 +80,9 @@ interface AdminSidebarProps {
     chatAvailability?: 'online' | 'away'
   }
   latestVersion?: LatestVersionResult | null
-  /** A running trial shows here quietly until its last days. */
-  planNotice?: PlanNotice | null
 }
 
 type RailIcon = ComponentType<{ className?: string }>
-
-/** Drawn here for the same reason: Help's GitHub link must not pull in a shared icon file. */
-function GitHubStarIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" className={className}>
-      <path d="M12 2.5l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.4l-5.9 3.1 1.2-6.5-4.8-4.6 6.6-.9z" />
-    </svg>
-  )
-}
 
 interface RailItem {
   label: string
@@ -299,7 +276,7 @@ function MobileNavLink({
   )
 }
 
-export function AdminSidebar({ initialUserData, latestVersion, planNotice }: AdminSidebarProps) {
+export function AdminSidebar({ initialUserData, latestVersion }: AdminSidebarProps) {
   const intl = useIntl()
   const router = useRouter()
   const onNotificationsPage = useRouterState({
@@ -310,17 +287,14 @@ export function AdminSidebar({ initialUserData, latestVersion, planNotice }: Adm
   const tour = useProductTour()
   const session = useSessionContext()
   const settings = useWorkspaceSettings()
-  const billingEnabled = useBillingEnabled()
-  const cloudEnabled = useCloudEnabled()
-  const githubStarPrompt = useGithubStarPrompt()
   const permissions = usePermissions()
 
   const flags = settings?.featureFlags as FeatureFlags | undefined
   // Settings is offered to anyone who can open at least one of its pages; the
   // rest would only reach an access-denied page.
   const showSettings = useMemo(
-    () => canOpenSettings(buildNavSections(flags, Boolean(billingEnabled)), permissions),
-    [flags, billingEnabled, permissions]
+    () => canOpenSettings(buildNavSections(flags), permissions),
+    [flags, permissions]
   )
   // The org's own logo (resolved in brandingData by the root loader, same source
   // PortalBrandMark uses); fall back to the Quackback mark when none is set.
@@ -369,20 +343,6 @@ export function AdminSidebar({ initialUserData, latestVersion, planNotice }: Adm
     router.invalidate()
     window.location.href = '/'
   }
-
-  const siblingsQuery = useQuery({
-    queryKey: ['admin', 'owner-workspaces'],
-    queryFn: () => listOwnerWorkspacesFn(),
-    enabled: Boolean(billingEnabled),
-  })
-  const siblings = siblingsQuery.data ?? []
-
-  const openSibling = useMutation({
-    mutationFn: (instanceId: string) => openOwnerWorkspaceFn({ data: { instanceId } }),
-    onSuccess: ({ url }) => {
-      window.location.assign(url)
-    },
-  })
 
   return (
     <>
@@ -435,8 +395,6 @@ export function AdminSidebar({ initialUserData, latestVersion, planNotice }: Adm
 
             {/* Bottom Section */}
             <div className="flex flex-col gap-0.5 px-2">
-              {/* Mounted only for a notice, so a page without one renders nothing here. */}
-              {planNotice && <PlanNoticeQuiet notice={planNotice} />}
               <LaunchPlanDock />
               {/* Settings (admin-only) */}
               {showSettings &&
@@ -448,10 +406,6 @@ export function AdminSidebar({ initialUserData, latestVersion, planNotice }: Adm
                     defaultMessage: 'Settings',
                   }),
                 })}
-
-              {billingEnabled && siblings.length > 0 ? (
-                <WorkspaceSwitcher siblings={siblings} onOpen={(id) => openSibling.mutate(id)} />
-              ) : null}
 
               {/* Notifications */}
               <NotificationBell labeled active={onNotificationsPage} />
@@ -502,12 +456,6 @@ export function AdminSidebar({ initialUserData, latestVersion, planNotice }: Adm
                       </Link>
                     </DropdownMenuItem>
                   </LaunchPlanInHelp>
-                  {cloudEnabled && (
-                    <DropdownMenuItem onClick={openHelpLauncher}>
-                      <ChatBubbleLeftRightIcon className="mr-2 h-4 w-4" />
-                      <FormattedMessage id="admin.help.contact" defaultMessage="Contact us" />
-                    </DropdownMenuItem>
-                  )}
                   <DropdownMenuItem asChild>
                     <a
                       href="https://www.quackback.io/docs/"
@@ -528,21 +476,6 @@ export function AdminSidebar({ initialUserData, latestVersion, planNotice }: Adm
                       <FormattedMessage id="admin.help.whatsNew" defaultMessage="What's new" />
                     </a>
                   </DropdownMenuItem>
-                  {githubStarPrompt ? (
-                    <DropdownMenuItem asChild>
-                      <a
-                        href="https://github.com/QuackbackIO/quackback"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        <GitHubStarIcon className="mr-2 h-4 w-4" />
-                        <FormattedMessage
-                          id="admin.starPrompt.star"
-                          defaultMessage="Star on GitHub"
-                        />
-                      </a>
-                    </DropdownMenuItem>
-                  ) : null}
                   <DropdownMenuSeparator />
                   <div className="px-2 py-1.5 flex flex-col gap-1">
                     <span className="text-xs text-muted-foreground/60">v{__APP_VERSION__}</span>
@@ -663,7 +596,6 @@ export function AdminSidebar({ initialUserData, latestVersion, planNotice }: Adm
                 />
               ))}
               <div className="h-px bg-border/40 my-4" />
-              <PlanNoticeQuiet notice={planNotice ?? null} />
               <div onClickCapture={() => setMobileMenuOpen(false)}>
                 <LaunchPlanDock />
               </div>
@@ -678,24 +610,6 @@ export function AdminSidebar({ initialUserData, latestVersion, planNotice }: Adm
                   onClick={() => setMobileMenuOpen(false)}
                 />
               )}
-              {billingEnabled && siblings.length > 0
-                ? siblings.map((sibling) => (
-                    <button
-                      key={sibling.instanceId}
-                      type="button"
-                      onClick={() => {
-                        setMobileMenuOpen(false)
-                        openSibling.mutate(sibling.instanceId)
-                      }}
-                      className="flex flex-col items-start gap-0.5 px-4 py-3 rounded-lg text-sm text-muted-foreground/80 hover:text-foreground hover:bg-muted/50 transition-colors"
-                    >
-                      <span>{sibling.displayName}</span>
-                      {friendlySiblingAddress(sibling.url) ? (
-                        <span className="text-[11px]">{friendlySiblingAddress(sibling.url)}</span>
-                      ) : null}
-                    </button>
-                  ))
-                : null}
               <Link
                 to="/"
                 onClick={() => setMobileMenuOpen(false)}
@@ -744,30 +658,6 @@ export function AdminSidebar({ initialUserData, latestVersion, planNotice }: Adm
                 <DocumentTextIcon className="h-5 w-5" />
                 <FormattedMessage id="admin.help.whatsNew" defaultMessage="What's new" />
               </a>
-              {githubStarPrompt ? (
-                <a
-                  href="https://github.com/QuackbackIO/quackback"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-3 px-4 py-3 rounded-lg text-sm text-muted-foreground/80 hover:text-foreground hover:bg-muted/50 transition-colors"
-                >
-                  <GitHubStarIcon className="h-5 w-5" />
-                  <FormattedMessage id="admin.starPrompt.star" defaultMessage="Star on GitHub" />
-                </a>
-              ) : null}
-              {cloudEnabled && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMobileMenuOpen(false)
-                    openHelpLauncher()
-                  }}
-                  className="flex items-center gap-3 px-4 py-3 rounded-lg text-sm text-muted-foreground/80 hover:text-foreground hover:bg-muted/50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-muted-foreground"
-                >
-                  <ChatBubbleLeftRightIcon className="h-5 w-5" />
-                  <FormattedMessage id="admin.help.contact" defaultMessage="Contact us" />
-                </button>
-              )}
               <div className="px-4 py-2 flex flex-col gap-1">
                 <span className="text-xs text-muted-foreground/50">v{__APP_VERSION__}</span>
                 {latestVersion && (

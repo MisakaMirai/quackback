@@ -3,7 +3,7 @@ import type { Actor } from '@/lib/server/policy/types'
 import { permissionsForPrincipal } from '@/lib/server/policy/permissions'
 import type { PermissionKey } from '@/lib/shared/permissions'
 import { SETTINGS_AREA_META } from '@/lib/shared/settings-registry'
-import { ForbiddenError, ValidationError } from '@/lib/shared/errors'
+import { ForbiddenError } from '@/lib/shared/errors'
 import { settingsAreaSchema, type SettingsArea } from '@/lib/shared/assistant/settings-proposals'
 import { resolveOfficeHoursSchedule } from '@/lib/server/domains/settings/settings.office-hours'
 import { resolveChangelogSettings } from '@/lib/server/domains/settings/settings.changelog'
@@ -18,7 +18,6 @@ import { getPublicUrlOrNull } from '@/lib/server/storage/s3'
 import { isWidgetMessengerEnabled } from '@/lib/shared/support-surfaces'
 import { expandTheme } from '@/lib/shared/theme/expand'
 import type { ThemeConfig } from '@/lib/shared/theme/types'
-import { parseIdentityProjection } from '@/lib/server/domains/settings/cloud/identity-projection'
 
 /** Each area's write permission and page, read from the settings registry. */
 export const AREAS: Record<SettingsArea, { permission: PermissionKey; href: string }> =
@@ -28,14 +27,6 @@ export const AREAS: Record<SettingsArea, { permission: PermissionKey; href: stri
       { permission: meta.permission, href: meta.href },
     ])
   ) as Record<SettingsArea, { permission: PermissionKey; href: string }>
-
-export function assertWorkspaceNameWritable(row: SettingsRecord): void {
-  if (parseIdentityProjection(row.cloudIdentity))
-    throw new ValidationError(
-      'SETTINGS_NAME_MANAGED',
-      'Open General settings to change this workspace name. Use navigate_workspace with destination general.'
-    )
-}
 
 /** Resolve permissions again so an open card cannot retain revoked authority. */
 export async function requireAreaPermission(
@@ -83,7 +74,7 @@ export function areaValues(row: SettingsRecord, area: SettingsArea): Record<stri
       }
     }
     case 'portal':
-      return { displayName: parseIdentityProjection(row.cloudIdentity)?.displayName ?? row.name }
+      return { displayName: row.name }
     case 'messenger': {
       const widget = parseWidgetConfig(row.widgetConfig)
       return {
@@ -120,13 +111,10 @@ export async function getSettingsForActor(
   settingsAreaSchema.parse(area)
   await requireAreaPermission(actor, area, executor)
   const row = await requireSettings(executor)
-  const managedName = area === 'portal' && parseIdentityProjection(row.cloudIdentity) !== null
   return {
     area,
     settings: areaValues(row, area),
-    // An operator-managed name is shown, read-only, on General.
-    settingsHref: managedName ? '/admin/settings/general' : AREAS[area].href,
-    ...(area === 'portal' ? { readOnly: managedName } : {}),
+    settingsHref: AREAS[area].href,
     ...(area === 'branding' ? { logoUrl: getPublicUrlOrNull(row.logoKey) } : {}),
   }
 }

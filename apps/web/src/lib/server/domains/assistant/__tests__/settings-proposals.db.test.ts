@@ -121,7 +121,6 @@ if (fixture.available) {
         portalConfig: '{}',
         metadata: '{}',
         name: 'Acme',
-        cloudIdentity: null,
       })
       .where(eq(settings.id, settingsId))
   })
@@ -131,93 +130,7 @@ if (fixture.available) {
 const tx = () => testDb as unknown as Transaction
 const read = async () =>
   (await testDb.select().from(settings).where(eq(settings.id, settingsId)))[0]
-const identity = (displayName = 'Acme') => ({
-  version: 1,
-  displayName,
-  canonicalOrigin: 'https://acme.example.com',
-  platformHostname: 'acme.example.com',
-  customDomains: [],
-  updatedAt: '2026-10-03T12:00:00.000Z',
-})
 describe.skipIf(!fixture.available)('settings proposal adapters (real Postgres)', () => {
-  it('reads the operator name as readonly and refuses a local name proposal', async () => {
-    await testDb
-      .update(settings)
-      .set({ name: 'Local Acme', cloudIdentity: identity('Acme team') })
-      .where(eq(settings.id, settingsId))
-    expect(await getSettingsForActor(actor, 'portal')).toMatchObject({
-      settings: { displayName: 'Acme team' },
-      readOnly: true,
-      settingsHref: '/admin/settings/general',
-    })
-    await expect(
-      prepareSettingsChanges(actor, [{ area: 'portal', patch: { displayName: 'Local change' } }])
-    ).rejects.toMatchObject({
-      code: 'SETTINGS_NAME_MANAGED',
-      message: expect.stringContaining('destination general'),
-    })
-    expect((await read()).name).toBe('Local Acme')
-    const messenger = await prepareSettingsChanges(actor, [
-      { area: 'messenger', patch: { enabled: true } },
-    ])
-    const messengerReceipt = await applySettingsChangesInTransaction(tx(), actor, messenger, [
-      'messenger.enabled',
-    ])
-    expect(JSON.parse((await read()).featureFlags!).supportInbox).toBe(true)
-    await undoSettingsChangesInTransaction(tx(), actor, messengerReceipt)
-    expect(JSON.parse((await read()).featureFlags!).supportInbox).toBe(false)
-    await testDb
-      .update(settings)
-      .set({ cloudIdentity: { ...identity(), version: 0 } })
-      .where(eq(settings.id, settingsId))
-    expect(await getSettingsForActor(actor, 'portal')).toMatchObject({
-      settings: { displayName: 'Local Acme' },
-      readOnly: false,
-    })
-    expect(
-      (
-        await prepareSettingsChanges(actor, [
-          { area: 'portal', patch: { displayName: 'Local change' } },
-        ])
-      ).changes
-    ).toHaveLength(1)
-  })
-  it('refuses Apply under the settings lock when an operator identity becomes active', async () => {
-    const proposal = await prepareSettingsChanges(actor, [
-      { area: 'messenger', patch: { enabled: true } },
-      { area: 'portal', patch: { displayName: 'Acme team' } },
-    ])
-    await testDb
-      .update(settings)
-      .set({ cloudIdentity: identity() })
-      .where(eq(settings.id, settingsId))
-    await expect(
-      applySettingsChangesInTransaction(
-        tx(),
-        actor,
-        proposal,
-        proposal.changes.map((change) => change.id)
-      )
-    ).rejects.toMatchObject({ code: 'SETTINGS_NAME_MANAGED' })
-    expect((await read()).name).toBe('Acme')
-    expect(JSON.parse((await read()).featureFlags!).supportInbox).toBe(false)
-  })
-  it('refuses Undo of a name when an operator identity becomes active', async () => {
-    const proposal = await prepareSettingsChanges(actor, [
-      { area: 'portal', patch: { displayName: 'Acme team' } },
-    ])
-    const receipt = await applySettingsChangesInTransaction(tx(), actor, proposal, [
-      'portal.displayName',
-    ])
-    await testDb
-      .update(settings)
-      .set({ cloudIdentity: identity('Acme team') })
-      .where(eq(settings.id, settingsId))
-    await expect(undoSettingsChangesInTransaction(tx(), actor, receipt)).rejects.toMatchObject({
-      code: 'SETTINGS_NAME_MANAGED',
-    })
-    expect((await read()).name).toBe('Acme team')
-  })
   it('exposes only the real portal name and requires the branding permission its writer uses', async () => {
     await testDb
       .update(settings)

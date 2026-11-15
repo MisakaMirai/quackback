@@ -49,11 +49,6 @@ interface DormancyPlan {
   /** What the standing-work probe finds in the workspace database. */
   pendingJobAt: Date | null
   deadlineAt: Date | null
-  /** Hosted billing configured, and whether queueing last month's usage report inserts a job. */
-  hosted?: boolean
-  reportInserted?: boolean
-  /** Months queued by the dormant usage-report catch-up, per workspace. */
-  reportsQueued?: Array<[string, string]>
 }
 
 async function bootJobWorker(
@@ -99,22 +94,11 @@ async function bootJobWorker(
     },
     isMissingJobQueue: () => false,
   }))
-  vi.doMock('@/lib/server/domains/billing/usage-report', () => ({
-    isHostedBillingConfigured: () => Boolean(dormancy?.hosted),
-    previousUtcMonth: () => '2026-08',
-    enqueueUsageReport: async ({ month }: { month: string }) => ({
-      inserted: Boolean(dormancy?.reportInserted),
-      month,
-    }),
-  }))
   vi.doMock('@/lib/server/workspaces/fleet', () => ({
-    withWorkspaceScopeById: async (id: string, _origin: string, body: () => Promise<unknown>) => {
+    withWorkspaceScopeById: async (_id: string, _origin: string, body: () => Promise<unknown>) => {
       const delay = plan.scopeDelaysMs?.shift()
       if (delay) await new Promise((resolve) => setTimeout(resolve, delay))
-      const out = (await body()) as { month?: string } | undefined
-      if (out && typeof out === 'object' && 'month' in out && out.month)
-        dormancy?.reportsQueued?.push([id, out.month])
-      return out
+      return body()
     },
   }))
   vi.doMock('@/lib/server/events/event-dispatch-queue', () => ({
@@ -446,46 +430,6 @@ describe('pooled job worker', () => {
       expect(handle.loops()).toEqual(['ws_idle'])
       expect(handle.dormant()).toBe(0)
       expect(Date.now()).toBeLessThan(deadline.getTime())
-    })
-
-    it("wakes a parked workspace that has not sent last month's usage report, once", async () => {
-      vi.useFakeTimers()
-      const dormancy: DormancyPlan = {
-        workspaces: [idle('ws_idle')],
-        pendingJobAt: null,
-        deadlineAt: null,
-        hosted: true,
-        reportInserted: true,
-        reportsQueued: [],
-      }
-      handle = await bootJobWorker({ claimed: 0 }, dormancy)
-      // Parked by the refresh, then woken by the catch-up to run the report.
-      expect(dormancy.reportsQueued).toEqual([['ws_idle', '2026-08']])
-      expect(handle.loops()).toEqual(['ws_idle'])
-      expect(handle.dormant()).toBe(0)
-
-      // The report ran; the next refreshes park it and do not ask again.
-      dormancy.reportInserted = false
-      await handle.refresh()
-      await handle.refresh()
-      expect(handle.loops()).toEqual([])
-      expect(dormancy.reportsQueued).toEqual([['ws_idle', '2026-08']])
-    })
-
-    it('leaves a parked workspace parked when last month is already reported', async () => {
-      vi.useFakeTimers()
-      const dormancy: DormancyPlan = {
-        workspaces: [idle('ws_idle')],
-        pendingJobAt: null,
-        deadlineAt: null,
-        hosted: true,
-        reportInserted: false,
-        reportsQueued: [],
-      }
-      handle = await bootJobWorker({ claimed: 0 }, dormancy)
-      expect(dormancy.reportsQueued).toEqual([['ws_idle', '2026-08']])
-      expect(handle.loops()).toEqual([])
-      expect(handle.dormant()).toBe(1)
     })
 
     it('wakes a parked workspace when a request stamps it', async () => {

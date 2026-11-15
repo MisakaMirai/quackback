@@ -569,14 +569,6 @@ export const MODULE_STATE_LEDGER: readonly LedgerEntry[] = [
       'the constructor and no request attaches per-caller headers.',
   },
   {
-    file: 'apps/web/src/lib/server/github-star-count.ts',
-    name: 'readStarCount',
-    category: 'fleet-wide',
-    reason:
-      "The public repo's star count and its backoff, shown on the star prompt's button. It is the " +
-      'same number for every workspace, so a cross-workspace hit returns the right answer.',
-  },
-  {
     file: 'apps/web/src/lib/server/functions/version.ts',
     name: 'lastFailureAt',
     category: 'fleet-wide',
@@ -848,22 +840,6 @@ export const MODULE_STATE_LEDGER: readonly LedgerEntry[] = [
       'database when asked.',
   },
   {
-    file: 'apps/web/src/lib/server/functions/bootstrap.ts',
-    name: '_initialized',
-    category: 'process-lifetime',
-    reason:
-      'A once-per-process latch gating telemetry startup, and process-lifetime is exactly what it ' +
-      'should mean. An earlier version of this entry said the worst shared effect was a missing log ' +
-      'line; that was wrong. The latch is fine - the WORK it gated was not, because the timer it ' +
-      'arms is scheduled inside a request and AsyncLocalStorage carried that request workspace scope ' +
-      'into it, into startTelemetry and into its hourly interval for the life of the pod. ' +
-      'withSweepLock fans out only when no scope is active, so the first workspace to render a page ' +
-      'owned the fleet telemetry: an hourly claim in ITS database and an unlocked ' +
-      'read-modify-write of ITS settings.metadata, the write section 3 names as able to drop the ' +
-      'fingerprint stamp. Fixed by detaching with runWithoutLogContext; pinned by ' +
-      '__tests__/background-work-armed-in-request.test.ts.',
-  },
-  {
     file: 'apps/web/src/lib/server/functions/recovery-codes-consume.ts',
     name: 'fakeHashPromise',
     category: 'process-lifetime',
@@ -899,15 +875,6 @@ export const MODULE_STATE_LEDGER: readonly LedgerEntry[] = [
       'In-flight connection opens, so N concurrent subscribes for one workspace share one connection ' +
       'instead of racing to open N. Holds a promise for the same key as `connections` and is deleted ' +
       'the moment that promise settles, so it can never outlive the entry it is standing in for.',
-  },
-  {
-    file: 'apps/web/src/lib/server/telemetry/index.ts',
-    name: 'started',
-    category: 'process-lifetime',
-    reason:
-      'Once-per-process latch so startTelemetry() from the worker boot path and from bootstrap.ts ' +
-      'on the first page cannot arm two hourly intervals. The ping itself is already ' +
-      'cross-replica-deduped by withSweepLock; this only stops a second timer in the same process.',
   },
   {
     file: 'apps/web/src/lib/server/startup.ts',
@@ -988,16 +955,6 @@ export const MODULE_STATE_LEDGER: readonly LedgerEntry[] = [
     category: 'process-lifetime',
     reason:
       'The control-plane database connection handle. One control store per fleet by definition.',
-  },
-  {
-    file: 'apps/web/src/lib/server/fleet/schema-state.ts',
-    name: 'controlDbMemo',
-    category: 'process-lifetime',
-    reason:
-      'A drizzle handle wrapped around the connection above, so it inherits its scope exactly: one ' +
-      'control store per fleet. It is memoized lazily rather than at module scope because ' +
-      'getControlSql() throws when QUACKBACK_CONTROL_DATABASE_URL is unset, and a single-workspace ' +
-      'install that will never reconcile a fleet must still be able to import this file.',
   },
   {
     file: 'apps/web/src/lib/server/fleet/schema-floor.ts',
@@ -1099,18 +1056,6 @@ export const MODULE_STATE_LEDGER: readonly LedgerEntry[] = [
       'lastIndex. And its input is migration SQL read from disk by policy tooling: no request, no ' +
       'workspace value, nothing to carry across even if it did. Ledgered rather than exempted so that ' +
       'a second .exec() site, or an await inside that loop, is a visible diff.',
-  },
-  {
-    file: 'apps/web/src/lib/server/jobs/dormant-usage-report.ts',
-    name: 'checked',
-    category: 'workspace-scoped-key',
-    keyedBy: 'workspaceKey',
-    reason:
-      'Which month this worker process last asked a parked workspace to queue its usage report, ' +
-      'keyed by workspaceKey, so each parked workspace is asked once a month rather than every ' +
-      'refresh. Written only by the worker\u2019s refresh; the ask itself runs inside that ' +
-      'workspace\u2019s own scope. A wrong entry would skip or repeat one workspace\u2019s ask, and ' +
-      'repeating is harmless because the report\u2019s dedupe key coalesces it.',
   },
   {
     file: 'apps/web/src/lib/server/jobs/worker.ts',

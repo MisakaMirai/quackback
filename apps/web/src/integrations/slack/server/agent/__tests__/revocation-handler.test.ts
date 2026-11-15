@@ -4,7 +4,6 @@ const mocks = vi.hoisted(() => ({
   lockedRead: vi.fn(),
   lock: vi.fn(),
   update: vi.fn(),
-  unregister: vi.fn(),
   runtime: vi.fn(),
   settings: vi.fn(),
   invalidate: vi.fn(),
@@ -24,9 +23,6 @@ vi.mock('@/lib/server/db', async (original) => ({
 vi.mock('@/lib/server/integrations/encryption', async (original) => ({
   ...(await original<typeof import('@/lib/server/integrations/encryption')>()),
   decryptSecrets: JSON.parse,
-}))
-vi.mock('@/lib/server/integrations/install-registry', () => ({
-  unregisterInstall: mocks.unregister,
 }))
 vi.mock('@/lib/server/domains/settings/settings.assistant', async (original) => ({
   ...(await original<typeof import('@/lib/server/domains/settings/settings.assistant')>()),
@@ -69,7 +65,6 @@ it('locks before re-reading and disconnecting the current install', async () => 
   expect(mocks.lock.mock.invocationCallOrder[0]).toBeLessThan(
     mocks.lockedRead.mock.invocationCallOrder[0]
   )
-  expect(mocks.unregister).toHaveBeenCalledWith('slack', installed.config)
   expect(mocks.update).toHaveBeenCalledWith(expect.objectContaining({ status: 'disconnected' }))
 })
 it('does not unregister or disconnect a reconnect that won the advisory lock', async () => {
@@ -79,7 +74,6 @@ it('does not unregister or disconnect a reconnect that won the advisory lock', a
     connectedAt: new Date(300_000),
   })
   await handleSlackHookJob(job)
-  expect(mocks.unregister).not.toHaveBeenCalled()
   expect(mocks.update).not.toHaveBeenCalled()
 })
 it('ignores an old revocation delivered after a same-team reinstall', async () => {
@@ -87,22 +81,14 @@ it('ignores an old revocation delivered after a same-team reinstall', async () =
   mocks.read.mockResolvedValue(reinstalled)
   mocks.lockedRead.mockResolvedValue(reinstalled)
   await handleSlackHookJob(job)
-  expect(mocks.unregister).not.toHaveBeenCalled()
 })
 it('treats a later install in the same Slack second as newer than the event', async () => {
   const reinstalled = { ...installed, connectedAt: new Date(200_500) }
   mocks.read.mockResolvedValue(reinstalled)
   mocks.lockedRead.mockResolvedValue(reinstalled)
   await handleSlackHookJob(job)
-  expect(mocks.unregister).not.toHaveBeenCalled()
   expect(mocks.update).not.toHaveBeenCalled()
 })
-it('preserves retry when unregister fails, without changing local state', async () => {
-  mocks.unregister.mockRejectedValue(new Error('CP unavailable'))
-  await expect(handleSlackHookJob(job)).rejects.toThrow('CP unavailable')
-  expect(mocks.update).not.toHaveBeenCalled()
-})
-
 it('uses the held transaction for settings and invalidates after the write', async () => {
   mocks.runtime.mockResolvedValue({
     revision: 3,

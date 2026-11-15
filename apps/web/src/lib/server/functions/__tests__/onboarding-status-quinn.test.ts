@@ -18,7 +18,6 @@ vi.mock('@tanstack/react-start', () => ({
 vi.mock('@tanstack/react-start/server', () => ({ getRequestHeaders: () => ({}) }))
 
 const hoisted = vi.hoisted(() => ({
-  entitled: true,
   configured: true,
   assistant: undefined as { enabled?: boolean; respond?: boolean } | undefined,
 }))
@@ -57,9 +56,6 @@ vi.mock('@/lib/server/domains/settings/settings.widget', () => ({
 vi.mock('@/lib/server/domains/settings/tier-limits.service', () => ({
   getTierLimits: async () => ({ maxBoards: null, features: { integrations: true } }),
 }))
-vi.mock('@/lib/server/domains/settings/cloud/entitlements', () => ({
-  hasEntitlement: async (key: string) => (key === 'aiAssistant' ? hoisted.entitled : true),
-}))
 vi.mock('@/lib/server/domains/assistant', () => ({
   isAssistantConfigured: () => hoisted.configured,
 }))
@@ -84,18 +80,12 @@ const status = () =>
 
 describe('fetchOnboardingStatus Quinn availability', () => {
   beforeEach(() => {
-    hoisted.entitled = true
     hoisted.configured = true
     hoisted.assistant = undefined
   })
 
   it('reports Quinn available when the plan includes it and a model is configured', async () => {
     expect((await status()).features.assistant).toBe(true)
-  })
-
-  it('reports Quinn unavailable when the plan lacks the AI assistant', async () => {
-    hoisted.entitled = false
-    expect((await status()).features.assistant).toBe(false)
   })
 
   it('reports Quinn unavailable when no AI model is configured', async () => {

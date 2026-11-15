@@ -1,9 +1,4 @@
-import {
-  AREAS,
-  requireAreaPermission,
-  areaValues,
-  assertWorkspaceNameWritable,
-} from './settings-proposals.areas'
+import { AREAS, requireAreaPermission, areaValues } from './settings-proposals.areas'
 export { getSettingsForActor } from './settings-proposals.areas'
 import {
   JSON_COLUMNS,
@@ -68,7 +63,6 @@ export async function prepareSettingsChanges(
   for (const input of inputs) {
     const { area, patch } = settingsChangeInputSchema.parse(input)
     await requireAreaPermission(actor, area, executor)
-    if (area === 'portal') assertWorkspaceNameWritable(row)
     const before = areaValues(row, area)
     for (const entry of leaves(patch)) {
       const previous = at(before, entry.path) ?? null
@@ -198,7 +192,6 @@ export async function applySettingsChangesInTransaction(
         ? PERMISSIONS.SETTINGS_MANAGE
         : AREAS[change.area].permission
     )
-    if (change.area === 'portal') assertWorkspaceNameWritable(before)
     if (
       !equal(at(areaValues(before, change.area), change.path) ?? null, change.before) ||
       (change.id === MESSENGER_SWITCH &&
@@ -256,8 +249,6 @@ export async function undoSettingsChangesInTransaction(
     )
   const [row] = await tx.select().from(settings).limit(1).for('update')
   if (!row) throw new NotFoundError('SETTINGS_NOT_FOUND', 'Settings not found')
-  if (receipt.storageEffects.some((effect) => effect.column === 'name'))
-    assertWorkspaceNameWritable(row)
   const values = new Map<SettingsStorageColumn, unknown>()
   for (const effect of receipt.storageEffects) {
     if (![...JSON_COLUMNS, ...SCALAR_COLUMNS].includes(effect.column))

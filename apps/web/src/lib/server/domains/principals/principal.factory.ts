@@ -41,27 +41,9 @@ import { presetForLegacyRole } from '@/lib/shared/permissions'
 import { cacheDel, CACHE_KEYS } from '@/lib/server/cache'
 import { addPrincipalToDefaultTeam } from '@/lib/server/domains/teams'
 import { ForbiddenError } from '@/lib/shared/errors'
-import { enqueueMembershipSync } from './membership-sync'
 
 /** The live db or an open transaction — both expose insert/update/query. */
 export type Executor = Database | Transaction
-
-function isTeamSeat(type: string | null | undefined, role: string | null | undefined): boolean {
-  return type === 'user' && isTeamMember(role)
-}
-
-function shouldSyncMembership(args: {
-  type?: string | null
-  fromRole?: string | null
-  toRole: string
-}): boolean {
-  if (args.type === 'service' || args.type === 'anonymous' || args.type === 'support') return false
-  return isTeamMember(args.toRole) || isTeamMember(args.fromRole)
-}
-
-async function noteMembershipChanged(executor?: Executor): Promise<void> {
-  await enqueueMembershipSync(executor && executor !== db ? { executor } : undefined)
-}
 
 /** Address a principal by its id (exact) or by its owning user. */
 export type PrincipalRef = { principalId: PrincipalId } | { userId: UserId }
@@ -123,7 +105,6 @@ export async function createPrincipal(
 ): Promise<Principal> {
   const [created] = await exec.insert(principal).values(toRow(input)).returning()
   await enrollTeamTierInDefaultTeam(created, exec)
-  if (isTeamSeat(created.type, created.role)) await noteMembershipChanged(exec)
   return created
 }
 
@@ -135,7 +116,6 @@ export async function createPrincipals(
   if (inputs.length === 0) return []
   const created = await exec.insert(principal).values(inputs.map(toRow)).returning()
   for (const row of created) await enrollTeamTierInDefaultTeam(row, exec)
-  if (created.some((row) => isTeamSeat(row.type, row.role))) await noteMembershipChanged(exec)
   return created
 }
 
@@ -186,7 +166,6 @@ export async function ensurePrincipalForUser(
   if (inserted) {
     await enrollTeamTierInDefaultTeam(inserted, exec)
     await cacheDel(CACHE_KEYS.PRINCIPAL_BY_USER(input.userId))
-    if (isTeamSeat(inserted.type, inserted.role)) await noteMembershipChanged(exec)
     return { principal: inserted, created: true }
   }
 
@@ -350,7 +329,6 @@ export async function setPrincipalRole(
   // was requested — a redundant same-role save must not clobber an explicit
   // workspace grant (a custom role) with the legacy preset. A guard-filtered
   // no-op update (no target row) reconciles nothing.
-  const roleMoved = !target || target.role !== role || opts.assignRoleId != null
   const reassign = opts.assignRoleId != null || opts.resetAssignment === true
   if (reconcilable && target && (reassign || target.role !== role)) {
     await reconcileWorkspaceAssignment(
@@ -367,11 +345,6 @@ export async function setPrincipalRole(
   // at the new role on each request.
   if (target?.type === 'user' && isTeamMember(target.role) !== isTeamMember(role)) {
     await revokeApiKeysCreatedBy(exec, target.id)
-  }
-  const type = target?.type ?? current?.type
-  const fromRole = target?.role ?? current?.role
-  if (roleMoved && shouldSyncMembership({ type, fromRole, toRole: role })) {
-    await noteMembershipChanged(opts.executor)
   }
   const keys = userId ? [CACHE_KEYS.PRINCIPAL_BY_USER(userId)] : []
   if (!opts.executor) for (const k of keys) await cacheDel(k)

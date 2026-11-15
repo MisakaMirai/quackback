@@ -91,12 +91,12 @@ export function peopleCount(n: number): string {
   return `${n} ${n === 1 ? 'person' : 'people'}`
 }
 
-/** "Adding 3 people needs 12 seats and the plan has 10. Remove 2, or" (the billing link follows). */
+/** "Adding 3 people needs 12 seats and the plan has 10. Remove 2, or" (a seats link follows). */
 export function seatOverMessage(adding: number, check: SeatCheck): string {
   return `Adding ${peopleCount(adding)} needs ${check.needed} seats and the plan has ${check.limit}. Remove ${check.excess}, or`
 }
 
-/** "Adding 3 people needs 3 seats, and 1 is free. Remove 2, or" (the billing link follows). */
+/** "Adding 3 people needs 3 seats, and 1 is free. Remove 2, or" (a seats link follows). */
 export function seatRefusalMessage(needed: number, free: number): string {
   return `Adding ${peopleCount(needed)} needs ${needed} ${needed === 1 ? 'seat' : 'seats'}, and ${free} ${
     free === 1 ? 'is' : 'are'

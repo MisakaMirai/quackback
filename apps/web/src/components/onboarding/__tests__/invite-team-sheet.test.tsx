@@ -165,9 +165,7 @@ it('counts pending invites in the seat meter and stops before the limit', async 
   team.mockResolvedValue({ seatUsage: { used: 2, members: 1, pendingInvites: 1, limit: 3 } })
   renderSheet()
   expect(await screen.findByText('Seats: 2 of 3 used, counting pending invites')).toBeTruthy()
-  expect(screen.getByRole('link', { name: 'Manage seats' }).getAttribute('href')).toBe(
-    '/admin/settings/billing'
-  )
+  expect(screen.getByText('Manage seats in Members')).toBeTruthy()
   addChips('a@acme.example', 'b@acme.example')
   expect(await screen.findByText('1 seat left. Remove an address or add seats.')).toBeTruthy()
   expect(screen.getByRole('button', { name: 'Send 2 invites' }).hasAttribute('disabled')).toBe(true)

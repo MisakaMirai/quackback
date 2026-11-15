@@ -16,8 +16,6 @@ export const Route = createFileRoute('/admin/settings/workflows')({
   beforeLoad: ({ context }) =>
     assertRoutePermission(context.permissions, PERMISSIONS.WORKFLOW_MANAGE),
   loader: async ({ context }) => {
-    const { hasEntitlementFn } = await import('@/lib/server/functions/entitlement-status')
-    const { ensureBillingCatalogue } = await import('@/lib/client/queries/billing')
     const { queryClient } = context
     const flags = context.settings?.featureFlags as FeatureFlags | undefined
     // The workflow list and the close-spam toggle, read on every load;
@@ -30,16 +28,11 @@ export const Route = createFileRoute('/admin/settings/workflows')({
           warmQuery(queryClient, settingsQueries.workflowCloseSpam()),
         ]
       : []
-    const [, workflowsEntitled] = await Promise.all([
-      Promise.all([
-        queryClient.ensureQueryData(settingsQueries.widgetConfig()),
-        queryClient.ensureQueryData(settingsQueries.workflowAbandonedAutoClose()),
-        ...pageReads,
-      ]),
-      hasEntitlementFn({ data: { key: 'workflows' } }),
-      ensureBillingCatalogue(queryClient, context.billingEnabled),
+    await Promise.all([
+      queryClient.ensureQueryData(settingsQueries.widgetConfig()),
+      queryClient.ensureQueryData(settingsQueries.workflowAbandonedAutoClose()),
+      ...pageReads,
     ])
-    return { workflowsEntitled }
   },
   component: WorkflowsPageRoute,
 })
@@ -55,9 +48,8 @@ function WorkflowsPageRoute() {
 }
 
 function WorkflowsPage() {
-  const { workflowsEntitled } = Route.useLoaderData()
   return (
-    <WorkflowsManager entitled={workflowsEntitled} after={<AbandonedJourneyAutoCloseCard />}>
+    <WorkflowsManager after={<AbandonedJourneyAutoCloseCard />}>
       <WhoRepliesFirstCard />
     </WorkflowsManager>
   )

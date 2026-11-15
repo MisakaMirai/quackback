@@ -6,7 +6,6 @@ import { ViewerPortalNoBoards } from '@/components/public/portal-no-boards'
 import { FeedbackContainer } from '@/components/public/feedback/feedback-container'
 import { PortalWelcomeCard } from '@/components/public/feedback/portal-welcome-card'
 import { PortalFeedSkeleton } from '@/components/public/feedback/portal-feed-skeleton'
-import { PortalPoweredBy } from '@/components/public/feedback/portal-powered-by'
 import {
   createFeedHandoff,
   FeedHandoffContext,
@@ -16,7 +15,6 @@ import { portalQueries, useSeedPortalStatusesCache } from '@/lib/client/queries/
 import { isProductEnabled } from '@/lib/shared/types/settings'
 import { isStatusPagePublished } from '@/lib/shared/status-settings'
 import { isPortalSupportSurfaceEnabled } from '@/lib/shared/support-surfaces'
-import { getShowPoweredByFn } from '@/lib/server/functions/powered-by'
 import { useSessionContext, useWorkspaceSettings } from '@/lib/client/hooks/use-root-context'
 import { PUBLIC_FEED_VIEWS, PUBLIC_POST_SORTS } from '@/lib/shared/types/filters'
 
@@ -106,7 +104,6 @@ export const Route = createFileRoute('/_portal/')({
       portalQueries.portalData(portalDataParams(searchParams, session?.user?.id))
     )
 
-    const showPoweredBy = await getShowPoweredByFn()
     return {
       // Only head()-critical scalars ride in loader data now. The full settings
       // copy (`org`) and `session` used to be returned here too — both already
@@ -116,7 +113,6 @@ export const Route = createFileRoute('/_portal/')({
       // suspense query) since the feed query is no longer awaited here.
       workspaceName: org.name,
       baseUrl: context.baseUrl ?? '',
-      showPoweredBy,
     }
   },
   head: ({ loaderData }) => {
@@ -141,8 +137,6 @@ export const Route = createFileRoute('/_portal/')({
 })
 
 function PublicPortalPage() {
-  const { showPoweredBy } = Route.useLoaderData()
-  const settings = useWorkspaceSettings()
   // Input typed while the feed loads is carried only within this visit's feed.
   const [feedHandoff] = useState(createFeedHandoff)
   return (
@@ -151,15 +145,7 @@ function PublicPortalPage() {
       <PortalHero />
       {/* Only the feed region suspends on the streamed portalData query. */}
       <FeedHandoffContext.Provider value={feedHandoff}>
-        <Suspense
-          fallback={
-            <PortalFeedSkeleton
-              poweredBy={
-                showPoweredBy ? <PortalPoweredBy workspaceSlug={settings?.slug ?? ''} /> : null
-              }
-            />
-          }
-        >
+        <Suspense fallback={<PortalFeedSkeleton />}>
           <PortalFeed />
         </Suspense>
       </FeedHandoffContext.Provider>
@@ -190,7 +176,6 @@ function PortalHero() {
 function PortalFeed() {
   const session = useSessionContext()
   const settings = useWorkspaceSettings()
-  const { showPoweredBy } = Route.useLoaderData()
   const liveSearch = Route.useSearch()
   // This query only seeds the first render. Later filter changes belong to
   // the feed's own query, which keeps the page on screen while it loads;
@@ -256,7 +241,6 @@ function PortalFeed() {
       facets={portalData.facets}
       searchMode={'searchMode' in portalData.posts ? portalData.posts.searchMode : undefined}
       postsFilters={search}
-      showPoweredBy={showPoweredBy}
     />
   )
 }

@@ -244,13 +244,5 @@ export const confirmEmailChangeFn = createServerFn({ method: 'POST' })
       log.warn({ email_masked: safeEmail(email), error: err }, 'email change confirmation failed')
       return { ok: false as const, reason: 'invalid_or_taken' as const }
     }
-    // The control-plane seat is keyed by mailbox. A teammate who just
-    // proved a new address must push the new set; an end-user is not a seat.
-    const { isTeamMember } = await import('@/lib/shared/roles')
-    if (ctx.principal?.type === 'user' && isTeamMember(ctx.principal.role)) {
-      const { enqueueMembershipSync } =
-        await import('@/lib/server/domains/principals/membership-sync')
-      await enqueueMembershipSync()
-    }
     return { ok: true as const, email }
   })

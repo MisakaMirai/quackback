@@ -718,9 +718,6 @@ export async function updateDeveloperConfig(
     // Plan first (names the plan), then the operator-cap overlay. Disabling MCP
     // stays open so a downgraded workspace can turn the endpoint off.
     if (input.mcpEnabled === true) {
-      const { requireEntitlement } =
-        await import('@/lib/server/domains/settings/cloud/entitlements')
-      await requireEntitlement('mcpServer')
       const { assertTierFeature } = await import('@/lib/server/domains/settings/tier-enforce')
       await assertTierFeature('mcpServer', 'MCP server')
     }

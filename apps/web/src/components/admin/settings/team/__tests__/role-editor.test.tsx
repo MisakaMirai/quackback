@@ -49,8 +49,9 @@ vi.mock('@/lib/server/functions/roles', () => ({
   deleteRoleFn: vi.fn().mockResolvedValue({ reassignedCount: 0 }),
 }))
 
-// The editor's ceiling: everything except billing.manage (an Admin-grade editor).
-const HELD = ALL_PERMISSIONS.filter((k) => k !== PERMISSIONS.BILLING_MANAGE)
+// The editor's ceiling: everything except audit.view (an Admin-grade editor
+// missing one workspace-admin key).
+const HELD = ALL_PERMISSIONS.filter((k) => k !== PERMISSIONS.AUDIT_VIEW)
 vi.mock('@/lib/client/hooks/use-root-context', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/client/hooks/use-root-context')>()),
   usePermissions: () => new Set(HELD),
@@ -137,8 +138,8 @@ describe('RoleEditor', () => {
   it('renders above-ceiling keys disabled', () => {
     renderEditor()
     fireEvent.click(screen.getByRole('button', { name: /Workspace/ }))
-    const billing = screen.getByLabelText(PERMISSIONS.BILLING_MANAGE)
-    expect((billing as HTMLButtonElement).disabled).toBe(true)
+    const audit = screen.getByLabelText(PERMISSIONS.AUDIT_VIEW)
+    expect((audit as HTMLButtonElement).disabled).toBe(true)
     expect(screen.getByText("You don't hold this")).toBeTruthy()
   })
 
@@ -151,7 +152,7 @@ describe('RoleEditor', () => {
       data: { permissionKeys: string[] }
     }
     expect(payload.data.permissionKeys).toContain(PERMISSIONS.SETTINGS_MANAGE)
-    expect(payload.data.permissionKeys).not.toContain(PERMISSIONS.BILLING_MANAGE)
+    expect(payload.data.permissionKeys).not.toContain(PERMISSIONS.AUDIT_VIEW)
   })
 
   it('badges keys added since the last edit', () => {
@@ -163,13 +164,13 @@ describe('RoleEditor', () => {
 
   it('search filters the visible keys and expands matches', () => {
     renderEditor()
-    // Collapsed by default: billing.manage (workspace) isn't rendered yet.
-    expect(screen.queryByLabelText(PERMISSIONS.BILLING_MANAGE)).toBeNull()
+    // Collapsed by default: audit.view (workspace) isn't rendered yet.
+    expect(screen.queryByLabelText(PERMISSIONS.AUDIT_VIEW)).toBeNull()
     fireEvent.change(screen.getByPlaceholderText(/Filter \d+ permissions/), {
-      target: { value: 'billing' },
+      target: { value: 'audit' },
     })
     expect(screen.queryByLabelText(PERMISSIONS.TICKET_VIEW)).toBeNull()
-    expect(screen.getByLabelText(PERMISSIONS.BILLING_MANAGE)).toBeTruthy()
+    expect(screen.getByLabelText(PERMISSIONS.AUDIT_VIEW)).toBeTruthy()
   })
 
   it('opens categories carrying newly-shipped keys by default', () => {

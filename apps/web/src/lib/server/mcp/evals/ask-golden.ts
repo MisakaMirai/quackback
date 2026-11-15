@@ -63,15 +63,6 @@ export const ASK_GOLDEN_CASES: readonly AskGoldenCase[] = [
     expectedHref: '/admin/settings/widget/install',
   },
   {
-    id: '16',
-    request: 'Change my plan',
-    profile: 'owner',
-    tool: 'navigate_workspace',
-    arguments: { destination: 'billing' },
-    expected: 'denied',
-    denialReason: 'unavailable',
-  },
-  {
     id: '17',
     request: 'Enable SSO',
     profile: 'owner',

@@ -7,7 +7,6 @@ import { AskComposer } from './ask-composer'
 import { AskMessages } from './ask-messages'
 import { useSearchKindLabels } from './search-labels'
 import {
-  useBillingEnabled,
   useFeatureFlags,
   usePrincipalId,
   usePermissions,
@@ -44,7 +43,6 @@ function SearchPaletteDialogView({ open, onOpenChange, returnFocus }: SearchPale
   const principalId = usePrincipalId()
   const permissions = usePermissions()
   const featureFlags = useFeatureFlags()
-  const billingEnabled = useBillingEnabled()
   const labels = useSearchKindLabels()
   const [query, setQuery] = useState('')
   const [debouncedQuery, setDebouncedQuery] = useState('')
@@ -61,10 +59,7 @@ function SearchPaletteDialogView({ open, onOpenChange, returnFocus }: SearchPale
     enabled: open && debouncedQuery.length >= MIN_SEARCH_LENGTH,
     staleTime: 30_000,
   })
-  const options = useMemo(
-    () => ({ permissions, featureFlags, billingEnabled }),
-    [permissions, featureFlags, billingEnabled]
-  )
+  const options = useMemo(() => ({ permissions, featureFlags }), [permissions, featureFlags])
   const label = (item: { messageId: string; defaultMessage: string }) =>
     intl.formatMessage({ id: item.messageId, defaultMessage: item.defaultMessage })
   const destinations = query.trim()

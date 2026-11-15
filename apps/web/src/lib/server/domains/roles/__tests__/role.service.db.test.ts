@@ -132,7 +132,7 @@ describe.skipIf(!fixture.available)('role.service (real Postgres)', () => {
       permissions: [PERMISSIONS.POST_VIEW_PRIVATE],
     }
     await expect(
-      createRole({ name: 'Too much', permissionKeys: [PERMISSIONS.BILLING_MANAGE] }, limited)
+      createRole({ name: 'Too much', permissionKeys: [PERMISSIONS.AUDIT_VIEW] }, limited)
     ).rejects.toThrow(/permissions you don't hold/)
   })
 
@@ -140,16 +140,16 @@ describe.skipIf(!fixture.available)('role.service (real Postgres)', () => {
     const owner = await roleByKey(SYSTEM_ROLES.OWNER)
     const editor: RoleEditor = {
       principalId: await seedPrincipal(),
-      // An Admin-grade editor: everything except billing.
-      permissions: ALL_PERMISSIONS.filter((k) => k !== PERMISSIONS.BILLING_MANAGE),
+      // An Admin-grade editor: everything except audit.view.
+      permissions: ALL_PERMISSIONS.filter((k) => k !== PERMISSIONS.AUDIT_VIEW),
     }
 
     const { role, droppedKeys } = await createRole(
       { name: 'Almost Owner', duplicateFromRoleId: owner.id },
       editor
     )
-    expect(droppedKeys).toEqual([PERMISSIONS.BILLING_MANAGE])
-    expect(role.permissionKeys).not.toContain(PERMISSIONS.BILLING_MANAGE)
+    expect(droppedKeys).toEqual([PERMISSIONS.AUDIT_VIEW])
+    expect(role.permissionKeys).not.toContain(PERMISSIONS.AUDIT_VIEW)
     expect(role.permissionKeys).toContain(PERMISSIONS.MEMBER_MANAGE)
   })
 
@@ -220,7 +220,7 @@ describe.skipIf(!fixture.available)('role.service (real Postgres)', () => {
     const { role } = await createRole({ name: 'Limited edit' }, limited)
 
     await expect(
-      updateRole(role.id, { permissionKeys: [PERMISSIONS.BILLING_MANAGE] }, limited)
+      updateRole(role.id, { permissionKeys: [PERMISSIONS.AUDIT_VIEW] }, limited)
     ).rejects.toThrow(/can't grant permissions you don't hold/)
   })
 

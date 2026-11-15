@@ -4,7 +4,6 @@ import { PERMISSIONS, type PermissionKey } from '@/lib/shared/permissions'
 import { buildAskDestinations } from '@/lib/shared/ask-destinations'
 import { DOMAINS_PAGE_PERMISSIONS } from '@/lib/shared/domains-permissions'
 import { getFeatureFlags } from '@/lib/server/domains/settings/settings.service'
-import { getCloudConfig } from '@/lib/server/domains/settings/cloud/cloud.service'
 import { resolveMcpActor } from '../resolve-actor'
 import type { McpAuthContext, McpScope } from '../types'
 import {
@@ -46,11 +45,6 @@ export const WORKSPACE_NAVIGATION = {
   portal: {
     href: '/admin/settings/portal',
     permission: PERMISSIONS.SETTINGS_BRANDING,
-    scope: 'read:settings',
-  },
-  billing: {
-    href: '/admin/settings/billing',
-    permission: PERMISSIONS.BILLING_MANAGE,
     scope: 'read:settings',
   },
   authentication: {
@@ -135,7 +129,7 @@ export function registerNavigationTools(server: McpServer, auth: McpAuthContext)
     permissions: ({ destination }, toolAuth) => [
       navigationPermission(WORKSPACE_NAVIGATION[destination], heldPermissions(toolAuth)),
     ],
-    description: `Return an allowed workspace deep link without changing anything. Use this for operator-managed workspace names, billing or plans, authentication or SSO, domains, members or roles, API keys, integration OAuth, installing a site snippet, creating a board, portal header customization, and every delete request. These areas cannot be changed from chat. Never invent a URL. A delete request opens its product page for a person to review.
+    description: `Return an allowed workspace deep link without changing anything. Use this for operator-managed workspace names, authentication or SSO, domains, members or roles, API keys, integration OAuth, installing a site snippet, creating a board, portal header customization, and every delete request. These areas cannot be changed from chat. Never invent a URL. A delete request opens its product page for a person to review.
 Examples:
 {"destination":"members"}
 {"destination":"install_messenger"}
@@ -156,12 +150,10 @@ Examples:
           )
         )
       }
-      const [featureFlags, commercial] = await Promise.all([getFeatureFlags(), getCloudConfig()])
+      const featureFlags = await getFeatureFlags()
       const page = buildAskDestinations({
         permissions: actor.permissions,
         featureFlags,
-        billingEnabled:
-          commercial.enabled && (commercial.canUpgrade || commercial.canManageBilling),
       }).find((item) => item.href === entry.href)
       if (!page) return errorResult(new Error('This page is unavailable for this workspace.'))
       return compactJsonResult({

@@ -1,6 +1,5 @@
 import { TierLimitError } from '../../errors/tier-limit-error'
 import { getAiBudgetStatus } from '../ai/ai-budget'
-import { aiAllowance, type AiCreditsState } from '@/lib/shared/billing/ai-credits'
 import { getTierLimits } from './tier-limits.service'
 import type { TierFeatureFlags } from './tier-limits.types'
 import {
@@ -182,7 +181,6 @@ export async function enforceInboundEmailAddressLimit(
 export async function enforceAiTokenBudget(): Promise<void> {
   const status = await getAiBudgetStatus()
   if (status.cap === null || !status.exhausted) return
-  const period = status.window.kind === 'trial' ? 'this trial' : 'this month'
   throw new TierLimitError({
     limit: 'aiTokensPerMonth',
     current: status.used,
@@ -190,22 +188,8 @@ export async function enforceAiTokenBudget(): Promise<void> {
     message:
       status.cap === 0
         ? 'AI features are not included on your plan. Upgrade to enable them.'
-        : `AI usage for ${period} is used up. Upgrade your plan for more.`,
+        : `AI usage for this month is used up. Upgrade your plan for more.`,
   })
-}
-
-/**
- * Whether AI can run in the current allowance window (the calendar month, or
- * the whole trial while one runs): no cap, under the cap, none on the plan, or
- * used up, and when a month's used-up allowance comes back.
- */
-export async function aiAllowanceNow(): Promise<{
-  credits: AiCreditsState
-  resetsAt: string | null
-  trial: boolean
-}> {
-  const status = await getAiBudgetStatus()
-  return aiAllowance(status.cap, status.used, status.window)
 }
 
 /** True when {@link enforceAiTokenBudget} would not throw. */

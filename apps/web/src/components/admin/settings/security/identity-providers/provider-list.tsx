@@ -30,7 +30,6 @@ import type { IdentityProvider } from '@/lib/server/domains/settings/identity-pr
 import { inferIdpKind, IDP_KIND_NAMES } from '../idp-shortcuts'
 import { RecoveryCodesSection } from '../sso/recovery-codes-section'
 import { isOnlyWorkingMethod } from './only-working-method'
-import { SsoUpgradeNotice } from './sso-upgrade-notice'
 import { toastError } from '@/lib/client/error-notice'
 
 export function IdentityProvidersSection({
@@ -60,7 +59,9 @@ export function IdentityProvidersSection({
     >
       {!tierEnabled && (
         <div className="p-4 sm:p-6">
-          <SsoUpgradeNotice />
+          <p className="text-sm text-muted-foreground">
+            Single sign-on is not available for this workspace.
+          </p>
         </div>
       )}
       {providers.length === 0 ? (

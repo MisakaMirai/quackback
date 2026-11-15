@@ -146,7 +146,7 @@ describe.skipIf(!fixture.available)('API key authority follows its creator (real
     const auth = await withApiKeyAuth(bearer(token), { permission: PERMISSIONS.MEMBER_MANAGE })
 
     expect(auth.role).toBe('admin')
-    expect(auth.permissions.has(PERMISSIONS.BILLING_MANAGE)).toBe(true)
+    expect(auth.permissions.has(PERMISSIONS.AUDIT_VIEW)).toBe(true)
     expect(auth.permissions.has(PERMISSIONS.POST_CREATE)).toBe(true)
   })
 

@@ -13,7 +13,7 @@
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { TeamId } from '@quackback/ids'
 import { createDbTestFixture, testDb } from '@/lib/server/__tests__/db-test-fixture'
-import { emailSendingDomains, settings, ssoVerifiedDomain, teams } from '@/lib/server/db'
+import { emailSendingDomains, ssoVerifiedDomain, teams } from '@/lib/server/db'
 import type { SendingDomainDnsRecord } from '@/lib/server/db'
 
 vi.mock('@/lib/server/db', async (importOriginal) => ({
@@ -46,7 +46,6 @@ const fixture = await createDbTestFixture({
   probe: async (db) => {
     await db.select({ id: emailSendingDomains.dkimMode }).from(emailSendingDomains).limit(0)
     await db.select({ id: ssoVerifiedDomain.id }).from(ssoVerifiedDomain).limit(0)
-    await db.select({ c: settings.cloudIdentity }).from(settings).limit(0)
   },
 })
 
@@ -115,25 +114,6 @@ async function seedSsoDomain(name: string, verified: boolean) {
   return row
 }
 
-async function seedOperatorHostnames(
-  hostnames: { hostname: string; readiness: 'pending' | 'ready' | 'failed' }[]
-): Promise<void> {
-  const at = '2026-10-01T12:00:00.000Z'
-  await testDb.insert(settings).values({
-    name: 'Acme',
-    slug: `acme-${suffix()}`,
-    createdAt: new Date(),
-    cloudIdentity: {
-      version: 1,
-      displayName: 'Acme',
-      canonicalOrigin: 'https://acme.example.com',
-      platformHostname: 'acme.example.com',
-      customDomains: hostnames.map((h, i) => ({ ...h, isPrimary: i === 0, updatedAt: at })),
-      updatedAt: at,
-    },
-  })
-}
-
 describe.skipIf(!fixture.available)('proven zones (real DB, rolled back)', () => {
   beforeEach(async () => {
     zone.published.clear()
@@ -149,8 +129,6 @@ describe.skipIf(!fixture.available)('proven zones (real DB, rolled back)', () =>
       await seedSendingDomain('acme.com')
       await seedSendingDomain('signed.example.com', { dkimMode: 'byo', dnsRecords: [SIGNING_KEY] })
       await seedSsoDomain('example.org', true)
-      await seedOperatorHostnames([{ hostname: 'feedback.example.net', readiness: 'ready' }])
-
       const zones = await getProvenZones()
       expect(zones).toEqual(
         expect.arrayContaining([
@@ -166,10 +144,9 @@ describe.skipIf(!fixture.available)('proven zones (real DB, rolled back)', () =>
             exact: false,
             record: { name: 'qb._domainkey.signed.example.com', value: SIGNING_KEY.value },
           },
-          { zone: 'feedback.example.net', source: 'web-address', exact: true, record: null },
         ])
       )
-      expect(zones).toHaveLength(3)
+      expect(zones).toHaveLength(2)
     })
 
     it('adds verified single sign-on domains only when asked to', async () => {
@@ -225,15 +202,6 @@ describe.skipIf(!fixture.available)('proven zones (real DB, rolled back)', () =>
         },
       ])
     })
-
-    it('leaves out pending SSO domains and operator hostnames that are not ready', async () => {
-      await seedSsoDomain('pending.example.org', false)
-      await seedOperatorHostnames([
-        { hostname: 'pending.example.net', readiness: 'pending' },
-        { hostname: 'failed.example.net', readiness: 'failed' },
-      ])
-      expect(await getProvenZones({ includeSso: true })).toEqual([])
-    })
   })
 
   describe('single sign-on domain check', () => {
@@ -283,14 +251,6 @@ describe.skipIf(!fixture.available)('proven zones (real DB, rolled back)', () =>
 
       expect(await checkSsoDomainOwnership(sso)).toEqual({ ok: false, reason: 'no-record' })
       expect(zone.asked).toEqual(['_quackback-verify.eu.acme.com'])
-    })
-
-    it('verifies through a ready web address for that exact name only', async () => {
-      await seedOperatorHostnames([{ hostname: 'feedback.acme.com', readiness: 'ready' }])
-
-      expect(await ssoDomainProvenBy('feedback.acme.com')).toBe('web-address')
-      expect(await ssoDomainProvenBy('eu.feedback.acme.com')).toBeNull()
-      expect(await ssoDomainProvenBy('acme.com')).toBeNull()
     })
 
     it("never counts another workspace's rows", async () => {

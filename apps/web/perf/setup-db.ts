@@ -6,6 +6,7 @@
  * Usage: bun perf/setup-db.ts            (PERF_DATABASE_URL overrides the target)
  */
 import postgres from 'postgres'
+import { fileURLToPath } from 'node:url'
 import { BENCH_DATABASE_URL } from './config'
 
 const target = new URL(BENCH_DATABASE_URL)
@@ -13,7 +14,7 @@ const dbName = target.pathname.slice(1)
 const admin = new URL(target)
 admin.pathname = '/postgres'
 
-const root = new URL('../../../', import.meta.url).pathname
+const root = fileURLToPath(new URL('../../../', import.meta.url))
 const env = { ...process.env, DATABASE_URL: BENCH_DATABASE_URL }
 
 function run(label: string, cmd: string[], cwd = root): string {

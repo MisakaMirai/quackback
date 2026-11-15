@@ -10,7 +10,6 @@ import { SettingRow, SettingRows } from '@/components/admin/settings/setting-row
 import { AUTOSAVE } from '@/lib/client/autosave'
 import { SettingsCard } from '@/components/admin/settings/settings-card'
 import { updateWorkspaceNameFn } from '@/lib/server/functions/settings'
-import { getCloudIdentityFn, updateCloudIdentityFn } from '@/lib/server/functions/cloud-identity'
 import { updateFeatureFlagsFn } from '@/lib/server/functions/feature-flags'
 import { useDebouncedSave } from '@/lib/client/hooks/use-debounced-save'
 import { isPathManagedFromBootstrap, MANAGED_PATHS } from '@/lib/client/config-file'
@@ -25,7 +24,6 @@ import {
 } from '@/lib/shared/types'
 import { Switch } from '@/components/ui/switch'
 import { WorkspaceDataCard } from '@/components/admin/settings/workspace-data-card'
-import { WorkspaceDangerCard } from '@/components/admin/settings/workspace-danger-card'
 import { WorkspaceIdentityCard } from '@/components/admin/settings/workspace-identity-card'
 import { readBatch } from '@/lib/client/queries/read-batch'
 import { useManagedFieldPaths, useWorkspaceSettings } from '@/lib/client/hooks/use-root-context'
@@ -42,11 +40,8 @@ export const Route = createFileRoute('/admin/settings/general')({
   loader: async ({ context }) => {
     assertRoutePermission(context.permissions, PERMISSIONS.SETTINGS_MANAGE)
     const ensure = readBatch(context.queryClient)
-    const [cloudIdentity] = await Promise.all([
-      getCloudIdentityFn(),
-      ensure(settingsQueries.logo()),
-    ])
-    return { cloudIdentity }
+    await ensure(settingsQueries.logo())
+    return {}
   },
   component: GeneralSettingsPage,
 })
@@ -54,16 +49,13 @@ export const Route = createFileRoute('/admin/settings/general')({
 function GeneralSettingsPage() {
   const settings = useWorkspaceSettings()
   const managedFieldPaths = useManagedFieldPaths()
-  const { cloudIdentity } = Route.useLoaderData()
   const { focus } = Route.useSearch()
   const workspaceNameManaged = isPathManagedFromBootstrap(
     MANAGED_PATHS.WORKSPACE_NAME,
     managedFieldPaths ?? []
   )
 
-  const [workspaceName, setWorkspaceName] = useState(
-    cloudIdentity?.displayName ?? settings?.name ?? ''
-  )
+  const [workspaceName, setWorkspaceName] = useState(settings?.name ?? '')
   const [localFlags, setLocalFlags] = useState<FeatureFlags>(
     (settings?.featureFlags as FeatureFlags | undefined) ?? DEFAULT_FEATURE_FLAGS
   )
@@ -99,12 +91,7 @@ function GeneralSettingsPage() {
   const nameMutation = useMutation({
     meta: AUTOSAVE,
     mutationFn: async (trimmed: string) => {
-      if (cloudIdentity) {
-        if (trimmed !== cloudIdentity.displayName) {
-          await updateCloudIdentityFn({ data: { displayName: trimmed } })
-          await router.invalidate()
-        }
-      } else if (trimmed !== settings?.name) {
+      if (trimmed !== settings?.name) {
         await updateWorkspaceNameFn({ data: { name: trimmed } })
       }
     },
@@ -132,9 +119,8 @@ function GeneralSettingsPage() {
     <SettingsPage page="/admin/settings/general">
       <WorkspaceIdentityCard
         workspaceName={workspaceName}
-        managed={!cloudIdentity && workspaceNameManaged}
+        managed={workspaceNameManaged}
         onWorkspaceNameChange={handleNameChange}
-        maxLength={cloudIdentity ? 80 : undefined}
         focusLogo={focus === 'logo'}
       />
 
@@ -174,11 +160,6 @@ function GeneralSettingsPage() {
       </SettingsCard>
 
       <WorkspaceDataCard />
-
-      <WorkspaceDangerCard
-        cloudEnabled={Boolean(cloudIdentity)}
-        workspaceName={cloudIdentity?.displayName ?? settings?.name ?? ''}
-      />
     </SettingsPage>
   )
 }

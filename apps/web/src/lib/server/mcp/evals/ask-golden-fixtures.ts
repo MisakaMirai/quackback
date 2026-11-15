@@ -19,8 +19,7 @@ import type { McpAuthContext } from '@/lib/server/mcp/types'
 export async function seedAskGoldenFixture(
   db: Database,
   profile: 'owner' | 'no_settings',
-  modulesEnabled = false,
-  operatorManagedName = false
+  modulesEnabled = false
 ) {
   const id = createId('principal')
   const userId = createId('user')
@@ -56,16 +55,6 @@ export async function seedAskGoldenFixture(
     .insert(settings)
     .values({
       name: 'Acme',
-      cloudIdentity: operatorManagedName
-        ? {
-            version: 1,
-            displayName: 'Acme workspace',
-            canonicalOrigin: 'https://acme.example.com',
-            platformHostname: 'acme.example.com',
-            customDomains: [],
-            updatedAt: '2026-10-03T12:00:00.000Z',
-          }
-        : null,
       slug: `acme-${id}`,
       createdAt: new Date(),
       featureFlags: JSON.stringify({

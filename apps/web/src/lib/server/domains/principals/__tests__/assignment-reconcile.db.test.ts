@@ -121,7 +121,7 @@ describe.skipIf(!fixture.available)(
       const rows = await workspaceAssignments(target.principalId)
       expect(rows.map((r) => r.key)).toEqual([SYSTEM_ROLES.MANAGER])
       const perms = await permissionsForPrincipal(target.principalId, 'member')
-      expect(perms.has(PERMISSIONS.BILLING_MANAGE)).toBe(false)
+      expect(perms.has(PERMISSIONS.AUDIT_VIEW)).toBe(false)
       expect(perms.has(PERMISSIONS.MEMBER_MANAGE)).toBe(false)
       expect(perms.has(PERMISSIONS.POST_VIEW_PRIVATE)).toBe(true)
     })

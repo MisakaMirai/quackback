@@ -41,27 +41,16 @@ export const Route = createFileRoute('/admin/settings/security/authentication')(
     const tab = (location.search as { tab?: unknown }).tab ?? 'portal-access'
     const warmSegments =
       tab === 'portal-access' && !!context.permissions?.includes(PERMISSIONS.SEGMENT_VIEW)
-    // Auth + SSO reads are cheap and never 402. The audit feed is an Enterprise
-    // entitlement: prefetching it here took down Portal access and Sign-in
-    // on every other plan. The audit tab loads that query only when entitled.
-    const { listEntitlementsFn } = await import('@/lib/server/functions/entitlement-status')
-    const { ensureBillingCatalogue } = await import('@/lib/client/queries/billing')
     const ensure = readBatch(queryClient)
-    const [, entitlements] = await Promise.all([
-      Promise.all([
-        ensure(settingsQueries.authConfig()),
-        ensure(settingsQueries.verifiedDomains()),
-        ensure(settingsQueries.portalConfig()),
-        ensure(adminQueries.authProviderStatus()),
-        ensure(settingsQueries.identityProviders()),
-        ensure(adminQueries.recoveryCodes()),
-        warmSegments ? warmQuery(ensure, adminQueries.segments()) : undefined,
-      ]),
-      listEntitlementsFn(),
-      ensureBillingCatalogue(queryClient, context.billingEnabled),
+    await Promise.all([
+      ensure(settingsQueries.authConfig()),
+      ensure(settingsQueries.verifiedDomains()),
+      ensure(settingsQueries.portalConfig()),
+      ensure(adminQueries.authProviderStatus()),
+      ensure(settingsQueries.identityProviders()),
+      ensure(adminQueries.recoveryCodes()),
+      warmSegments ? warmQuery(ensure, adminQueries.segments()) : undefined,
     ])
-
-    return { ssoEntitled: entitlements.sso, auditEntitled: entitlements.auditLog }
   },
   component: AuthenticationPage,
 })
@@ -74,8 +63,6 @@ function AuthenticationPage() {
   const portalConfigQuery = useSuspenseQuery(settingsQueries.portalConfig())
   const credentialStatusQuery = useSuspenseQuery(adminQueries.authProviderStatus())
 
-  const { ssoEntitled, auditEntitled } = Route.useLoaderData()
-
   return (
     <SettingsPage
       page="/admin/settings/security/authentication"
@@ -86,8 +73,7 @@ function AuthenticationPage() {
         teamAuthConfig={authConfigQuery.data}
         portalConfig={portalConfigQuery.data}
         credentialStatus={credentialStatusQuery.data}
-        customOidcProviderTier={ssoEntitled}
-        auditEntitled={auditEntitled}
+        customOidcProviderTier
       />
     </SettingsPage>
   )

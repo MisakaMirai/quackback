@@ -8,7 +8,6 @@ import { NewButton } from '@/components/shared/new-button'
 import { StateBadge, type BadgeState } from '@/components/shared/state-badge'
 import { SettingsCard } from '@/components/admin/settings/settings-card'
 import { RowIcon, SettingsList, SettingsListRow } from '@/components/admin/settings/settings-list'
-import { UpgradeModal } from '@/components/admin/upgrade'
 import { CreateWebhookDialog } from './create-webhook-dialog'
 import { EditWebhookDialog } from './edit-webhook-dialog'
 import { DeleteWebhookDialog } from './delete-webhook-dialog'
@@ -25,20 +24,14 @@ const WEBHOOK_LIMIT = 25
 
 interface WebhooksSettingsProps {
   webhooks: Webhook[]
-  entitled: boolean
 }
 
-export function WebhooksSettings({ webhooks, entitled }: WebhooksSettingsProps) {
+export function WebhooksSettings({ webhooks }: WebhooksSettingsProps) {
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
-  const [upgradeOpen, setUpgradeOpen] = useState(false)
   const [editWebhook, setEditWebhook] = useState<Webhook | null>(null)
   const [deleteWebhook, setDeleteWebhook] = useState<Webhook | null>(null)
 
   const requestCreate = () => {
-    if (!entitled) {
-      setUpgradeOpen(true)
-      return
-    }
     setCreateDialogOpen(true)
   }
 
@@ -126,15 +119,7 @@ export function WebhooksSettings({ webhooks, entitled }: WebhooksSettingsProps) 
       </SettingsCard>
 
       {/* Dialogs */}
-      <CreateWebhookDialog
-        open={createDialogOpen}
-        onOpenChange={setCreateDialogOpen}
-        onPlanRefusal={() => {
-          setCreateDialogOpen(false)
-          setUpgradeOpen(true)
-        }}
-      />
-      <UpgradeModal open={upgradeOpen} onOpenChange={setUpgradeOpen} entitlement="webhooks" />
+      <CreateWebhookDialog open={createDialogOpen} onOpenChange={setCreateDialogOpen} />
 
       {editWebhook && (
         <EditWebhookDialog

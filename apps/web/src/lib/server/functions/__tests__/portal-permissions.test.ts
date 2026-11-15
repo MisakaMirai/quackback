@@ -127,7 +127,6 @@ describe('getMyPortalPermissionsFn', () => {
 
     const keys = (await getMyPortalPermissionsHandler()) as string[]
     expect(new Set(keys)).toEqual(new Set(SYSTEM_ROLE_PERMISSIONS.manager))
-    expect(keys).not.toContain('billing.manage')
   })
 
   it('never throws: an auth resolution failure degrades to []', async () => {

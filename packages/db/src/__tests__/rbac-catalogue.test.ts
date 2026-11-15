@@ -54,11 +54,10 @@ describe('RBAC permission catalogue', () => {
     expect(asSet(SYSTEM_ROLE_PERMISSIONS.owner)).toEqual(asSet(ALL_PERMISSIONS))
   })
 
-  it('Admin is everything except billing', () => {
-    expect(asSet(SYSTEM_ROLE_PERMISSIONS.admin)).toEqual(
-      asSet(ALL_PERMISSIONS.filter((p) => p !== PERMISSIONS.BILLING_MANAGE))
-    )
-    expect(SYSTEM_ROLE_PERMISSIONS.admin).not.toContain(PERMISSIONS.BILLING_MANAGE)
+  it('Admin holds the whole catalogue, like Owner', () => {
+    // The only key that separated them was billing.manage, retired with the
+    // cloud subscription layer. The roles stay distinct as titles.
+    expect(asSet(SYSTEM_ROLE_PERMISSIONS.admin)).toEqual(asSet(ALL_PERMISSIONS))
   })
 
   it('Manager is everything except the workspace-admin set (non-regressing reads kept)', () => {
@@ -115,7 +114,6 @@ describe('RBAC permission catalogue', () => {
       PERMISSIONS.TEAM_MANAGE,
       PERMISSIONS.AI_TEAMMATE_MANAGE,
       PERMISSIONS.ROLE_MANAGE,
-      PERMISSIONS.BILLING_MANAGE,
     ]) {
       expect(lead.has(key)).toBe(false)
     }
@@ -130,6 +128,8 @@ describe('RBAC permission catalogue', () => {
   it('the AI permission is split in two and the old key is retired', () => {
     expect(ALL_PERMISSIONS).not.toContain('assistant.manage')
     expect(RETIRED_PERMISSION_KEYS).toContain('assistant.manage')
+    expect(ALL_PERMISSIONS).not.toContain('billing.manage')
+    expect(RETIRED_PERMISSION_KEYS).toContain('billing.manage')
     expect(WORKSPACE_ADMIN_PERMISSIONS).toContain(PERMISSIONS.AI_CUSTOMER_MANAGE)
     expect(WORKSPACE_ADMIN_PERMISSIONS).toContain(PERMISSIONS.AI_TEAMMATE_MANAGE)
   })

@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useRef } from 'react'
+import { Suspense, useEffect, useRef } from 'react'
 import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -21,7 +21,6 @@ import {
   useWorkspaceSettings,
   useSessionContext,
   useBaseUrl,
-  useGithubStarPrompt,
   useHasPermission,
 } from '@/lib/client/hooks/use-root-context'
 
@@ -44,12 +43,6 @@ export const Route = createFileRoute('/admin/')({
   },
   component: AdminOverviewPage,
 })
-
-const HomeGithubStarPrompt = lazy(() =>
-  import('@/components/admin/github-star-prompt').then((m) => ({
-    default: m.HomeGithubStarPrompt,
-  }))
-)
 
 function AdminOverviewPage() {
   const { launchMessages } = Route.useLoaderData()
@@ -106,17 +99,10 @@ function AdminHome() {
       </Suspense>
     ) : null
   // The tour offer is Home's last block, in the page, so it never covers the plan.
-  const githubStarPrompt = useGithubStarPrompt()
-  // Self-hosted only: the one-time GitHub star ask, for someone the card never reached.
   const tourOffer =
     admin || canSeeTeam ? (
       <>
         <HomeTourArea member={!admin} />
-        {githubStarPrompt ? (
-          <Suspense fallback={null}>
-            <HomeGithubStarPrompt />
-          </Suspense>
-        ) : null}
       </>
     ) : null
 

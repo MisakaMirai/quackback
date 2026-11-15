@@ -26,7 +26,6 @@ import { getSetupState } from '@/lib/shared/db-types'
 import { permissionsForLegacyRole } from '@/lib/server/policy/permissions'
 import { resolveFeatureFlags } from '@/lib/server/domains/settings/settings.types'
 import { getTierLimits } from '@/lib/server/domains/settings/tier-limits.service'
-import { hasEntitlement } from '@/lib/server/domains/settings/cloud/entitlements'
 import { isAssistantConfigured } from '@/lib/server/domains/assistant'
 import { detectFirstWin, internalWinScope, winOutcome } from '@/lib/server/activation-wins'
 import { isLaunchWindowOpen, launchWindowFor } from '@/lib/shared/launch-window'
@@ -90,7 +89,7 @@ export async function loadLaunchStatus(caller: LaunchStatusCaller) {
       where: isNull(statusComponents.deletedAt),
     }),
     getTierLimits(),
-    hasEntitlement('aiAssistant'),
+    true,
   ])
 
   const setupState = getSetupState(orgSettings?.setupState ?? null)

@@ -18,7 +18,6 @@ export const PERMISSIONS = {
   SETTINGS_MODERATION: 'settings.moderation',
   SETTINGS_NOTIFICATIONS: 'settings.notifications',
   SETTINGS_CUSTOM_DOMAIN: 'settings.custom_domain',
-  BILLING_MANAGE: 'billing.manage',
   ROLE_MANAGE: 'role.manage',
   API_KEY_MANAGE: 'api_key.manage',
   WEBHOOK_VIEW: 'webhook.view',
@@ -177,7 +176,6 @@ export const WORKSPACE_ADMIN_PERMISSIONS: readonly PermissionKey[] = [
   PERMISSIONS.SETTINGS_MODERATION,
   PERMISSIONS.SETTINGS_NOTIFICATIONS,
   PERMISSIONS.SETTINGS_CUSTOM_DOMAIN,
-  PERMISSIONS.BILLING_MANAGE,
   PERMISSIONS.MEMBER_MANAGE,
   PERMISSIONS.ROLE_MANAGE,
   PERMISSIONS.API_KEY_MANAGE,
@@ -210,7 +208,7 @@ export const SUPPORT_LEAD_EXTRA_PERMISSIONS: readonly PermissionKey[] = [
 
 export const SYSTEM_ROLE_PERMISSIONS: Record<SystemRoleKey, PermissionKey[]> = {
   owner: ALL_PERMISSIONS,
-  admin: ALL_PERMISSIONS.filter((p) => p !== PERMISSIONS.BILLING_MANAGE),
+  admin: ALL_PERMISSIONS,
   manager: ALL_PERMISSIONS.filter((p) => !WORKSPACE_ADMIN_PERMISSIONS.includes(p)),
   support_lead: ALL_PERMISSIONS.filter(
     (p) => !WORKSPACE_ADMIN_PERMISSIONS.includes(p) || SUPPORT_LEAD_EXTRA_PERMISSIONS.includes(p)
@@ -267,7 +265,6 @@ export const PERMISSION_CATALOGUE: ReadonlyArray<{
   category: PermissionCategory
 }> = [
   { key: PERMISSIONS.SETTINGS_MANAGE, category: 'workspace' },
-  { key: PERMISSIONS.BILLING_MANAGE, category: 'workspace' },
   { key: PERMISSIONS.ROLE_MANAGE, category: 'workspace' },
   { key: PERMISSIONS.API_KEY_MANAGE, category: 'workspace' },
   { key: PERMISSIONS.WEBHOOK_VIEW, category: 'workspace' },

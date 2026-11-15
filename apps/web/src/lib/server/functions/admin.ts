@@ -637,10 +637,6 @@ export const checkOnboardingState = createServerFn({ method: 'GET' }).handler(as
   const currentSettings = await getSettings()
   const setupState = getSetupState(currentSettings?.setupState ?? null)
   const isOnboardingComplete = checkComplete(setupState)
-  const { parseIdentityProjection } =
-    await import('@/lib/server/domains/settings/cloud/identity-projection')
-  const platformHostname =
-    parseIdentityProjection(currentSettings?.cloudIdentity)?.platformHostname ?? null
 
   log.debug(
     {
@@ -666,7 +662,7 @@ export const checkOnboardingState = createServerFn({ method: 'GET' }).handler(as
     hasSettings: !!currentSettings,
     setupState,
     isOnboardingComplete,
-    platformHostname,
+    platformHostname: null,
   }
 })
 

@@ -20,12 +20,6 @@ const { upsertSpy } = vi.hoisted(() => ({
   upsertSpy: vi.fn(async (_args: { data: { id: string; enabled: boolean } }) => undefined),
 }))
 
-vi.mock('@/components/admin/upgrade', () => ({
-  UpgradeNotice: () => (
-    <p>Single sign-on is an Enterprise feature. Upgrade to Enterprise to enable it.</p>
-  ),
-}))
-
 vi.mock('@tanstack/react-router', () => ({
   useRouter: () => ({ invalidate: vi.fn() }),
   useRouteContext: () => ({ managedFieldPaths: [] }),
@@ -200,7 +194,7 @@ describe('<IdentityProvidersSection>', () => {
 })
 
 describe('plan gate', () => {
-  it('hides New provider and names Enterprise when SSO is not entitled', () => {
+  it('hides New provider and says SSO is unavailable when it is not entitled', () => {
     const qc = new QueryClient()
     qc.setQueryData(['settings', 'identityProviders'], [buttonProvider, routedProvider])
     render(
@@ -209,7 +203,7 @@ describe('plan gate', () => {
       </QueryClientProvider>
     )
     expect(screen.queryByRole('link', { name: /new provider/i })).toBeNull()
-    expect(screen.getByText(/Single sign-on is an Enterprise feature/)).toBeTruthy()
+    expect(screen.getByText(/Single sign-on is not available for this workspace/)).toBeTruthy()
   })
 
   function renderWithoutTier() {

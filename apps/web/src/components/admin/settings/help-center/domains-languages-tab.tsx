@@ -41,7 +41,6 @@ import { Textarea } from '@/components/ui/textarea'
 import { listArticlesFn } from '@/lib/server/functions/help-center'
 import { SUPPORTED_LOCALES, type SupportedLocale } from '@/lib/shared/i18n'
 import type { HelpCenterConfig } from '@/lib/shared/types/settings'
-import { useBillingEnabled } from '@/lib/client/hooks/use-root-context'
 
 const LOCALE_LABELS: Record<string, string> = {
   en: 'English',
@@ -128,10 +127,9 @@ interface DomainsLanguagesTabProps {
 }
 
 export function DomainsLanguagesTab({ config }: DomainsLanguagesTabProps) {
-  const billingEnabled = useBillingEnabled()
   return (
     <div className="space-y-6">
-      {billingEnabled ? null : <DomainCard domain={config.domain} />}
+      <DomainCard domain={config.domain} />
       <RedirectRulesCard />
       <IndexingCard indexable={config.seo.indexable} />
       <LocalesCard locales={config.locales} />

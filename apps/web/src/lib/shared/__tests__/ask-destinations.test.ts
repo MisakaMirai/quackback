@@ -17,7 +17,6 @@ const options = {
     statusPage: true,
     changelog: true,
   },
-  billingEnabled: true,
 }
 
 describe('Ask destinations', () => {
@@ -46,11 +45,10 @@ describe('Ask destinations', () => {
     expect(limited).toContain('/admin/settings/office-hours')
     expect(limited).not.toContain('/admin/settings/widget')
   })
-  it('hides disabled products and optional billing destinations', () => {
+  it('hides disabled products', () => {
     const paths = buildAskDestinations({
       ...options,
       featureFlags: { feedback: true },
-      billingEnabled: false,
     }).map((item) => item.href)
     expect(paths).not.toContain('/admin/inbox')
     expect(paths).not.toContain('/admin/settings/office-hours')
@@ -63,9 +61,9 @@ describe('Ask destinations', () => {
     expect(searchAskDestinations('invite', options)[0]?.href).toBe('/admin/settings/members')
     expect(
       searchAskDestinations('Facturation', options, (item) =>
-        item.href === '/admin/settings/billing' ? 'Facturation' : item.defaultMessage
+        item.href === '/admin/settings/members' ? 'Facturation' : item.defaultMessage
       )[0]?.href
-    ).toBe('/admin/settings/billing')
+    ).toBe('/admin/settings/members')
     expect(searchAskDestinations('  ', options)).toHaveLength(0)
   })
   it('offers at most three prompts, so they fit on one line', () => {
