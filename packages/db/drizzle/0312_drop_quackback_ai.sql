@@ -92,3 +92,6 @@ ALTER TABLE post_tags DROP COLUMN IF EXISTS ai_prompt;
 -- Deterministic AI classification of conversation attributes is removed.
 ALTER TABLE conversation_attribute_definitions DROP COLUMN IF EXISTS ai_detect;
 ALTER TABLE conversation_attribute_definitions DROP COLUMN IF EXISTS detect_on_close;
+
+-- Slack agent thread sessions.
+DROP TABLE IF EXISTS slack_thread_sessions CASCADE;

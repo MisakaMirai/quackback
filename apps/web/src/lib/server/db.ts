@@ -489,7 +489,6 @@ export {
   // Schema tables - assistant usage events (Copilot outcome loop)
   assistantEvents,
   slackUserLinks,
-  slackThreadSessions,
   integrationDeliveries,
   integrationSyncOperations,
   integrationSyncAttempts,
