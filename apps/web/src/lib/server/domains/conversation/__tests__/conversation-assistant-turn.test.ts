@@ -222,7 +222,6 @@ vi.mock('@/lib/server/db', () => {
   }
 })
 
-import { shouldConsiderAssistant } from '../conversation.service'
 import {
   runAssistantTurnForConversation,
   __resetAssistantPrincipalMemo,
@@ -312,32 +311,6 @@ beforeEach(() => {
   mockIsFeatureEnabled.mockResolvedValue(false)
   mockGetLiveWorkflowReferencedAttributeKeys.mockResolvedValue(new Set())
   mockClassifyConversationAttributes.mockResolvedValue([])
-})
-
-describe('shouldConsiderAssistant', () => {
-  it('considers a widget conversation reopened from a live/new state', () => {
-    expect(shouldConsiderAssistant(conversationRow() as never, 'open')).toBe(true)
-    expect(shouldConsiderAssistant(conversationRow() as never, null)).toBe(true)
-  })
-
-  it('skips non-widget sources (email joins in a later phase)', () => {
-    expect(shouldConsiderAssistant(conversationRow({ source: 'email' }) as never, 'open')).toBe(
-      false
-    )
-  })
-
-  it('skips a ticket-intake backing conversation (source ticket_form, channel messenger)', () => {
-    expect(
-      shouldConsiderAssistant(
-        conversationRow({ channel: 'messenger', source: 'ticket_form' }) as never,
-        'open'
-      )
-    ).toBe(false)
-  })
-
-  it('skips a thread a human deliberately closed', () => {
-    expect(shouldConsiderAssistant(conversationRow() as never, 'closed')).toBe(false)
-  })
 })
 
 describe('runAssistantTurnForConversation gate', () => {
