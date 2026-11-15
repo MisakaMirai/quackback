@@ -19,10 +19,7 @@ import { TICKET_TYPES } from '@/lib/shared/db-types'
 import type { TicketTypeDTO } from '@/lib/shared/tickets'
 import { useCreateTicket } from '@/lib/client/mutations/inbox'
 import { ticketQueries } from '@/lib/client/queries/inbox'
-import {
-  linkTicketToConversationFn,
-  suggestTicketFieldValuesFn,
-} from '@/lib/server/functions/tickets'
+import { linkTicketToConversationFn } from '@/lib/server/functions/tickets'
 import { ticketTypeLabel } from '@/components/admin/inbox/ticket-chips'
 import { realEmail } from '@/lib/shared/anonymous-email'
 import { PortalUserPicker } from '@/components/shared/portal-user-picker'
@@ -120,19 +117,6 @@ function preselectedType(candidates: TicketTypeDTO[]): TicketTypeDTO | null {
  * `customAttributes` on submit. A workspace with no live registry types keeps
  * the legacy bare-category picker.
  *
- * CONVERGENCE PHASE 5 (copilot auto-fill, suggestion-only): from a
- * conversation with the workspace's AI enabled and a type selected, an
- * "✨ Auto-fill" button (next to the type picker — an explicit action, not an
- * auto-trigger on type selection: the dialog's pattern is explicit submits,
- * and an AI call per swap would spend tokens without intent) asks
- * `suggestTicketFieldValuesFn` for the type's fields + the title. Suggested
- * values pre-fill with a "✨ suggested" marker (a header badge counts them)
- * and stay editable; unanswered fields stay empty with a muted "not
- * suggested" state; "Undo suggestions" restores the exact pre-suggestion
- * form. Nothing writes until the normal submit — the save path re-validates
- * everything server-side. AI disabled/unconfigured, an empty thread, or a
- * failed/flaky completion → the quiet fallback: the plain Phase-4 form
- * unchanged, never half-filled.
  */
 export const CreateTicketDialog = memo(function CreateTicketDialog({
   open,
@@ -150,20 +134,6 @@ export const CreateTicketDialog = memo(function CreateTicketDialog({
   const [descriptionJson, setDescriptionJson] = useState<JSONContent | undefined>(undefined)
   const [descriptionMarkdown, setDescriptionMarkdown] = useState('')
   const [requester, setRequester] = useState<Requester | null>(null)
-
-  // CONVERGENCE PHASE 5 — copilot auto-fill (suggestion-only). `suggestedKeys`
-  // marks which values currently on the form came from the copilot (the
-  // provenance marker); `preSuggestion` is the form snapshot "Undo
-  // suggestions" restores; `autoFillHidden` retires the affordance for this
-  // dialog session once the server says suggestions are unavailable (AI
-  // unconfigured, empty thread, a flaky structured-output completion).
-  const [autoFillLoading, setAutoFillLoading] = useState(false)
-  const [autoFillHidden, setAutoFillHidden] = useState(false)
-  const [suggestedKeys, setSuggestedKeys] = useState<ReadonlySet<string>>(new Set())
-  const [preSuggestion, setPreSuggestion] = useState<{
-    title: string
-    fieldValues: Record<string, unknown>
-  } | null>(null)
 
   // The registry types the picker offers (live rows only) — the same set in
   // both flows. From a conversation a customer type opens the pair, while a
@@ -195,8 +165,6 @@ export const CreateTicketDialog = memo(function CreateTicketDialog({
     includeInternal: true,
   })
 
-  const showAutoFill = fromConversation && selectedTypeId !== null && !autoFillHidden
-
   // A fresh open starts clean — prefilled from the conversation when opened
   // in that mode, with the category default type preselected. `candidates` is
   // intentionally read at open time only — a mid-dialog registry refresh must
@@ -213,10 +181,6 @@ export const CreateTicketDialog = memo(function CreateTicketDialog({
       setRequester(fromConversation ? (defaultRequester ?? null) : null)
       setFieldValues({})
       setFieldErrors({})
-      setAutoFillLoading(false)
-      setAutoFillHidden(false)
-      setSuggestedKeys(new Set())
-      setPreSuggestion(null)
     }
   }, [open, fromConversation, defaultTitle, defaultRequester])
 
@@ -266,69 +230,9 @@ export const CreateTicketDialog = memo(function CreateTicketDialog({
   const canCreate = title.trim().length > 0 && !create.isPending && !linking && !uploading
 
   /** Type swap: change the field set and drop the old type's answers (the
-   *  retype rule protects STORED answers, not a draft's stale keys). Any
-   *  suggestion state dies with the old type's field set too. */
+   *  retype rule protects STORED answers, not a draft's stale keys). */
   const selectType = (id: string) => {
     selectIntakeType(id)
-    setSuggestedKeys(new Set())
-    setPreSuggestion(null)
-  }
-
-  /**
-   * "✨ Auto-fill" (Phase 5): ONE structured-completion call suggests the
-   * chosen type's fields + the title from the conversation. Suggestion-only —
-   * values pre-fill marked and stay editable; nothing writes until the normal
-   * submit. A button, not an auto-trigger on type selection: the dialog's
-   * pattern is explicit actions, and an AI call on every type swap would
-   * spend tokens without intent. Every failure mode (unavailable, error,
-   * empty result) leaves the form exactly as it was — never half-filled.
-   */
-  const runAutoFill = async () => {
-    if (!conversationId || !selectedTypeId || autoFillLoading) return
-    setAutoFillLoading(true)
-    try {
-      const result = await suggestTicketFieldValuesFn({
-        data: { conversationId, ticketTypeId: selectedTypeId as TicketTypeId },
-      })
-      const suggestions = result.unavailable === true ? null : result.suggestions
-      if (!suggestions || Object.keys(suggestions).length === 0) {
-        // The quiet fallback: retire the affordance for this session and
-        // leave the plain Phase-4 form unchanged.
-        setAutoFillHidden(true)
-        toast.info('AI suggestions are unavailable. The form is unchanged.')
-        return
-      }
-      // Snapshot the pre-suggestion form for "Undo suggestions", then apply.
-      setPreSuggestion({ title, fieldValues })
-      const { title: suggestedTitle, ...fieldSuggestions } = suggestions
-      const keys = new Set<string>()
-      if (typeof suggestedTitle === 'string' && suggestedTitle.trim()) {
-        setTitle(suggestedTitle)
-        keys.add('title')
-      }
-      setFieldValues((prev) => ({ ...prev, ...fieldSuggestions }))
-      for (const key of Object.keys(fieldSuggestions)) keys.add(key)
-      setSuggestedKeys(keys)
-      // Suggested values were validated server-side; stale inline errors go.
-      setFieldErrors({})
-    } catch {
-      // An unexpected failure (network, auth): the form stays unchanged and
-      // the button stays (a transient error may succeed on retry).
-      toast.info('AI suggestions are unavailable. The form is unchanged.')
-    } finally {
-      setAutoFillLoading(false)
-    }
-  }
-
-  /** Restore the exact pre-suggestion form (title + field answers) and drop
-   *  every suggestion marker. */
-  const undoSuggestions = () => {
-    if (!preSuggestion) return
-    setTitle(preSuggestion.title)
-    setFieldValues(preSuggestion.fieldValues)
-    setPreSuggestion(null)
-    setSuggestedKeys(new Set())
-    setFieldErrors({})
   }
 
   const submit = () => {
@@ -412,14 +316,7 @@ export const CreateTicketDialog = memo(function CreateTicketDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>
-            {fromConversation ? 'Create ticket' : 'New ticket'}
-            {suggestedKeys.size > 0 && (
-              <span className="ms-2 rounded bg-primary/15 px-1.5 py-0.5 align-middle text-[11px] font-medium text-primary">
-                ✨ {suggestedKeys.size} suggested
-              </span>
-            )}
-          </DialogTitle>
+          <DialogTitle>{fromConversation ? 'Create ticket' : 'New ticket'}</DialogTitle>
           <DialogDescription>
             {fromConversation
               ? 'Open a trackable ticket for this conversation.'
@@ -435,20 +332,6 @@ export const CreateTicketDialog = memo(function CreateTicketDialog({
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
                 <label className="text-xs font-medium text-muted-foreground">Type</label>
-                {/* Phase 5 auto-fill entry: a button (explicit action), not an
-                    auto-trigger on type selection — see runAutoFill's doc. */}
-                {showAutoFill && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 px-2 text-xs"
-                    onClick={runAutoFill}
-                    disabled={autoFillLoading}
-                  >
-                    {autoFillLoading ? '✨ Suggesting…' : '✨ Auto-fill'}
-                  </Button>
-                )}
               </div>
               <Select value={selectedTypeId ?? ''} onValueChange={selectType}>
                 <SelectTrigger className="w-full">
@@ -488,12 +371,7 @@ export const CreateTicketDialog = memo(function CreateTicketDialog({
           )}
 
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-muted-foreground">
-              Title
-              {suggestedKeys.has('title') && (
-                <span className="ms-1 font-normal text-primary">✨ suggested</span>
-              )}
-            </label>
+            <label className="text-xs font-medium text-muted-foreground">Title</label>
             <Input
               autoFocus
               value={title}
@@ -551,8 +429,6 @@ export const CreateTicketDialog = memo(function CreateTicketDialog({
             values={fieldValues}
             onChange={setFieldValue}
             errors={fieldErrors}
-            suggestedKeys={suggestedKeys}
-            suggestionRun={suggestedKeys.size > 0}
           />
 
           <div className="space-y-1.5">
@@ -603,16 +479,6 @@ export const CreateTicketDialog = memo(function CreateTicketDialog({
         </div>
 
         <DialogFooter>
-          {preSuggestion && (
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={undoSuggestions}
-              disabled={create.isPending || linking}
-            >
-              Undo suggestions
-            </Button>
-          )}
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>

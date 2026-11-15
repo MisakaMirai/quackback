@@ -223,13 +223,6 @@ export async function userEditPost(
     })
   }
 
-  // Regenerate embedding (and cascade to merge check) after user edit
-  import('@/lib/server/domains/embeddings/embedding.service')
-    .then(({ generatePostEmbedding }) =>
-      generatePostEmbedding(postId, updatedPost.title, updatedPost.content)
-    )
-    .catch((err) => log.error({ err, post_id: postId }, 'embedding regen failed'))
-
   return updatedPost
 }
 

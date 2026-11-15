@@ -77,7 +77,7 @@ import { loadAuthors, loadAuthorAudiences, fallbackAuthor } from '../principals/
 import { toMessageDTO } from '@/lib/server/messages/message-core'
 import { aggregateReactions } from '@/lib/shared'
 import { supportContactName } from '@/lib/shared/support-contact-name'
-import { displayAssistantName } from '@/lib/shared/assistant/config'
+import { displayAssistantName } from '@/lib/shared/author-display'
 import { truncate } from '@/lib/shared/utils/string'
 import type { Channel } from '@/lib/shared/channels'
 import { keywordInContext, type TermSegment } from '@/lib/shared/utils/keyword-context'

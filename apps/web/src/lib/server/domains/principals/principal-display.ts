@@ -11,7 +11,7 @@ import { getPublicUrlOrNull } from '@/lib/server/storage/s3'
 import type { ConversationAuthorDTO } from '@/lib/shared/conversation/types'
 import { rememberTestOwner } from '@/lib/server/test-data'
 import { supportContactName } from '@/lib/shared/support-contact-name'
-import { displayAssistantName } from '@/lib/shared/assistant/config'
+import { displayAssistantName } from '@/lib/shared/author-display'
 
 /**
  * Display URL: the public URL of an uploaded key, else an OAuth/external URL.

@@ -7,7 +7,7 @@
 import type { ConversationMessageDTO, MessageSenderType } from '@/lib/shared/conversation/types'
 import type { TiptapContent } from '@/lib/server/db'
 import { tiptapJsonToText } from '@/lib/server/markdown-tiptap'
-import { displayAssistantName } from '@/lib/shared/assistant/config'
+import { displayAssistantName } from '@/lib/shared/author-display'
 
 export interface TranscriptMeta {
   id: string

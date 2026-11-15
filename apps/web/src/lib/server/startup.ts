@@ -144,11 +144,6 @@ export function logStartupBanner(): void {
     })
     .catch((err) => log.error({ err }, 'inbound mail domain validation failed'))
 
-  // Surface half-configured AI loudly instead of failing silently (see #180).
-  import('@/lib/server/domains/ai/config')
-    .then(({ validateAiConfig }) => validateAiConfig())
-    .catch((err) => log.error({ err }, 'ai config validation failed'))
-
   // Reads the workspace's integration rows, so it is per-database work. Under
   // pooled tenancy it runs once per workspace — and, like the startup backfill
   // below, only on a replica that already does background work. A fleet-wide
@@ -313,15 +308,6 @@ function startBackgroundProcessing(): void {
       // Daily maintenance: audit prune, invite sweep, outbox retention, logs.
       setTimeout(() => void jobs.runDailyMaintenance(), 30_000)
       setInterval(() => void jobs.runDailyMaintenance(), 24 * 60 * 60 * 1000)
-
-      // Stale/missing post summaries. AI calls are expensive, so the sweep lock
-      // keeps it to one replica per tick. 5s delay lets other startup finish.
-      setTimeout(() => void jobs.runSummarySweep(), 5_000)
-      setInterval(() => void jobs.runSummarySweep(), 30 * 60 * 1000)
-
-      // Duplicate-post detection. 15s delay staggers after summary's 5s.
-      setTimeout(() => void jobs.runMergeSweep(), 15_000)
-      setInterval(() => void jobs.runMergeSweep(), 30 * 60 * 1000)
 
       // Changelog publish-notification reconciler: announces any live entry
       // whose notification was missed (a dropped delayed-publish job, or a

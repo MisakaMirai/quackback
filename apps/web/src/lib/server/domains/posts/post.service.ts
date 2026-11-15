@@ -463,15 +463,6 @@ export async function updatePost(
     updatedPost = existingPost
   }
 
-  // Regenerate embedding (and cascade to merge check) if title or content changed
-  if (input.title !== undefined || input.content !== undefined || input.contentJson !== undefined) {
-    import('@/lib/server/domains/embeddings/embedding.service')
-      .then(({ generatePostEmbedding }) =>
-        generatePostEmbedding(id, updatedPost.title, updatedPost.content)
-      )
-      .catch((err) => log.error({ err, post_id: id }, 'embedding regen failed'))
-  }
-
   // Update tags if provided
   if (input.tagIds !== undefined) {
     // Remove all existing tags then add new ones if any

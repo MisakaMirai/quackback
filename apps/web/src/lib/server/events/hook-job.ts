@@ -36,13 +36,12 @@ import {
   handleMaintenanceStart,
   handleMaintenanceComplete,
 } from '@/lib/server/domains/status/status.maintenance'
-import { checkPostForMergeCandidates } from '@/lib/server/domains/merge-suggestions/merge-check.service'
 import { buildEventActor } from './dispatch'
 import { TerminalJobError } from '@/lib/server/jobs/definitions'
 import type { ClaimedJob } from '@/lib/server/jobs/job-queue'
 import type { HookResult } from './hook-types'
 import type { EventData } from './types'
-import type { ChangelogId, PostId, PrincipalId, StatusIncidentId, WebhookId } from '@quackback/ids'
+import type { ChangelogId, PrincipalId, StatusIncidentId, WebhookId } from '@quackback/ids'
 import { logger } from '@/lib/server/logger'
 import { isTestEvent } from './test-event'
 
@@ -73,12 +72,6 @@ export async function runHookJob(job: ClaimedJob): Promise<void> {
   // Handle delayed changelog publish sentinel
   if (hookType === '__changelog_publish__') {
     await handleDelayedChangelogPublish(hookConfig)
-    return
-  }
-
-  // Handle post-merge recheck sentinel
-  if (hookType === '__post_merge_recheck__') {
-    await handlePostMergeRecheck(hookConfig)
     return
   }
 
@@ -215,16 +208,4 @@ async function handleStatusMaintenanceJob(
   } else {
     await handleMaintenanceComplete(id)
   }
-}
-
-/**
- * Handle a post-merge recheck job.
- * Re-checks the canonical post for additional duplicate candidates.
- */
-async function handlePostMergeRecheck(hookConfig: Record<string, unknown>): Promise<void> {
-  const postId = hookConfig.postId as string | undefined
-  if (!postId) return
-
-  await checkPostForMergeCandidates(postId as PostId)
-  log.debug({ post_id: postId }, 'post-merge recheck complete')
 }
