@@ -179,9 +179,9 @@ function AnswerCaret() {
   )
 }
 
-/** Quinn's Markdown answer, shared by the inbox, widget and Help Center.
+/** Markdown answer with inline citation dots, shared by the inbox and widget.
  * Citation dots are added only to prose, after parsing links and code. */
-export function AssistantAnswer({
+export function MarkdownAnswer({
   text,
   citations,
   caret = false,

@@ -64,7 +64,7 @@ import type {
 import { getChannelDescriptor } from '@/lib/shared/channels'
 import type { MessageTranslationDisplay } from '@/lib/shared/conversation/translation'
 import type { BlockState } from '@/components/shared/conversation/conversation-rows'
-import { AssistantAnswer } from '@/components/shared/conversation/assistant-turn'
+import { MarkdownAnswer } from '@/components/shared/conversation/markdown-answer'
 import { RichTextEditor } from '@/components/ui/rich-text-editor'
 import {
   CONVERSATION_EDITOR_FEATURES,
@@ -626,7 +626,7 @@ export const AgentMessageBubble = memo(function AgentMessageBubble({
                   // customer sees, so the agent has full context — uncited replies
                   // don't show raw markdown. No explicit text color: it inherits
                   // the bubble's `text-primary-foreground` from `bubbleClasses`.
-                  <AssistantAnswer text={message.content} citations={message.citations} />
+                  <MarkdownAnswer text={message.content} citations={message.citations} />
                 ) : (
                   message.content && (
                     <>
@@ -929,7 +929,7 @@ export function VisitorMessageBubble({
         ) : (
           content &&
           (isAiReply ? (
-            <AssistantAnswer text={content} citations={cited ?? []} />
+            <MarkdownAnswer text={content} citations={cited ?? []} />
           ) : (
             <MessageMarkdown text={content} />
           ))

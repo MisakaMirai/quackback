@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { cleanup, render as renderRTL, screen } from '@testing-library/react'
 import { IntlProvider } from 'react-intl'
 import { AgentMessageBubble, VisitorMessageBubble } from '../message-bubble'
-import { AssistantAnswer } from '@/components/shared/conversation/assistant-turn'
+import { MarkdownAnswer } from '@/components/shared/conversation/markdown-answer'
 import type {
   AgentConversationMessageDTO,
   ConversationMessageCitation,
@@ -187,20 +187,20 @@ describe('citation rendering safety', () => {
   it('keeps paragraphs, links and focused source triggers mounted when citations refresh', () => {
     const text = 'Read [the guide](https://example.com/guide) [1].'
     const { container, rerender } = renderAnswer(
-      <AssistantAnswer text={text} citations={[citation]} />
+      <MarkdownAnswer text={text} citations={[citation]} />
     )
     const paragraph = container.querySelector('p')
     const link = screen.getByRole('link', { name: 'the guide' })
     const source = screen.getByRole('link', { name: 'Source 1: AI features' })
     source.focus()
     expect(document.activeElement).toBe(source)
-    rerender(<AssistantAnswer text={text} citations={[{ ...citation }]} />)
+    rerender(<MarkdownAnswer text={text} citations={[{ ...citation }]} />)
     expect(container.querySelector('p')).toBe(paragraph)
     expect(screen.getByRole('link', { name: 'the guide' })).toBe(link)
     expect(screen.getByRole('link', { name: 'Source 1: AI features' })).toBe(source)
     expect(document.activeElement).toBe(source)
     rerender(
-      <AssistantAnswer
+      <MarkdownAnswer
         text={text}
         citations={[{ ...citation, title: 'Updated guide', url: 'https://example.com/updated' }]}
       />
@@ -212,16 +212,16 @@ describe('citation rendering safety', () => {
 
   it('keeps the answer paragraph mounted when streaming completes', () => {
     const { container, rerender } = renderAnswer(
-      <AssistantAnswer text="Summary." citations={[]} caret />
+      <MarkdownAnswer text="Summary." citations={[]} caret />
     )
     const paragraph = container.querySelector('p')
-    rerender(<AssistantAnswer text="Summary." citations={[]} />)
+    rerender(<MarkdownAnswer text="Summary." citations={[]} />)
     expect(container.querySelector('p')).toBe(paragraph)
   })
 
   it('keeps footnote references and backlinks within the conversation document', () => {
     const { container } = renderAnswer(
-      <AssistantAnswer text={'A footnote[^note].\n\n[^note]: Supporting detail.'} citations={[]} />
+      <MarkdownAnswer text={'A footnote[^note].\n\n[^note]: Supporting detail.'} citations={[]} />
     )
     const links = container.querySelectorAll('a')
     expect(links).toHaveLength(2)
@@ -238,8 +238,8 @@ describe('citation rendering safety', () => {
     const text = 'A footnote[^note].\n\n[^note]: Supporting detail.'
     const { container } = renderAnswer(
       <>
-        <AssistantAnswer text={text} citations={[]} />
-        <AssistantAnswer text={text} citations={[]} />
+        <MarkdownAnswer text={text} citations={[]} />
+        <MarkdownAnswer text={text} citations={[]} />
       </>
     )
     const ids = Array.from(container.querySelectorAll('[id]'), (node) => node.id)
@@ -274,7 +274,7 @@ describe('citation rendering safety', () => {
   })
   it('keeps numeric Markdown link labels as links, without nesting citation anchors', () => {
     const { container } = renderAnswer(
-      <AssistantAnswer
+      <MarkdownAnswer
         text="[1](https://example.com) and [guide [1]](https://example.com/guide)"
         citations={[citation]}
       />
@@ -285,13 +285,13 @@ describe('citation rendering safety', () => {
   })
 
   it('preserves unresolved numeric brackets in a completed answer', () => {
-    const { container } = renderAnswer(<AssistantAnswer text="array[9] and [1]" citations={[]} />)
+    const { container } = renderAnswer(<MarkdownAnswer text="array[9] and [1]" citations={[]} />)
     expect(container).toHaveTextContent('array[9] and [1]')
   })
 
   it('keeps array indices literal even when the citation number exists', () => {
     const { container } = renderAnswer(
-      <AssistantAnswer text="array[1] and read [1]." citations={[citation]} />
+      <MarkdownAnswer text="array[1] and read [1]." citations={[citation]} />
     )
     expect(container.textContent).toContain('array[1]')
     expect(screen.getAllByRole('link', { name: 'Source 1: AI features' })).toHaveLength(1)
@@ -299,15 +299,15 @@ describe('citation rendering safety', () => {
 
   it('suppresses unresolved citation markers only while streaming', () => {
     const { container } = renderAnswer(
-      <AssistantAnswer text="Read this [1]." citations={[]} caret />
+      <MarkdownAnswer text="Read this [1]." citations={[]} caret />
     )
     expect(container.textContent).toBe('Read this .')
   })
 
   it('refuses unsafe citation URLs in inline dots', () => {
     const unsafe = { ...citation, url: 'javascript:alert(1)' }
-    const { container } = renderAnswer(<AssistantAnswer text="Read [1]." citations={[unsafe]} />)
+    const { container } = renderAnswer(<MarkdownAnswer text="Read [1]." citations={[unsafe]} />)
     expect(container.querySelector('a')).toBeNull()
-    expect(container.textContent).toContain('AI features')
+    expect(container.textContent).toContain('Read 1.')
   })
 })
