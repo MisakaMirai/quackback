@@ -62,7 +62,6 @@ import type {
   ConversationMessageCitation,
 } from '@/lib/shared/conversation/types'
 import { getChannelDescriptor } from '@/lib/shared/channels'
-import type { MessageTranslationDisplay } from '@/lib/shared/conversation/translation'
 import type { BlockState } from '@/components/shared/conversation/conversation-rows'
 import { MarkdownAnswer } from '@/components/shared/conversation/markdown-answer'
 import { RichTextEditor } from '@/components/ui/rich-text-editor'
@@ -323,13 +322,6 @@ interface AgentMessageBubbleProps {
   highlighted?: boolean
   /** When true, render external link preview cards below non-note messages. */
   linkPreviews?: boolean
-  /** P2-D.1 inbox translation: present only for a plain-text message (never a
-   *  note, never a contentJson/rich message) while translation is active for
-   *  the conversation. Lets the bubble show the translated text by default
-   *  with a "Show original" toggle, in both directions (a fetched translation
-   *  of an incoming customer message, or the teammate's pre-translation
-   *  original of an outgoing reply that was translated before sending). */
-  translation?: MessageTranslationDisplay
   /** This message's own interactive-block state (conversation-rows.ts's pure
    *  derivation), when `message.block` is an interactive kind — undefined for
    *  every other message, and for a caller that hasn't threaded a block-states
@@ -490,7 +482,6 @@ export const AgentMessageBubble = memo(function AgentMessageBubble({
   onOpenPost,
   highlighted = false,
   linkPreviews = false,
-  translation,
   blockState,
   ticketProvenance = false,
   onRetryChannelDelivery,
@@ -628,30 +619,7 @@ export const AgentMessageBubble = memo(function AgentMessageBubble({
                   // the bubble's `text-primary-foreground` from `bubbleClasses`.
                   <MarkdownAnswer text={message.content} citations={message.citations} />
                 ) : (
-                  message.content && (
-                    <>
-                      <MessageMarkdown
-                        text={
-                          translation
-                            ? translation.showingOriginal
-                              ? translation.originalContent
-                              : translation.translatedContent
-                            : message.content
-                        }
-                      />
-                      {translation && (
-                        <button
-                          type="button"
-                          onClick={translation.onToggleOriginal}
-                          className="mt-0.5 text-[11px] text-muted-foreground/60 underline decoration-dotted underline-offset-2 transition-colors hover:text-foreground"
-                        >
-                          {translation.showingOriginal
-                            ? 'Show translation'
-                            : `${translation.label} · Show original`}
-                        </button>
-                      )}
-                    </>
-                  )
+                  message.content && <MessageMarkdown text={message.content} />
                 )}
                 {linkPreviews && !isNote && (
                   <LinkPreviews content={message.content} contentJson={message.contentJson} />

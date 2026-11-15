@@ -113,7 +113,6 @@ export async function broadcastInboxMessageUpdated(message: ConversationMessage)
         reactions: [],
         flaggedAt: null,
         postSuggestion: null,
-        translatedFrom: null,
       },
     })
     return

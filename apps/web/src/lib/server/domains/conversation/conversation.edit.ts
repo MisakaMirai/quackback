@@ -20,7 +20,6 @@ import {
   conversationMessages,
   conversationMessageMentions,
   type ConversationMessage,
-  type ConversationMessageMetadata,
 } from '@/lib/server/db'
 import type { ConversationMessageId, PrincipalId } from '@quackback/ids'
 import { NotFoundError, ForbiddenError, ValidationError } from '@/lib/shared/errors'
@@ -66,26 +65,12 @@ async function toAgentDto(
   if (message.metadata?.postSuggestion) {
     suggestions.set(message.id, message.metadata.postSuggestion)
   }
-  const translated = new Map()
-  if (message.metadata?.translatedFrom) {
-    translated.set(message.id, message.metadata.translatedFrom)
-  }
   const [enriched] = await enrichMessagesForAgent(
     [toMessageDTO(message, author)],
     viewerPrincipalId,
-    suggestions,
-    translated
+    suggestions
   )
   return enriched
-}
-
-function withoutTranslatedFrom(
-  metadata: ConversationMessageMetadata | null
-): ConversationMessageMetadata | null {
-  if (!metadata?.translatedFrom) return metadata
-  const next: ConversationMessageMetadata = { ...metadata }
-  delete next.translatedFrom
-  return Object.keys(next).length > 0 ? next : null
 }
 
 function bodyUnchanged(
@@ -217,7 +202,7 @@ async function applyEdit(
   }
 
   const now = new Date()
-  const metadata = withoutTranslatedFrom(message.metadata ?? null)
+  const metadata = message.metadata ?? null
   const updated = await db.transaction(async (tx) => {
     const [row] = await tx
       .update(conversationMessages)

@@ -57,8 +57,6 @@ const composerProbe = vi.hoisted(() => ({
 const threadProbe = vi.hoisted(() => ({
   gate: null as null | Promise<void>,
   linkFetches: 0,
-  translationEnabled: [] as boolean[],
-  overAllowanceNotice: null as string | null,
   panelOnChanged: [] as unknown[],
   remeasure: () => {},
 }))
@@ -274,22 +272,6 @@ vi.mock('@/components/shared/empty-state', () => ({
 }))
 vi.mock('@/components/ui/avatar', () => ({ Avatar: () => null }))
 
-vi.mock('@/lib/client/hooks/use-inbox-translation', () => ({
-  useInboxTranslation: ({ enabledFlag }: { enabledFlag: boolean }) => {
-    threadProbe.translationEnabled.push(enabledFlag)
-    return {
-      translationFor: () => undefined,
-      showSuggestionBanner: false,
-      enabled: false,
-      togglePending: false,
-      toggleEnabled: vi.fn(),
-      dismissSuggestion: vi.fn(),
-      activateFromSuggestion: vi.fn(),
-      detectedLanguageLabel: '',
-      overAllowanceNotice: threadProbe.overAllowanceNotice,
-    }
-  },
-}))
 vi.mock('@/lib/client/hooks/use-copilot-insert', () => ({ useCopilotInsert: () => vi.fn() }))
 vi.mock('@/lib/client/hooks/use-file-upload', () => ({
   useAgentFileUpload: () => ({ upload: vi.fn() }),
@@ -380,7 +362,6 @@ const {
         reactions: [],
         flaggedAt: null,
         postSuggestion: null,
-        translatedFrom: null,
       },
     ],
   }
@@ -503,7 +484,6 @@ function makeConversation(overrides: Partial<ConversationDTO> = {}): Conversatio
     tags: [],
     sla: null,
     customAttributes: {},
-    translation: null,
     ...overrides,
   }
 }
@@ -693,7 +673,6 @@ function makeMessage(
     reactions: [],
     flaggedAt: null,
     postSuggestion: null,
-    translatedFrom: null,
     ...overrides,
   } as AgentConversationMessageDTO
 }
@@ -1087,43 +1066,21 @@ describe('AgentConversationThread: marking read', () => {
 })
 
 describe('AgentConversationThread: reads that ride with the thread', () => {
-  it('asks for the ticket link and the translation preference only once the thread has loaded', async () => {
+  it('asks for the ticket link only once the thread has loaded', async () => {
     let open!: () => void
     threadProbe.gate = new Promise<void>((resolve) => (open = resolve))
     threadProbe.linkFetches = 0
-    threadProbe.translationEnabled = []
     renderThread({ kind: 'conversation', id: 'conversation_gated' })
 
-    // The thread request loads both and seeds them, so while it is in
-    // flight neither asks on its own.
+    // The thread request loads it and seeds it, so while it is in flight the
+    // read does not ask on its own.
     await new Promise((r) => setTimeout(r, 20))
     expect(threadProbe.linkFetches).toBe(0)
-    expect(threadProbe.translationEnabled.length).toBeGreaterThan(0)
-    expect(threadProbe.translationEnabled.every((on) => !on)).toBe(true)
 
     act(() => open())
     await screen.findByTestId('editor')
-    expect(threadProbe.translationEnabled.at(-1)).toBe(true)
+    await waitFor(() => expect(threadProbe.linkFetches).toBeGreaterThan(0))
     threadProbe.gate = null
-  })
-})
-
-describe('AgentConversationThread: inbox translation past the AI allowance', () => {
-  it('shows the notice above the composer, and nothing when there is none', async () => {
-    threadProbe.overAllowanceNotice =
-      'AI usage for this period is used up. Translation keeps working. Upgrade your plan for more.'
-    renderThread({ kind: 'conversation', id: 'conversation_over_allowance' })
-    expect(
-      await screen.findByText(
-        'AI usage for this period is used up. Translation keeps working. Upgrade your plan for more.'
-      )
-    ).toBeTruthy()
-    cleanup()
-
-    threadProbe.overAllowanceNotice = null
-    renderThread({ kind: 'conversation', id: 'conversation_within_allowance' })
-    await screen.findByTestId('editor')
-    expect(screen.queryByText(/AI usage/)).toBeNull()
   })
 })
 

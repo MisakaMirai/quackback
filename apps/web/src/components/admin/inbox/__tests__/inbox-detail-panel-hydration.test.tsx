@@ -80,7 +80,6 @@ const conversation = {
   tags: [],
   sla: null,
   customAttributes: {},
-  translation: null,
 } as unknown as ConversationDTO
 
 function panel(client: QueryClient) {

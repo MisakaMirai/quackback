@@ -391,9 +391,6 @@ Profiles: **Owner** = admin class + an admin-owned full API key (scoped keys hol
 | `lib/server/functions/conversation.ts`::listConversationParticipantsFn | conversation.view |
 | `lib/server/functions/conversation.ts`::listFlaggedMessagesFn | conversation.view |
 | `lib/server/functions/conversation.ts`::getLinkedConversationsForPostFn | conversation.view |
-| `lib/server/functions/conversation.ts`::translateConversationMessagesFn | conversation.view |
-| `lib/server/functions/conversation.ts`::setInboxTranslationEnabledFn | conversation.manage |
-| `lib/server/functions/conversation.ts`::dismissInboxTranslationSuggestionFn | conversation.manage |
 | `lib/server/functions/customer-context.ts`::fetchCustomerContextFn | integration.view |
 | `lib/server/functions/data-runs.ts`::listExportRunsFn | settings.manage |
 | `lib/server/functions/data-runs.ts`::listImportRunsFn | settings.manage |

@@ -34,7 +34,6 @@ import {
   type Conversation,
   type ConversationMessage,
   type PostSuggestion,
-  type TranslatedFromMetadata,
 } from '@/lib/server/db'
 import {
   toUuid,
@@ -94,7 +93,6 @@ import type {
   ConversationStatus,
   ConversationEndReason,
   ConversationSpamFiledBy,
-  ConversationTranslationStateDTO,
 } from '@/lib/shared/conversation/types'
 
 const MESSAGE_PAGE_SIZE = 30
@@ -244,12 +242,7 @@ async function loadFlagsForMessages(
 export async function enrichMessagesForAgent(
   messages: ConversationMessageDTO[],
   viewerPrincipalId: PrincipalId,
-  postSuggestions: Map<ConversationMessageId, PostSuggestion>,
-  // Agent-only (P2-D.1 inbox translation): the pre-translation original of an
-  // OUTGOING message sent while translation was active, carried in-memory off
-  // `metadata.translatedFrom` the same way postSuggestions are —
-  // no second `SELECT metadata` round-trip.
-  translatedFromPointers: Map<ConversationMessageId, TranslatedFromMetadata> = new Map()
+  postSuggestions: Map<ConversationMessageId, PostSuggestion>
 ): Promise<AgentConversationMessageDTO[]> {
   const ids = messages.map((m) => m.id)
   const [reactions, flags] = await Promise.all([
@@ -261,7 +254,6 @@ export async function enrichMessagesForAgent(
     reactions: reactions.get(m.id) ?? [],
     flaggedAt: flags.get(m.id) ?? null,
     postSuggestion: postSuggestions.get(m.id) ?? null,
-    translatedFrom: translatedFromPointers.get(m.id) ?? null,
   }))
 }
 
@@ -443,17 +435,6 @@ export function slaDueAtFor(conversation: Pick<Conversation, 'slaApplied'>): Dat
   return dto ? (nextSlaDue(dto)?.dueAt ?? null) : null
 }
 
-/**
- * Project a conversation row's P2-D.1 inbox-translation columns into the
- * client DTO shape. Defined here (rather than in
- * conversation-translation.service.ts) so that service can import
- * `conversationToDTO` from this module without a circular import —
- * conversation-translation.service.ts re-exports this for convenience.
- */
-export function translationStateFrom(_conversation: unknown): ConversationTranslationStateDTO {
-  return { enabled: false, detectedCustomerLanguage: null, suggestionDismissed: true }
-}
-
 export function toConversationDTO(
   conversation: Pick<
     Conversation,
@@ -489,9 +470,6 @@ export function toConversationDTO(
   // Custom attribute values (agent-only); callers pass {} on visitor paths.
   // jsonb is JSON-safe by construction, hence the serializable value type.
   customAttributes: Record<string, JsonValue> = {},
-  // Two-way inbox translation state (agent-only); callers pass null on
-  // visitor paths — the widget has no UI for this feature.
-  translation: ConversationTranslationStateDTO | null = null,
   // Which rule/classifier filed a spam-ended thread (agent-only); callers
   // pass null on visitor paths.
   spamReason: ConversationSpamFiledBy | null = null,
@@ -526,7 +504,6 @@ export function toConversationDTO(
     tags,
     sla,
     customAttributes,
-    translation,
     isTest,
   }
 }
@@ -632,7 +609,6 @@ export async function conversationToDTO(
     side === 'agent' ? (conversation.assignedTeamId ?? null) : null,
     side === 'agent' ? slaDtoFor(conversation) : null,
     side === 'agent' ? ((conversation.customAttributes ?? {}) as Record<string, JsonValue>) : {},
-    side === 'agent' ? translationStateFrom(conversation) : null,
     // App-constrained taxonomy (CONVERSATION_SPAM_FILED_BY), like endReason.
     side === 'agent' ? ((conversation.spamReason as ConversationSpamFiledBy | null) ?? null) : null,
     testOwner !== null
@@ -828,17 +804,6 @@ export interface MessagePage {
    *  client response — the suggestion is agent-only. Empty whenever internal
    *  notes aren't loaded (every visitor path). */
   postSuggestions: Map<ConversationMessageId, PostSuggestion>
-  /** Agent-only pending-action pointers carried on internal notes, keyed by
-   *  message id — the same in-memory idiom as `postSuggestions` (no extra
-   *  query). Consumed by `enrichMessagesForAgent`; MUST NOT be serialized to a
-   *  client response. Empty whenever internal notes aren't loaded. */
-  /** Agent-only (P2-D.1 inbox translation): the pre-translation original of
-   *  an OUTGOING message sent while translation was active, keyed by message
-   *  id — the same in-memory idiom as `postSuggestions`. Populated for every
-   *  message (not just internal notes) since a translated reply is an
-   *  ordinary agent message. Consumed by `enrichMessagesForAgent`; MUST NOT
-   *  be serialized to a client response. */
-  translatedFromPointers: Map<ConversationMessageId, TranslatedFromMetadata>
 }
 
 /**
@@ -1043,17 +1008,12 @@ export async function listMessages(
   // second `SELECT metadata` round-trip. `toMessageDTO` forwards ordinary
   // client-safe metadata (e.g. `block`/`blockReply`, Phase C's conversational
   // block layer) but still never exposes these agent-only extras
-  // (postSuggestion, assistantPendingAction, translatedFrom) — this map is
-  // their only carrier, and it never leaves the server.
+  // (postSuggestion, assistantPendingAction) — this map is their only carrier,
+  // and it never leaves the server.
   const postSuggestions = new Map<ConversationMessageId, PostSuggestion>()
-  const translatedFromPointers = new Map<ConversationMessageId, TranslatedFromMetadata>()
   for (const m of page) {
     const suggestion = m.metadata?.postSuggestion
     if (m.isInternal && suggestion) postSuggestions.set(m.id, suggestion)
-    // Not internal-note-gated (unlike the two above): a translated reply is
-    // an ordinary agent message, not a note.
-    const translatedFrom = m.metadata?.translatedFrom
-    if (translatedFrom) translatedFromPointers.set(m.id, translatedFrom)
   }
   return {
     messages: ordered.map((m) =>
@@ -1067,7 +1027,6 @@ export async function listMessages(
     hasMore,
     nextCursor: page.length > 0 ? page[page.length - 1].id : null,
     postSuggestions,
-    translatedFromPointers,
   }
 }
 
@@ -1609,8 +1568,8 @@ export async function listConversationsForAgent(
 
   const rows = await db
     // Explicit projection of only the columns the list DTO consumes
-    // (toConversationDTO + slaDtoFor + translationStateFrom + the author/
-    // unread/email lookups). Skips the wide/JSONB columns the list never reads
+    // (toConversationDTO + slaDtoFor + the author/unread/email lookups). Skips
+    // the wide/JSONB columns the list never reads
     // — customAttributes, csatComment/csatSubmittedAt, source, channelAccountId,
     // waitingSince, updatedAt — so the inbox page doesn't haul unused payload
     // (esp. the customAttributes JSONB) over every fetch.
@@ -1851,7 +1810,6 @@ export async function listConversationsForAgent(
         // customAttributes intentionally omitted here (unchanged pre-existing
         // behavior for the inbox list) — the caller's default (`{}`) applies.
         undefined,
-        translationStateFrom(c),
         (c.spamReason as ConversationSpamFiledBy | null) ?? null
       ),
       isTest: c.isTest,

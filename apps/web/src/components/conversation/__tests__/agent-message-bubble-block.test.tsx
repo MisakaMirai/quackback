@@ -35,7 +35,6 @@ function baseMessage(over: Partial<AgentConversationMessageDTO> = {}): AgentConv
     reactions: [],
     flaggedAt: null,
     postSuggestion: null,
-    translatedFrom: null,
     ...over,
   }
 }

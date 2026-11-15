@@ -26,8 +26,7 @@ const replySchema = z.object({
 export const Route = createFileRoute('/api/v1/conversations/$conversationId/reply')({
   server: {
     handlers: {
-      /** POST /api/v1/conversations/:id/reply — agent reply (visible to the visitor).
-       *  Verbatim send: no inbox translation layer (D7). */
+      /** POST /api/v1/conversations/:id/reply — agent reply (visible to the visitor). */
       POST: async ({ request, params }) => {
         try {
           const auth = await withApiKeyAuth(request, { permission: PERMISSIONS.CONVERSATION_REPLY })

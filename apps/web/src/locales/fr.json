@@ -187,7 +187,6 @@
   "files.upload.error.blocked": "Ce type de fichier ne peut pas être envoyé",
   "files.upload.error.rateLimited": "Trop d'envois. Veuillez réessayer dans une minute.",
   "admin.inbox.filesSectionTitle": "Fichiers",
-  "admin.inbox.translationOverAllowance": "L’utilisation de l’IA pour cette période est épuisée. La traduction continue de fonctionner. Passez à une offre supérieure pour en avoir davantage.",
   "admin.helpCenter.autoTranslatePaused": "En pause : utilisation de l’IA épuisée pour cette période. Passez à une offre supérieure pour en avoir davantage.",
   "admin.auditLog.via.api": "par l'API",
   "admin.auditLog.via.mcp": "par MCP",

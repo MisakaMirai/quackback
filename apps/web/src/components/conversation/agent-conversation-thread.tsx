@@ -4,10 +4,10 @@
  * (thread.tsx) + AgentMessageBubble + the events reducer. A `ThreadCapabilities`
  * object (thread-capabilities.ts), derived from `item.kind` (and a ticket's
  * `type`), gates every conversation-only extra — macros, CSAT, typing, convert-
- * to-post, end-conversation, link previews, inbox translation, deep-link jump,
- * the composer's emoji picker — while the inbox message actions (reactions,
- * flags, mark-unread, delete) and the reply/note composer stay on for both
- * kinds (a back_office/tracker ticket forces note-only). The conversation path
+ * to-post, end-conversation, link previews, deep-link jump, the composer's
+ * emoji picker — while the inbox message actions (reactions, flags,
+ * mark-unread, delete) and the reply/note composer stay on for both kinds (a
+ * back_office/tracker ticket forces note-only). The conversation path
  * is unchanged data-wise (same queries/mutations/caches as before the fold);
  * the ticket path is new, mirroring it one-for-one against the ticket domain's
  * equivalents. The route keeps the list/nav chrome, the inbox SSE wiring, and
@@ -39,8 +39,6 @@ import {
   ChevronLeftIcon,
   ChevronDownIcon,
   EllipsisHorizontalIcon,
-  LanguageIcon,
-  XMarkIcon,
   CheckIcon,
   BookmarkIcon as BookmarkSolidIcon,
 } from '@heroicons/react/24/solid'
@@ -97,11 +95,6 @@ import {
   exportTicketTranscriptFn,
 } from '@/lib/server/functions/tickets'
 import { blockPersonFn, unblockPersonFn } from '@/lib/server/functions/blocking'
-import { useInboxTranslation } from '@/lib/client/hooks/use-inbox-translation'
-import {
-  isTranslationUnavailableMessage,
-  isTranslationRichContentMessage,
-} from '@/lib/shared/conversation/translation'
 import { removeConversationSlaFn } from '@/lib/server/functions/sla'
 import type {
   ConversationAttachment,
@@ -1004,10 +997,6 @@ export function AgentConversationThread({
       content: string
       contentJson: JSONContent | null
       attachments?: ConversationAttachment[]
-      // P2-D.1: the explicit "Send untranslated" fallback offered after a
-      // TRANSLATION_FAILED error — bypasses translation for this one send.
-      // Conversation-only; the ticket send path never throws these errors.
-      skipTranslation?: boolean
       // PP-6: restores the composer to the exact draft snapshotted at send time.
       // The composer clears optimistically on mutate; on any failure this puts
       // the typed reply back so a failed send never loses the draft. Not sent to
@@ -1029,7 +1018,6 @@ export function AgentConversationThread({
               content: vars.content,
               contentJson: vars.contentJson,
               attachments: vars.attachments,
-              skipTranslation: vars.skipTranslation,
             },
           }),
     onSuccess: (res) => {
@@ -1047,51 +1035,10 @@ export function AgentConversationThread({
       // (e.g. clicked a triage control mid-flight); never yank focus back.
       if (isSendControlFocused()) activeEditorRef.current?.focus('end')
     },
-    onError: (error, vars) => {
+    onError: (_error, vars) => {
       // Restore the composer to the exact draft cleared at send time so a failed
-      // send never loses the typed reply — regardless of which branch below
-      // handles the error. The translation-fallback toasts re-send `vars` (which
-      // still carries the content), so a subsequent retry re-clears optimistically.
+      // send never loses the typed reply.
       vars.restoreDraft?.()
-      // The reply carried an inline image/embed that a translated send cannot
-      // preserve — BLOCKED before the model ever ran (see
-      // resolveOutgoingReplyTranslation), never silently dropped. Same choice
-      // UX as the unavailable-translation case below.
-      if (error instanceof Error && isTranslationRichContentMessage(error.message)) {
-        toast.error('Could not translate your reply.', {
-          description:
-            'Translation cannot carry images or embeds. Send untranslated to keep them, or remove them and try again.',
-          action: {
-            label: 'Send untranslated',
-            onClick: () => {
-              // Re-clear the composer we restored above, then resend.
-              drafts.set('reply', EMPTY_DRAFT)
-              setReplyKey((k) => k + 1)
-              sendMutation.mutate({ ...vars, skipTranslation: true })
-              requestAnimationFrame(() => activeEditorRef.current?.focus('end'))
-            },
-          },
-        })
-        return
-      }
-      // Translation failed and the send was BLOCKED (never sent untranslated
-      // silently) — offer the explicit fallback rather than a generic toast.
-      if (error instanceof Error && isTranslationUnavailableMessage(error.message)) {
-        toast.error('Could not translate your reply.', {
-          description: 'Send it in your own language instead, or try again.',
-          action: {
-            label: 'Send untranslated',
-            onClick: () => {
-              // Re-clear the composer we restored above, then resend.
-              drafts.set('reply', EMPTY_DRAFT)
-              setReplyKey((k) => k + 1)
-              sendMutation.mutate({ ...vars, skipTranslation: true })
-              requestAnimationFrame(() => activeEditorRef.current?.focus('end'))
-            },
-          },
-        })
-        return
-      }
       toast.error('Failed to send message')
     },
   })
@@ -1153,20 +1100,6 @@ export function AgentConversationThread({
     void queryClient.invalidateQueries({ queryKey: conversationKeys.agentUserConversations() })
     onChanged()
   }, [queryClient, threadKey, onChanged])
-
-  // P2-D.1 inbox translation: activation banner/toggle + per-message
-  // translation display, gated on the inboxTranslation capability. A no-op
-  // hook (everything false/undefined) when the capability is off, so a
-  // ticket's behavior is unaffected. It starts once the conversation has
-  // loaded: the thread request brings the agent's language preference with it.
-  const inboxTranslationEnabled = capabilities.inboxTranslation
-  const inboxTranslation = useInboxTranslation({
-    enabledFlag: inboxTranslationEnabled && !!conversation,
-    conversationId: conversationId ?? INACTIVE_CONVERSATION_ID,
-    translationState: conversation?.translation,
-    messages,
-    onChanged: refreshThread,
-  })
 
   const deleteMutation = useMutation({
     mutationFn: (messageId: ConversationMessageId) =>
@@ -1795,7 +1728,6 @@ export function AgentConversationThread({
             onTrackAsPost={capabilities.convertToPost ? handleTrackAsPost : undefined}
             onTrackSuggestion={capabilities.convertToPost ? handleTrackSuggestion : undefined}
             linkPreviews={linkPreviewsEnabled}
-            translation={inboxTranslation.translationFor(m)}
             blockState={row.blockState}
             ticketProvenance={isPairThread}
           />
@@ -1948,26 +1880,6 @@ export function AgentConversationThread({
           className={headerIconButtonClass}
         />
       )}
-      {/* P2-D.1 inbox translation: manual per-conversation toggle. */}
-      {inboxTranslationEnabled && conversation && (
-        <button
-          type="button"
-          onClick={inboxTranslation.toggleEnabled}
-          disabled={inboxTranslation.togglePending}
-          aria-pressed={inboxTranslation.enabled}
-          title={
-            inboxTranslation.enabled
-              ? 'Translation is on for this conversation'
-              : 'Turn on translation for this conversation'
-          }
-          className={cn(
-            headerIconButtonClass,
-            inboxTranslation.enabled && 'bg-primary/10 text-primary hover:text-primary'
-          )}
-        >
-          <LanguageIcon className="h-4 w-4" />
-        </button>
-      )}
       <ThreadOverflowMenu
         isTicket={isTicket}
         exporting={exporting}
@@ -2100,48 +2012,6 @@ export function AgentConversationThread({
             handleRef={messagesRef}
           />
         </ConversationGalleryContext.Provider>
-
-        {/* P2-D.1 inbox translation: dismissible auto-suggest banner, shown
-            above the composer when the customer's detected language differs
-            from the viewing teammate's own preference. */}
-        {inboxTranslation.showSuggestionBanner && (
-          <div className="flex items-center gap-2 border-t border-border/50 bg-primary/5 px-4 py-2 text-xs sm:px-5">
-            <LanguageIcon className="h-4 w-4 shrink-0 text-primary" />
-            <span className="flex-1 text-foreground/90">
-              This customer writes in {inboxTranslation.detectedLanguageLabel}. Translate this
-              conversation?
-            </span>
-            <button
-              type="button"
-              onClick={inboxTranslation.activateFromSuggestion}
-              disabled={inboxTranslation.togglePending}
-              className="rounded-md bg-primary px-2 py-1 font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
-            >
-              Translate
-            </button>
-            <button
-              type="button"
-              onClick={inboxTranslation.dismissSuggestion}
-              disabled={inboxTranslation.togglePending}
-              aria-label="Dismiss"
-              className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-50"
-            >
-              <XMarkIcon className="h-4 w-4" />
-            </button>
-          </div>
-        )}
-
-        {/* Inbox translation past the AI allowance: it keeps running (and
-            counting), so this is a quiet one-line notice, not a block. */}
-        {inboxTranslation.overAllowanceNotice && (
-          <p
-            role="status"
-            className="flex items-center gap-2 border-t border-border/50 px-4 py-1.5 text-xs text-muted-foreground sm:px-5"
-          >
-            <LanguageIcon className="h-3.5 w-3.5 shrink-0" />
-            {inboxTranslation.overAllowanceNotice}
-          </p>
-        )}
 
         {/* Composer — no top border: the composer should feel like a
             continuation of the thread, not a separate panel. Horizontal

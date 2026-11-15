@@ -88,7 +88,6 @@ vi.mock('../conversation.query', () => ({
       reactions: [],
       flaggedAt: null,
       postSuggestion: null,
-      translatedFrom: null,
     }))
   ),
 }))

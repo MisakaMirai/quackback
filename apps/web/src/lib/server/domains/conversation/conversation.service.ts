@@ -678,10 +678,8 @@ export async function sendAgentMessage(
   actor: Actor,
   rawAttachments?: ConversationAttachment[],
   contentJson?: TiptapContent | null,
-  // P2-D.1 inbox translation: when the caller (sendAgentMessageFn) already
-  // translated `rawContent` into the customer's language before calling this,
-  // it passes the teammate's pre-translation original here so it lands on
-  // the new message's own metadata (agent-only, never sent to the visitor).
+  // Provenance carried onto the stored row (e.g. a ticket reply's email
+  // metadata). Agent-only; never includes translation state.
   extraMetadata?: ConversationMessageMetadata
 ): Promise<SendAgentMessageResult> {
   const decision = canActAsAgent(actor)
@@ -775,8 +773,7 @@ export async function sendAgentMessage(
 
   const authored = await resolveAuthorAudiences(agent)
   // Inbox sees the account name. The visitor channel keeps the public name,
-  // even though both are plain message DTOs (translatedFrom stays off this
-  // event — see the message_updated broadcast below).
+  // even though both are plain message DTOs.
   const messageDTO = toMessageDTO(txResult.message, authored.supportAuthor)
   // Agent-side DTO so the inbox keeps agent-only fields; publishConversationUpdate
   // strips them from the visitor's copy.
@@ -789,28 +786,16 @@ export async function sendAgentMessage(
     { conversationUpdated: true }
   )
 
-  // P2-D.1: surface translatedFrom on the DTO returned to the sending agent,
-  // and to every other agent's open thread, without leaking it to the visitor.
-  // Shaped the same way enrichMessagesForAgent upgrades a base DTO; a message
-  // just inserted this call has no reactions/flags/postSuggestion yet, so
-  // those are known-empty rather than re-read from the DB.
+  // Shape the DTO returned to the sending agent the same way
+  // enrichMessagesForAgent upgrades a base DTO; a message just inserted this
+  // call has no reactions/flags/postSuggestion yet, so those are known-empty
+  // rather than re-read from the DB.
   const agentMessageDTO: AgentConversationMessageDTO = {
     ...messageDTO,
     reactions: [],
     flaggedAt: null,
     postSuggestion: null,
-    translatedFrom: extraMetadata?.translatedFrom ?? null,
     channelDelivery: txResult.message.metadata?.channelDelivery ?? null,
-  }
-  if (agentMessageDTO.translatedFrom) {
-    // Inbox channel ONLY (never the visitor's conversation channel, unlike
-    // publishConversationEvent above) — mirrors message.actions.ts's
-    // publishMessageUpdated pattern for agent-only message enrichment.
-    publishAgentConversationEvent({
-      kind: 'message_updated',
-      conversationId: txResult.conversation.id,
-      message: agentMessageDTO,
-    })
   }
 
   void notifyAgentReply({
@@ -914,14 +899,13 @@ export async function addAgentNote(
 
   // A note is always agent-only content (isInternal=true, inbox-channel-only
   // broadcast below), so its DTO is shaped as an AgentConversationMessageDTO
-  // like sendAgentMessage's — a fresh note has no reactions/flags/suggestion/
-  // translation yet, so those are known-empty rather than re-read from the DB.
+  // like sendAgentMessage's — a fresh note has no reactions/flags/suggestion
+  // yet, so those are known-empty rather than re-read from the DB.
   const messageDTO: AgentConversationMessageDTO = {
     ...toMessageDTO(message, await resolveAuthor(agent)),
     reactions: [],
     flaggedAt: null,
     postSuggestion: null,
-    translatedFrom: null,
   }
 
   // Persist @-mentions from the note doc + alert the mentioned teammates BEFORE

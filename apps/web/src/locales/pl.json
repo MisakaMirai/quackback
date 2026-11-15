@@ -187,7 +187,6 @@
   "files.upload.error.blocked": "Tego typu plików nie można wysłać",
   "files.upload.error.rateLimited": "Za dużo przesyłanych plików. Spróbuj ponownie za minutę.",
   "admin.inbox.filesSectionTitle": "Pliki",
-  "admin.inbox.translationOverAllowance": "Wykorzystanie AI w tym okresie zostało wyczerpane. Tłumaczenie nadal działa. Ulepsz swój plan, aby uzyskać więcej.",
   "admin.helpCenter.autoTranslatePaused": "Wstrzymano: wykorzystanie AI w tym okresie zostało wyczerpane. Ulepsz swój plan, aby uzyskać więcej.",
   "admin.auditLog.via.api": "przez API",
   "admin.auditLog.via.mcp": "przez MCP",

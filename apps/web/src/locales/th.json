@@ -203,7 +203,6 @@
   "files.upload.error.blocked": "ส่งไฟล์ประเภทนี้ไม่ได้",
   "files.upload.error.rateLimited": "อัปโหลดถี่เกินไป ลองอีกครั้งในอีกสักครู่",
   "admin.inbox.filesSectionTitle": "ไฟล์",
-  "admin.inbox.translationOverAllowance": "การใช้ AI ของรอบนี้หมดแล้ว แต่ยังแปลภาษาได้ต่อ อัปเกรดแพ็กเกจของคุณเพื่อใช้งานเพิ่ม",
   "admin.helpCenter.autoTranslatePaused": "หยุดชั่วคราว: การใช้ AI ของรอบนี้หมดแล้ว อัปเกรดแพ็กเกจของคุณเพื่อใช้งานเพิ่ม",
   "admin.auditLog.via.api": "ผ่าน API",
   "admin.auditLog.via.mcp": "ผ่าน MCP",

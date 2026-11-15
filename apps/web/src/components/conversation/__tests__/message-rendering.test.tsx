@@ -53,7 +53,6 @@ function message(
     reactions: [],
     flaggedAt: null,
     postSuggestion: null,
-    translatedFrom: null,
   }
 }
 
