@@ -155,8 +155,6 @@ Cross-provider follow-up validation on 2026-09-21:
 - After the final reconnect fence: **31 auth/provider-flow tests passed**. The
   real one-connection pool test preserves refresh serialization without a nested
   global connection. The remote-inspection race test rejects new-install credentials.
-- OAuth fragment/gateway and same-origin checks passed, including tenant-origin
-  handoff after a shared gateway bounce and rejection of gateway-origin token POSTs.
 - Browser checks covered all six customer-context labels at desktop/mobile widths,
   inbound status review in light/dark mode, and failed saves retaining the current
   value. No page errors or horizontal overflow. A separate browser check executed

@@ -39,6 +39,12 @@ const FORBIDDEN_SYMBOLS = [
   'startTelemetry(',
   'emitPlgEvent(',
   'recordPlgEvent(',
+  // The shared-OAuth gateway: integrations now always use the tenant's own
+  // callback origin, so these env vars must not come back.
+  'INTEGRATION_OAUTH_GATEWAY_URL',
+  'INTEGRATION_GATEWAY_FORWARD_SECRET',
+  'verifyGatewayForward(',
+  'verifyGatewayReceipt(',
 ]
 
 function offenders(needles: readonly string[]): string[] {

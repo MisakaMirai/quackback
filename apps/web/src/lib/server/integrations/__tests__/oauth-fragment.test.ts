@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, expect, it, vi } from 'vitest'
+import { beforeEach, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
   exchange: vi.fn(async (token: string) => ({ accessToken: token })),
@@ -35,9 +35,7 @@ function request(method = 'GET', cookie = 'signed-state', token = 'private-token
     ...(method === 'POST' ? { body: JSON.stringify({ token }) } : {}),
   })
 }
-afterEach(() => vi.unstubAllEnvs())
 beforeEach(() => {
-  vi.stubEnv('INTEGRATION_OAUTH_GATEWAY_URL', '')
   vi.clearAllMocks()
   mocks.state.mockReturnValue({
     type: 'trello_oauth',
@@ -87,25 +85,6 @@ it.each(['GET', 'POST'])('rejects a non-dashboard session on %s', async (method)
 it('rejects a cross-origin token POST', async () => {
   const input = request('POST')
   input.headers.set('origin', 'https://foreign.example')
-  expect((await handleOAuthCallback(input, 'trello')).status).toBe(403)
-  expect(mocks.exchange).not.toHaveBeenCalled()
-})
-
-it('accepts the tenant browser handoff after a shared OAuth gateway bounce', async () => {
-  vi.stubEnv('INTEGRATION_OAUTH_GATEWAY_URL', 'https://app.quackback.io')
-  const response = await handleOAuthCallback(request('POST'), 'trello')
-  expect(response.status).toBe(302)
-  expect(mocks.exchange).toHaveBeenCalledWith(
-    'private-token',
-    'https://app.quackback.io/oauth/trello/callback',
-    undefined,
-    undefined
-  )
-})
-it('does not accept the gateway as the browser origin on a tenant token POST', async () => {
-  vi.stubEnv('INTEGRATION_OAUTH_GATEWAY_URL', 'https://app.quackback.io')
-  const input = request('POST')
-  input.headers.set('origin', 'https://app.quackback.io')
   expect((await handleOAuthCallback(input, 'trello')).status).toBe(403)
   expect(mocks.exchange).not.toHaveBeenCalled()
 })

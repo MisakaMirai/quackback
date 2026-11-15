@@ -63,6 +63,6 @@ Migrations create large search indexes with `CREATE INDEX CONCURRENTLY` after th
 
 Validate representative workspaces with `EXPLAIN (ANALYZE, BUFFERS)`: nearest-neighbour queries should order by the bare cosine-distance operator ascending and select an HNSW index scan. Tune session-local `hnsw.ef_search` only after measuring recall against an exact scan; increasing it improves recall at the cost of latency.
 
-## Integration gateway and Slack assistant
+## Integration credentials and the Slack assistant
 
 For single-tenancy deployments with `PLATFORM_CREDENTIALS_SOURCE=env`, complete credentials for an individual provider are managed from environment variables; other providers fall back to database credentials. Slack uses `INTEGRATION_SLACK_CLIENT_ID`, `INTEGRATION_SLACK_CLIENT_SECRET`, and `INTEGRATION_SLACK_SIGNING_SECRET`. Existing tenant-registered resource webhooks retain their current routes and secrets.
