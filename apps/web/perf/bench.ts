@@ -43,6 +43,7 @@ import {
 } from '@playwright/test'
 import { parseArgs } from 'node:util'
 import { mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 import { journeys, type Actor, type BrowserJourney, type DocumentJourney } from './journeys'
 import { BENCH_URL, signedInContext, startBenchServer } from './config'
 
@@ -63,8 +64,8 @@ const { values: args } = parseArgs({
 
 // PERF_APP_DIR benches another checkout's build with these journeys, which is
 // how a before/after comparison runs on identical instruments.
-const appDir = process.env.PERF_APP_DIR ?? new URL('..', import.meta.url).pathname
-const perfDir = new URL('.', import.meta.url).pathname
+const appDir = process.env.PERF_APP_DIR ?? fileURLToPath(new URL('..', import.meta.url))
+const perfDir = fileURLToPath(new URL('.', import.meta.url))
 const budgetsPath = `${perfDir}budgets.json`
 const baseURL = BENCH_URL
 

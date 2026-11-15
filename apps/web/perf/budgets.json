@@ -442,19 +442,6 @@
       "htmlTransferKB": 33.4,
       "componentRenders": 434
     },
-    "sweep:doc:admin:/admin/settings/billing": {
-      "dbQueries": 20,
-      "htmlKB": 66.7
-    },
-    "sweep:ui:admin:/admin/settings/billing": {
-      "dbQueries": 20,
-      "serverRequests": 1,
-      "requests": 106,
-      "jsRequests": 102,
-      "jsKB": 405.3,
-      "htmlTransferKB": 29.9,
-      "componentRenders": 348
-    },
     "sweep:doc:admin:/admin/settings/boards": {
       "dbQueries": 8,
       "htmlKB": 74.5
