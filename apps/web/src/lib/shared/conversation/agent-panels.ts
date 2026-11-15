@@ -22,7 +22,6 @@ export const AGENT_CONVERSATION_PANELS = [
   'assistantActivity',
   'languagePreference',
   'macros',
-  'runnableWorkflows',
   'teamMembers',
 ] as const
 

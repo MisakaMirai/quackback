@@ -79,7 +79,6 @@ export type LaunchTaskHref =
   | '/admin/settings/general'
   | '/admin/settings/widget/install'
   | '/admin/settings/integrations'
-  | '/admin/settings/agent'
   | '/admin/help-center'
   | '/admin/feedback'
   | '/admin/inbox'
@@ -362,18 +361,6 @@ function buildOutcomeTasks(
     actionLabel: 'Connect Messenger',
     completedLabel: 'View installation',
   }
-  const setUpQuinn: LaunchTaskInput = {
-    id: 'set-up-quinn',
-    title: 'Set up the AI agent',
-    description:
-      'The AI agent answers customers in Messenger. Check its name, voice and knowledge.',
-    completed: status.hasAgentAnswering === true,
-    canAct: permissions.assistantManage,
-    classification: 'prerequisite',
-    href: '/admin/settings/agent',
-    actionLabel: 'Set up the AI agent',
-    completedLabel: 'Open Agent',
-  }
   const helpDraft: LaunchTaskInput = {
     id: 'help-article',
     title: 'Publish your first article',
@@ -462,7 +449,6 @@ function buildOutcomeTasks(
   if (status.hasPublicBoard) inputs.push(distributeFeedback)
   if (features.changelog) inputs.push(publishChangelog)
   if (features.supportInbox) inputs.push(connectMessenger)
-  if (features.supportInbox && features.assistant) inputs.push(setUpQuinn)
   if (features.helpCenter) inputs.push(helpDraft)
   if (features.statusPage) inputs.push(addStatusService)
   if (features.statusPage && outcome === 'status_page') inputs.push(shareStatusPage)

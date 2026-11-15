@@ -5,7 +5,7 @@ import {
   searchAskDestinations,
   buildAskStarterPrompts,
 } from '../ask-destinations'
-import { SETTINGS_PAGES, AUTOMATION_PAGES } from '../settings-pages'
+import { SETTINGS_PAGES } from '../settings-pages'
 
 const options = {
   permissions: new Set(ALL_PERMISSIONS),
@@ -20,9 +20,9 @@ const options = {
 }
 
 describe('Ask destinations', () => {
-  it('includes every registered settings and automation page once', () => {
+  it('includes every registered settings page once', () => {
     const paths = buildAskDestinations(options).map((item) => item.href)
-    for (const path of [...Object.keys(SETTINGS_PAGES), ...Object.keys(AUTOMATION_PAGES)]) {
+    for (const path of Object.keys(SETTINGS_PAGES)) {
       expect(
         paths.filter((candidate) => candidate === path),
         path

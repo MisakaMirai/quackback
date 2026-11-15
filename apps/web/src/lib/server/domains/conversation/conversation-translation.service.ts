@@ -73,7 +73,7 @@ import { canActAsAgent } from '@/lib/server/policy/conversation'
 import type { Actor } from '@/lib/server/policy/types'
 import type { TiptapContent } from '@/lib/shared/db-types'
 import { richMessageFallbackLabel } from '@/lib/server/messages/message-core'
-import { wrapUntrustedText } from '@/lib/server/domains/assistant/injection-guard'
+import { wrapUntrustedText } from '@/lib/server/domains/ai/injection-guard'
 import {
   TRANSLATION_UNAVAILABLE_MESSAGE,
   TRANSLATION_RICH_CONTENT_MESSAGE,

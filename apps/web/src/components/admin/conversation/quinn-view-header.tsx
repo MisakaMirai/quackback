@@ -1,6 +1,3 @@
-import { Link } from '@tanstack/react-router'
-import { usePermission } from '@/lib/client/hooks/use-permission'
-import { PERMISSIONS } from '@/lib/shared/permissions'
 import { cn } from '@/lib/shared/utils'
 
 type QuinnBucket = 'resolved' | 'escalated' | 'pending'
@@ -14,8 +11,7 @@ const QUINN_BUCKETS: { value: QuinnBucket | undefined; label: string }[] = [
 ]
 
 /**
- * The header of the Quinn activity view: the outcome sub-filter, and for
- * assistant managers a link to the Agent settings.
+ * The header of the Quinn activity view: the outcome sub-filter.
  */
 export function QuinnViewHeader({
   value,
@@ -26,7 +22,6 @@ export function QuinnViewHeader({
   counts?: { resolved: number; escalated: number; pending: number }
   onChange: (value?: QuinnBucket) => void
 }) {
-  const canConfigure = usePermission(PERMISSIONS.AI_CUSTOMER_MANAGE)
   const countFor = (v?: QuinnBucket): number | undefined => {
     if (!counts) return undefined
     return v ? counts[v] : counts.resolved + counts.escalated + counts.pending
@@ -53,14 +48,6 @@ export function QuinnViewHeader({
           </button>
         )
       })}
-      {canConfigure && (
-        <Link
-          to="/admin/settings/agent"
-          className="ms-auto rounded-full px-2.5 py-1 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-        >
-          Configure the agent
-        </Link>
-      )}
     </div>
   )
 }

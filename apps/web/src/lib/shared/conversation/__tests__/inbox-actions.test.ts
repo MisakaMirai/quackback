@@ -18,7 +18,6 @@ describe('INBOX_ACTIONS registry', () => {
     for (const id of [
       'reply',
       'note',
-      'copilot',
       'macro',
       'assign',
       'assign_team',
@@ -46,13 +45,13 @@ describe('INBOX_ACTIONS registry', () => {
     const note = byId('note')
     expect(note.shortcut).toBe('n')
     expect(note.group).toBe('Reply')
-    // The palette shows Reply first, then Note, then Copilot.
+    // The palette shows Reply first, then Note.
     const replyGroup = INBOX_ACTIONS.filter((a) => a.group === 'Reply').map((a) => a.id)
     expect(replyGroup.indexOf('note')).toBe(replyGroup.indexOf('reply') + 1)
   })
 
   it('assigns the contract scopes', () => {
-    for (const id of ['reply', 'note', 'copilot', 'next', 'prev']) {
+    for (const id of ['reply', 'note', 'next', 'prev']) {
       expect(byId(id).scope).toBe('active')
     }
     for (const id of [
@@ -246,41 +245,5 @@ describe('isInboxActionEnabled', () => {
     expect(
       isInboxActionEnabled(openTicket, { hasActiveConversation: false, hasSelection: false })
     ).toBe(false)
-  })
-
-  it('copilot needs copilotAvailable AND an active item', () => {
-    const copilot = byId('copilot')
-    expect(
-      isInboxActionEnabled(copilot, {
-        hasActiveConversation: true,
-        hasSelection: false,
-        copilotAvailable: true,
-      })
-    ).toBe(true)
-    // Tab unavailable (flag off / no permission / <xl viewport): disabled even
-    // with an active item.
-    expect(
-      isInboxActionEnabled(copilot, { hasActiveConversation: true, hasSelection: false })
-    ).toBe(false)
-    // Available but nothing open: there is no item-scoped panel to ask about.
-    expect(
-      isInboxActionEnabled(copilot, {
-        hasActiveConversation: false,
-        hasSelection: true,
-        copilotAvailable: true,
-      })
-    ).toBe(false)
-  })
-
-  it('copilot works for a ticket target too (the panel is item-scoped, both kinds)', () => {
-    const copilot = byId('copilot')
-    expect(
-      isInboxActionEnabled(copilot, {
-        hasActiveConversation: true,
-        hasSelection: false,
-        hasTicketTarget: true,
-        copilotAvailable: true,
-      })
-    ).toBe(true)
   })
 })

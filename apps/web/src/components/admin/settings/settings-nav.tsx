@@ -3,7 +3,7 @@ import { Link, useRouterState } from '@tanstack/react-router'
 import { cn } from '@/lib/shared/utils'
 import { MENU_ICON, MENU_ROW } from '@/components/ui/menu'
 import { FilterSection } from '@/components/shared/filter-section'
-import { AUTOMATION_PAGE_ICONS, SETTINGS_PAGE_ICONS } from './settings-page-icons'
+import { SETTINGS_PAGE_ICONS } from './settings-page-icons'
 import {
   buildNavSections,
   isNavModule,
@@ -17,7 +17,7 @@ import { useFeatureFlags, usePermissions } from '@/lib/client/hooks/use-root-con
 
 type IconComponent = ComponentType<{ className?: string }>
 
-const ICONS: Record<string, IconComponent> = { ...SETTINGS_PAGE_ICONS, ...AUTOMATION_PAGE_ICONS }
+const ICONS: Record<string, IconComponent> = { ...SETTINGS_PAGE_ICONS }
 
 /** The icon of a row or module, keyed by its page path. */
 function iconFor(path: string): IconComponent {

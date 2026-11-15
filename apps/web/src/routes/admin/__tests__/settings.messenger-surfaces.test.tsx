@@ -147,29 +147,6 @@ describe('Closed conversations reopen switch', () => {
   })
 })
 
-describe('AI agent row', () => {
-  it('reads "The AI agent answers first" with a Configure link', () => {
-    assistant = { enabled: true, respond: true }
-    renderPage()
-    expect(screen.getByText('The AI agent answers first')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Configure' }).getAttribute('href')).toBe(
-      '/admin/settings/agent'
-    )
-    expect(screen.queryByText(/Fronting conversations/)).toBeNull()
-  })
-
-  it('reads "The AI agent is off" when answering is off or unset', () => {
-    for (const value of [{ enabled: true, respond: false }, { enabled: true }]) {
-      assistant = value
-      const { unmount } = renderPage()
-      expect(screen.getByText('The AI agent is off')).toBeInTheDocument()
-      expect(screen.queryByText('The AI agent answers first')).toBeNull()
-      expect(screen.queryByText('Answering is off.')).toBeNull()
-      unmount()
-    }
-  })
-})
-
 describe('Translation chips', () => {
   it('mark the selected locale with the primary style, not green', () => {
     renderPage()

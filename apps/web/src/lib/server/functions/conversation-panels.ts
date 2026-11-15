@@ -24,7 +24,6 @@ import { PERMISSIONS, type PermissionKey } from '@/lib/shared/permissions'
 import { logger } from '@/lib/server/logger'
 import type { CompanyDTO } from './companies'
 import type { PortalUserDetailDTO } from './admin'
-import type { RunnableWorkflowDTO } from './workflows'
 
 const log = logger.child({ component: 'conversation-panels' })
 
@@ -39,7 +38,6 @@ export interface AgentConversationPanels {
   assistantActivity?: ConversationAssistantActivity | null
   languagePreference?: string | null
   macros?: { macros: MacroDTO[] }
-  runnableWorkflows?: RunnableWorkflowDTO[]
   teamMembers?: TeamMember[]
 }
 
@@ -73,7 +71,6 @@ const PANEL_PERMISSION: Partial<Record<AgentConversationPanel, PermissionKey>> =
   contact: PERMISSIONS.PEOPLE_VIEW,
   company: PERMISSIONS.COMPANY_VIEW,
   macros: PERMISSIONS.CONVERSATION_REPLY,
-  runnableWorkflows: PERMISSIONS.CONVERSATION_REPLY,
   teamMembers: PERMISSIONS.MEMBER_VIEW,
 }
 
@@ -151,13 +148,6 @@ export async function loadAgentConversationPanels(
     macros: async () => {
       const { listMacros } = await import('@/lib/server/domains/macros/macro.service')
       return { macros: await listMacros('support') }
-    },
-    runnableWorkflows: async () => {
-      const [{ listWorkflows }, { toRunnableWorkflows }] = await Promise.all([
-        import('@/lib/server/domains/workflows/workflow.service'),
-        import('./workflows'),
-      ])
-      return toRunnableWorkflows(await listWorkflows())
     },
     teamMembers: async () => {
       const { listTeamMembers } = await import('@/lib/server/domains/principals/principal.service')

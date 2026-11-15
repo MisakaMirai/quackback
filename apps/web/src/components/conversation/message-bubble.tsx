@@ -68,7 +68,6 @@ import {
   AssistantSourcesTrace,
   AssistantAnswer,
 } from '@/components/shared/conversation/assistant-turn'
-import { PendingActionCard } from '@/components/conversation/pending-action-card'
 import { RichTextEditor } from '@/components/ui/rich-text-editor'
 import {
   CONVERSATION_EDITOR_FEATURES,
@@ -546,11 +545,7 @@ export const AgentMessageBubble = memo(function AgentMessageBubble({
   // entry into the convert dialog. Captured as a const so the click handler can
   // safely pass the narrowed (non-null) value into `onTrackSuggestion`.
   const suggestion = isNote ? message.postSuggestion : null
-  // Agent-only pointer to a Quinn write-tool proposal awaiting approval
-  // (populated only on the internal note that announced it); the card fetches
-  // the live pending-action row itself, so this only needs to render once.
-  const pendingAction = isNote ? message.assistantPendingAction : null
-
+  // A note bubble carries the internal author attribution; replies do not.
   return (
     <div
       // The scroll/flash target for "jump to message" deep-links.
@@ -810,15 +805,6 @@ export const AgentMessageBubble = memo(function AgentMessageBubble({
             </button>
           </div>
         )}
-        {isNote && pendingAction && (
-          <div className="max-w-[85%]">
-            <PendingActionCard
-              pendingActionId={pendingAction.pendingActionId}
-              summary={pendingAction.summary}
-            />
-          </div>
-        )}
-
         {message.reactions.length > 0 && (
           <div className="mt-1 flex flex-wrap gap-1">
             {message.reactions.map((r) => (

@@ -93,7 +93,7 @@ function panel(client: QueryClient) {
         onSelectItem={() => {}}
         onTrackAsFeedback={() => {}}
         onCreateTicket={() => {}}
-        onInsertFromCopilot={() => {}}
+
         visible={false}
       />
     </QueryClientProvider>

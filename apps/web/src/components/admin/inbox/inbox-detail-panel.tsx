@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo, useRef, useState } from 'react'
+import { memo, useEffect, useMemo, useState } from 'react'
 import { FormattedMessage } from 'react-intl'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
@@ -35,7 +35,6 @@ import { FileRow } from '@/components/shared/files/file-card'
 import { useFileViewer } from '@/components/shared/files/file-viewer-context'
 import { toViewerFile } from '@/components/shared/files/types'
 
-import { useCopilotTabGate } from '@/lib/client/hooks/use-copilot-tab-gate'
 import { formatSlaCountdown, dueCountdownTone } from '@/lib/shared/conversation/sla'
 import { PriorityControl } from '@/components/admin/conversation/priority-control'
 import { AssigneeControl } from '@/components/admin/conversation/assignee-control'
@@ -46,7 +45,6 @@ import { UnreachableBadge, CHANNEL_LABEL } from '@/components/admin/conversation
 import { getChannelDescriptor, githubIssueRefFromUrl } from '@/lib/shared/channels'
 import { TONE_CLASSES } from '@/components/admin/conversation/sla-chip'
 import { CompanyCard } from '@/components/admin/conversation/company-card'
-import { CopilotPanel } from '@/components/admin/conversation/copilot-panel'
 import { supportContactName } from '@/lib/shared/support-contact-name'
 import { usePersonBlockStatus } from '@/components/admin/users/block-person-control'
 import { TicketStageChip, TicketTypeBadge } from '@/components/admin/inbox/ticket-chips'
@@ -64,7 +62,6 @@ import { Badge } from '@/components/ui/badge'
 import { Avatar } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { MENU_LABEL } from '@/components/ui/menu'
 import { DETAIL_DATE, DetailDate, DetailRow as Row } from '@/components/shared/detail-row'
@@ -250,13 +247,6 @@ export interface InboxDetailPanelProps {
   /** Open the create-ticket flow, prefilled from this conversation. Shown only
    *  on a plain conversation with no linked ticket. */
   onCreateTicket: () => void
-  /** Insert a Copilot answer into the reply composer. */
-  onInsertFromCopilot: (text: string) => void
-  /** Bumped by the route's Ask Copilot action (the `q` shortcut / command
-   *  bar) — a change switches to the Copilot tab and focuses its ask input.
-   *  Same bump-a-counter ping as the thread's `createTicketToken`. No-op when
-   *  the tab isn't available (flag/permission off). */
-  openCopilotToken?: number
   /** Distinct GitHub users who have written on this issue. */
   issuePeople?: { principalId: string; displayName: string; avatarUrl: string | null }[]
   /** Whether the viewport shows the panel (DETAIL_PANEL_MEDIA_QUERY, read by
@@ -274,8 +264,7 @@ export interface InboxDetailPanelProps {
  * type), assembled from the existing per-kind pieces. Section order: Contact
  * (requester principal, hidden for back_office/tracker), Ticket card (ticket
  * properties + the create-ticket empty slot), Properties, Attributes
- * (conversation-only), Links, Quinn activity (conversation-only). Details/
- * Copilot tabs unchanged from the pre-M5 conversation-only panel.
+ * (conversation-only), Links, Quinn activity (conversation-only).
  */
 export const InboxDetailPanel = memo(function InboxDetailPanel({
   item,
@@ -285,8 +274,6 @@ export const InboxDetailPanel = memo(function InboxDetailPanel({
   onSelectItem,
   onTrackAsFeedback,
   onCreateTicket,
-  onInsertFromCopilot,
-  openCopilotToken,
   issuePeople,
   visible: isVisible,
   overlay = false,
@@ -295,36 +282,8 @@ export const InboxDetailPanel = memo(function InboxDetailPanel({
   const asideClassName = overlay
     ? 'flex h-full min-h-0 w-full flex-col overflow-hidden'
     : 'hidden h-full min-h-0 w-80 shrink-0 flex-col overflow-hidden border-l border-border/50 bg-card/20 min-[1680px]:flex'
-  // The flag + copilot.use gate, shared with the inbox route's
-  // `copilotAvailable` so the Ask Copilot affordances can never disagree
-  // with the tab actually existing.
-  const showCopilotTab = useCopilotTabGate()
 
-  // Details|Copilot tab state is controlled (rather than Radix-internal) so
-  // the route's Ask Copilot action can switch tabs from outside via
-  // `openCopilotToken`. A bump also moves focus into the ask input — the
-  // shortcut's promise is "ready to type", and the focus ring makes the move
-  // visible. Guarded on `showCopilotTab` so a stray bump with the tab
-  // unavailable is a clean no-op.
-  const [tab, setTab] = useState('details')
   const [activityOpen, setActivityOpen] = useState(false)
-  const askInputRef = useRef<HTMLTextAreaElement>(null)
-  // Baseline 0 (NOT the mount-time prop): the route resets the token to 0
-  // whenever the selected item changes, so a nonzero token at mount can only
-  // mean the bump targeted THIS item while the panel wasn't mounted yet (e.g.
-  // `q` pressed during the item's load window) — honor it. A stale token from
-  // a previous item can never reach here (the route-side reset guarantees it).
-  const openCopilotTokenRef = useRef(0)
-  useEffect(() => {
-    if (openCopilotToken === undefined || openCopilotToken === openCopilotTokenRef.current) return
-    openCopilotTokenRef.current = openCopilotToken
-    if (openCopilotToken === 0) return // the route-side reset, not a bump
-    if (!showCopilotTab) return
-    setTab('copilot')
-    // Focus once the (keepMounted + CSS-hidden) Copilot content is un-hidden
-    // by the state commit above — rAF runs after React flushes it.
-    requestAnimationFrame(() => askInputRef.current?.focus())
-  }, [openCopilotToken, showCopilotTab])
 
   const isTicketItem = item.kind === 'ticket'
   // back_office/tracker tickets have no requester concept at all (§2.7) — the
@@ -906,56 +865,9 @@ export const InboxDetailPanel = memo(function InboxDetailPanel({
     </ScrollArea>
   )
 
-  // Flag off (or no permission): no Tabs wrapper at all — byte-identical to
-  // the pre-Copilot panel.
-  if (!showCopilotTab) {
-    return (
-      <aside aria-label="Item details" className={asideClassName}>
-        {detailsBody}
-      </aside>
-    )
-  }
-
   return (
     <aside aria-label="Item details" className={asideClassName}>
-      <Tabs
-        value={tab}
-        onValueChange={setTab}
-        variant="line"
-        className="h-full min-h-0 flex-1 gap-0 overflow-hidden"
-      >
-        <TabsList className="m-3 mb-0 self-start">
-          <TabsTrigger value="details">Details</TabsTrigger>
-          <TabsTrigger value="copilot">
-            <SparklesIcon className="h-3.5 w-3.5" />
-            Copilot
-          </TabsTrigger>
-        </TabsList>
-        {/* Both tabs stay mounted (keepMounted + CSS-hide instead of the
-            default unmount-on-inactive) so Details keeps its scroll position
-            and the Copilot thread survives switching tabs within the same
-            item view — it only resets when the item itself changes (the
-            whole subtree remounts via `key={selectedId}`). */}
-        <TabsContent
-          value="details"
-          keepMounted
-          className="min-h-0 flex flex-1 flex-col overflow-hidden"
-        >
-          {detailsBody}
-        </TabsContent>
-        <TabsContent
-          value="copilot"
-          keepMounted
-          className="min-h-0 flex flex-1 flex-col overflow-hidden"
-        >
-          <CopilotPanel
-            item={item}
-            flags={flags}
-            onInsert={onInsertFromCopilot}
-            askInputRef={askInputRef}
-          />
-        </TabsContent>
-      </Tabs>
+      {detailsBody}
     </aside>
   )
 })

@@ -9,13 +9,9 @@
 import { z } from 'zod'
 import { PERMISSIONS, type PermissionKey } from '@/lib/shared/permissions'
 import { officeHoursScheduleSchema } from '@/lib/shared/office-hours'
-import { settingsPatchSchemas, type SettingsArea } from '@/lib/shared/assistant/settings-proposals'
+import { settingsPatchSchemas, type SettingsArea } from '@/lib/shared/settings-areas'
 
-export {
-  SETTINGS_AREAS,
-  settingsAreaSchema,
-  type SettingsArea,
-} from '@/lib/shared/assistant/settings-proposals'
+export { SETTINGS_AREAS, settingsAreaSchema, type SettingsArea } from '@/lib/shared/settings-areas'
 
 export interface SettingsAreaMeta {
   id: SettingsArea

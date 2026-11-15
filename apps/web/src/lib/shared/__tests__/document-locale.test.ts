@@ -14,19 +14,6 @@ describe('documentLocale', () => {
     expect(documentLocale(['__root__', '/widget'], 'ar')).toBe('ar')
     expect(documentLocale(['__root__', '/unsubscribe'], 'ar')).toBe('ar')
   })
-  it('localizes the AI & Automation pages under settings and the workflow builder', () => {
-    for (const id of [
-      '/admin/settings/agent',
-      '/admin/settings/copilot',
-      '/admin/settings/skills',
-      '/admin/settings/connectors',
-      '/admin/settings/connectors_/$connectorId',
-      '/admin/settings/workflows',
-      '/admin/settings_/workflows/$workflowId',
-    ]) {
-      expect(documentLocale(['__root__', '/admin', id], 'zh-cn'), id).toBe('zh-cn')
-    }
-  })
   it('keeps the other settings pages on the default', () => {
     for (const id of [
       '/admin/settings',

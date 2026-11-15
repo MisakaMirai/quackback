@@ -10,10 +10,18 @@
 import type { ConversationId } from '@quackback/ids'
 import { logger } from '@/lib/server/logger'
 import { boundedServiceActor } from '@/lib/server/policy/service-actor'
-import { AUTOMATION_PERMISSIONS } from '@/lib/server/domains/workflows/workflow-actor-permissions'
+import { PERMISSIONS, type PermissionKey } from '@/lib/shared/permissions'
 import { getWorkflowCloseSpamSettings } from '@/lib/server/domains/settings/settings.workflows'
 
 const log = logger.child({ component: 'close-if-spam' })
+
+/** Bounded authority for the automatic close: support actions only. */
+const CLOSE_SPAM_PERMISSIONS: ReadonlySet<PermissionKey> = new Set([
+  PERMISSIONS.CONVERSATION_VIEW,
+  PERMISSIONS.CONVERSATION_VIEW_ALL,
+  PERMISSIONS.CONVERSATION_REPLY,
+  PERMISSIONS.CONVERSATION_SET_STATUS,
+])
 
 export function isSpamClassification(
   applied: ReadonlyArray<{ key: string; optionLabel: string }>
@@ -35,7 +43,7 @@ export async function maybeCloseConversationIfSpamClassified(
     await setConversationStatus(
       conversationId,
       'closed',
-      boundedServiceActor(AUTOMATION_PERMISSIONS)
+      boundedServiceActor(CLOSE_SPAM_PERMISSIONS)
     )
   } catch (err) {
     log.warn({ err, conversationId }, 'close-spam failed')

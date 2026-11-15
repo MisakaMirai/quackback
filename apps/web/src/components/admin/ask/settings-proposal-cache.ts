@@ -1,5 +1,5 @@
 import type { QueryClient } from '@tanstack/react-query'
-import type { SettingsArea } from '@/lib/shared/assistant/settings-proposals'
+import type { SettingsArea } from '@/lib/shared/settings-areas'
 
 const AREA_QUERY_KEYS: Record<SettingsArea, readonly (readonly string[])[]> = {
   branding: [

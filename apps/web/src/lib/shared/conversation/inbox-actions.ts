@@ -16,7 +16,6 @@
 export type InboxActionId =
   | 'reply'
   | 'note'
-  | 'copilot'
   | 'macro'
   | 'assign'
   | 'assign_team'
@@ -76,9 +75,6 @@ export const INBOX_ACTIONS: readonly InboxActionDescriptor[] = [
   // A note-only thread (back_office/tracker tickets) has nothing else to
   // switch from, so the key is a plain focus there.
   { id: 'note', label: 'Add internal note', group: 'Reply', scope: 'active', shortcut: 'n' },
-  // q for Quinn. Additionally gated on `copilotAvailable` (flag + copilot.use
-  // + the ≥xl viewport that shows the detail panel) — see isInboxActionEnabled.
-  { id: 'copilot', label: 'Ask Copilot', group: 'Reply', scope: 'active', shortcut: 'q' },
   { id: 'macro', label: 'Reply with macro', group: 'Reply', scope: 'both', shortcut: 'm' },
   { id: 'assign', label: 'Assign to teammate', group: 'Assign', scope: 'both', shortcut: 'a' },
   { id: 'assign_team', label: 'Assign to team', group: 'Assign', scope: 'both', shortcut: 't' },
@@ -134,12 +130,6 @@ export interface InboxActionContext {
    * the inbox route, which reads the linked-ticket chip off the list row.
    */
   hasLinkedTicket?: boolean
-  /**
-   * True when the detail panel's Copilot tab exists for this viewer right now
-   * (`copilot.use` + the ≥xl viewport that renders the panel). Optional; when
-   * absent the `copilot` action is disabled.
-   */
-  copilotAvailable?: boolean
 }
 
 /**
@@ -150,11 +140,8 @@ export interface InboxActionContext {
  * conversation target, but disabled once the target IS a ticket (nothing to
  * create from) or when the active conversation already links a customer
  * ticket (never mint an orphan — `open_ticket`, enabled on exactly that
- * condition, navigates to the linked ticket instead). Copilot additionally
- * requires the tab to actually exist for this viewer/viewport
- * (`copilotAvailable`), so the palette row and the `q` key can never point at
- * a panel that isn't rendered. Pure; shared by the palette and unit-tested
- * directly.
+ * condition, navigates to the linked ticket instead). Pure; shared by the
+ * palette and unit-tested directly.
  */
 export function isInboxActionEnabled(
   descriptor: InboxActionDescriptor,
@@ -166,7 +153,6 @@ export function isInboxActionEnabled(
   if (descriptor.id === 'macro' && ctx.hasTicketTarget) return false
   if (descriptor.id === 'create_ticket') return !ctx.hasTicketTarget && !ctx.hasLinkedTicket
   if (descriptor.id === 'open_ticket') return ctx.hasLinkedTicket === true
-  if (descriptor.id === 'copilot' && !ctx.copilotAvailable) return false
   switch (descriptor.scope) {
     case 'active':
       return ctx.hasActiveConversation

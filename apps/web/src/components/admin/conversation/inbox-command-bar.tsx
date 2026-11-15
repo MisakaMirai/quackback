@@ -40,9 +40,6 @@ export interface InboxCommandBarProps {
   /** The linked ticket's number, so the Open ticket row can read
    *  "Open ticket #N" (falls back to the bare "Open ticket" label). */
   linkedTicketNumber?: number
-  /** True when the detail panel's Copilot tab exists for this viewer right
-   *  now (flag + copilot.use + ≥xl viewport) — gates the Ask Copilot row. */
-  copilotAvailable?: boolean
 }
 
 export const InboxCommandBar = memo(function InboxCommandBar({
@@ -54,7 +51,6 @@ export const InboxCommandBar = memo(function InboxCommandBar({
   hasTicketTarget,
   hasLinkedTicket,
   linkedTicketNumber,
-  copilotAvailable,
 }: InboxCommandBarProps) {
   function run(id: InboxActionId) {
     onAction(id)
@@ -84,7 +80,6 @@ export const InboxCommandBar = memo(function InboxCommandBar({
                       hasSelection,
                       hasTicketTarget,
                       hasLinkedTicket,
-                      copilotAvailable,
                     })
                     const label =
                       action.id === 'open_ticket' && linkedTicketNumber != null

@@ -56,7 +56,6 @@ export const conversationPanelEntries = {
     staleTime: 5 * 60_000,
   }),
   macros: () => ({ queryKey: ['macros', 'support'] as const, staleTime: 60_000 }),
-  runnableWorkflows: () => ({ queryKey: ['workflows', 'runnable'] as const, staleTime: 60_000 }),
   teamMembers: () => ({ queryKey: ['admin', 'team-members'] as const, staleTime: 60_000 }),
 }
 
@@ -94,7 +93,6 @@ function panelEntries(
     assistantActivity: shown ? e.assistantActivity(conversationId) : 'skip',
     languagePreference: e.languagePreference(),
     macros: e.macros(),
-    runnableWorkflows: e.runnableWorkflows(),
     teamMembers: e.teamMembers(),
   }
 }
@@ -128,7 +126,6 @@ export function seedConversationPanels(
       assistantActivity: e.assistantActivity(conversationId),
       languagePreference: e.languagePreference(),
       macros: e.macros(),
-      runnableWorkflows: e.runnableWorkflows(),
       teamMembers: e.teamMembers(),
     },
     loaded

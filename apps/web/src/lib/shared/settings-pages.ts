@@ -1,5 +1,3 @@
-import { defineMessages } from 'react-intl'
-
 interface SettingsPageEntry {
   label: string
 }
@@ -53,29 +51,6 @@ export const SETTINGS_PAGES = {
 } as const satisfies Record<string, SettingsPageEntry>
 
 export type SettingsPagePath = keyof typeof SETTINGS_PAGES
-
-const automationMessages = defineMessages({
-  agent: { id: 'automation.nav.agent', defaultMessage: 'Agent' },
-  copilot: { id: 'automation.nav.copilot', defaultMessage: 'Copilot' },
-  connectors: { id: 'automation.nav.connectors', defaultMessage: 'Connectors' },
-  skills: { id: 'automation.nav.skills', defaultMessage: 'Skills' },
-  workflows: { id: 'automation.nav.workflows', defaultMessage: 'Workflows' },
-})
-
-/**
- * The AI & Automation pages, which are settings pages too. Their labels are
- * messages, so the page title is translated; the settings nav shows each
- * message's default text.
- */
-export const AUTOMATION_PAGES = {
-  '/admin/settings/agent': automationMessages.agent,
-  '/admin/settings/copilot': automationMessages.copilot,
-  '/admin/settings/connectors': automationMessages.connectors,
-  '/admin/settings/skills': automationMessages.skills,
-  '/admin/settings/workflows': automationMessages.workflows,
-} as const
-
-export type AutomationPagePath = keyof typeof AUTOMATION_PAGES
 
 export function settingsPageLabel(path: SettingsPagePath): string {
   const page = SETTINGS_PAGES[path]

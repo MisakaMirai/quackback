@@ -22,7 +22,6 @@ const mocks = vi.hoisted(() => ({
   getLatestInvolvement: vi.fn(),
   findUser: vi.fn(),
   listMacros: vi.fn(),
-  listWorkflows: vi.fn(),
   listTeamMembers: vi.fn(),
   getStageLabels: vi.fn(),
 }))
@@ -52,9 +51,6 @@ vi.mock('@/lib/server/db', () => ({
   user: { id: 'user.id' },
 }))
 vi.mock('@/lib/server/domains/macros/macro.service', () => ({ listMacros: mocks.listMacros }))
-vi.mock('@/lib/server/domains/workflows/workflow.service', () => ({
-  listWorkflows: mocks.listWorkflows,
-}))
 vi.mock('@/lib/server/domains/principals/principal.service', () => ({
   listTeamMembers: mocks.listTeamMembers,
 }))
@@ -66,10 +62,6 @@ vi.mock('../companies', () => ({
 }))
 vi.mock('../admin', () => ({
   serializePortalUserDetail: (d: { principalId: string }) => ({ ...d, serialized: true }),
-}))
-vi.mock('../workflows', () => ({
-  toRunnableWorkflows: (all: { id: string; status: string }[]) =>
-    all.filter((w) => w.status === 'live').map((w) => ({ id: w.id })),
 }))
 vi.mock('@/lib/server/logger', () => ({
   logger: { child: () => ({ debug: vi.fn(), error: vi.fn(), warn: vi.fn(), info: vi.fn() }) },
@@ -114,10 +106,6 @@ beforeEach(() => {
   mocks.getLatestInvolvement.mockResolvedValue(null)
   mocks.findUser.mockResolvedValue({ preferredLanguage: 'fr' })
   mocks.listMacros.mockResolvedValue([{ id: 'macro_1' }])
-  mocks.listWorkflows.mockResolvedValue([
-    { id: 'wf_live', status: 'live' },
-    { id: 'wf_draft', status: 'draft' },
-  ])
   mocks.listTeamMembers.mockResolvedValue([{ id: 'principal_a' }])
   mocks.getStageLabels.mockResolvedValue({ received: 'Received' })
 })
@@ -154,7 +142,6 @@ describe('loadAgentConversationPanels', () => {
       assistantActivity: null,
       languagePreference: 'fr',
       macros: { macros: [{ id: 'macro_1' }] },
-      runnableWorkflows: [{ id: 'wf_live' }],
       teamMembers: [{ id: 'principal_a' }],
       ticketStageLabels: { received: 'Received' },
     })
@@ -204,7 +191,6 @@ describe('loadAgentConversationPanels', () => {
     ['contact', PERMISSIONS.PEOPLE_VIEW, mocks.getPortalUserDetail],
     ['company', PERMISSIONS.COMPANY_VIEW, mocks.getForPrincipal],
     ['macros', PERMISSIONS.CONVERSATION_REPLY, mocks.listMacros],
-    ['runnableWorkflows', PERMISSIONS.CONVERSATION_REPLY, mocks.listWorkflows],
     ['teamMembers', PERMISSIONS.MEMBER_VIEW, mocks.listTeamMembers],
   ] as const)('leaves %s out without %s', async (panel, permission, read) => {
     const without = ALL_PERMISSIONS.filter((p) => p !== permission)

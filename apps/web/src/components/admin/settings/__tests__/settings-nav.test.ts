@@ -36,7 +36,7 @@ function allLabels(sections: ReturnType<typeof buildNavSections>): string[] {
 }
 
 describe('buildNavSections', () => {
-  it('always renders the four sections in order, regardless of flags', () => {
+  it('always renders the three sections in order, regardless of flags', () => {
     for (const flags of [
       undefined,
       {},
@@ -44,35 +44,18 @@ describe('buildNavSections', () => {
       { supportInbox: true },
     ]) {
       const sections = buildNavSections(flags)
-      expect(sections.map((s) => s.label)).toEqual([
-        'Modules',
-        'AI & Automation',
-        'Workspace',
-        'Data',
-      ])
+      expect(sections.map((s) => s.label)).toEqual(['Modules', 'Workspace', 'Data'])
     }
   })
 
-  it('lists the AI & Automation pages between Modules and Workspace', () => {
+  it('has no AI & Automation section', () => {
     const sections = buildNavSections({ supportInbox: true })
-    expect(
-      sections
-        .find((s) => s.label === 'AI & Automation')!
-        .items.map((i) => [i.label, 'to' in i ? i.to : undefined])
-    ).toEqual([
-      ['Agent', '/admin/settings/agent'],
-      ['Copilot', '/admin/settings/copilot'],
-      ['Skills', '/admin/settings/skills'],
-      ['Connectors', '/admin/settings/connectors'],
-      ['Workflows', '/admin/settings/workflows'],
-    ])
-    expect(allLabels(sections)).not.toContain('Performance')
-    expect(allLabels(sections)).not.toContain('Assistant')
-  })
-
-  it('leaves Workflows out while the Support inbox is off, and keeps the other rows', () => {
-    const labels = itemLabels(buildNavSections({ supportInbox: false }), 'AI & Automation')
-    expect(labels).toEqual(['Agent', 'Copilot', 'Skills', 'Connectors'])
+    expect(sections.map((s) => s.label)).not.toContain('AI & Automation')
+    expect(allLabels(sections)).not.toContain('Agent')
+    expect(allLabels(sections)).not.toContain('Copilot')
+    expect(allLabels(sections)).not.toContain('Skills')
+    expect(allLabels(sections)).not.toContain('Connectors')
+    expect(allLabels(sections)).not.toContain('Workflows')
   })
 
   it('Modules lists Feedback & Roadmaps as a group of its own pages, with no hub row', () => {

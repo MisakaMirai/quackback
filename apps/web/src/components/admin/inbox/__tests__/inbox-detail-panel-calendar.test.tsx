@@ -111,7 +111,7 @@ describe('InboxDetailPanel ticket date field', () => {
             onSelectItem={() => {}}
             onTrackAsFeedback={() => {}}
             onCreateTicket={() => {}}
-            onInsertFromCopilot={() => {}}
+
             visible
           />
         </QueryClientProvider>

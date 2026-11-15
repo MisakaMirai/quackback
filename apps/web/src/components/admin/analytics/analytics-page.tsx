@@ -26,7 +26,6 @@ import { AnalyticsSummaryCards, type MetricKey } from './analytics-summary-cards
 import { AnalyticsVisitorCards, type VisitorMetricKey } from './analytics-visitor-cards'
 import { AnalyticsVisitorPanels } from './analytics-visitor-panels'
 import { AnalyticsStatRow, type AnalyticsStatProps } from './analytics-stat-row'
-import { AnalyticsQuinnSection } from './analytics-quinn-section'
 import { AnalyticsSlaCards } from './analytics-sla-cards'
 import { AnalyticsEmpty } from './analytics-empty'
 import { AnalyticsBoardChart } from './analytics-board-chart'
@@ -254,12 +253,7 @@ export function AnalyticsPage() {
               </div>
             </div>
 
-            {section === 'ai' ? (
-              <AnalyticsQuinnSection
-                range={range}
-                periodLabel={periods.find((p) => p.value === period)?.label ?? ''}
-              />
-            ) : isLoading ? (
+            {isLoading ? (
               <SectionSkeleton section={section} />
             ) : !data ? null : (
               <>

@@ -246,22 +246,6 @@ export const JOB_DEFINITIONS: readonly JobDefinition[] = [
       ),
   },
   {
-    name: 'workflow-sweep',
-    cron: '*/5 * * * *',
-    maxAttempts: 3,
-    handler: () =>
-      import('@/lib/server/domains/workflows/workflow-sweep-queue').then((m) => m.runWorkflowSweep),
-  },
-  {
-    name: 'workflow-retention',
-    cron: '0 4 * * *',
-    maxAttempts: 3,
-    handler: () =>
-      import('@/lib/server/domains/workflows/workflow-retention-queue').then(
-        (m) => m.runWorkflowRetention
-      ),
-  },
-  {
     // Bounds what quarantined inbound mail can cost. Deliberately offset from
     // the other daily sweeps rather than sharing 03:00 or 04:00: this one
     // cascades across a conversation's whole child graph, so it is the last
@@ -612,35 +596,6 @@ export const JOB_DEFINITIONS: readonly JobDefinition[] = [
       import('@/lib/server/domains/conversation/conversation.email-imap-queue').then(
         (m) => m.runEmailImapPoll
       ),
-  },
-  {
-    // Was `{workflow-dispatch}`. `concurrency: 1` is deliberate, not a
-    // throughput default: two events on one conversation (a reply then a
-    // close) are two jobs, and only a serial queue keeps their dispatch in
-    // enqueue order. That order holds per worker process (see
-    // workflow-dispatch-queue.ts for its limits).
-    name: 'workflow-dispatch',
-    concurrency: 1,
-    maxAttempts: 3,
-    retryBackoffMs: 1_000,
-    retentionMs: DAY_MS,
-    failedRetentionMs: 30 * DAY_MS,
-    handler: () =>
-      import('@/lib/server/domains/workflows/workflow-dispatch-queue').then(
-        (m) => m.runWorkflowDispatch
-      ),
-  },
-  {
-    // Was `{workflow-wait}`. Delayed by construction: the row's `run_at` is the
-    // wait's fire time, so a parked run costs one row rather than a live timer.
-    name: 'workflow-wait',
-    concurrency: 4,
-    maxAttempts: 3,
-    retryBackoffMs: 5_000,
-    retentionMs: 7 * DAY_MS,
-    failedRetentionMs: 7 * DAY_MS,
-    handler: () =>
-      import('@/lib/server/domains/workflows/workflow-wait-queue').then((m) => m.runWorkflowWait),
   },
   {
     // Was `{import}`. One attempt, deliberately: a retry re-runs the whole

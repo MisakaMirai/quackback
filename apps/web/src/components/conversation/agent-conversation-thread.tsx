@@ -149,7 +149,6 @@ import {
 } from '@/components/conversation/thread-capabilities'
 import { conversationKeys } from '@/components/conversation/query-keys'
 import { MacroPicker } from '@/components/conversation/macro-picker'
-import { WorkflowRunPicker } from '@/components/conversation/workflow-run-picker'
 import { PriorityControl } from '@/components/admin/conversation/priority-control'
 import { AssigneeControl } from '@/components/admin/conversation/assignee-control'
 import { ChannelBadge } from '@/components/admin/conversation/channel-badge'
@@ -203,16 +202,9 @@ import { isEmptyTiptapDoc } from '@/lib/shared/utils/is-empty-tiptap-doc'
 import { useConversationTyping } from '@/lib/client/hooks/use-conversation-typing'
 import { useAgentFileUpload } from '@/lib/client/hooks/use-file-upload'
 import { useConversationComposerAttachments } from '@/lib/client/hooks/use-conversation-composer-attachments'
-import { useCopilotInsert } from '@/lib/client/hooks/use-copilot-insert'
 import { useComposerFocus } from '@/lib/client/hooks/use-composer-focus'
 import { PERMISSIONS } from '@/lib/shared/permissions'
-import {
-  EMPTY_DRAFT,
-  answerToDraft,
-  appendAnswerToDraft,
-  appendTextToDraft,
-  type ComposerDraft,
-} from './composer-draft'
+import { EMPTY_DRAFT, appendTextToDraft, type ComposerDraft } from './composer-draft'
 import {
   createComposerDrafts,
   isEmptyDraft,
@@ -220,7 +212,6 @@ import {
   useDebouncedDraftText,
   type ComposerDrafts,
 } from './composer-drafts'
-import { ComposerAiActions, type ComposerMode } from './composer-ai-actions'
 import { TypingDots } from '@/components/shared/typing-dots'
 import { EmojiPicker } from '@/components/shared/emoji-picker'
 import { Avatar } from '@/components/ui/avatar'
@@ -408,6 +399,8 @@ function isBlankComposerDoc(doc: JSONContent | TiptapContent | null | undefined)
   return content.length === 1 && content[0].type === 'paragraph' && !content[0].content?.length
 }
 
+type ComposerMode = 'reply' | 'note'
+
 export function AgentConversationThread({
   item,
   targetMessageId,
@@ -418,7 +411,6 @@ export function AgentConversationThread({
   isVisitorTyping,
   isOtherAgentTyping,
   createTicketToken,
-  openCopilotToken,
   composerRef,
   detailPanelShown = false,
   replyFirst = false,
@@ -447,11 +439,6 @@ export function AgentConversationThread({
    *  this thread's own create-ticket dialog (which needs the conversation
    *  data only this component has loaded). Ignored for a ticket item. */
   createTicketToken?: number
-  /** Programmatic "open the Copilot tab" signal — forwarded UNTOUCHED to the
-   *  detail panel, which switches to its Copilot tab and focuses the ask input
-   *  when the value changes (and reads 0 as "no pending bump", the route's own
-   *  reset sentinel). Both item kinds. */
-  openCopilotToken?: number
   /** Publishes the composer seam the host's keyboard shortcuts and command
    *  palette drive. Both item kinds. */
   composerRef?: RefObject<ThreadComposerHandle | null>
@@ -1563,29 +1550,8 @@ export function AgentConversationThread({
       insertIntoDraft(mode, (prev) => appendTextToDraft(prev, text)),
     [insertIntoDraft]
   )
-  const insertAnswer = useCallback(
-    (mode: 'reply' | 'note', text: string) =>
-      insertIntoDraft(mode, (prev) => appendAnswerToDraft(prev, text)),
-    [insertIntoDraft]
-  )
   // Stable reply-mode text insert for the MacroPicker prop.
   const insertMacroBody = useCallback((text: string) => insertText('reply', text), [insertText])
-
-  // The Copilot "Add to composer" seam (COPILOT-SIDEBAR-UX.md B.4) targets
-  // the reply composer and may need to flip `noteMode` back first — see
-  // use-copilot-insert.ts for the mount-timing fix. It drives the editor
-  // through an insertable handle; with the unified editor that handle just
-  // seeds the draft (value + remount). Kept in a stable ref so
-  // insertFromCopilot's identity — and therefore the detail panel — doesn't
-  // churn on every keystroke. Only reached when the conversation detail
-  // panel's Copilot tab renders (conversation-only).
-  const replyInsertRef = useRef<{ insertText: (text: string) => void } | null>(null)
-  replyInsertRef.current = { insertText: (text: string) => insertAnswer('reply', text) }
-  const insertFromCopilot = useCopilotInsert({
-    noteMode,
-    setNoteMode,
-    replyComposerRef: replyInsertRef,
-  })
 
   // Reply and note render the SAME editor slot, one at a time, so they share
   // one handle ref: whichever is mounted owns it.
@@ -1627,28 +1593,6 @@ export function AgentConversationThread({
     if (noteMode) setMacroPickerOpen(false)
   }, [noteMode])
 
-  const getComposerText = useCallback((mode: ComposerMode) => drafts.get(mode).markdown, [drafts])
-  const replaceComposerText = useCallback(
-    (mode: ComposerMode, text: string) => {
-      const previous = drafts.get(mode)
-      const apply = (draft: ComposerDraft) => {
-        if (mode === 'note') {
-          drafts.set('note', draft)
-          setNoteKey((k) => k + 1)
-        } else {
-          drafts.set('reply', draft)
-          setReplyKey((k) => k + 1)
-        }
-      }
-      apply(answerToDraft(text))
-      // Replacing the document remounts the editor and clears its native history.
-      // Return a full-fidelity restore for the composer's persistent inline Undo.
-      return () => apply(previous)
-    },
-    [drafts]
-  )
-
-  // Track each mode's draft from the editor's onChange (json + markdown mirror).
   // The reply keystroke also drives the visitor-facing typing indicator (only
   // when the capability is on — a ticket reply never signals typing); a note
   // is internal, so it never signals typing either way. Both callbacks are
@@ -2343,16 +2287,6 @@ export function AgentConversationThread({
                   thread-capabilities.ts's doc for what that flag already
                   covers) rather than adding a capability that would always
                   equal `macros` today. */}
-              {capabilities.macros && !noteMode && conversationId && (
-                <WorkflowRunPicker conversationId={conversationId} onApplied={refreshThread} />
-              )}
-              <ComposerAiActions
-                item={item}
-                activeMode={activeMode}
-                subscribeDraft={drafts.subscribe}
-                getDraftText={getComposerText}
-                onReplaceDraftText={replaceComposerText}
-              />
               <div className="flex-1" />
               <button
                 type="button"
@@ -2469,8 +2403,6 @@ export function AgentConversationThread({
           onSelectItem={onSelectItem}
           onTrackAsFeedback={handleTrackAsFeedback}
           onCreateTicket={handleCreateTicketFromPanel}
-          onInsertFromCopilot={insertFromCopilot}
-          openCopilotToken={openCopilotToken}
           issuePeople={issuePeople}
           visible={detailPanelShown}
         />
@@ -2486,7 +2418,6 @@ export function AgentConversationThread({
           onSelectItem={selectFromSheet}
           onTrackAsFeedback={handleTrackAsFeedback}
           onCreateTicket={handleCreateTicketFromPanel}
-          onInsertFromCopilot={insertFromCopilot}
           issuePeople={issuePeople}
         />
       )}
@@ -2847,7 +2778,7 @@ const DetailsSheet = memo(function DetailsSheet({
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
-} & Omit<ComponentProps<typeof InboxDetailPanel>, 'visible' | 'overlay' | 'openCopilotToken'>) {
+} & Omit<ComponentProps<typeof InboxDetailPanel>, 'visible' | 'overlay'>) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="w-[22rem] max-w-[90vw] gap-0 p-0 sm:max-w-[22rem]">

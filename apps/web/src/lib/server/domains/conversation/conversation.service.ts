@@ -351,9 +351,6 @@ export async function sendVisitorMessage(
     : (input.metadata ?? null)
 
   let created = false
-  // The conversation's status BEFORE this message, so the assistant trigger can
-  // tell a genuinely reopened thread from one a human deliberately closed.
-  let priorStatus: ConversationStatus | null = null
   const txResult = await db.transaction(async (tx) => {
     let conversation: Conversation
     if (input.conversationId) {
@@ -374,7 +371,6 @@ export async function sendVisitorMessage(
         throw new ForbiddenError('FORBIDDEN', decision.reason)
       }
       conversation = existing
-      priorStatus = existing.status
     } else {
       const start = canStartConversation(actor)
       if (!start.allowed) throw new ForbiddenError('FORBIDDEN', start.reason)
@@ -531,29 +527,6 @@ export async function sendVisitorMessage(
         })
       )
       .catch((err) => log.warn({ err }, 'spam classification failed'))
-  }
-
-  // Quinn, out of band: a widget customer message may trigger an assistant turn.
-  // Fire-and-forget with full error isolation so it never blocks or fails the
-  // customer's send; the deep gate (respond flag, AI configured, silence rule)
-  // lives inside the orchestration, which the assistant domain owns.
-  // CONVERGENCE PHASE 1b: pair conversations are gated OUT of the assistant
-  // (isPairedWithCustomerTicket — the doc there carries the rule). The probe
-  // rides the same fire-and-forget chain, so the send path stays sync-cheap
-  // and the gate applies identically to the intake opening message and every
-  // later visitor message on the pair. The workflow engine's explicit
-  // `let_assistant_answer` action is NOT gated — a graph that deliberately
-  // hands a thread to Quinn is the workspace's own choice, and the intake
-  // table's "workflows FIRE" row keeps those graphs working.
-  if (shouldConsiderAssistant(txResult.conversation, priorStatus)) {
-    void isPairedWithCustomerTicket(txResult.conversation.id)
-      .then((paired) => {
-        if (paired) return undefined
-        return import('@/lib/server/domains/assistant/assistant.orchestrator').then((m) =>
-          m.runAssistantTurnForConversation(txResult.conversation.id)
-        )
-      })
-      .catch((err) => log.warn({ err }, 'assistant turn failed'))
   }
 
   // Return a VISITOR-side DTO to the caller — never leak the agent-only
@@ -1954,15 +1927,6 @@ export async function recordCsat(
       { internal: true }
     )
   }
-
-  // Mirror the CSAT rating onto Quinn's involvement when it was the last handler
-  // (best-effort — never fails the rating; the assistant domain owns it). The
-  // resolved_confirmed trigger rides the csat_submitted event instead: the
-  // assistant reaction in events/event-reactions.ts confirms the involvement off the
-  // first submission, keeping cross-domain outcome logic on the bus.
-  void import('@/lib/server/domains/assistant/assistant.orchestrator')
-    .then((m) => m.attributeCsatIfLastHandler(conversationId, updated.csatRating ?? rating))
-    .catch((err) => log.warn({ err }, 'attribute csat to assistant involvement failed'))
 }
 
 /**
@@ -2089,27 +2053,6 @@ export async function markConversationUnreadFromMessage(
 /** Actor for an assistant-authored write: the system actor, carrying Quinn's principal id. */
 function assistantActor(principalId: PrincipalId): Actor {
   return { ...systemActor(), principalId }
-}
-
-/**
- * Cheap synchronous gate before spending on an assistant turn: only the widget
- * channel triggers Quinn today (email + other sources join later phases), and a
- * thread a human deliberately closed must not summon Quinn on the reopen.
- *
- * CONVERGENCE PHASE 1b: a conversation PAIRED with a customer ticket (a
- * "backing conversation") is additionally gated out at the dispatch site via
- * `isPairedWithCustomerTicket` — an async probe, so it can't live in this sync
- * gate. Intake-created backing conversations also carry source 'ticket_form',
- * which fails the check above on its own; the pair probe is what covers LEGACY
- * widget-source pairs (a messenger conversation linked after the fact).
- */
-export function shouldConsiderAssistant(
-  conversation: Conversation,
-  priorStatus: ConversationStatus | null
-): boolean {
-  if (conversation.source !== 'widget') return false
-  if (priorStatus === 'closed') return false
-  return true
 }
 
 /**
@@ -2350,14 +2293,10 @@ export async function executeAssistantHandoff(
   await emitSystemMessage(conversationId, 'Connecting you to the team', {
     kind: 'assistant_handoff',
   })
-  // A live assistant.handed_off workflow owns assignment. The deterministic
-  // router stands down so the customer does not see two assignment notices.
-  const { hasLiveWorkflowForTrigger } =
-    await import('@/lib/server/domains/workflows/workflow.service')
-  const routingWorkflowOwnsHandoff = await hasLiveWorkflowForTrigger('assistant.handed_off')
-  const assigned = routingWorkflowOwnsHandoff ? null : await assignRoutedConversation(updated)
+  // A deterministic router assigns the hand-off.
+  const assigned = await assignRoutedConversation(updated)
   // assignRoutedConversation broadcasts the assigned DTO itself on success; when
-  // routing declines (or a workflow owns the handoff), still surface the update.
+  // routing declines, still surface the update.
   if (!assigned) {
     await publishConversationUpdate(updated.id, await conversationToDTO(updated, 'agent'))
   }

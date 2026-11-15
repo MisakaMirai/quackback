@@ -7,7 +7,6 @@ import { SettingsPage } from '@/components/admin/settings/settings-page'
 import { moduleCrumb } from '@/components/admin/settings/settings-nav-sections'
 import { SettingsCard } from '@/components/admin/settings/settings-card'
 import { SettingRow, SettingRows } from '@/components/admin/settings/setting-row'
-import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -25,7 +24,6 @@ export function MessengerChannelPage() {
   const portalConfigQuery = useSuspenseQuery(settingsQueries.portalConfig())
   const config = widgetConfigQuery.data
   const messengerConfig = config.messenger
-  const assistant = messengerConfig?.assistant
   const [isPending, startTransition] = useTransition()
   const [savingField, setSavingField] = useState<string | null>(null)
   const [widgetMessenger, setWidgetMessenger] = useState(config.tabs?.messenger ?? true)
@@ -209,23 +207,6 @@ export function MessengerChannelPage() {
                 }}
                 disabled={isBusy}
               />
-            }
-          />
-        </SettingRows>
-      </SettingsCard>
-
-      <SettingsCard title="AI agent">
-        <SettingRows>
-          <SettingRow
-            label={
-              assistant?.enabled !== false && assistant?.respond
-                ? 'The AI agent answers first'
-                : 'The AI agent is off'
-            }
-            control={
-              <Button variant="outline" size="sm" asChild>
-                <Link to="/admin/settings/agent">Configure</Link>
-              </Button>
             }
           />
         </SettingRows>

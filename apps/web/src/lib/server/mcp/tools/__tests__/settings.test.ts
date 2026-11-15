@@ -9,7 +9,7 @@ const state = vi.hoisted(() => ({
 vi.mock('../../resolve-actor', () => ({
   resolveMcpActor: async (_auth: unknown, scope: string) => ({ scope }),
 }))
-vi.mock('@/lib/server/domains/assistant/settings-proposals.service', () => ({
+vi.mock('@/lib/server/domains/settings-registry/settings-change.service', () => ({
   getSettingsForActor: async (actor: { scope: string }, area: string) => {
     state.reads.push(`${actor.scope}:${area}`)
     return { area, settings: {} }

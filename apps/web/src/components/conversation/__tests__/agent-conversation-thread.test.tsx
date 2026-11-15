@@ -698,39 +698,6 @@ function makeMessage(
   } as AgentConversationMessageDTO
 }
 
-describe('AgentConversationThread — openCopilotToken forwarding', () => {
-  it("the route's openCopilotToken reaches the detail panel UNTOUCHED", async () => {
-    // The route owns the one open-Copilot signal; this component forwards it
-    // verbatim (no local counter merged in), so the panel's 0-sentinel
-    // semantics read the route's real token.
-    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-    client.setQueryData(['conv-thread', 'conversation_suggest'], {
-      hasMore: false,
-      conversation: makeConversation({ id: 'conversation_suggest' as ConversationDTO['id'] }),
-      messages: [makeMessage({ id: 'conversation_msg_1' as never, senderType: 'visitor' })],
-    })
-    render(
-      <QueryClientProvider client={client}>
-        <AgentConversationThread
-          item={{ kind: 'conversation', id: 'conversation_suggest' } as never}
-          targetMessageId={null}
-          onChanged={vi.fn()}
-          onBack={vi.fn()}
-          onSelectItem={vi.fn()}
-          onOpenPost={vi.fn()}
-          isVisitorTyping={false}
-          isOtherAgentTyping={false}
-          openCopilotToken={7}
-        />
-      </QueryClientProvider>
-    )
-    expect(await screen.findByTestId('inbox-detail-panel')).toHaveAttribute(
-      'data-open-copilot-token',
-      '7'
-    )
-  })
-})
-
 describe('AgentConversationThread — close with a linked ticket', () => {
   const openLink: LinkedTicketSummary = {
     id: 'ticket_9' as LinkedTicketSummary['id'],
