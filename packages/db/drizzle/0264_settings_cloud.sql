@@ -1,11 +1,13 @@
--- Cloud configuration block: plan, entitlements and billing provider refs.
+-- Cloud configuration column: not shipped.
 --
--- Expand-only and inert by default. The column is nullable with no default,
--- so every existing row reads NULL, which resolves to the disabled config
--- (enabled: false) — unlimited, no plan, no entitlement gating, no upsell.
--- A code version that predates this column never reads it; a code version
--- that postdates it treats a missing value and a NULL value identically.
+-- This migration used to add `settings.cloud`, the control-plane billing
+-- projection block. The Quackback Cloud subscription layer was removed from
+-- the product before this lineage shipped a fresh install, so the column is
+-- never created: a new workspace has no cloud config to read, and nothing in
+-- the app reads or writes one (numeric limits live in `tier_limits`).
 --
--- Enforcement of numeric limits is unaffected: settings.tier_limits remains
--- the sole input to getTierLimits().
-ALTER TABLE "settings" ADD COLUMN IF NOT EXISTS "cloud" jsonb;
+-- The entry stays in the journal as a no-op so the ledger high-water mark,
+-- the migration numbering and every already-upgraded installation are left
+-- exactly as they were. An installation that ran the previous form keeps the
+-- (now unread) column; no DDL here depends on it.
+SELECT 1;

@@ -106,7 +106,7 @@ describe('Ask golden contracts through the actual in-memory MCP SDK', () => {
   })
   it('requires General permission rather than branding permission for the name deep link', async () => {
     await fixture.run(async (database) => {
-      const seeded = await seedAskGoldenFixture(database, 'owner', false, true)
+      const seeded = await seedAskGoldenFixture(database, 'owner', false)
       const sdk = await openAskSdkHarness({
         ...seeded.auth,
         permissions: new Set([PERMISSIONS.COPILOT_USE, PERMISSIONS.SETTINGS_BRANDING]),

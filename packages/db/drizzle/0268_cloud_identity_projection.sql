@@ -1,11 +1,15 @@
--- A distinct, workspace-safe identity projection from the control plane.
--- NULL is the permanent default for self-hosted installs.
-ALTER TABLE "settings" ADD COLUMN IF NOT EXISTS "cloud_identity" jsonb;
---> statement-breakpoint
-ALTER TABLE "settings" ADD COLUMN IF NOT EXISTS "cloud_identity_revision" integer DEFAULT 0 NOT NULL;
---> statement-breakpoint
-COMMENT ON COLUMN "settings"."cloud_identity" IS
-  'Signed, versioned customer-safe cloud identity projection. NULL on self-hosted installs.';
---> statement-breakpoint
-COMMENT ON COLUMN "settings"."cloud_identity_revision" IS
-  'Local change token for accepted cloud identity projections; distinct from billing projection versions.';
+-- A distinct, workspace-safe identity projection from the control plane: not
+-- shipped.
+--
+-- This migration used to add `settings.cloud_identity` and
+-- `settings.cloud_identity_revision`, the cloud-owned custom-domain/identity
+-- projection. The Quackback Cloud layer was removed before this lineage
+-- shipped a fresh install, so the columns are never created: custom domains
+-- and the workspace name are stored by the workspace's own settings, and
+-- nothing reads the projection.
+--
+-- The entry stays in the journal as a no-op so the ledger high-water mark,
+-- the migration numbering and every already-upgraded installation are left
+-- exactly as they were. An installation that ran the previous form keeps the
+-- (now unread) columns; no DDL here depends on them.
+SELECT 1;

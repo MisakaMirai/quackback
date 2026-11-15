@@ -1,9 +1,9 @@
--- Self-serve billing: subscription state, webhook idempotency, usage ledger,
--- and an optimistic-concurrency token for the two writers of settings.cloud.
+-- Self-serve billing: subscription state, webhook idempotency and usage
+-- ledger. (The `settings.cloud_revision` token this file used to add is not
+-- created: the billing projection it guarded was removed from the product,
+-- so a fresh install has no `settings.cloud` block to version.)
 --
 -- Expand-only. Every statement is additive:
---   * the new column is NOT NULL with a default, so code that predates this
---     migration keeps inserting settings rows without naming it;
 --   * the new tables are unreferenced by any older code version.
 -- Nothing is dropped, renamed, retyped, or tightened, so a fleet running one
 -- code version across two schema versions is unaffected either way: old code
@@ -11,17 +11,7 @@
 -- migration lands before the release that reads it.
 --
 -- Inert without configuration. No billing provider configured means nothing
--- ever writes these tables and `cloud_revision` simply stays 0.
-
--- ---------------------------------------------------------------------------
--- settings.cloud_revision
--- ---------------------------------------------------------------------------
--- Bumped on every settings.cloud write. Exists because settings.cloud is a
--- read-modify-write JSON block with two writers (the declarative config file's
--- reconciler and the billing module); without a token, the later of two
--- interleaved writers silently erases the earlier one. Mirrors the existing
--- settings.assistant_config_revision.
-ALTER TABLE "settings" ADD COLUMN IF NOT EXISTS "cloud_revision" integer DEFAULT 0 NOT NULL;
+-- ever writes these tables.
 
 -- ---------------------------------------------------------------------------
 -- billing_webhook_events — the idempotency ledger

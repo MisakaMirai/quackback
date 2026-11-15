@@ -5,10 +5,6 @@ vi.mock('@/lib/server/domains/settings/settings.service', () => ({
   isFeatureEnabled: async () => true,
   getFeatureFlags: async () => ({}),
 }))
-vi.mock('@/lib/server/domains/settings/cloud/cloud.service', () => ({
-  getCloudConfig: async () => null,
-}))
-
 import { registerSettingsTools } from '../settings'
 import { registerNavigationTools } from '../navigation'
 import { WORKSPACE_WEB_PROMPT } from '@/lib/server/domains/assistant/workspace-prompt'
