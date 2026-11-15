@@ -34,8 +34,6 @@ interface WidgetOverviewProps {
   tabs: EnabledTabs
   /** Admin-customised Home content (greeting, hero style, ordered cards). */
   home: WidgetHomeConfig | null
-  /** AI-assistant display identity; personalises the conversation card when set. */
-  assistant: { name: string; avatarUrl: string | null } | null
   /** Teammate avatars — the facepile on the ask-a-question card. */
   team: { name: string; avatarUrl: string | null }[]
   /** Top help articles for the search card (SSR'd by the loader). */
@@ -84,7 +82,6 @@ function fillGreeting(template: string, firstName: string | null | undefined): s
 export function WidgetOverview({
   tabs,
   home,
-  assistant,
   team,
   topArticles,
   onLeaveFeedback,
@@ -153,11 +150,8 @@ export function WidgetOverview({
         )
       case 'new_conversation': {
         if (!tabs.messages || !canStartConversation) return null
-        // Facepile: the assistant fronting, flanked by real teammates.
-        const faces: { name: string; avatarUrl: string | null }[] = [
-          ...(assistant ? [{ name: assistant.name, avatarUrl: assistant.avatarUrl }] : []),
-          ...team.slice(0, assistant ? 2 : 3),
-        ]
+        // Facepile: the teammates who can answer.
+        const faces = team.slice(0, 3)
         return (
           <button
             type="button"
@@ -177,19 +171,12 @@ export function WidgetOverview({
                 )}
               </span>
               <span className="block text-xs text-muted-foreground mt-0.5">
-                {card.subtitle ??
-                  (assistant ? (
-                    <FormattedMessage
-                      id="widget.launcher.action.messages.sub.assistant"
-                      defaultMessage="{name} and the team can help"
-                      values={{ name: assistant.name }}
-                    />
-                  ) : (
-                    <FormattedMessage
-                      id="widget.launcher.action.messages.sub"
-                      defaultMessage="Chat with our team"
-                    />
-                  ))}
+                {card.subtitle ?? (
+                  <FormattedMessage
+                    id="widget.launcher.action.messages.sub"
+                    defaultMessage="Chat with our team"
+                  />
+                )}
               </span>
             </span>
             {faces.length > 0 ? (
@@ -349,7 +336,7 @@ export function WidgetOverview({
                     <WidgetResumeCard
                       bare
                       conversation={conversation}
-                      teamName={assistant?.name ?? teamName}
+                      teamName={teamName}
                       agentsOnline={agentsOnline}
                       onClick={onResumeMessenger}
                     />
