@@ -22,7 +22,7 @@ import {
   searchResultsHref,
   type SearchKind,
   type SearchResult,
-} from '@/lib/shared/assistant/ask-search'
+} from '@/lib/shared/search'
 import { searchWorkspaceFn } from '@/lib/server/functions/ask-search'
 
 export interface SearchResultsPageProps {
@@ -70,7 +70,7 @@ function SearchResultsView({ query, kind, page = 1 }: SearchResultsPageProps) {
     queryKey: ['admin', 'search', principalId, query, kind ?? 'all', offset],
     queryFn: () =>
       searchWorkspaceFn({
-        data: { query, kind, offset, limit: SEARCH_PAGE_SIZE, semantic: true },
+        data: { query, kind, offset, limit: SEARCH_PAGE_SIZE },
       }),
     enabled: valid && offset < MAX_SEARCH_DEPTH,
     staleTime: 30_000,

@@ -12,14 +12,12 @@ import type { HookHandler } from './hook-types'
 // Import built-in handlers
 import { emailHook } from './handlers/email'
 import { notificationHook } from './handlers/notification'
-import { aiHook } from './handlers/ai'
 import { webhookHook } from './handlers/webhook'
 import { appWebhookHook } from './handlers/app-webhook'
 
 const builtinHooks = new Map<string, HookHandler>([
   ['email', emailHook],
   ['notification', notificationHook],
-  ['ai', aiHook],
   ['webhook', webhookHook],
   ['app_webhook', appWebhookHook],
 ])
@@ -27,9 +25,7 @@ const builtinHooks = new Map<string, HookHandler>([
 /**
  * Lazy-loaded hooks resolved via dynamic import to avoid circular dependencies.
  */
-const lazyHooks: Record<string, () => Promise<HookHandler>> = {
-  summary: () => import('./handlers/summary').then((m) => m.summaryHook),
-}
+const lazyHooks: Record<string, () => Promise<HookHandler>> = {}
 
 /**
  * Get a registered hook by type.

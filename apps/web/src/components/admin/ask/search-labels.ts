@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { useIntl } from 'react-intl'
-import type { SearchKind, SearchResult } from '@/lib/shared/assistant/ask-search'
+import type { SearchKind, SearchResult } from '@/lib/shared/search'
 
 /** What each kind is called on one result, and on its filter. */
 export function useSearchKindLabels(): {

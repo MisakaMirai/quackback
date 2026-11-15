@@ -4,7 +4,9 @@ import remarkGfm from 'remark-gfm'
 import type { Element, Root, RootContent } from 'hast'
 import { cn } from '@/lib/shared/utils'
 import { sanitizeImageUrl, sanitizeUrl } from '@/lib/shared/utils/sanitize'
-import { CITATION_MARKER_RE } from '@/lib/shared/assistant/citation-markers'
+
+/** Numeric source markers in prose, kept for rendering older messages. */
+const CITATION_MARKER_RE = /(?<!\w)\[(\d+)\]/g
 
 /** Scope footnote labels per message and add citation placeholders after Markdown
  * has resolved links and code. This

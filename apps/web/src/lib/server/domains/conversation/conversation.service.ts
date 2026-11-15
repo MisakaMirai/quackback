@@ -117,7 +117,6 @@ import {
   emitConversationCsatCommentAdded,
 } from './conversation.webhooks'
 import { dispatchAssistantHandedOff, buildEventActor } from '@/lib/server/events/dispatch'
-import { classifyConversationAttributes } from '@/lib/server/domains/conversation-attributes/ai-classification.service'
 import { extractMentions } from '@/lib/server/domains/posts/extract-mentions'
 import { syncConversationMessageMentions } from './sync-conversation-mentions'
 import { sanitizeTiptapContent } from '@/lib/server/sanitize-tiptap'
@@ -512,22 +511,6 @@ export async function sendVisitorMessage(
   // the team bell's anti-spam gate (WO-3 slice 5) now reads it off this
   // event instead of a direct call.
   void emitMessageCreated(actor, author, txResult.message, txResult.conversation, created)
-
-  // A brand-new conversation is a spam-classification candidate: the filter
-  // files only obvious spam (workspace-trusted senders bypass it), and every
-  // failure leaves the thread in triage. Fire-and-forget so a slow provider
-  // never delays the visitor's send.
-  if (created) {
-    void import('./conversation.spam-filter')
-      .then((m) =>
-        m.maybeAutoFileSpam(txResult.conversation.id, {
-          senderEmail: txResult.conversation.visitorEmail ?? null,
-          subject: null,
-          content: content || fallbackLabel,
-        })
-      )
-      .catch((err) => log.warn({ err }, 'spam classification failed'))
-  }
 
   // Return a VISITOR-side DTO to the caller — never leak the agent-only
   // visitorEmail back to the visitor in the send response.
@@ -1055,13 +1038,6 @@ export async function setConversationStatus(
       .catch((err) => {
         log.warn({ err, conversationId }, 'conversation reopen lifecycle delivery failed')
       })
-  }
-  if (status === 'closed' && previous !== 'closed' && actor.principalType === 'user') {
-    void classifyConversationAttributes(conversationId, { trigger: 'teammate_close' }).catch(
-      (err) => {
-        log.warn({ err, conversationId }, 'teammate-close attribute classification failed')
-      }
-    )
   }
   return updated
 }
@@ -2307,7 +2283,6 @@ export async function executeAssistantHandoff(
   // service itself; a failure here must never block the hand-off, hence the
   // defensive catch even though the service already never throws.
   try {
-    await classifyConversationAttributes(conversationId, { trigger: 'handoff' })
   } catch (err) {
     log.warn({ err, conversationId }, 'pre-handoff attribute classification failed')
   }

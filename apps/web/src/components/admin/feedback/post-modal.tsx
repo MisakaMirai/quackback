@@ -15,7 +15,6 @@ import { RichTextEditor, type EditorDocument } from '@/components/ui/rich-text-e
 import { usePostMediaUpload, usePortalMediaUpload } from '@/lib/client/hooks/use-image-upload'
 import { adminQueries } from '@/lib/client/queries/admin'
 import { postOwnerQueries } from '@/lib/client/queries/post-owner'
-import { mergeSuggestionQueries } from '@/lib/client/queries/signals'
 import { usePermission } from '@/lib/client/hooks/use-permission'
 import { PERMISSIONS } from '@/lib/shared/permissions'
 import { inboxKeys } from '@/lib/client/hooks/use-inbox-query'
@@ -33,8 +32,6 @@ import {
   MergeInfoBanner,
   MergeOthersDialog,
 } from '@/components/admin/feedback/merge-section'
-import { AiSummaryCard } from '@/components/admin/feedback/ai-summary-card'
-import { SimilarPostsCard } from '@/components/admin/feedback/similar-posts-card'
 import { PostActivityTimeline } from '@/components/admin/feedback/detail/post-activity-timeline'
 import { useNavigationContext } from '@/components/admin/feedback/detail/use-navigation-context'
 import {
@@ -159,10 +156,6 @@ export const PostModalContent = memo(function PostModalContent({
     setShowMergeDialog(false)
     setShowMergeOthersDialog(false)
   }
-
-  // Duplicate badge indicator — derived from merge suggestions (deduped by React Query with SimilarPostsCard)
-  const { data: mergeSuggestionsData } = useQuery(mergeSuggestionQueries.forPost(postId))
-  const hasDuplicateSignals = (mergeSuggestionsData?.length ?? 0) > 0
 
   // Navigation context
   const navigationContext = useNavigationContext(post.id)
@@ -344,7 +337,6 @@ export const PostModalContent = memo(function PostModalContent({
     isDeleted: !!post.deletedAt,
     isRestorePending: restorePostMutation.isPending,
     isMerged: !!post.mergeInfo,
-    hasDuplicateSignals,
   }
 
   return (
@@ -459,17 +451,6 @@ export const PostModalContent = memo(function PostModalContent({
                 onImageUpload={uploadMedia}
                 onVideoUpload={uploadMedia}
               />
-
-              {/* AI section — summary + similar posts */}
-              <div className="mt-8 space-y-3">
-                {post.summaryJson && (
-                  <AiSummaryCard
-                    summaryJson={post.summaryJson}
-                    summaryUpdatedAt={post.summaryUpdatedAt ?? null}
-                  />
-                )}
-                <SimilarPostsCard postId={postId} onNavigateToPost={onNavigateToPost} />
-              </div>
             </div>
 
             {/* Merge actions section */}

@@ -393,7 +393,7 @@ export function VisitorConversationThread({
         setWelcomeMessage(res.welcomeMessage)
         setOfflineMessage(res.offlineMessage)
         setTeamName(res.teamName)
-        setAssistant(res.assistant ?? null)
+        setAssistant(null)
         setCanEmailReply(res.canEmailVisitor)
         setLinkedTicket(res.linkedTicket ?? null)
         const conv = res.conversation

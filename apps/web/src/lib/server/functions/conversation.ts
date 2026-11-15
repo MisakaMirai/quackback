@@ -26,7 +26,6 @@ import {
   MAX_CONVERSATION_MESSAGE_LENGTH,
   MAX_CONVERSATION_ATTACHMENTS,
   type ConversationAttachment,
-  type ConversationAssistantActivity,
 } from '@/lib/shared/conversation/types'
 import {
   conversationAttachmentSchema,
@@ -54,6 +53,7 @@ import {
   CONVERSATION_STATUSES,
   CONVERSATION_END_REASONS,
   REACTION_EMOJIS,
+  type TiptapContent,
 } from '@/lib/shared/db-types'
 import {
   getOptionalAuth,
@@ -66,7 +66,6 @@ import {
 import { isTeamMember } from '@/lib/shared/roles'
 import { PERMISSIONS } from '@/lib/shared/permissions'
 import type { RequesterTicketDTO, ConversationTicketSummary } from '@/lib/server/domains/tickets'
-import { AI_INBOX_BUCKETS } from '@/lib/server/domains/assistant/assistant.involvement'
 import { ConflictError, ForbiddenError, NotFoundError } from '@/lib/shared/errors'
 import { logger } from '@/lib/server/logger'
 
@@ -437,8 +436,6 @@ export const runGetMyConversation = createServerOnlyFn(async function runGetMyCo
   const { isEmailConfigured } = await import('@quackback/email')
   const { canEmailVisitor } = await import('@/lib/shared/conversation/reply-capability')
   const { widgetTranslationFor } = await import('@/lib/shared/widget/translations')
-  const { assistantConfigSchema, DEFAULT_ASSISTANT_CONFIG } =
-    await import('@/lib/shared/assistant/config')
   const [enabled, messengerConfig, appSettings, widgetConfig] = await Promise.all([
     isConversationsEnabledFor(ctx?.principal.id),
     getMessengerConfig(),
@@ -449,10 +446,6 @@ export const runGetMyConversation = createServerOnlyFn(async function runGetMyCo
   // fallback).
   const t = widgetTranslationFor(widgetConfig.translations, data?.locale)
   const emailConfigured = isEmailConfigured()
-  const parsedAssistantConfig = assistantConfigSchema.safeParse(appSettings?.assistantConfig)
-  const assistantIdentity = parsedAssistantConfig.success
-    ? parsedAssistantConfig.data.identity
-    : DEFAULT_ASSISTANT_CONFIG.identity
   // Note: team-availability presence is NOT returned here. The widget reads it
   // from the shared useConversationPresence query (getConversationPresenceFn) so every surface
   // agrees and only one poll runs — this fn is just the visitor's thread.
@@ -463,15 +456,6 @@ export const runGetMyConversation = createServerOnlyFn(async function runGetMyCo
     // Falls back to the workspace name (as the settings help text promises)
     // when no team name is set.
     teamName: messengerConfig.teamName?.trim() || appSettings?.name || null,
-    // AI-assistant display identity: fronts new conversations (greeting
-    // author + thread header) when enabled. Identity only — replies still
-    // come from the team until the integrated agent lands.
-    assistant: messengerConfig.assistant?.enabled
-      ? {
-          name: assistantIdentity.name,
-          avatarUrl: assistantIdentity.avatarUrl,
-        }
-      : null,
     // Whether we already have a contact email for this visitor.
     visitorHasEmail: false,
     // Whether an offline reply could actually reach this visitor by email —
@@ -935,14 +919,6 @@ export const listConversationsFn = createServerFn({ method: 'GET' })
         // Spam view: the only scope that lists spam-ended conversations.
         spamOnly: data.view === 'spam',
         testOnly: data.view === 'test',
-        // Quinn view: a chosen bucket narrows to its statuses; none = any Quinn
-        // involvement (every bucket).
-        assistantStatuses:
-          data.view === 'quinn'
-            ? data.ai
-              ? AI_INBOX_BUCKETS[data.ai]
-              : Object.values(AI_INBOX_BUCKETS).flat()
-            : undefined,
         before: data.before,
         attributeFilters: data.attributeFilters,
       },
@@ -961,25 +937,6 @@ export const listConversationsFn = createServerFn({ method: 'GET' })
         )
       : {}
     return { ...page, searchSnippets }
-  })
-
-/** Conversation counts per Quinn-inbox bucket (Resolved / Escalated / Pending),
- *  for the inbox nav badges. */
-export const fetchAssistantInboxCountsFn = createServerFn({ method: 'GET' }).handler(async () => {
-  await requireAuth({ permission: PERMISSIONS.CONVERSATION_VIEW })
-  const { countAssistantInboxBuckets } =
-    await import('@/lib/server/domains/assistant/assistant.involvement')
-  return countAssistantInboxBuckets()
-})
-
-/** Quinn's activity on one conversation for the agent details panel: outcome,
- *  KB sources cited, escalation reason, CSAT. Null when Quinn never engaged. */
-export const getConversationAssistantActivityFn = createServerFn({ method: 'GET' })
-  .validator(z.object({ conversationId: z.string() }))
-  .handler(async ({ data }): Promise<ConversationAssistantActivity | null> => {
-    await requireAuth({ permission: PERMISSIONS.CONVERSATION_VIEW })
-    const { loadConversationAssistantActivity } = await import('./conversation-panels')
-    return loadConversationAssistantActivity(data.conversationId as ConversationId)
   })
 
 const userConversationsSchema = z.object({
@@ -1112,7 +1069,7 @@ export const sendAgentMessageFn = createServerFn({ method: 'POST' })
         teammateUserId: ctx.user.id,
       })
       content = resolved.content
-      contentJson = resolved.contentJson
+      contentJson = resolved.contentJson as TiptapContent | null
       translatedFrom = resolved.translatedFrom
     }
 

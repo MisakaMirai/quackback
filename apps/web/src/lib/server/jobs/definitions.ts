@@ -499,17 +499,6 @@ export const JOB_DEFINITIONS: readonly JobDefinition[] = [
       import('@/lib/server/events/event-reactions-queue').then((m) => m.runEventReactions),
   },
   {
-    // The close summaries, queued next to event-reactions. Slow AI calls that
-    // do not depend on order, so they run concurrently off the serial queue.
-    name: 'event-summaries',
-    concurrency: 2,
-    maxAttempts: 3,
-    retentionMs: DAY_MS,
-    failedRetentionMs: 30 * DAY_MS,
-    handler: () =>
-      import('@/lib/server/events/event-summaries-queue').then((m) => m.runEventSummaries),
-  },
-  {
     // Was `{segment-evaluation}`. Its schedules are rows in the workspace's own
     // `segments` table, so they are derived per tick rather than registered.
     name: 'segment-evaluation',

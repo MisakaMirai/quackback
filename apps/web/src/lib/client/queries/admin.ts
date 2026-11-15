@@ -31,7 +31,6 @@ import { fetchPostWithDetails, fetchPostVotersFn } from '@/lib/server/functions/
 import { fetchMergePreviewFn } from '@/lib/server/functions/post-merge'
 import { fetchPublicStatuses } from '@/lib/server/functions/portal'
 import type { PortalUserListParams } from '@/lib/shared/types'
-import { mergeSuggestionQueries } from '@/lib/client/queries/signals'
 import { postOwnerQueries } from '@/lib/client/queries/post-owner'
 import { postExternalLinksQuery } from '@/lib/client/hooks/use-post-external-links-query'
 import { customerContextQuery } from '@/lib/client/queries/customer-context'
@@ -46,7 +45,6 @@ import { readsToLoad, seedReads } from '@/lib/client/queries/read-batch'
 function postPanelQueries(postId: PostId, authorEmail: string | null | undefined) {
   return {
     voters: adminQueries.postVoters(postId),
-    mergeSuggestions: mergeSuggestionQueries.forPost(postId),
     externalLinks: postExternalLinksQuery(postId),
     ownerCandidates: postOwnerQueries.candidates(),
     customerContext: authorEmail ? customerContextQuery(authorEmail) : null,

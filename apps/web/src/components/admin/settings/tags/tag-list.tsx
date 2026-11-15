@@ -22,7 +22,6 @@ import { ColorPickerGrid, ColorHexInput, randomColor } from '@/components/shared
 import { SettingsCard } from '@/components/admin/settings/settings-card'
 import { SettingsPage } from '@/components/admin/settings/settings-page'
 import { RowDot, SettingsList, SettingsListRow } from '@/components/admin/settings/settings-list'
-import { AiBackfillCard } from '@/components/admin/settings/tags/ai-backfill-card'
 import { EmptyState } from '@/components/shared/empty-state'
 import { NewButton } from '@/components/shared/new-button'
 import { Badge } from '@/components/ui/badge'
@@ -284,7 +283,7 @@ interface TagsSettingsPageProps {
   boards: Board[]
 }
 
-export function TagsSettingsPage({ initialTags, boards }: TagsSettingsPageProps) {
+export function TagsSettingsPage({ initialTags, boards: _boards }: TagsSettingsPageProps) {
   const router = useRouter()
   const [, startTransition] = useTransition()
   const [tags, setTags] = useState(initialTags)
@@ -394,8 +393,6 @@ export function TagsSettingsPage({ initialTags, boards }: TagsSettingsPageProps)
           </SettingsList>
         )}
       </SettingsCard>
-
-      <AiBackfillCard tags={tags} boards={boards} />
 
       {/* Create/Edit dialog */}
       <TagDialog

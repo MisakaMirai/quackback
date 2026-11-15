@@ -1,4 +1,3 @@
-import { SlackAgentCard } from './slack-agent-card'
 import { missingSlackScopes } from '../scopes'
 import { useState } from 'react'
 import { ArrowPathIcon, HashtagIcon, LockClosedIcon } from '@heroicons/react/24/solid'
@@ -154,7 +153,6 @@ export function SlackConfig({
           </a>
         </div>
       )}
-      <SlackAgentCard />
       {/* Enable/Disable Toggle */}
       <div className="flex items-center justify-between">
         <div>

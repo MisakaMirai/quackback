@@ -9,14 +9,13 @@
  * refused as before. A panel whose read fails is left out the same way, so it
  * never fails the thread.
  */
-import type { ConversationId, PrincipalId, UserId } from '@quackback/ids'
+import type { PrincipalId, UserId } from '@quackback/ids'
 import type { Conversation } from '@/lib/server/db'
 import type { Actor } from '@/lib/server/policy/types'
 import type { TicketDTO } from '@/lib/server/domains/tickets'
 import type { MacroDTO } from '@/lib/server/domains/macros/macro.service'
 import type { TeamMember } from '@/lib/server/domains/principals/principal.types'
 import type { ConversationListPage } from '@/lib/server/domains/conversation/conversation.query'
-import type { ConversationAssistantActivity } from '@/lib/shared/conversation/types'
 import type { LinkedTicketSummary } from '@/lib/shared/inbox/items'
 import type { TicketStageLabels } from '@/lib/shared/tickets'
 import type { AgentConversationPanel } from '@/lib/shared/conversation/agent-panels'
@@ -35,32 +34,9 @@ export interface AgentConversationPanels {
   contact?: PortalUserDetailDTO | null
   history?: ConversationListPage
   company?: CompanyDTO | null
-  assistantActivity?: ConversationAssistantActivity | null
   languagePreference?: string | null
   macros?: { macros: MacroDTO[] }
   teamMembers?: TeamMember[]
-}
-
-/** Quinn's latest involvement in a conversation, as `getConversationAssistantActivityFn` returns it. */
-export async function loadConversationAssistantActivity(
-  conversationId: ConversationId
-): Promise<ConversationAssistantActivity | null> {
-  const { getLatestInvolvement } =
-    await import('@/lib/server/domains/assistant/assistant.involvement')
-  const inv = await getLatestInvolvement(conversationId)
-  if (!inv) return null
-  return {
-    outcome: inv.status,
-    handoffReason: inv.handoffReason,
-    sources: inv.sources.map((s) => ({
-      type: s.type,
-      id: s.id,
-      title: s.title ?? '',
-      url: s.url ?? '',
-    })),
-    rating: inv.rating,
-    answeredAt: inv.lastAssistantAnswerAt?.toISOString() ?? null,
-  }
 }
 
 /** The permission each panel's own server function requires beyond conversation.view. */
@@ -140,7 +116,6 @@ export async function loadAgentConversationPanels(
       const company = await getForPrincipal(visitor)
       return company ? serializeCompany(company) : null
     },
-    assistantActivity: () => loadConversationAssistantActivity(conversation.id),
     languagePreference: async () => {
       const { readPreferredLanguage } = await import('./teammate-preferences')
       return readPreferredLanguage(caller.userId)

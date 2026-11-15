@@ -7,10 +7,7 @@
  */
 import { queryOptions } from '@tanstack/react-query'
 import type { ConversationId, PrincipalId, TicketId } from '@quackback/ids'
-import {
-  listConversationsForUserFn,
-  getConversationAssistantActivityFn,
-} from '@/lib/server/functions/conversation'
+import { listConversationsForUserFn } from '@/lib/server/functions/conversation'
 import { listConversationFilesFn } from '@/lib/server/functions/conversation-files'
 import { getPortalUserFn } from '@/lib/server/functions/admin'
 import { getCompanyForPrincipalFn } from '@/lib/server/functions/companies'
@@ -32,13 +29,6 @@ export const conversationPanelQueries = {
     queryOptions({
       ...entries.history(principalId),
       queryFn: () => listConversationsForUserFn({ data: { principalId } }),
-    }),
-
-  /** Quinn's activity on the conversation (null when Quinn never engaged). */
-  assistantActivity: (conversationId: ConversationId) =>
-    queryOptions({
-      ...entries.assistantActivity(conversationId),
-      queryFn: () => getConversationAssistantActivityFn({ data: { conversationId } }),
     }),
 
   /** The contact's company (null when they have none yet). */

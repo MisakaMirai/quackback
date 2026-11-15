@@ -123,7 +123,6 @@ import {
   type FeatureFlags,
 } from '@/lib/shared/types/settings'
 import { useFeatureFlag, useWorkspaceSettings } from '@/lib/client/hooks/use-root-context'
-import { QuinnViewHeader } from '@/components/admin/conversation/quinn-view-header'
 import { TestViewHeader } from '@/components/admin/conversation/test-view-header'
 
 // URL is the source of truth for open item + filters (refresh-safe, shareable).
@@ -800,13 +799,7 @@ function InboxPage() {
     channel: urlChannel,
   })
 
-  // Quinn-view sub-filter counts (only fetched while that view is open).
-  const isQuinnView = nav.kind === 'view' && nav.view === 'quinn'
   const isTestView = nav.kind === 'view' && nav.view === 'test'
-  const { data: assistantCounts } = useQuery({
-    ...conversationInboxQueries.assistantCounts(),
-    enabled: isQuinnView,
-  })
 
   // The ticket status catalogue, needed to resolve "close" → the default
   // closed-category status for a ticket target (§3.4). Gated on the same flag
@@ -1446,13 +1439,7 @@ function InboxPage() {
   // (memoized) list header as it was.
   const listHeaderSlot = useMemo(
     () =>
-      isQuinnView ? (
-        <QuinnViewHeader
-          value={urlAi}
-          counts={assistantCounts}
-          onChange={(ai) => updateSearch({ ai, i: undefined, m: undefined })}
-        />
-      ) : isTestView ? (
+      isTestView ? (
         <TestViewHeader
           onDeleted={() => {
             refreshInbox()
@@ -1460,7 +1447,7 @@ function InboxPage() {
           }}
         />
       ) : undefined,
-    [isQuinnView, isTestView, urlAi, assistantCounts, updateSearch, refreshInbox, setNav]
+    [isTestView, refreshInbox, setNav]
   )
 
   // The company refinement, offered only when the workspace has companies.

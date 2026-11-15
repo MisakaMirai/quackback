@@ -12,7 +12,7 @@ import {
   usePermissions,
 } from '@/lib/client/hooks/use-root-context'
 import { buildAskDestinations, searchAskDestinations } from '@/lib/shared/ask-destinations'
-import { MIN_SEARCH_LENGTH, searchResultsHref } from '@/lib/shared/assistant/ask-search'
+import { MIN_SEARCH_LENGTH, searchResultsHref } from '@/lib/shared/search'
 import { searchWorkspaceFn } from '@/lib/server/functions/ask-search'
 
 type SearchPaletteDialogProps = {

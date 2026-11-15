@@ -11,11 +11,7 @@
  */
 import { queryOptions } from '@tanstack/react-query'
 import type { ConversationId, CompanyId } from '@quackback/ids'
-import {
-  listConversationsFn,
-  getConversationFn,
-  fetchAssistantInboxCountsFn,
-} from '@/lib/server/functions/conversation'
+import { listConversationsFn, getConversationFn } from '@/lib/server/functions/conversation'
 import { fetchConversationTagsWithCountsFn } from '@/lib/server/functions/conversation-tags'
 import { fetchInboxSegmentsWithCountsFn } from '@/lib/server/functions/conversation-segments'
 import { listConversationViewsFn } from '@/lib/server/functions/conversation-views'
@@ -135,14 +131,6 @@ export const conversationInboxQueries = {
       queryKey: conversationKeys.agentTagCounts(),
       queryFn: () => fetchConversationTagsWithCountsFn(),
       staleTime: 60_000,
-    }),
-
-  /** Conversation counts per Quinn-inbox bucket (drives the Quinn sub-filter badges). */
-  assistantCounts: () =>
-    queryOptions({
-      queryKey: ['admin', 'inbox', 'assistant-counts'] as const,
-      queryFn: () => fetchAssistantInboxCountsFn(),
-      staleTime: 30_000,
     }),
 
   /** Segments + per-segment open-conversation counts (drives the nav Segments group). */

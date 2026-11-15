@@ -30,10 +30,8 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { adminQueries } from '@/lib/client/queries/admin'
-import { ASSISTANT_CONFIG_EVENT_LABELS } from '@/lib/shared/assistant/config-audit-events'
 import type { AuditEventRow } from '@/lib/server/functions/audit-log'
 import type { AuditChannel } from '@/lib/shared/audit-attribution'
-import { displayAssistantName } from '@/lib/shared/assistant/config'
 
 /**
  * Event-type catalog for the filter dropdown. Mirrors the
@@ -107,13 +105,6 @@ const FILTER_EVENT_TYPES: FilterEventOption[] = [
     label: 'Handshake invalid',
     value: 'portal.widget_handshake.invalid',
   },
-  // AI config changelog events. The assistant admin page reads the same set
-  // from the shared label map so the two can never list a different set.
-  ...Object.entries(ASSISTANT_CONFIG_EVENT_LABELS).map(([value, label]) => ({
-    group: 'AI config',
-    label,
-    value,
-  })),
 ]
 
 const TIME_RANGES = [
@@ -259,13 +250,8 @@ const VIA_ON_BEHALF_OF = defineMessages({
   onBehalfOf: { id: 'admin.auditLog.via.onBehalfOf', defaultMessage: 'for {name}' },
 }).onBehalfOf
 
-/**
- * The client name a row shows. An assistant row stored under the former default
- * name reads as the product name.
- */
 function viaClientName(row: { channel: AuditChannel | null; clientName: string | null }) {
-  if (row.channel !== 'assistant' || !row.clientName) return row.clientName
-  return displayAssistantName(row.clientName)
+  return row.clientName
 }
 
 /**

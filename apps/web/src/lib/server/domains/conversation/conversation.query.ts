@@ -30,13 +30,11 @@ import {
   user,
   userSegments,
   segments,
-  assistantInvolvements,
   ticketConversations,
   type Conversation,
   type ConversationMessage,
   type PostSuggestion,
   type AssistantPendingActionSurface,
-  type AssistantInvolvementStatus,
   type TranslatedFromMetadata,
 } from '@/lib/server/db'
 import {
@@ -1173,9 +1171,6 @@ export interface ConversationListFilter {
    *  does not count — the opener owns the thread's origin. Always the
    *  requesting agent, resolved server-side like mentionedPrincipalId. */
   startedByPrincipalId?: PrincipalId
-  /** "Quinn AI" view: only conversations with an `assistant_involvements` row in
-   *  ANY of these lifecycle statuses (Resolved / Escalated / Pending buckets). */
-  assistantStatuses?: AssistantInvolvementStatus[]
   /** Custom-attribute view rules (§C2.7): every entry ANDs an additional
    *  predicate against `custom_attributes`. See `attributeFilterCondition`. */
   attributeFilters?: ConversationAttributeFilterParam[]
@@ -1770,18 +1765,6 @@ export async function listConversationsForAgent(
                     eq(conversationMessages.isInternal, true)
                   )
                 )
-            )
-          : undefined,
-        // Quinn AI view: restrict to conversations Quinn engaged whose involvement
-        // is in one of the requested lifecycle buckets. Distinct subquery keeps the
-        // outer select shape (conversations only), like the mentions predicate.
-        filter.assistantStatuses && filter.assistantStatuses.length > 0
-          ? inArray(
-              conversations.id,
-              db
-                .selectDistinct({ id: assistantInvolvements.conversationId })
-                .from(assistantInvolvements)
-                .where(inArray(assistantInvolvements.status, filter.assistantStatuses))
             )
           : undefined,
         // Created-by-me view: the conversation's earliest non-deleted message is
