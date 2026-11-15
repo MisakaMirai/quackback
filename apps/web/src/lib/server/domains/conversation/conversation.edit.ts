@@ -66,10 +66,6 @@ async function toAgentDto(
   if (message.metadata?.postSuggestion) {
     suggestions.set(message.id, message.metadata.postSuggestion)
   }
-  const pending = new Map()
-  if (message.metadata?.assistantPendingAction) {
-    pending.set(message.id, message.metadata.assistantPendingAction)
-  }
   const translated = new Map()
   if (message.metadata?.translatedFrom) {
     translated.set(message.id, message.metadata.translatedFrom)
@@ -78,7 +74,6 @@ async function toAgentDto(
     [toMessageDTO(message, author)],
     viewerPrincipalId,
     suggestions,
-    pending,
     translated
   )
   return enriched

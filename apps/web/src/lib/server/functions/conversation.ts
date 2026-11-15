@@ -661,12 +661,14 @@ export const runListConversationMessages = createServerOnlyFn(
     // maps are pulled out here so they're consumed by the enrichment and never
     // serialized into the response (translatedFromPointers especially — it carries
     // a teammate's pre-translation original, never meant for the visitor).
-    const { postSuggestions, pendingActionPointers, translatedFromPointers, ...page } =
-      await listMessages(data.conversationId as ConversationId, {
+    const { postSuggestions, translatedFromPointers, ...page } = await listMessages(
+      data.conversationId as ConversationId,
+      {
         before: data.before,
         includeInternal: isTeam,
         includeLinkedTicket: isTeam,
-      })
+      }
+    )
     // Team members get the agent-only reaction/flag/suggestion/pending-action
     // enrichment on older messages too; the visitor path returns the clean base DTOs.
     if (isTeam) {
@@ -676,7 +678,6 @@ export const runListConversationMessages = createServerOnlyFn(
           page.messages,
           ctx.principal.id,
           postSuggestions,
-          pendingActionPointers,
           translatedFromPointers
         ),
       }
@@ -1031,7 +1032,6 @@ export const getConversationFn = createServerFn({ method: 'GET' })
       page.messages,
       ctx.principal.id,
       page.postSuggestions,
-      page.pendingActionPointers,
       page.translatedFromPointers
     )
     return { conversation: dto, messages, hasMore: page.hasMore, panels }

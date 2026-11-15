@@ -34,7 +34,6 @@ import {
   type Conversation,
   type ConversationMessage,
   type PostSuggestion,
-  type AssistantPendingActionSurface,
   type TranslatedFromMetadata,
 } from '@/lib/server/db'
 import {
@@ -246,10 +245,9 @@ export async function enrichMessagesForAgent(
   messages: ConversationMessageDTO[],
   viewerPrincipalId: PrincipalId,
   postSuggestions: Map<ConversationMessageId, PostSuggestion>,
-  pendingActionPointers: Map<ConversationMessageId, AssistantPendingActionSurface> = new Map(),
   // Agent-only (P2-D.1 inbox translation): the pre-translation original of an
   // OUTGOING message sent while translation was active, carried in-memory off
-  // `metadata.translatedFrom` the same way postSuggestion/pendingAction are —
+  // `metadata.translatedFrom` the same way postSuggestions are —
   // no second `SELECT metadata` round-trip.
   translatedFromPointers: Map<ConversationMessageId, TranslatedFromMetadata> = new Map()
 ): Promise<AgentConversationMessageDTO[]> {
@@ -263,7 +261,6 @@ export async function enrichMessagesForAgent(
     reactions: reactions.get(m.id) ?? [],
     flaggedAt: flags.get(m.id) ?? null,
     postSuggestion: postSuggestions.get(m.id) ?? null,
-    assistantPendingAction: pendingActionPointers.get(m.id) ?? undefined,
     translatedFrom: translatedFromPointers.get(m.id) ?? null,
   }))
 }
@@ -835,7 +832,6 @@ export interface MessagePage {
    *  message id — the same in-memory idiom as `postSuggestions` (no extra
    *  query). Consumed by `enrichMessagesForAgent`; MUST NOT be serialized to a
    *  client response. Empty whenever internal notes aren't loaded. */
-  pendingActionPointers: Map<ConversationMessageId, AssistantPendingActionSurface>
   /** Agent-only (P2-D.1 inbox translation): the pre-translation original of
    *  an OUTGOING message sent while translation was active, keyed by message
    *  id — the same in-memory idiom as `postSuggestions`. Populated for every
@@ -1050,13 +1046,10 @@ export async function listMessages(
   // (postSuggestion, assistantPendingAction, translatedFrom) — this map is
   // their only carrier, and it never leaves the server.
   const postSuggestions = new Map<ConversationMessageId, PostSuggestion>()
-  const pendingActionPointers = new Map<ConversationMessageId, AssistantPendingActionSurface>()
   const translatedFromPointers = new Map<ConversationMessageId, TranslatedFromMetadata>()
   for (const m of page) {
     const suggestion = m.metadata?.postSuggestion
     if (m.isInternal && suggestion) postSuggestions.set(m.id, suggestion)
-    const pendingAction = m.metadata?.assistantPendingAction
-    if (m.isInternal && pendingAction) pendingActionPointers.set(m.id, pendingAction)
     // Not internal-note-gated (unlike the two above): a translated reply is
     // an ordinary agent message, not a note.
     const translatedFrom = m.metadata?.translatedFrom
@@ -1074,7 +1067,6 @@ export async function listMessages(
     hasMore,
     nextCursor: page.length > 0 ? page[page.length - 1].id : null,
     postSuggestions,
-    pendingActionPointers,
     translatedFromPointers,
   }
 }
