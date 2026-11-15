@@ -85,3 +85,6 @@ ALTER TABLE settings
 
 -- KB citation markers on assistant-authored messages.
 ALTER TABLE conversation_messages DROP COLUMN IF EXISTS citations;
+
+-- AI auto-tagging prompt rules.
+ALTER TABLE post_tags DROP COLUMN IF EXISTS ai_prompt;

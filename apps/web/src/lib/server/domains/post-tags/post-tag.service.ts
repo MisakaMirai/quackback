@@ -70,7 +70,6 @@ export async function createPostTag(input: CreateTagInput): Promise<PostTag> {
       name: trimmedName,
       color,
       description: input.description?.trim() || null,
-      aiPrompt: input.aiPrompt?.trim() || null,
       isPublic: input.isPublic ?? true,
     })
     .returning()
@@ -119,7 +118,6 @@ export async function updatePostTag(id: PostTagId, input: UpdateTagInput): Promi
   if (input.name !== undefined) updateData.name = input.name.trim()
   if (input.color !== undefined) updateData.color = input.color
   if (input.description !== undefined) updateData.description = input.description?.trim() || null
-  if (input.aiPrompt !== undefined) updateData.aiPrompt = input.aiPrompt?.trim() || null
   if (input.isPublic !== undefined) updateData.isPublic = input.isPublic
 
   // Update the tag
