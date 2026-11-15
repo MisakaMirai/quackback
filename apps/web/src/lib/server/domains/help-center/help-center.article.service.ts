@@ -22,7 +22,6 @@ import type {
   CreateArticleInput,
   UpdateArticleInput,
 } from './help-center.types'
-import { generateArticleEmbedding } from './help-center-embedding.service'
 import { ensureDefaultHelpCategory } from './help-center.default-category'
 import { helpCenterVisibilityConditions } from './help-center-search.service'
 import { resolveUserAvatarUrl } from '@/lib/server/domains/principals/principal-display'
@@ -243,11 +242,6 @@ export async function createArticle(
 
   const resolved = await resolveArticleWithCategory(article)
 
-  // Fire-and-forget: generate embedding for the new article
-  generateArticleEmbedding(article.id, title, content, resolved.category?.name).catch((err) =>
-    log.error({ article_id: article.id, err }, 'article embedding generation failed')
-  )
-
   return resolved
 }
 
@@ -313,13 +307,6 @@ export async function updateArticle(
   if (!updated) throw new NotFoundError('ARTICLE_NOT_FOUND', `Article ${id} not found`)
 
   const resolved = await resolveArticleWithCategory(updated)
-
-  // Fire-and-forget: re-generate embedding when title or content changed
-  if (input.title || input.content || input.contentJson !== undefined) {
-    generateArticleEmbedding(id, resolved.title, resolved.content, resolved.category?.name).catch(
-      (err) => log.error({ article_id: id, err }, 'article embedding generation failed')
-    )
-  }
 
   return resolved
 }
