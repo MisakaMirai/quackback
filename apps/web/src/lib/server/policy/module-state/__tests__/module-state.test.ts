@@ -160,7 +160,10 @@ describe('the ledger is a decision record, not a rubber stamp', () => {
 
 describe('MODULE-STATE.md', () => {
   it('matches the tree', () => {
-    const golden = readFileSync(join(__dirname, '..', 'MODULE-STATE.md'), 'utf8')
+    const golden = readFileSync(join(__dirname, '..', 'MODULE-STATE.md'), 'utf8').replace(
+      /\r\n/g,
+      '\n'
+    )
     expect(renderLedgerDoc(result) + '\n').toBe(golden)
   })
 })
