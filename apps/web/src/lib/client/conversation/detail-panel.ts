@@ -3,8 +3,8 @@
  * `min-[1680px]:` breakpoint on the panel's own `hidden min-[1680px]:flex`
  * <aside>. Below it the thread header's Details button opens the same panel
  * in a sheet. The
- * inbox route derives `copilotAvailable` from the SAME query so the Ask
- * Copilot affordances can never disagree with the panel actually rendering,
+ * inbox route derives its state from the SAME query so the panel and the
+ * route can never disagree about what is available,
  * and the thread request only loads the panel's reads where it shows.
  */
 export const DETAIL_PANEL_MEDIA_QUERY = '(min-width: 1680px)'

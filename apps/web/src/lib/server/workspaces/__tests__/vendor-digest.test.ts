@@ -29,7 +29,7 @@ const EXPECTED: Record<string, string> = {
 
 function digest(file: string): string {
   return createHash('sha256')
-    .update(readFileSync(join(VENDOR_DIR, file)))
+    .update(readFileSync(join(VENDOR_DIR, file), 'utf8').replace(/\r\n/g, '\n'))
     .digest('hex')
 }
 

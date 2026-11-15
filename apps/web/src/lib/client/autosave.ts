@@ -55,7 +55,6 @@ export function isRevisionConflict(error: unknown): boolean {
   if (!error || typeof error !== 'object') return false
   const value = error as { code?: unknown; statusCode?: unknown; message?: unknown }
   return (
-    value.code === 'ASSISTANT_CONFIG_REVISION_CONFLICT' ||
     value.statusCode === 409 ||
     (typeof value.message === 'string' &&
       /changed in another session|revision conflict/i.test(value.message))

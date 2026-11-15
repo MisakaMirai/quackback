@@ -24,8 +24,8 @@ const DB = `qb_lock_timeout_${randomUUID().replace(/-/g, '').slice(0, 10)}`
 const dsn = ADMIN_URL.replace(/\/[^/]+$/, `/${DB}`)
 const PACKAGE_DIR = path.resolve(__dirname, '../..')
 
-/** The journal timestamp of the job queue migration, which touches `job_queue` first. */
-const JOB_QUEUE_WHEN = BUNDLED_MIGRATIONS.find((m) => m.tag.startsWith('0250_'))!.when
+/** The destructive migration this branch adds; it locks `conversation_messages` first. */
+const AI_DROP_WHEN = BUNDLED_MIGRATIONS.find((m) => m.tag === '0312_drop_quackback_ai')!.when
 
 let admin: postgres.Sql
 
@@ -42,6 +42,7 @@ function boot(limitMs: number): Promise<BootResult> {
   const started = Date.now()
   return new Promise((resolve) => {
     const child = spawn('bun', ['src/migrate.ts'], {
+      shell: process.platform === 'win32',
       cwd: PACKAGE_DIR,
       env: { ...process.env, DATABASE_URL: dsn },
       stdio: ['ignore', 'pipe', 'pipe'],
@@ -82,23 +83,23 @@ describe('the self-hosted boot migration', () => {
     const sql = postgres(dsn, { max: 1, onnotice: () => {} })
     const holder = postgres(dsn, { max: 1, onnotice: () => {} })
     try {
-      // Pending migrations from the job queue migration onwards, as after an
-      // upgrade, while another session holds the table the first one alters.
-      await truncateAppliedLedger(sql, JOB_QUEUE_WHEN)
+      // The newest migration is pending, as after a ledger gap, while another
+      // session holds the table it alters.
+      await truncateAppliedLedger(sql, AI_DROP_WHEN)
       await holder.unsafe('BEGIN')
-      await holder.unsafe('LOCK TABLE job_queue IN ACCESS EXCLUSIVE MODE')
+      await holder.unsafe('LOCK TABLE conversation_messages IN ACCESS EXCLUSIVE MODE')
 
       const blocked = await boot(DEFAULT_MIGRATE_LOCK_TIMEOUT_MS + 30_000)
       expect(blocked.killed, blocked.output).toBe(false)
       expect(blocked.code).toBe(1)
       expect(blocked.ms).toBeGreaterThanOrEqual(DEFAULT_MIGRATE_LOCK_TIMEOUT_MS - 1_000)
       expect(blocked.output).toMatch(/lock timeout/i)
-      expect((await readAppliedLedger(sql)).versions.has(JOB_QUEUE_WHEN)).toBe(false)
+      expect((await readAppliedLedger(sql)).versions.has(AI_DROP_WHEN)).toBe(false)
 
       await holder.unsafe('ROLLBACK')
       const next = await boot(120_000)
       expect(next.code, next.output).toBe(0)
-      expect((await readAppliedLedger(sql)).versions.has(JOB_QUEUE_WHEN)).toBe(true)
+      expect((await readAppliedLedger(sql)).versions.has(AI_DROP_WHEN)).toBe(true)
     } finally {
       await holder.unsafe('ROLLBACK').catch(() => {})
       await holder.end({ timeout: 5 }).catch(() => {})

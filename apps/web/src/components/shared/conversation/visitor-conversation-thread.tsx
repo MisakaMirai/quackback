@@ -955,14 +955,12 @@ export function VisitorConversationThread({
           <VisitorMessageBubble
             side={isVisitor ? 'self' : 'peer'}
             authorName={isVisitor ? undefined : (m.author?.displayName ?? teamName ?? undefined)}
-            isAssistant={m.isAssistant}
             content={m.content}
             contentJson={m.contentJson}
             attachments={m.attachments}
             messageId={m.id}
             sentAt={m.createdAt}
             compact={compact}
-            citations={m.citations}
             time={formatDate(m.createdAt, TIME_LABEL)}
             editedLabel={
               m.editedAt

@@ -69,7 +69,7 @@ function resolveImport(from: string, specifier: string): string | null {
 }
 
 const files = sourceFiles(SRC)
-const rel = (path: string) => relative(SRC, path)
+const rel = (path: string) => relative(SRC, path).replace(/\\/g, '/')
 const users = files.filter((path) => usesViewerMessage(readFileSync(path, 'utf8')))
 
 describe('viewer strings stay with the viewer', () => {

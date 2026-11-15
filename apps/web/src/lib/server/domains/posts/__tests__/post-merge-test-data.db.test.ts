@@ -5,7 +5,6 @@ import { boards, postComments, postVotes, posts, principal, user, eq, sql } from
 import { DEFAULT_BOARD_ACCESS } from '@/lib/shared/db-types'
 
 const effects = vi.hoisted(() => ({
-  scheduleDispatch: vi.fn(),
   dispatchPostMerged: vi.fn(),
   createActivity: vi.fn(),
 }))
@@ -13,7 +12,6 @@ vi.mock('@/lib/server/db', async (original) => ({
   ...(await original<typeof import('@/lib/server/db')>()),
   db: (await import('@/lib/server/__tests__/db-test-fixture')).testDb,
 }))
-vi.mock('@/lib/server/events/scheduler', () => ({ scheduleDispatch: effects.scheduleDispatch }))
 vi.mock('@/lib/server/events/dispatch', async (original) => ({
   ...(await original<typeof import('@/lib/server/events/dispatch')>()),
   dispatchPostMerged: effects.dispatchPostMerged,
@@ -33,7 +31,6 @@ beforeEach(async () => {
   expect(fixture.available).toBe(true)
   await fixture.begin()
   vi.clearAllMocks()
-  effects.scheduleDispatch.mockResolvedValue(undefined)
   owner = createId('principal')
   teammate = createId('principal')
   boardId = createId('board')
@@ -104,7 +101,6 @@ it.each(['source', 'target'] as const)(
       commentCount: 0,
     })
     expect(effects.createActivity).not.toHaveBeenCalled()
-    expect(effects.scheduleDispatch).not.toHaveBeenCalled()
     expect(effects.dispatchPostMerged).not.toHaveBeenCalled()
   }
 )
@@ -140,9 +136,6 @@ it('keeps ordinary merge aggregation, activity and fan-out working', async () =>
   )
   expect(effects.createActivity).toHaveBeenCalledWith(
     expect.objectContaining({ postId: source, type: 'post.merged_away' })
-  )
-  expect(effects.scheduleDispatch).toHaveBeenCalledWith(
-    expect.objectContaining({ payload: { postId: target } })
   )
   expect(effects.dispatchPostMerged).toHaveBeenCalledWith(
     expect.objectContaining({ principalId: owner }),

@@ -35,7 +35,7 @@ export function SearchPaletteDialog(props: SearchPaletteDialogProps) {
 /**
  * Destinations and records the viewer may open, ranked across kinds by the
  * server. Full text only, so it answers as you type; the results page adds
- * matches by meaning. Never starts a Copilot turn.
+ * matches by meaning.
  */
 function SearchPaletteDialogView({ open, onOpenChange, returnFocus }: SearchPaletteDialogProps) {
   const intl = useIntl()

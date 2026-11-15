@@ -49,7 +49,7 @@ describe('MCP tool permission declarations', () => {
   it('registers every tool through registerTool, so the guard covers all of them', () => {
     const { tools, direct } = registeredTools()
     expect(direct).toEqual([])
-    expect(tools.length).toBeGreaterThan(40)
+    expect(tools).toHaveLength(40)
   })
 
   it('declares permissions on every tool', () => {

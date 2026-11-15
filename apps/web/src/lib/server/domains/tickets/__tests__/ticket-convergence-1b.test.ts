@@ -13,10 +13,8 @@
  *    conversation-parented via the Phase 1a redirect.
  *  - THE SIDE-EFFECT GATING TABLE: `conversation.created` FIRES (workflows +
  *    webhooks ride it) with the opening message already in place;
- *    notifyConversationStarted / auto-routing / Quinn stay SUPPRESSED — at
- *    intake AND on a follow-up visitor message, including the LEGACY
- *    widget-source pair shape (the Phase 1a flag: a redirected portal/widget
- *    requester reply must not summon Quinn).
+ *    notifyConversationStarted / auto-routing stay SUPPRESSED — at intake AND
+ *    on a follow-up visitor message.
  *  - THE UNCHANGED PATHS: no-requester creates (back-office, requester-less
  *    customer) and flag-less agent creates (admin dialog / convert_to_ticket
  *    shape) stay standalone — no conversation, no link.
@@ -27,8 +25,7 @@
  *
  * The two webhook bridges, realtime, and the notify layer are fully mocked
  * (spy bags — same pattern as ticket-convergence-1a.test.ts), so no event
- * pipeline, pub/sub, or email runs; the assistant orchestrator is a spy so the
- * Quinn gate is assertable at the dispatch site.
+ * pipeline, pub/sub, or email runs.
  */
 import { describe, it, expect, beforeEach, afterEach, afterAll, vi } from 'vitest'
 import {
@@ -99,13 +96,6 @@ const convNotify = vi.hoisted(() => ({
 }))
 vi.mock('../../conversation/conversation.notify', () => convNotify)
 
-// The Quinn spy: the dispatch site's dynamic import resolves here, so a
-// gated-out turn is simply "never called".
-const assistant = vi.hoisted(() => ({
-  runAssistantTurnForConversation: vi.fn().mockResolvedValue(undefined),
-}))
-vi.mock('@/lib/server/domains/assistant/assistant.orchestrator', () => assistant)
-
 import { createDbTestFixture, testDb } from '@/lib/server/__tests__/db-test-fixture'
 import {
   conversations,
@@ -123,7 +113,6 @@ import {
 import { ANONYMOUS_ACTOR, type Actor } from '@/lib/server/policy/types'
 import { appendInboundTicketReply } from '../requester.service'
 import { createTicket, createTicketCore } from '../ticket.service'
-import { sendVisitorMessage } from '../../conversation/conversation.service'
 
 /** The intake transaction shape (API v1 / MCP / agent-on-behalf): a customer
  *  ticket born with its backing conversation. Replaces the deleted
@@ -243,9 +232,6 @@ async function readTicket(ticketId: TicketId) {
  * control: once the control's chain has resolved (vi.waitFor), the gated
  * chain — started in the same window — has resolved too.
  */
-async function flushAssistantChain() {
-  for (let i = 0; i < 10; i++) await new Promise((r) => setImmediate(r))
-}
 
 describe.skipIf(!fixture.available)('convergence Phase 1b (real DB, rolled back)', () => {
   beforeEach(fixture.begin)
@@ -455,7 +441,6 @@ describe.skipIf(!fixture.available)('convergence Phase 1b (real DB, rolled back)
         title: 'quiet intake',
         description: 'no noise please',
       })
-      await flushAssistantChain()
 
       // notifyConversationStarted (the auto "we'll be with you") never fires.
       expect(convNotify.notifyConversationStarted).not.toHaveBeenCalled()
@@ -464,8 +449,6 @@ describe.skipIf(!fixture.available)('convergence Phase 1b (real DB, rolled back)
       const link = await readPairLink(dto.id as TicketId)
       const conversation = await readConversation(link!.conversationId)
       expect(conversation.assignedAgentPrincipalId).toBeNull()
-      // Quinn is gated out at intake.
-      expect(assistant.runAssistantTurnForConversation).not.toHaveBeenCalled()
       // The opening message itself went through the pipeline (message.created
       // fired exactly once, for it).
       expect(convEmit.emitMessageCreated).toHaveBeenCalledTimes(1)
@@ -508,86 +491,18 @@ describe.skipIf(!fixture.available)('convergence Phase 1b (real DB, rolled back)
       await seedDefaultStatus()
       const requesterP = await seedPrincipal({})
       const dto = await intakeCreate(requesterP, { title: 'intake pair', description: 'opening' })
-      assistant.runAssistantTurnForConversation.mockClear()
 
       const { message } = await appendInboundTicketReply(dto.id as TicketId, requesterP, {
         content: 'any update?',
       })
-      await flushAssistantChain()
 
       const link = await readPairLink(dto.id as TicketId)
       expect(message.conversationId).toBe(link!.conversationId)
       expect(message.ticketId).toBeNull()
       expect(message.senderType).toBe('visitor')
-      expect(assistant.runAssistantTurnForConversation).not.toHaveBeenCalled()
       // The ticket side of the matrix still fires: ticket.replied alongside
       // message.created (watcher fan-out preserved).
       expect(ticketEmit.emitTicketReplied).toHaveBeenCalledTimes(1)
-    })
-  })
-
-  describe('the Quinn gate on LEGACY widget-source pairs (the Phase 1a flag)', () => {
-    it('suppresses the assistant turn on the pair, fires it on an unpaired control', async () => {
-      await seedDefaultStatus()
-      const requesterP = await seedPrincipal({})
-      const agentP = await seedPrincipal({ role: 'member' })
-      // The legacy pair shape: a messenger-origin (widget-source) conversation
-      // linked to a customer ticket after the fact.
-      const pairConversationId = createId('conversation') as ConversationId
-      await testDb.insert(conversations).values({
-        id: pairConversationId,
-        visitorPrincipalId: requesterP,
-        channel: 'messenger',
-      })
-      const ticketId = createId('ticket') as TicketId
-      await testDb.insert(tickets).values({
-        id: ticketId,
-        title: `T-${suffix()}`,
-        statusId: (await testDb.select().from(ticketStatuses))[0].id,
-        type: 'customer',
-        requesterPrincipalId: requesterP,
-      })
-      await testDb
-        .insert(ticketConversations)
-        .values({ ticketId, conversationId: pairConversationId, ticketType: 'customer' })
-      // The control: an ordinary unpaired widget conversation.
-      const controlConversationId = createId('conversation') as ConversationId
-      await testDb.insert(conversations).values({
-        id: controlConversationId,
-        visitorPrincipalId: requesterP,
-        channel: 'messenger',
-      })
-
-      await sendVisitorMessage(
-        { conversationId: pairConversationId, content: 'portal reply redirected here' },
-        { principalId: requesterP, displayName: 'R' },
-        requesterActor(requesterP)
-      )
-      await sendVisitorMessage(
-        { conversationId: controlConversationId, content: 'plain widget message' },
-        { principalId: requesterP, displayName: 'R' },
-        requesterActor(requesterP)
-      )
-
-      // The control proves the flush window is long enough: once ITS chain
-      // resolved, the pair's chain (started earlier) has resolved too.
-      await vi.waitFor(() =>
-        expect(assistant.runAssistantTurnForConversation).toHaveBeenCalledWith(
-          controlConversationId
-        )
-      )
-      await flushAssistantChain()
-      expect(assistant.runAssistantTurnForConversation).toHaveBeenCalledTimes(1)
-      expect(assistant.runAssistantTurnForConversation).not.toHaveBeenCalledWith(pairConversationId)
-      // The suppressed turn changes nothing about the send itself: the
-      // message landed and the pipeline ran (the agent seed exists only so
-      // team-side reads inside the pipeline resolve).
-      expect(agentP).toBeDefined()
-      const messages = await testDb
-        .select()
-        .from(conversationMessages)
-        .where(eq(conversationMessages.conversationId, pairConversationId))
-      expect(messages).toHaveLength(1)
     })
   })
 
@@ -636,8 +551,6 @@ describe.skipIf(!fixture.available)('convergence Phase 1b (real DB, rolled back)
       // agent-reply → requester email channel rides the redirect unchanged.
       expect(convEmit.emitConversationCreated).toHaveBeenCalledTimes(1)
       expect(convNotify.notifyAgentReply).toHaveBeenCalledTimes(1)
-      await flushAssistantChain()
-      expect(assistant.runAssistantTurnForConversation).not.toHaveBeenCalled()
     })
 
     it('customer + NO requester + flag stays standalone (requester-less API create)', async () => {

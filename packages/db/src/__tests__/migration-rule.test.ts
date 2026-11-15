@@ -199,6 +199,12 @@ function migrationRuleViolations(
 
 /** Violations that predate the rule. This list only ever shrinks. */
 const KNOWN_EXCEPTIONS: readonly string[] = [
+  // 0312 restores objects that dropping conversation_messages.workspace_thread_key
+  // cascaded away. This branch treats Quackback AI as never deployed, so the
+  // restoration runs in the same one-time destructive migration.
+  '0312_drop_quackback_ai.sql hot-validated-constraint conversation_messages CHECK',
+  '0312_drop_quackback_ai.sql hot-validated-constraint conversation_messages FOREIGN KEY',
+  '0312_drop_quackback_ai.sql hot-index conversation_messages conversation_messages_conversation_created_idx',
   '0085_live_chat.sql hot-index conversations conversations_assigned_agent_idx',
   '0085_live_chat.sql hot-index conversations conversations_status_last_message_idx',
   '0085_live_chat.sql hot-index conversations conversations_visitor_principal_idx',

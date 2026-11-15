@@ -27,7 +27,6 @@ export const SCAN_TABLES = [
   'events',
   'conversations',
   'conversation_messages',
-  'assistant_involvements',
   'in_app_notifications',
   'hook_deliveries',
   'import_runs',

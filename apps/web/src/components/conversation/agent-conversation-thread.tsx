@@ -1461,11 +1461,8 @@ export function AgentConversationThread({
 
   // Seed an insert into a mode's draft, then remount that editor so the new
   // value is loaded and the cursor lands at its end. The unified RichTextEditor
-  // exposes no imperative insert, so every "insert at cursor" affordance (macros,
-  // Copilot, the emoji picker) routes through the controlled value + remount key.
-  // One seam per converter: plain text (macros/emoji — literal paragraphs) vs
-  // Copilot answer (Markdown → real editor nodes, citation markers
-  // stripped; see appendAnswerToDraft).
+  // exposes no imperative insert, so every "insert at cursor" affordance
+  // (macros, the emoji picker) routes through the controlled value + remount key.
   const insertIntoDraft = useCallback(
     (mode: 'reply' | 'note', append: (prev: ComposerDraft) => ComposerDraft) => {
       if (mode === 'note') {

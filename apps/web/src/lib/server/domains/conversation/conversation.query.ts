@@ -55,7 +55,6 @@ import {
 } from '@/lib/shared/conversation/views'
 import { nextSlaDue } from '@/lib/shared/conversation/sla'
 import type { SlaApplied } from '@/lib/server/domains/sla/sla.service'
-import { assistantPrincipalIdOnce } from '@/lib/server/messages/assistant-principal'
 import { hasLinkedCustomerTicketSql } from '@/lib/server/messages/pair-link'
 import { conversationFilter } from '@/lib/server/policy/conversations'
 import { isTestThreadSql } from './conversation.test-data'
@@ -75,7 +74,6 @@ import { loadAuthors, loadAuthorAudiences, fallbackAuthor } from '../principals/
 import { toMessageDTO } from '@/lib/server/messages/message-core'
 import { aggregateReactions } from '@/lib/shared'
 import { supportContactName } from '@/lib/shared/support-contact-name'
-import { displayAssistantName } from '@/lib/shared/author-display'
 import { truncate } from '@/lib/shared/utils/string'
 import type { Channel } from '@/lib/shared/channels'
 import { keywordInContext, type TermSegment } from '@/lib/shared/utils/keyword-context'
@@ -235,9 +233,7 @@ async function loadFlagsForMessages(
  * The post suggestion is supplied in-memory via `postSuggestions` (built by
  * `listMessages` from the rows it already loaded) — it is NOT re-read here, so
  * there's no second `SELECT metadata` round-trip. The map is keyed by message id
- * and only ever carries internal-note suggestions. `pendingActionPointers`
- * mirrors it for Quinn's approval-gated proposals: a pointer only, not the
- * live status — the approval card re-fetches the pending-action row itself.
+ * and only ever carries internal-note suggestions.
  */
 export async function enrichMessagesForAgent(
   messages: ConversationMessageDTO[],
@@ -312,7 +308,6 @@ export async function listFlaggedMessages(actor: Actor): Promise<FlaggedMessageD
         content: conversationMessages.content,
         senderType: conversationMessages.senderType,
         authorPublicName: principal.displayName,
-        authorIsAssistant: sql<boolean>`${principal.serviceMetadata}->>'integrationType' = 'assistant'`,
         authorAccountName: user.name,
         visitorPrincipalId: conversations.visitorPrincipalId,
         flaggedAt: conversationMessageFlags.flaggedAt,
@@ -338,7 +333,6 @@ export async function listFlaggedMessages(actor: Actor): Promise<FlaggedMessageD
         content: conversationMessages.content,
         senderType: conversationMessages.senderType,
         authorPublicName: principal.displayName,
-        authorIsAssistant: sql<boolean>`${principal.serviceMetadata}->>'integrationType' = 'assistant'`,
         authorAccountName: user.name,
         ticketTitle: tickets.title,
         ticketNumber: tickets.number,
@@ -367,15 +361,11 @@ export async function listFlaggedMessages(actor: Actor): Promise<FlaggedMessageD
   const flaggedAuthor = (row: {
     authorAccountName: string | null
     authorPublicName: string | null
-    authorIsAssistant: boolean | null
     senderType: string
   }) =>
     supportContactName({
       accountName: row.authorAccountName,
-      publicName:
-        row.authorIsAssistant && row.authorPublicName
-          ? displayAssistantName(row.authorPublicName)
-          : row.authorPublicName,
+      publicName: row.authorPublicName,
       fallback: row.senderType === 'agent' ? 'Agent' : 'Visitor',
     })
   const fromConversations: FlaggedMessageDTO[] = conversationRows.map((r) => ({
@@ -902,10 +892,6 @@ function compareMessagesNewestFirst(a: ConversationMessage, b: ConversationMessa
  * visitor/grounding/realtime path) or no linked ticket degenerates to the
  * pre-convergence conversation-only read, byte-identical.
  */
-// The assistant's service principal is a workspace singleton; the memoized id
-// resolver lives in messages/assistant-principal (shared with the pair-thread
-// union loader) so message loads can flag Quinn's turns (`isAssistant`)
-// without a per-load lookup.
 export async function listMessages(
   conversationId: ConversationId,
   opts?: {
@@ -991,25 +977,22 @@ export async function listMessages(
   // page below the cursor anchor).
   const hasMore = merged.length > limit
   const page = hasMore ? merged.slice(0, limit) : merged
-  const [authors, assistantPrincipalId] = await Promise.all([
-    loadAuthors(
-      page.map((m) => m.principalId),
-      {
-        // Agent threads (internal notes, or an explicit ask) show the account
-        // name. The visitor widget leaves this off and keeps the public name.
-        preferAccountName: opts?.preferAccountName ?? !!opts?.includeInternal,
-      }
-    ),
-    assistantPrincipalIdOnce(),
-  ])
+  const authors = await loadAuthors(
+    page.map((m) => m.principalId),
+    {
+      // Agent threads (internal notes, or an explicit ask) show the account
+      // name. The visitor widget leaves this off and keeps the public name.
+      preferAccountName: opts?.preferAccountName ?? !!opts?.includeInternal,
+    }
+  )
   const ordered = [...page].reverse() // oldest-first for rendering
   // Stash the agent-only suggestion off each internal note's metadata while we
   // still have the raw rows, so the agent enrichment can attach it without a
   // second `SELECT metadata` round-trip. `toMessageDTO` forwards ordinary
   // client-safe metadata (e.g. `block`/`blockReply`, Phase C's conversational
   // block layer) but still never exposes these agent-only extras
-  // (postSuggestion, assistantPendingAction) — this map is their only carrier,
-  // and it never leaves the server.
+  // (postSuggestion) — this map is their only carrier, and it never leaves the
+  // server.
   const postSuggestions = new Map<ConversationMessageId, PostSuggestion>()
   for (const m of page) {
     const suggestion = m.metadata?.postSuggestion
@@ -1020,8 +1003,7 @@ export async function listMessages(
       // System events have a null principal and therefore no author.
       toMessageDTO(
         m,
-        m.principalId ? (authors.get(m.principalId) ?? fallbackAuthor(m.principalId)) : null,
-        assistantPrincipalId
+        m.principalId ? (authors.get(m.principalId) ?? fallbackAuthor(m.principalId)) : null
       )
     ),
     hasMore,
@@ -1032,7 +1014,7 @@ export async function listMessages(
 
 /**
  * Load a conversation's ENTIRE thread (oldest-first, no page window) as message
- * DTOs, for the copilot grounding block (`loadConversationGroundingContext`).
+ * DTOs.
  * Grounding must see the thread head as well as its tail: the windowed
  * `listMessages` read returns only the newest page (capped at 100), which would
  * silently drop the customer's original request on a long conversation. The
@@ -1058,18 +1040,14 @@ export async function listConversationMessagesForGrounding(
     )
     .orderBy(asc(conversationMessages.createdAt), asc(conversationMessages.id))
 
-  const [authors, assistantPrincipalId] = await Promise.all([
-    loadAuthors(
-      rows.map((m) => m.principalId),
-      { preferAccountName: true }
-    ),
-    assistantPrincipalIdOnce(),
-  ])
+  const authors = await loadAuthors(
+    rows.map((m) => m.principalId),
+    { preferAccountName: true }
+  )
   return rows.map((m) =>
     toMessageDTO(
       m,
-      m.principalId ? (authors.get(m.principalId) ?? fallbackAuthor(m.principalId)) : null,
-      assistantPrincipalId
+      m.principalId ? (authors.get(m.principalId) ?? fallbackAuthor(m.principalId)) : null
     )
   )
 }

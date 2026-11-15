@@ -285,31 +285,6 @@ const configSchema = z
      */
     userContentUrl: z.string().optional(),
 
-    // AI (optional)
-    openaiApiKey: z.string().optional(),
-    openaiBaseUrl: z.string().optional(),
-    aiChatModel: z.string().optional(),
-    aiEmbeddingModel: z.string().optional(),
-    aiSummaryModel: z.string().optional(),
-    aiSentimentModel: z.string().optional(),
-    aiExtractionModel: z.string().optional(),
-    aiQualityGateModel: z.string().optional(),
-    aiInterpretationModel: z.string().optional(),
-    aiMergeModel: z.string().optional(),
-    aiHelpCenterModel: z.string().optional(),
-    aiHelpCenterTranslateModel: z.string().optional(),
-    aiAssistantModel: z.string().optional(),
-    aiAssistantVision: z.string().optional(),
-    aiInboxTranslationModel: z.string().optional(),
-    aiClassificationModel: z.string().optional(),
-    aiRequireParameters: envBoolean,
-    aiReasoningExclude: envBoolean,
-    aiReasoningEffort: z.string().optional(),
-    aiCombinedToolsAndSchema: envBoolean,
-
-    // Automatic website branding for new workspaces (optional)
-    disableAutomaticBranding: envBoolean,
-
     // Product analytics for the admin app (optional, off unless a key is set)
     posthogKey: z.preprocess(emptyToUndefined, z.string().optional()),
     posthogHost: z.preprocess(emptyToUndefined, z.string().url().optional()),
@@ -468,31 +443,6 @@ function buildConfigFromEnv(): unknown {
     s3PublicUrl: env('S3_PUBLIC_URL'),
     s3Proxy: env('S3_PROXY'),
     userContentUrl: env('USER_CONTENT_URL'),
-
-    // AI
-    openaiApiKey: env('OPENAI_API_KEY'),
-    openaiBaseUrl: env('OPENAI_BASE_URL'),
-    aiChatModel: env('AI_CHAT_MODEL'),
-    aiEmbeddingModel: env('AI_EMBEDDING_MODEL'),
-    aiSummaryModel: env('AI_SUMMARY_MODEL'),
-    aiSentimentModel: env('AI_SENTIMENT_MODEL'),
-    aiExtractionModel: env('AI_EXTRACTION_MODEL'),
-    aiQualityGateModel: env('AI_QUALITY_GATE_MODEL'),
-    aiInterpretationModel: env('AI_INTERPRETATION_MODEL'),
-    aiMergeModel: env('AI_MERGE_MODEL'),
-    aiHelpCenterModel: env('AI_HELP_CENTER_MODEL'),
-    aiHelpCenterTranslateModel: env('AI_HELP_CENTER_TRANSLATE_MODEL'),
-    aiAssistantModel: env('AI_ASSISTANT_MODEL'),
-    aiAssistantVision: env('AI_ASSISTANT_VISION'),
-    aiInboxTranslationModel: env('AI_INBOX_TRANSLATION_MODEL'),
-    aiClassificationModel: env('AI_CLASSIFICATION_MODEL'),
-    aiRequireParameters: env('AI_REQUIRE_PARAMETERS'),
-    aiReasoningExclude: env('AI_REASONING_EXCLUDE'),
-    aiReasoningEffort: env('AI_REASONING_EFFORT'),
-    aiCombinedToolsAndSchema: env('AI_COMBINED_TOOLS_AND_SCHEMA'),
-
-    // Automatic website branding
-    disableAutomaticBranding: env('DISABLE_AUTOMATIC_BRANDING'),
 
     // Product analytics
     posthogKey: env('POSTHOG_KEY'),
@@ -736,74 +686,6 @@ export const config = {
     const cfg = loadConfig()
     if (cfg.tenancyMode === 'pooled' || !cfg.userContentUrl) return undefined
     return parseUserContentOrigin(cfg.userContentUrl) ?? undefined
-  },
-
-  // AI
-  get openaiApiKey() {
-    return loadConfig().openaiApiKey
-  },
-  get openaiBaseUrl() {
-    return loadConfig().openaiBaseUrl
-  },
-  get aiChatModel() {
-    return loadConfig().aiChatModel
-  },
-  get aiEmbeddingModel() {
-    return loadConfig().aiEmbeddingModel
-  },
-  get aiSummaryModel() {
-    return loadConfig().aiSummaryModel
-  },
-  get aiSentimentModel() {
-    return loadConfig().aiSentimentModel
-  },
-  get aiExtractionModel() {
-    return loadConfig().aiExtractionModel
-  },
-  get aiQualityGateModel() {
-    return loadConfig().aiQualityGateModel
-  },
-  get aiInterpretationModel() {
-    return loadConfig().aiInterpretationModel
-  },
-  get aiMergeModel() {
-    return loadConfig().aiMergeModel
-  },
-  get aiHelpCenterModel() {
-    return loadConfig().aiHelpCenterModel
-  },
-  get aiHelpCenterTranslateModel() {
-    return loadConfig().aiHelpCenterTranslateModel
-  },
-  get aiAssistantModel() {
-    return loadConfig().aiAssistantModel
-  },
-  get aiAssistantVision() {
-    return loadConfig().aiAssistantVision
-  },
-  get aiInboxTranslationModel() {
-    return loadConfig().aiInboxTranslationModel
-  },
-  get aiClassificationModel() {
-    return loadConfig().aiClassificationModel
-  },
-  get aiRequireParameters() {
-    return loadConfig().aiRequireParameters
-  },
-  get aiReasoningExclude() {
-    return loadConfig().aiReasoningExclude
-  },
-  get aiReasoningEffort() {
-    return loadConfig().aiReasoningEffort
-  },
-  get aiCombinedToolsAndSchema() {
-    return loadConfig().aiCombinedToolsAndSchema
-  },
-
-  // Automatic website branding: true stops the first-run lookup of the
-  // administrator's company website.
-  get disableAutomaticBranding() {
-    return loadConfig().disableAutomaticBranding
   },
 
   /**

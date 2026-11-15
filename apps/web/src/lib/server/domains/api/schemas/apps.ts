@@ -158,49 +158,6 @@ registerPath('/apps/search', {
   },
 })
 
-registerPath('/apps/suggest', {
-  get: {
-    tags: ['Apps'],
-    summary: 'Suggest similar posts',
-    description:
-      'Finds posts similar to a piece of text. Uses semantic similarity when AI is configured and falls back to text search otherwise, in which case similarity is null. Requires the post.view_private permission.',
-    parameters: [
-      {
-        name: 'text',
-        in: 'query',
-        required: true,
-        schema: { type: 'string' },
-        description: 'Text to match, for example a ticket subject',
-      },
-      limitParam(5),
-    ],
-    responses: {
-      200: {
-        description: 'Similar posts',
-        content: {
-          'application/json': {
-            schema: createItemResponseSchema(
-              z.object({
-                posts: z.array(
-                  z.object({
-                    id: TypeIdSchema,
-                    title: z.string(),
-                    voteCount: z.number().int(),
-                    similarity: z.number().nullable(),
-                    board: z.object({ name: z.string() }),
-                  })
-                ),
-              }),
-              'Similar posts'
-            ),
-          },
-        },
-      },
-      ...errorResponses(400, 403),
-    },
-  },
-})
-
 registerPath('/apps/linked', {
   get: {
     tags: ['Apps'],

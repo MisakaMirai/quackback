@@ -1,3 +1,4 @@
+-- @contract: safe-after 0.14.0   (Quackback AI is removed; this branch is treated as a fresh project)
 -- Quackback AI is removed. Drop its tables and the retired Home-chat /
 -- translation columns that only the assistant stack used.
 DROP TABLE IF EXISTS assistant_pending_actions CASCADE;

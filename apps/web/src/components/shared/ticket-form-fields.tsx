@@ -27,7 +27,7 @@ export interface TicketFormFieldsProps {
   /** Per-key validation messages (from validateTicketIntakeValues). */
   errors?: Record<string, string>
   /** Convergence Phase 5 (create-dialog auto-fill): keys whose current value
-   *  came from the copilot's suggestion — rendered with a "✨ suggested"
+   *  came from a suggestion — rendered with a "✨ suggested"
    *  marker. Omit on the intake surfaces (no suggestions exist there). */
   suggestedKeys?: ReadonlySet<string>
   /** Whether a suggestion run completed; with `suggestedKeys`, unmarked keys

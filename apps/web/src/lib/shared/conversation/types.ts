@@ -144,21 +144,6 @@ export interface UploadedFile {
   family: FileFamily
 }
 
-/** A source the AI assistant grounded a reply in — a KB article, a feedback
- *  post, an admin-curated snippet, or a past-conversation summary. The
- *  message `content` carries inline [n] markers that index into this ordered
- *  list. */
-export interface ConversationMessageCitation {
-  // Mirrors ASSISTANT_CITATION_TYPES (citation-types.ts); a client-safe copy so
-  // this shared type never imports the server domain leaf. 'ticket'/'changelog'
-  // are copilot-only (team ceiling); customer-persisted turns only ever carry
-  // 'article'/'post'/'changelog'/'document'/'webpage'.
-  type: 'article' | 'post' | 'snippet' | 'summary' | 'ticket' | 'changelog' | 'document' | 'webpage'
-  id: string
-  title: string
-  url: string
-}
-
 /** A single rendered conversation message. `createdAt` is an ISO-8601 string. */
 export interface ConversationMessageDTO {
   id: ConversationMessageId
@@ -178,13 +163,6 @@ export interface ConversationMessageDTO {
   /** Null for system events, which have no human author. */
   author: ConversationAuthorDTO | null
   attachments: ConversationAttachment[]
-  /** KB sources for an AI assistant reply, indexed by inline [n] markers in
-   *  `content`. Empty for human/visitor messages. Safe for both audiences. */
-  citations: ConversationMessageCitation[]
-  /** True when this message was authored by the AI assistant (Quinn). Lets the
-   *  agent inbox mark AI vs human turns in a blended thread; the customer widget
-   *  ignores it. */
-  isAssistant: boolean
   /** Agent-only internal note — only ever present on agent-facing payloads. */
   isInternal: boolean
   /** Rich TipTap doc for messages that carry structured content: internal-note
@@ -255,14 +233,6 @@ export interface AgentConversationMessageDTO extends ConversationMessageDTO {
   /** Agent-only AI suggestion to track this conversation as a post; null
    *  otherwise. Never on the base DTO, so it never reaches the visitor. */
   postSuggestion: { boardId: string; title: string; content: string } | null
-  /** Agent-only pointer to a Quinn write-tool proposal awaiting approval,
-   *  surfaced on the internal note that announced it. Just enough to render the
-   *  card and look up the live pending-action row for its current status — the
-   *  row, not this pointer, is the source of truth. Optional (unlike
-   *  `postSuggestion`) because the realtime `message` event carries the base DTO
-   *  without agent enrichment; a live-pushed note picks it up once the thread
-   *  next reloads. Never on the base DTO, so it never reaches the visitor. */
-  assistantPendingAction?: { pendingActionId: string; toolName: string; summary: string }
 }
 
 /** Coerce a base/partial message DTO to an agent one, preserving any reaction /
@@ -408,42 +378,6 @@ export const CONVERSATION_SPAM_FILED_BY_LABELS: Record<ConversationSpamFiledBy, 
  * inbox stream can route across many threads. `message` events carry an
  * `id:` line equal to the message id for Last-Event-ID backfill.
  */
-/** What Quinn is doing this turn, for the widget's live working trace. */
-export type AssistantActivityStatus = 'thinking' | 'searching_kb' | 'reviewing_conversation'
-
-/** Terminal outcome of Quinn's involvement in a conversation (mirrors the db
- *  ASSISTANT_INVOLVEMENT_STATUSES; inlined here so the browser-safe module has
- *  no server import). */
-export type AssistantInvolvementOutcome =
-  'active' | 'handed_off' | 'resolved_confirmed' | 'resolved_assumed' | 'abandoned'
-
-/** Short, teammate-facing phrasing for why Quinn handed off (keys mirror the db
- *  ASSISTANT_HANDOFF_REASONS). Single source for the escalation note + the agent
- *  detail panel; callers fall back to the raw key for any unknown reason. */
-export const HANDOFF_REASON_LABELS: Record<string, string> = {
-  explicit_request: 'customer asked for a person',
-  frustration: 'customer seemed frustrated',
-  repetition: 'customer repeated the issue',
-  low_confidence: "AI agent wasn't confident",
-  capability_limit: 'outside what the AI agent can do',
-  safety: 'safety topic',
-  system_error: 'AI agent hit an error',
-  awaiting_confirmation: 'AI agent is waiting for a teammate to confirm an action',
-}
-
-/** Quinn's activity on one conversation, for the agent details panel. Null when
- *  Quinn never engaged the conversation. */
-export interface ConversationAssistantActivity {
-  outcome: AssistantInvolvementOutcome
-  /** Structured handoff reason when escalated, else null. */
-  handoffReason: string | null
-  /** KB sources Quinn cited across the involvement. */
-  sources: ConversationMessageCitation[]
-  /** CSAT rating attributed to Quinn (1-5), or null. */
-  rating: number | null
-  /** ISO time of Quinn's last substantive answer, or null. */
-  answeredAt: string | null
-}
 
 /**
  * Ticket-thread realtime events (unified inbox §3.2, M3). Design choice:
@@ -522,25 +456,6 @@ export type ConversationStreamEvent =
       kind: 'message_edited'
       conversationId: ConversationId
       message: ConversationMessageDTO
-    }
-  // Ephemeral AI-assistant working status while Quinn's turn runs — never
-  // persisted. Published on the conversation channel ONLY (not the inbox) so it
-  // drives the visitor's live trace without churning the agent inbox list.
-  | {
-      kind: 'assistant_activity'
-      conversationId: ConversationId
-      status: AssistantActivityStatus
-      at: string
-    }
-  // Ephemeral streamed answer while Quinn composes. `text` is the FULL clean
-  // answer so far (the client REPLACES its placeholder buffer, not appends) so a
-  // dropped frame or a retry self-heals. Discarded when the final persisted
-  // `message` arrives. Conversation channel only, like `assistant_activity`.
-  | {
-      kind: 'assistant_delta'
-      conversationId: ConversationId
-      text: string
-      at: string
     }
   | TicketStreamEvent
 

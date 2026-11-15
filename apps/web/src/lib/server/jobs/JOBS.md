@@ -430,8 +430,6 @@ went stale the moment a queue moved.
 | `page-view-partitions`         | `30 2 * * *`   | 1           | 3        | 60s   |
 | `sla-breach-sweep`             | `* * * * *`    | 1           | 3        | 60s   |
 | `snooze-sweep`                 | `* * * * *`    | 1           | 3        | 60s   |
-| `workflow-sweep`               | `*/5 * * * *`  | 1           | 3        | 60s   |
-| `workflow-retention`           | `0 4 * * *`    | 1           | 3        | 60s   |
 | `email-log-retention`          | `0 6 * * *`    | 1           | 3        | 60s   |
 | `onboarding-email`             | —              | 1           | 3        | 60s   |
 | `spam-retention`               | `0 5 * * *`    | 1           | 3        | 60s   |
@@ -449,15 +447,10 @@ went stale the moment a queue moved.
 | `jira-webhook-refresh`         | `* * * * *`    | 1           | 3        | 60s   |
 | `event-dispatch`               | —              | 5           | 10       | 60s   |
 | `event-reactions`              | —              | 1           | 3        | 60s   |
-| `event-summaries`              | —              | 2           | 3        | 60s   |
 | `segment-evaluation`           | dynamic        | 2           | 3        | 60s   |
 | `file-preview`                 | —              | 2           | 2        | 120s  |
 | `file-retention`               | `40 4 * * *`   | 1           | 3        | 60s   |
-| `help-center-translate`        | —              | 1           | 3        | 120s  |
-| `help-center-translate-resume` | `25 * * * *`   | 1           | 1        | 60s   |
 | `email-imap`                   | `* * * * *`    | 1           | 1        | 60s   |
-| `workflow-dispatch`            | —              | 1           | 3        | 60s   |
-| `workflow-wait`                | —              | 4           | 3        | 60s   |
 | `import`                       | —              | 2           | 1        | 60s   |
 | `export`                       | —              | 1           | 1        | 60s   |
 

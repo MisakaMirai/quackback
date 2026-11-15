@@ -51,7 +51,6 @@ type Msg = {
   createdAt: string
   author: { displayName: string } | null
   isInternal: boolean
-  isAssistant: boolean
   attachments: unknown[]
 }
 const message = (over: Partial<Msg>): Msg => ({
@@ -61,7 +60,6 @@ const message = (over: Partial<Msg>): Msg => ({
   createdAt: '2026-07-04T09:15:30.000Z',
   author: { displayName: 'Alice' },
   isInternal: false,
-  isAssistant: false,
   attachments: [],
   ...over,
 })

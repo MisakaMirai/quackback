@@ -271,7 +271,6 @@ describe('Event processing', () => {
     // payload from config, so none may touch the event.
     it.each([
       ['__changelog_publish__', { changelogId: 'changelog_1' }, 'notifyChangelogPublished'],
-      ['__post_merge_recheck__', { postId: 'post_1' }, 'checkPostForMergeCandidates'],
       [
         '__status_maintenance_start__',
         { incidentId: 'status_incident_1' },

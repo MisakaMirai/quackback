@@ -15,7 +15,6 @@ import { truncate } from '@/lib/shared/utils/string'
 import type { TiptapContent } from '@/lib/shared/db-types'
 import { contentJsonForClient } from '@/lib/server/content/storage-read-urls'
 import { tiptapJsonToText, hasTextLeaf } from '@/lib/server/markdown-tiptap'
-import type { PrincipalId } from '@quackback/ids'
 import {
   MAX_CONVERSATION_MESSAGE_LENGTH,
   type ConversationAttachment as ClientAttachment,
@@ -133,8 +132,7 @@ export function richMessageFallbackLabel(doc: TiptapContent | null | undefined):
 /** Map a message row + resolved author to its wire DTO (conversation or ticket). */
 export function toMessageDTO(
   message: ConversationMessage,
-  author: ConversationAuthorDTO | null,
-  assistantPrincipalId?: PrincipalId | null
+  author: ConversationAuthorDTO | null
 ): ConversationMessageDTO {
   const { contentJson, attachments } = liftInlineImagesToAttachments(
     contentJsonForClient(message.contentJson ?? null),
@@ -150,8 +148,6 @@ export function toMessageDTO(
     editedAt: message.editedAt ? message.editedAt.toISOString() : null,
     author,
     attachments,
-    citations: [],
-    isAssistant: assistantPrincipalId != null && message.principalId === assistantPrincipalId,
     isInternal: message.isInternal,
     contentJson,
     viaEmail: message.metadata?.source === 'email',

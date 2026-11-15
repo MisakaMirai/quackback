@@ -76,11 +76,6 @@ describe('revision conflict detection', () => {
 
   it('also recognises the typed shapes', () => {
     expect(isRevisionConflict(Object.assign(new Error('x'), { statusCode: 409 }))).toBe(true)
-    expect(
-      isRevisionConflict(
-        Object.assign(new Error('x'), { code: 'ASSISTANT_CONFIG_REVISION_CONFLICT' })
-      )
-    ).toBe(true)
   })
 
   it('does not treat other failures as conflicts', () => {

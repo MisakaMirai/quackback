@@ -182,7 +182,7 @@ describe('emit()', () => {
       getExecuteRows<{ queue: string; dedupe_key: string }>(
         await db.execute(sql`
           SELECT queue, dedupe_key FROM job_queue
-          WHERE queue IN ('event-reactions', 'event-summaries')
+          WHERE queue IN ('event-reactions')
             AND payload->>'eventId' = ${eventId}
           ORDER BY queue
         `)
@@ -196,10 +196,9 @@ describe('emit()', () => {
         entityId: reactedEntity,
       })
     )
-    // The ordered reactions and the close summary each get their own job.
+    // The ordered reactions get their own job.
     expect(await reactionJobsFor(reactedId)).toEqual([
       { queue: 'event-reactions', dedupe_key: `event-reactions:${reactedId}` },
-      { queue: 'event-summaries', dedupe_key: `event-summaries:${reactedId}` },
     ])
 
     const plainEntity = createId('post')
@@ -229,7 +228,7 @@ describe('emit()', () => {
     // suite's drain to claim.
     await db.execute(sql`
       DELETE FROM job_queue
-      WHERE queue IN ('event-reactions', 'event-summaries')
+      WHERE queue IN ('event-reactions')
         AND payload->>'eventId' IN (${reactedId}, ${plainId})
     `)
   })

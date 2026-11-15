@@ -40,18 +40,6 @@ const authorRow = (over: Record<string, unknown>) => ({
 })
 
 describe('loadAuthors', () => {
-  it('shows the product name for the assistant principal stored under the former default name', async () => {
-    mockPrincipalRows.mockResolvedValueOnce([
-      authorRow({
-        id: 'principal_assistant',
-        displayName: 'Quinn',
-        serviceMetadata: { kind: 'integration', integrationType: 'assistant' },
-      }),
-    ])
-    const authors = await loadAuthors(['principal_assistant' as never])
-    expect(authors.get('principal_assistant' as never)?.displayName).toBe('Quackback AI')
-  })
-
   it('keeps the public name of a person or integration that is not the assistant', async () => {
     mockPrincipalRows.mockResolvedValueOnce([
       authorRow({ id: 'principal_teammate', displayName: 'Quinn', serviceMetadata: null }),

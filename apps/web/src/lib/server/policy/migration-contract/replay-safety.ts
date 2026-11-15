@@ -207,12 +207,48 @@ export interface ReplayOverride {
  * migration is responsible, done. Removing one is not, and cannot be: see
  * property 3 on {@link ReplayOverride}.
  */
+/**
+ * Migrations whose objects were retired by a later destructive migration. A
+ * replay against the fully migrated database would recreate the dropped
+ * objects (the `IF NOT EXISTS` forms succeed rather than error), so they are
+ * outside the replay-safe set. The lineage still applies them once; only the
+ * second-application check skips them.
+ */
+export const REPLAY_RETIRED: ReadonlySet<string> = new Set([
+  '0230_post_tags_ai_prompt',
+  '0255_settings_cloud_tenant_id',
+  '0256_workspace_key_columns',
+  '0261_connectors',
+  '0275_slack_thread_sessions',
+  '0294_workspace_copilot',
+  '0296_validate_workspace_copilot_checks',
+  '0312_drop_quackback_ai',
+])
+
 export const REPLAY_OVERRIDES: readonly ReplayOverride[] = [
+  {
+    tag: '0051_ai_usage_log_month_index',
+    verdict: 'errors',
+    why: '0312_drop_quackback_ai drops ai_usage_log, so the index statement has no relation to target on a replay of the migrated database.',
+    stillFailsWith: /ai_usage_log/,
+  },
+  {
+    tag: '0274_slack_agent_gateway',
+    verdict: 'errors',
+    why: '0312_drop_quackback_ai drops assistant_pending_actions, so the Slack agent gateway replay has no relation to alter.',
+    stillFailsWith: /assistant_pending_actions/,
+  },
+  {
+    tag: '0302_approvals_foundation',
+    verdict: 'errors',
+    why: '0312_drop_quackback_ai drops assistant_pending_actions, so the approvals-foundation replay has no relation to alter.',
+    stillFailsWith: /assistant_pending_actions/,
+  },
   {
     tag: '0269_messenger_ai_default_on',
     verdict: 'mutates',
     why: '0274_slack_agent_gateway upgrades the assistant_config default to version 4. Replaying 0269 succeeds but downgrades that default to version 3, losing workspace assistant defaults for new settings rows.',
-    stillFailsWith: /catalogue changed/,
+    stillFailsWith: /assistant_config/,
   },
   {
     tag: '0091_drop_conversation_tags',
@@ -236,7 +272,7 @@ export const REPLAY_OVERRIDES: readonly ReplayOverride[] = [
       'the gap heal treats the two differently and only mutates is refused in both populations: ' +
       'an errors verdict here would still let a heal delete the ledger rows and then fail on ' +
       'every replay forever, with nothing able to write them back.',
-    stillFailsWith: /pipeline_log/,
+    stillFailsWith: /pipeline_log|assistant_events/,
   },
 ]
 

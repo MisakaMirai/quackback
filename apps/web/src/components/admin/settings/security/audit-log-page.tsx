@@ -241,7 +241,6 @@ export function rowsToCsv(rows: AuditEventRow[]): string {
 const VIA_CHANNEL: Partial<Record<AuditChannel, MessageDescriptor>> = defineMessages({
   api: { id: 'admin.auditLog.via.api', defaultMessage: 'via API' },
   mcp: { id: 'admin.auditLog.via.mcp', defaultMessage: 'via MCP' },
-  assistant: { id: 'admin.auditLog.via.assistant', defaultMessage: 'via assistant' },
   workflow: { id: 'admin.auditLog.via.workflow', defaultMessage: 'via workflow' },
   system: { id: 'admin.auditLog.via.system', defaultMessage: 'via system' },
 })

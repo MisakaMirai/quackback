@@ -32,7 +32,7 @@ function messageIds(source: string): string[] {
 function namedOutside(isMember: (key: string) => boolean, owners: ReadonlySet<string>): string[] {
   const outside: string[] = []
   for (const file of walk(APP_SRC)) {
-    const path = relative(APP_SRC, file)
+    const path = relative(APP_SRC, file).replace(/\\/g, '/')
     if (owners.has(path) || path === 'lib/shared/i18n.ts' || path.startsWith('lib/server/'))
       continue
     for (const id of messageIds(readFileSync(file, 'utf8'))) {
@@ -82,7 +82,7 @@ describe('lazily loaded strings', () => {
     ])
     const strayImports: string[] = []
     for (const file of walk(APP_SRC)) {
-      const path = relative(APP_SRC, file)
+      const path = relative(APP_SRC, file).replace(/\\/g, '/')
       if (containers.has(path)) continue
       const source = readFileSync(file, 'utf8')
       for (const owner of containers) {

@@ -354,11 +354,6 @@ describe('recordAuditEvent attribution', () => {
       },
     ],
     [
-      'assistant',
-      { channel: 'assistant', clientName: 'Quinn', onBehalfOfPrincipalId: ON_BEHALF },
-      { channel: 'assistant', credentialKind: null, onBehalfOfPrincipalId: ON_BEHALF },
-    ],
-    [
       'workflow',
       { channel: 'workflow', clientName: 'Auto-close' },
       { channel: 'workflow', clientName: 'Auto-close', onBehalfOfPrincipalId: null },
@@ -376,24 +371,4 @@ describe('recordAuditEvent attribution', () => {
       expect(mockInsertValues.mock.calls[0][0]).toMatchObject(expected)
     }
   )
-
-  it('stamps the boundary onto the transactional insert too', async () => {
-    const { runWithAuditAttribution } = await import('../attribution')
-    const { recordAuditEventInTransaction } = await import('../log')
-    const txValues = vi.fn((_row: unknown) => ({ returning: async () => [{ id: 'audit_row' }] }))
-    const tx = { insert: vi.fn(() => ({ values: txValues })) }
-    await runWithAuditAttribution(
-      { channel: 'assistant', clientName: 'Quinn', onBehalfOfPrincipalId: ON_BEHALF as never },
-      () =>
-        recordAuditEventInTransaction(tx as never, {
-          event: 'copilot.settings.applied',
-          actor: { email: 'a@b.com' },
-        })
-    )
-    expect(txValues.mock.calls[0][0]).toMatchObject({
-      channel: 'assistant',
-      clientName: 'Quinn',
-      onBehalfOfPrincipalId: ON_BEHALF,
-    })
-  })
 })

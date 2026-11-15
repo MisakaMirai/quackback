@@ -197,7 +197,7 @@ export async function applySettingsChangesInTransaction(
       (change.id === MESSENGER_SWITCH &&
         !equal(messengerEffects(before, change.after === true), change.effects ?? null))
     )
-      throw new ValidationError('SETTINGS_CHANGED', 'These settings changed. Ask Copilot again.')
+      throw new ValidationError('SETTINGS_CHANGED', 'These settings changed. Try again.')
     const patch = patches.get(change.area) ?? {}
     put(patch, change.path, change.after)
     patches.set(change.area, patch)

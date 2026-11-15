@@ -63,8 +63,6 @@ const baseMessage = {
   createdAt: now.toISOString(),
   author: null,
   attachments: [],
-  citations: [],
-  isAssistant: false,
   isInternal: false,
   contentJson: null,
   viaEmail: false,

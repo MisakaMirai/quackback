@@ -4,8 +4,6 @@ export type { Database, CreateDbOptions } from './src/client'
 
 // Schema
 export * from './src/schema'
-// Retired Quackback AI tables: app compatibility only, excluded from migrations.
-export * from './src/schema/retired-ai'
 
 // RBAC permission catalogue (pure data; the code-authoritative contract)
 export * from './src/rbac-catalogue'

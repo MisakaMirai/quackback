@@ -80,10 +80,6 @@ vi.mock('@/lib/server/realtime/presence', () => ({
   clearPresence: vi.fn(async () => false),
 }))
 
-vi.mock('@/lib/server/domains/assistant/assistant-activity-snapshot', () => ({
-  readActivitySnapshot: vi.fn(async () => null),
-}))
-
 import { Route } from '../stream'
 
 type RouteOpts = { server: { handlers: { GET: (a: { request: Request }) => Promise<Response> } } }

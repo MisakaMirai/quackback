@@ -100,7 +100,7 @@ Profiles: **Owner** = admin class + an admin-owned full API key (scoped keys hol
 
 ## 2. Surfaces and their enforced authorization
 
-### Server functions (`requireAuth`) — 730 surfaces
+### Server functions (`requireAuth`) — 647 surfaces
 
 | Surface | Enforces |
 | --- | --- |
@@ -141,8 +141,6 @@ Profiles: **Owner** = admin class + an admin-owned full API key (scoped keys hol
 | `integrations/salesforce/server/functions.ts`::getSalesforceConnectUrl | integration.manage |
 | `integrations/shortcut/server/functions.ts`::saveShortcutTokenFn | integration.manage |
 | `integrations/shortcut/server/functions.ts`::fetchShortcutProjectsFn | integration.manage |
-| `integrations/slack/server/agent/settings.ts`::getSlackAgentSettingsFn | ai.teammate.manage |
-| `integrations/slack/server/agent/settings.ts`::setSlackAssistantEnabledFn | ai.teammate.manage |
 | `integrations/slack/server/functions.ts`::getSlackConnectUrl | integration.manage |
 | `integrations/slack/server/functions.ts`::fetchSlackChannelsFn | integration.manage |
 | `integrations/stripe/server/functions.ts`::saveStripeKeyFn | integration.manage |
@@ -155,8 +153,6 @@ Profiles: **Owner** = admin class + an admin-owned full API key (scoped keys hol
 | `integrations/zapier/server/functions.ts`::saveZapierWebhookFn | integration.manage |
 | `integrations/zendesk/server/functions.ts`::getZendeskConnectUrl | integration.manage |
 | `integrations/zendesk/server/functions.ts`::searchZendeskUserFn | integration.view |
-| `lib/server/domains/assistant/copilot-gate.ts`::gateCopilotFn | copilot.use |
-| `lib/server/domains/assistant/copilot-gate.ts`::gateCopilotAguiRequest | copilot.use |
 | `lib/server/functions/activation.ts`::getStartingPointContextFn | settings.manage |
 | `lib/server/functions/activation.ts`::getActivationBridgeContextFn | settings.manage |
 | `lib/server/functions/activation.ts`::markPublicBoardLinkCopiedFn | board.manage |
@@ -209,49 +205,6 @@ Profiles: **Owner** = admin class + an admin-owned full API key (scoped keys hol
 | `lib/server/functions/api-keys.ts`::revokeApiKeyFn | api_key.manage |
 | `lib/server/functions/api-keys.ts`::setWorkspaceKeyRoleFn | api_key.manage |
 | `lib/server/functions/ask-search.ts`::searchWorkspaceFn | DYNAMIC (post.view_private | help_center.manage | changelog.view_draft | changelog.manage | conversation.view | conversation.view_all | ticket.view | ticket.view_all | people.view | member.view | company.view) |
-| `lib/server/functions/assistant-actions.ts`::approveAssistantActionFn | DYNAMIC (conversation.view | ticket.view | copilot.use | settings.manage | settings.branding | office_hours.manage | changelog.manage | conversation.set_attributes | conversation.set_status | ticket.create | post.create | post.vote_on_behalf) |
-| `lib/server/functions/assistant-actions.ts`::rejectAssistantActionFn | DYNAMIC (conversation.view | ticket.view | copilot.use) |
-| `lib/server/functions/assistant-analytics.ts`::getQuinnPerformanceFn | analytics.view |
-| `lib/server/functions/assistant-connectors.ts`::listConnectorsFn | DYNAMIC (ai.customer.manage | ai.teammate.manage) |
-| `lib/server/functions/assistant-connectors.ts`::getConnectorFn | DYNAMIC (ai.customer.manage | ai.teammate.manage) |
-| `lib/server/functions/assistant-connectors.ts`::createConnectorFn | DYNAMIC (ai.customer.manage | ai.teammate.manage) |
-| `lib/server/functions/assistant-connectors.ts`::updateConnectorFn | DYNAMIC (ai.customer.manage | ai.teammate.manage) |
-| `lib/server/functions/assistant-connectors.ts`::refreshConnectorFn | DYNAMIC (ai.customer.manage | ai.teammate.manage) |
-| `lib/server/functions/assistant-connectors.ts`::startConnectorOAuthFn | DYNAMIC (ai.customer.manage | ai.teammate.manage) |
-| `lib/server/functions/assistant-connectors.ts`::deleteConnectorFn | DYNAMIC (ai.customer.manage | ai.teammate.manage) |
-| `lib/server/functions/assistant-copilot-analytics.ts`::getCopilotUsageMetricsFn | analytics.view |
-| `lib/server/functions/assistant-documents.ts`::uploadAssistantDocumentFn | DYNAMIC (ai.customer.manage | ai.teammate.manage) |
-| `lib/server/functions/assistant-documents.ts`::listAssistantDocumentsFn | DYNAMIC (ai.customer.manage | ai.teammate.manage) |
-| `lib/server/functions/assistant-documents.ts`::deleteAssistantDocumentFn | DYNAMIC (ai.customer.manage | ai.teammate.manage) |
-| `lib/server/functions/assistant-guidance-stats.ts`::getGuidanceRuleStatsFn | DYNAMIC (ai.customer.manage | ai.teammate.manage) |
-| `lib/server/functions/assistant-guidance.ts`::listGuidanceRulesFn | DYNAMIC (ai.customer.manage | ai.teammate.manage) |
-| `lib/server/functions/assistant-guidance.ts`::createGuidanceRuleFn | DYNAMIC (ai.customer.manage | ai.teammate.manage) |
-| `lib/server/functions/assistant-guidance.ts`::updateGuidanceRuleFn | DYNAMIC (ai.customer.manage | ai.teammate.manage) |
-| `lib/server/functions/assistant-guidance.ts`::reorderGuidanceRulesFn | DYNAMIC (ai.customer.manage | ai.teammate.manage) |
-| `lib/server/functions/assistant-guidance.ts`::deleteGuidanceRuleFn | DYNAMIC (ai.customer.manage | ai.teammate.manage) |
-| `lib/server/functions/assistant-guidance.ts`::listAssistantToolsFn | DYNAMIC (ai.customer.manage | ai.teammate.manage) |
-| `lib/server/functions/assistant-pending-actions.ts`::getAssistantPendingActionFn | DYNAMIC (conversation.view | ticket.view | copilot.use) |
-| `lib/server/functions/assistant-settings.ts`::getAssistantSettingsFn | DYNAMIC (ai.customer.manage | ai.teammate.manage) |
-| `lib/server/functions/assistant-settings.ts`::updateAssistantIdentityFn | ai.customer.manage |
-| `lib/server/functions/assistant-settings.ts`::updateAssistantVoiceFn | ai.customer.manage |
-| `lib/server/functions/assistant-settings.ts`::updateAssistantAgentKnowledgeFn | ai.customer.manage |
-| `lib/server/functions/assistant-settings.ts`::updateAssistantCopilotKnowledgeFn | ai.teammate.manage |
-| `lib/server/functions/assistant-settings.ts`::updateAssistantCopilotCapabilitiesFn | ai.teammate.manage |
-| `lib/server/functions/assistant-settings.ts`::updateAssistantToolRulesFn | DYNAMIC (ai.customer.manage | ai.teammate.manage) |
-| `lib/server/functions/assistant-settings.ts`::updateWidgetAssistantDeploymentFn | ai.customer.manage |
-| `lib/server/functions/assistant-skills.ts`::listSkillsFn | DYNAMIC (ai.customer.manage | ai.teammate.manage) |
-| `lib/server/functions/assistant-skills.ts`::createSkillFn | DYNAMIC (ai.customer.manage | ai.teammate.manage) |
-| `lib/server/functions/assistant-skills.ts`::updateSkillFn | DYNAMIC (ai.customer.manage | ai.teammate.manage) |
-| `lib/server/functions/assistant-skills.ts`::deleteSkillFn | DYNAMIC (ai.customer.manage | ai.teammate.manage) |
-| `lib/server/functions/assistant-snippets.ts`::listSnippetsFn | DYNAMIC (ai.customer.manage | ai.teammate.manage) |
-| `lib/server/functions/assistant-snippets.ts`::createSnippetFn | DYNAMIC (ai.customer.manage | ai.teammate.manage) |
-| `lib/server/functions/assistant-snippets.ts`::updateSnippetFn | DYNAMIC (ai.customer.manage | ai.teammate.manage) |
-| `lib/server/functions/assistant-snippets.ts`::deleteSnippetFn | DYNAMIC (ai.customer.manage | ai.teammate.manage) |
-| `lib/server/functions/assistant-tools-analytics.ts`::getQuinnToolMetricsFn | analytics.view |
-| `lib/server/functions/assistant-web-sources.ts`::listWebSourcesFn | DYNAMIC (ai.customer.manage | ai.teammate.manage) |
-| `lib/server/functions/assistant-web-sources.ts`::addWebSourceFn | DYNAMIC (ai.customer.manage | ai.teammate.manage) |
-| `lib/server/functions/assistant-web-sources.ts`::setWebSourceEnabledFn | DYNAMIC (ai.customer.manage | ai.teammate.manage) |
-| `lib/server/functions/assistant-web-sources.ts`::deleteWebSourceFn | DYNAMIC (ai.customer.manage | ai.teammate.manage) |
 | `lib/server/functions/audit-log.ts`::listAuditEventsFn | audit.view |
 | `lib/server/functions/auth-provider-credentials.ts`::saveAuthProviderCredentialsFn | auth.manage |
 | `lib/server/functions/auth-provider-credentials.ts`::deleteAuthProviderCredentialsFn | auth.manage |
@@ -330,8 +283,6 @@ Profiles: **Owner** = admin class + an admin-owned full API key (scoped keys hol
 | `lib/server/functions/conversation-attributes.ts`::archiveConversationAttributeFn | conversation.manage |
 | `lib/server/functions/conversation-attributes.ts`::restoreConversationAttributeFn | conversation.manage |
 | `lib/server/functions/conversation-attributes.ts`::setConversationAttributeValueFn | DYNAMIC (conversation.set_attributes | ticket.set_status) |
-| `lib/server/functions/conversation-attributes.ts`::previewAttributeDetectionFn | conversation.manage |
-| `lib/server/functions/conversation-attributes.ts`::draftAttributeDescriptionsFn | conversation.manage |
 | `lib/server/functions/conversation-attributes.ts`::attributeValueCountsFn | conversation.view |
 | `lib/server/functions/conversation-files.ts`::listConversationFilesFn | conversation.view |
 | `lib/server/functions/conversation-files.ts`::listConversationFilesFn | TEAM-ONLY (~conversation.view) |
@@ -365,8 +316,6 @@ Profiles: **Owner** = admin class + an admin-owned full API key (scoped keys hol
 | `lib/server/functions/conversation.ts`::editConversationMessageFn | DYNAMIC (conversation.reply | conversation.note | ticket.reply | ticket.note) |
 | `lib/server/functions/conversation.ts`::deleteConversationMessageFn | END_USER (any authenticated) |
 | `lib/server/functions/conversation.ts`::listConversationsFn | conversation.view |
-| `lib/server/functions/conversation.ts`::fetchAssistantInboxCountsFn | conversation.view |
-| `lib/server/functions/conversation.ts`::getConversationAssistantActivityFn | conversation.view |
 | `lib/server/functions/conversation.ts`::listConversationsForUserFn | conversation.view |
 | `lib/server/functions/conversation.ts`::getConversationFn | conversation.view |
 | `lib/server/functions/conversation.ts`::sendAgentMessageFn | conversation.reply |
@@ -402,8 +351,6 @@ Profiles: **Owner** = admin class + an admin-owned full API key (scoped keys hol
 | `lib/server/functions/domains-overview.ts`::getHelpCenterDomainSummaryFn | settings.custom_domain |
 | `lib/server/functions/external-statuses.ts`::fetchExternalStatusesFn | integration.manage |
 | `lib/server/functions/feature-flags.ts`::updateFeatureFlagsFn | settings.manage |
-| `lib/server/functions/feedback.ts`::acceptSuggestionFn | suggestion.manage |
-| `lib/server/functions/feedback.ts`::dismissSuggestionFn | suggestion.manage |
 | `lib/server/functions/help-center-domain.ts`::updateHelpCenterDomainFn | help_center.manage |
 | `lib/server/functions/help-center-domain.ts`::verifyHelpCenterDomainFn | help_center.manage |
 | `lib/server/functions/help-center-domain.ts`::getHelpCenterDomainStatusFn | help_center.manage |
@@ -416,7 +363,6 @@ Profiles: **Owner** = admin class + an admin-owned full API key (scoped keys hol
 | `lib/server/functions/help-center-settings.ts`::enableHelpCenterLocaleFn | help_center.manage |
 | `lib/server/functions/help-center-settings.ts`::disableHelpCenterLocaleFn | help_center.manage |
 | `lib/server/functions/help-center-settings.ts`::updateHelpCenterLocaleChromeFn | help_center.manage |
-| `lib/server/functions/help-center-settings.ts`::updateHelpCenterAutoTranslateFn | help_center.manage |
 | `lib/server/functions/help-center-translations.ts`::listArticleTranslationsFn | help_center.manage |
 | `lib/server/functions/help-center-translations.ts`::getArticleTranslationStatusesFn | help_center.manage |
 | `lib/server/functions/help-center-translations.ts`::upsertArticleTranslationFn | help_center.manage |
@@ -462,9 +408,6 @@ Profiles: **Owner** = admin class + an admin-owned full API key (scoped keys hol
 | `lib/server/functions/macros.ts`::updateMacroFn | conversation.manage |
 | `lib/server/functions/macros.ts`::deleteMacroFn | conversation.manage |
 | `lib/server/functions/macros.ts`::applyMacroFn | conversation.reply |
-| `lib/server/functions/merge-suggestions.ts`::getMergeSuggestionsForPostFn | post.view_private |
-| `lib/server/functions/merge-suggestions.ts`::fetchMergeSuggestionSummaryFn | post.view_private |
-| `lib/server/functions/merge-suggestions.ts`::fetchMergeSuggestionCountsForPostsFn | post.view_private |
 | `lib/server/functions/moderation.ts`::requireTeamAuth | post.approve |
 | `lib/server/functions/moderation.ts`::listPendingPostsFn | post.approve |
 | `lib/server/functions/moderation.ts`::listPendingCommentsFn | post.approve |
@@ -523,7 +466,6 @@ Profiles: **Owner** = admin class + an admin-owned full API key (scoped keys hol
 | `lib/server/functions/post-tags.ts`::createPostTagFn | tag.manage |
 | `lib/server/functions/post-tags.ts`::updatePostTagFn | tag.manage |
 | `lib/server/functions/post-tags.ts`::deletePostTagFn | tag.manage |
-| `lib/server/functions/post-tags.ts`::backfillAiTagsFn | tag.manage |
 | `lib/server/functions/post-views.ts`::listPostViewsFn | post.view_private |
 | `lib/server/functions/post-views.ts`::createPostViewFn | post.edit |
 | `lib/server/functions/post-views.ts`::deletePostViewFn | post.edit |
@@ -734,7 +676,6 @@ Profiles: **Owner** = admin class + an admin-owned full API key (scoped keys hol
 | `lib/server/functions/tickets.ts`::createTicketIssueFn | ticket.assign |
 | `lib/server/functions/tickets.ts`::unlinkTicketIssueFn | ticket.assign |
 | `lib/server/functions/tickets.ts`::linkTicketToConversationFn | ticket.create |
-| `lib/server/functions/tickets.ts`::suggestTicketFieldValuesFn | ticket.create |
 | `lib/server/functions/tickets.ts`::listTicketStatusesFn | ticket.view |
 | `lib/server/functions/tickets.ts`::createTicketStatusFn | ticket.manage_types |
 | `lib/server/functions/tickets.ts`::updateTicketStatusFn | ticket.manage_types |
@@ -789,12 +730,6 @@ Profiles: **Owner** = admin class + an admin-owned full API key (scoped keys hol
 | `lib/server/functions/webhooks.ts`::updateWebhookFn | webhook.manage |
 | `lib/server/functions/webhooks.ts`::deleteWebhookFn | webhook.manage |
 | `lib/server/functions/webhooks.ts`::rotateWebhookSecretFn | webhook.manage |
-| `lib/server/functions/website-branding.ts`::startAutomaticWebsiteBrandingFn | DYNAMIC (settings.manage) |
-| `lib/server/functions/website-branding.ts`::getAutomaticWebsiteBrandingStatusFn | DYNAMIC (settings.manage) |
-| `lib/server/functions/website-branding.ts`::acceptWebsiteBrandingOfferFn | DYNAMIC (settings.manage) |
-| `lib/server/functions/website-branding.ts`::declineWebsiteBrandingOfferFn | DYNAMIC (settings.manage) |
-| `lib/server/functions/website-branding.ts`::undoAutomaticWebsiteBrandingFn | DYNAMIC (settings.manage) |
-| `lib/server/functions/website-branding.ts`::lookupWebsiteBrandingFn | DYNAMIC (settings.manage) |
 | `lib/server/functions/widget/comments.ts`::widgetCreateCommentFn | END_USER (any authenticated) |
 | `lib/server/functions/widget/comments.ts`::widgetAddReactionFn | END_USER (any authenticated) |
 | `lib/server/functions/widget/comments.ts`::widgetRemoveReactionFn | END_USER (any authenticated) |
@@ -815,24 +750,9 @@ Profiles: **Owner** = admin class + an admin-owned full API key (scoped keys hol
 | `lib/server/functions/widget/tickets.ts`::widgetWatchMyTicketFn | END_USER (any authenticated) |
 | `lib/server/functions/widget/tickets.ts`::widgetUnwatchMyTicketFn | END_USER (any authenticated) |
 | `lib/server/functions/widget/user.ts`::widgetGetUserStatsFn | END_USER (any authenticated) |
-| `lib/server/functions/workflow-reporting.ts`::workflowEffectivenessFn | routing.manage |
-| `lib/server/functions/workflow-reporting.ts`::workflowRunsFn | routing.manage |
-| `lib/server/functions/workflow-reporting.ts`::workflowRunTimelineFn | routing.manage |
-| `lib/server/functions/workflows.ts`::listWorkflowsFn | routing.manage |
-| `lib/server/functions/workflows.ts`::getWorkflowFn | routing.manage |
-| `lib/server/functions/workflows.ts`::createWorkflowFn | workflow.manage |
-| `lib/server/functions/workflows.ts`::updateWorkflowFn | workflow.manage |
-| `lib/server/functions/workflows.ts`::setWorkflowStatusFn | workflow.manage |
-| `lib/server/functions/workflows.ts`::reorderWorkflowsFn | workflow.manage |
-| `lib/server/functions/workflows.ts`::deleteWorkflowFn | workflow.manage |
-| `lib/server/functions/workflows.ts`::listWorkflowVersionsFn | routing.manage |
-| `lib/server/functions/workflows.ts`::restoreWorkflowVersionFn | workflow.manage |
-| `lib/server/functions/workflows.ts`::previewWorkflowFn | routing.manage |
-| `lib/server/functions/workflows.ts`::listRunnableWorkflowsFn | conversation.reply |
-| `lib/server/functions/workflows.ts`::runWorkflowManuallyFn | conversation.reply |
 | `lib/server/functions/workspace-api-key-settings.ts`::fetchWorkspaceKeyRolesFn | api_key.manage |
 
-### Public REST API (`withApiKeyAuth`) — 129 surfaces
+### Public REST API (`withApiKeyAuth`) — 125 surfaces
 
 | Surface | Enforces |
 | --- | --- |
@@ -844,7 +764,6 @@ Profiles: **Owner** = admin class + an admin-owned full API key (scoped keys hol
 | `routes/api/v1/apps/linked.ts`::GET | integration.view |
 | `routes/api/v1/apps/posts.ts`::POST | post.create |
 | `routes/api/v1/apps/search.ts`::GET | post.view_private |
-| `routes/api/v1/apps/suggest.ts`::GET | post.view_private |
 | `routes/api/v1/apps/unlink.ts`::POST | post.vote_on_behalf |
 | `routes/api/v1/boards/$boardId.ts`::GET | PUBLIC (any valid key) |
 | `routes/api/v1/boards/$boardId.ts`::PATCH | board.manage |
@@ -936,9 +855,6 @@ Profiles: **Owner** = admin class + an admin-owned full API key (scoped keys hol
 | `routes/api/v1/statuses/$statusId.ts`::DELETE | status.manage |
 | `routes/api/v1/statuses/index.ts`::GET | PUBLIC (any valid key) |
 | `routes/api/v1/statuses/index.ts`::POST | status.manage |
-| `routes/api/v1/suggestions/$suggestionId.accept.ts`::POST | suggestion.manage |
-| `routes/api/v1/suggestions/$suggestionId.dismiss.ts`::POST | suggestion.manage |
-| `routes/api/v1/suggestions/$suggestionId.restore.ts`::POST | suggestion.manage |
 | `routes/api/v1/tags/$tagId.ts`::GET | PUBLIC (any valid key) |
 | `routes/api/v1/tags/$tagId.ts`::PATCH | tag.manage |
 | `routes/api/v1/tags/$tagId.ts`::DELETE | tag.manage |
@@ -980,11 +896,10 @@ Profiles: **Owner** = admin class + an admin-owned full API key (scoped keys hol
 
 ## 3. MCP tools
 
-43 tools. "Team" = requires an admin/member role in addition to the scope.
+40 tools. "Team" = requires an admin/member role in addition to the scope.
 
 | Tool | Scope(s) | Team |
 | --- | --- | :---: |
-| accept_suggestion | write:feedback | ✓ |
 | add_comment | write:feedback | · |
 | add_ticket_note | write:chat | ✓ |
 | create_article | write:article | ✓ |
@@ -995,7 +910,6 @@ Profiles: **Owner** = admin class + an admin-owned full API key (scoped keys hol
 | delete_changelog | write:changelog | ✓ |
 | delete_comment | write:feedback | · |
 | delete_post | write:feedback | ✓ |
-| dismiss_suggestion | write:feedback | ✓ |
 | get_conversation | read:chat | ✓ |
 | get_details | read:article, read:feedback | ✓ |
 | get_post_activity | read:feedback | ✓ |
@@ -1012,7 +926,6 @@ Profiles: **Owner** = admin class + an admin-owned full API key (scoped keys hol
 | reply_to_conversation | write:chat | ✓ |
 | reply_to_ticket | write:chat | ✓ |
 | restore_post | write:feedback | ✓ |
-| restore_suggestion | write:feedback | ✓ |
 | search | read:article, read:feedback | ✓ |
 | set_conversation_status | write:chat | ✓ |
 | share_post | write:chat | ✓ |
@@ -1040,7 +953,7 @@ Key scopes are enforced: an API key holds exactly its stored scopes (owner permi
 
 ## 4. Entry points without a requireAuth/key gate
 
-221 of 1058 entry points hold no `requireAuth` / `withApiKeyAuth` / `requireTeamAuth` gate.
+213 of 965 entry points hold no `requireAuth` / `withApiKeyAuth` / `requireTeamAuth` gate.
 Each is expected to be intentionally public, a pre-auth flow, a signature-verified webhook, or a handler that delegates auth (e.g. the MCP route).
 **Adding a row here is an access-control change** — confirm the new entry point is meant to be reachable without a gate.
 
@@ -1061,7 +974,6 @@ Each is expected to be intentionally public, a pre-auth flow, a signature-verifi
 | `lib/server/functions/conversation.ts`::getMyConversationFn | server-fn |
 | `lib/server/functions/conversation.ts`::getMyConversationsFn | server-fn |
 | `lib/server/functions/conversation.ts`::getWidgetTeamAvatarsFn | server-fn |
-| `lib/server/functions/copilot-events.ts`::recordCopilotEventFn | server-fn |
 | `lib/server/functions/csat-email.ts`::recordCsatViaTokenFn | server-fn |
 | `lib/server/functions/csat-email.ts`::validateCsatEmailTokenFn | server-fn |
 | `lib/server/functions/embeds.ts`::getEmbedPreviewFn | server-fn |
@@ -1173,8 +1085,6 @@ Each is expected to be intentionally public, a pre-auth flow, a signature-verifi
 | `routes/[.]well-known.oauth-protected-resource.ts`::GET | route |
 | `routes/[.]well-known.openid-configuration.api.auth.ts`::GET | route |
 | `routes/[.]well-known.openid-configuration.ts`::GET | route |
-| `routes/api/admin/assistant/copilot.ts`::POST | route |
-| `routes/api/admin/assistant/transform.ts`::POST | route |
 | `routes/api/auth/$.ts`::GET | route |
 | `routes/api/auth/$.ts`::POST | route |
 | `routes/api/auth/invitation.$invitationId.ts`::GET | route |
@@ -1216,13 +1126,11 @@ Each is expected to be intentionally public, a pre-auth flow, a signature-verifi
 | `routes/api/user/profile.ts`::DELETE | route |
 | `routes/api/user/profile.ts`::GET | route |
 | `routes/api/user/profile.ts`::PATCH | route |
-| `routes/api/v1/admin/usage.ts`::GET | route |
 | `routes/api/v1/apps/boards.ts`::OPTIONS | route |
 | `routes/api/v1/apps/link.ts`::OPTIONS | route |
 | `routes/api/v1/apps/linked.ts`::OPTIONS | route |
 | `routes/api/v1/apps/posts.ts`::OPTIONS | route |
 | `routes/api/v1/apps/search.ts`::OPTIONS | route |
-| `routes/api/v1/apps/suggest.ts`::OPTIONS | route |
 | `routes/api/v1/apps/unlink.ts`::OPTIONS | route |
 | `routes/api/v1/docs.ts`::GET | route |
 | `routes/api/v1/mentions/suggest.ts`::GET | route |
@@ -1242,8 +1150,6 @@ Each is expected to be intentionally public, a pre-auth flow, a signature-verifi
 | `routes/api/widget/files.ts`::POST | route |
 | `routes/api/widget/identify.ts`::POST | route |
 | `routes/api/widget/install-context.ts`::POST | route |
-| `routes/api/widget/kb-ask.ts`::GET | route |
-| `routes/api/widget/kb-ask.ts`::POST | route |
 | `routes/api/widget/kb-search.ts`::GET | route |
 | `routes/api/widget/sdk[.]js.ts`::GET | route |
 | `routes/api/widget/search.ts`::GET | route |
@@ -1259,7 +1165,6 @@ Each is expected to be intentionally public, a pre-auth flow, a signature-verifi
 | `routes/oauth/$integration/callback.ts`::GET | route |
 | `routes/oauth/$integration/callback.ts`::POST | route |
 | `routes/oauth/$integration/connect.ts`::GET | route |
-| `routes/oauth/connector.callback.ts`::GET | route |
 | `routes/robots[.]txt.ts`::GET | route |
 | `routes/sitemap[.]xml.ts`::GET | route |
 | `routes/status/feed.ts`::GET | route |

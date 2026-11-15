@@ -77,8 +77,8 @@ function relativeParts(ms: number): [number, Intl.RelativeTimeFormatUnit] | null
 }
 
 /** The relative-time label `<TimeAgo>` renders ("3 days ago", "in 2 hours"),
- *  in `locale`, for static (no-interval) consumers like CitationFreshness;
- *  '' for a missing or invalid date. */
+ *  in `locale`, for static (no-interval) consumers; '' for a missing or
+ *  invalid date. */
 export function getTimeAgo(
   date: Date | string | null | undefined,
   locale: string = DEFAULT_LOCALE

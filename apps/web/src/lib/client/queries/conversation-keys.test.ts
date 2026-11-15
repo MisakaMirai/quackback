@@ -52,12 +52,6 @@ describe('conversationKeys parity', () => {
       'user-conversations',
       principalId,
     ])
-    expect(conversationKeys.agentAssistantActivity(convId)).toEqual([
-      'admin',
-      'inbox',
-      'assistant-activity',
-      convId,
-    ])
     expect(conversationKeys.agentConversationFiles(convId)).toEqual([
       'admin',
       'inbox',

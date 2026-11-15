@@ -72,16 +72,6 @@ describe('platform-schema.generated.json parity', () => {
 
     const envKeys = committed.providers.flatMap((p) => p.fields.map((f) => f.envKey))
     expect(new Set(envKeys).size).toBe(envKeys.length)
-
-    const aiKeys = committed.ai.keys.map((k) => k.key)
-    expect(new Set(aiKeys).size).toBe(aiKeys.length)
-    expect(aiKeys.every((k) => /^(?:AI|OPENAI)_/.test(k))).toBe(true)
-  })
-
-  it('marks a key sensitive if and only if it is a secret', () => {
-    for (const key of committed.ai.keys) {
-      expect(key.sensitive).toBe(key.kind === 'secret')
-    }
   })
 })
 

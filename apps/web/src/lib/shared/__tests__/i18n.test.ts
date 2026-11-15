@@ -319,7 +319,7 @@ describe('setup wizard strings', () => {
           continue
         }
         if (!/\.(tsx?|ts)$/.test(entry.name)) continue
-        const rel = relative(src, path)
+        const rel = relative(src, path).replace(/\\/g, '/')
         if (wizardDirs.some((dir) => rel.startsWith(dir)) || rel === 'lib/shared/i18n.ts') continue
         const text = readFileSync(path, 'utf8')
         if (SETUP_WIZARD_MESSAGE_PREFIXES.some((prefix) => text.includes(`'${prefix}`)))

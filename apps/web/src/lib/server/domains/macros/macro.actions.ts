@@ -3,8 +3,6 @@
  * actions directly through the conversation services, so macros keep working
  * without the workflow engine.
  *
- * `set_attribute` is accepted and stored but no-ops until a general
- * conversation custom-attribute setter exists.
  */
 import type { ConversationId, PrincipalId, ConversationTagId, TeamId } from '@quackback/ids'
 import type { MacroAction, MacroSnoozePreset } from '@/lib/server/db'
@@ -83,9 +81,13 @@ export async function applyMacroActions(
           applied.push('Closed')
           break
         }
-        case 'set_attribute':
-          // No general conversation attribute setter yet; accepted but inert.
+        case 'set_attribute': {
+          const { setConversationAttribute } =
+            await import('@/lib/server/domains/conversation-attributes/set-attribute.service')
+          await setConversationAttribute({ conversationId }, action.key, action.value, 'teammate')
+          applied.push(`Set ${action.key}`)
           break
+        }
       }
     } catch (err) {
       log.error({ err, action: action.type, conversationId }, 'macro action failed')

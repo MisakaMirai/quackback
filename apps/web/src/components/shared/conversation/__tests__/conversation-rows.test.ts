@@ -23,8 +23,6 @@ const base = {
   showEmpty: false,
   showSeen: false,
   showTyping: false,
-  assistantActivity: null,
-  assistantStream: '',
   showCsat: false,
 }
 
@@ -154,7 +152,6 @@ function agentMsg(id: string, over: Partial<ConversationMessageDTO> = {}): Conve
   return {
     id,
     senderType: 'agent',
-    isAssistant: true,
     content: 'prompt',
     block: null,
     blockReply: null,
@@ -169,7 +166,6 @@ function visitorMsg(
   return {
     id,
     senderType: 'visitor',
-    isAssistant: false,
     content: 'reply',
     block: null,
     blockReply: null,
@@ -178,7 +174,7 @@ function visitorMsg(
 }
 
 function teammateMsg(id: string): ConversationMessageDTO {
-  return agentMsg(id, { isAssistant: false })
+  return agentMsg(id)
 }
 
 /** The `chat_ended`/`chat_reopened` status-transition system row amendment 3
@@ -188,7 +184,6 @@ function systemMsg(id: string, kind: 'chat_ended' | 'chat_reopened'): Conversati
   return {
     id,
     senderType: 'system',
-    isAssistant: false,
     content: '',
     block: null,
     blockReply: null,
@@ -241,7 +236,7 @@ describe('buildConversationRows — block state derivation', () => {
       ...base,
       messages: [
         agentMsg('b1', { block: buttonsBlock }),
-        agentMsg('b2', { block: buttonsBlock, isAssistant: true }),
+        agentMsg('b2', { block: buttonsBlock }),
         visitorMsg('v1', { blockReply: reply }),
       ],
     })
@@ -249,23 +244,12 @@ describe('buildConversationRows — block state derivation', () => {
     expect(blockStateOf(rows, 'b2')).toBe('chosen')
   })
 
-  it('is superseded by a later HUMAN teammate message (takeover)', () => {
+  it('is superseded by a later teammate message (takeover)', () => {
     const rows = buildConversationRows({
       ...base,
       messages: [agentMsg('b1', { block: buttonsBlock }), teammateMsg('t1')],
     })
     expect(blockStateOf(rows, 'b1')).toBe('superseded')
-  })
-
-  it('is NOT superseded by a later ASSISTANT/run message (amendment 2)', () => {
-    const rows = buildConversationRows({
-      ...base,
-      messages: [
-        agentMsg('b1', { block: buttonsBlock }),
-        agentMsg('a1', { isAssistant: true, block: messageBlock }),
-      ],
-    })
-    expect(blockStateOf(rows, 'b1')).toBe('pending')
   })
 
   it('is superseded once the conversation is closed', () => {
@@ -327,7 +311,7 @@ describe('buildConversationRows — block state derivation', () => {
     const messages = [
       agentMsg('b1', { block: buttonsBlock }),
       visitorMsg('v1', { blockReply: reply }),
-      agentMsg('b2', { block: csatBlock, isAssistant: true }),
+      agentMsg('b2', { block: csatBlock }),
     ]
     const first = buildConversationRows({ ...base, messages })
     const second = buildConversationRows({ ...base, messages })

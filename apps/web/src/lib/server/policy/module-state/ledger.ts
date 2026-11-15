@@ -66,13 +66,6 @@ export interface LedgerEntry {
 
 export const MODULE_STATE_LEDGER: readonly LedgerEntry[] = [
   {
-    file: 'apps/web/src/lib/server/domains/ai/structured-chat.ts',
-    name: 'fallbackLevels',
-    category: 'fleet-wide',
-    reason:
-      'Maps an AI endpoint (the process-wide OPENAI_BASE_URL plus the model name) to how far structured requests had to fall back from json_schema. The base URL is process config and the model is a per-feature setting, neither is workspace data, and every workspace in the process talks to the same endpoints. A cross-workspace hit returns only "this endpoint and model reject json_schema (or response_format)", which is exactly what the requesting workspace would learn from its own first request; the worst case is one extra fallback request.',
-  },
-  {
     file: 'apps/web/src/lib/server/functions/read-batch.ts',
     name: 'registeredReads',
     category: 'fleet-wide',
@@ -113,15 +106,6 @@ export const MODULE_STATE_LEDGER: readonly LedgerEntry[] = [
     category: 'fleet-wide',
     reason:
       'CloudCredentialSource reads only the process environment populated before startup. Cross-workspace calls return the same centrally managed OAuth application credentials; per-workspace installation tokens remain in workspace databases.',
-  },
-  {
-    file: 'apps/web/src/lib/server/domains/assistant/workspace-semantic-search.ts',
-    name: 'vectors',
-    category: 'workspace-keyed',
-    reason:
-      'Query embeddings for workspace search, kept a few minutes so paging reuses one request. ' +
-      'A cross-workspace hit would reveal that another workspace searched the same words and ' +
-      'skip the embedding request billed to this one.',
   },
   {
     file: 'apps/web/src/lib/server/auth/index.ts',
@@ -194,39 +178,12 @@ export const MODULE_STATE_LEDGER: readonly LedgerEntry[] = [
       'reintroduced across workspaces instead of across days.',
   },
   {
-    file: 'apps/web/src/lib/server/domains/assistant/assistant.orchestrator.ts',
-    name: 'memoizedAssistantPrincipalId',
-    category: 'workspace-keyed',
-    reason:
-      "Written as the author foreign key on every message the assistant sends, so one workspace's id " +
-      "memoized process-wide is another workspace's rows pointing at a principal that does not exist " +
-      'in its database.',
-  },
-  {
     file: 'apps/web/src/lib/server/domains/settings/tier-limits.service.ts',
     name: 'cachedLimits',
     category: 'workspace-keyed',
     reason:
       "The billing ceiling. Shared, whichever workspace is read first sets everyone's limits, and " +
       'nothing errors: the wrong number is simply believed.',
-  },
-  {
-    file: 'apps/web/src/lib/server/domains/workflows/workflow.service.ts',
-    name: 'hasLiveWorkflowCache',
-    category: 'workspace-keyed',
-    reason:
-      'A shared false makes a workspace with live workflows stop running them: the gate is read ' +
-      'before the enqueue, so nothing dispatches, nothing errors, and no run row is written to notice ' +
-      'was missing.',
-  },
-  {
-    file: 'apps/web/src/lib/server/domains/workflows/workflow.service.ts',
-    name: 'liveAttributeKeysCache',
-    category: 'workspace-keyed',
-    reason:
-      "Attribute keys read out of one workspace's stored workflow graphs. Shared, one workspace's " +
-      'vocabulary decides which conversation attributes another re-classifies, spending its AI budget ' +
-      'on keys its own workflows never branch on.',
   },
   {
     file: 'apps/web/src/lib/server/encryption.ts',
@@ -236,22 +193,6 @@ export const MODULE_STATE_LEDGER: readonly LedgerEntry[] = [
     reason:
       'HKDF keys were keyed by purpose alone. Partitioned by Piece 5; the SECRET_KEY they derive FROM ' +
       'is still one fleet value until per-workspace app-secret resolution lands.',
-  },
-  {
-    file: 'apps/web/src/lib/server/messages/assistant-principal.ts',
-    name: 'cachedAssistantPrincipalId',
-    category: 'workspace-keyed',
-    reason:
-      "A principal id is a row in one workspace's database, so a shared memo flags a foreign id as " +
-      '"this is the assistant" everywhere else, mislabelling human agents\' turns.',
-  },
-  {
-    file: 'apps/web/src/lib/server/messages/assistant-principal.ts',
-    name: 'checkedAt',
-    category: 'workspace-keyed',
-    reason:
-      "The re-check clock for the memo above; shared, one workspace's check suppresses every other " +
-      "workspace's.",
   },
   {
     file: 'apps/web/src/lib/server/realtime/stream-connection-limit.ts',
@@ -490,14 +431,6 @@ export const MODULE_STATE_LEDGER: readonly LedgerEntry[] = [
       'other workspace would have computed.',
   },
   {
-    file: 'apps/web/src/lib/server/domains/help-center/help-center-embedding.service.ts',
-    name: 'queryEmbeddingCache',
-    category: 'content-addressed',
-    reason:
-      'Keyed by (embedding model, query text). Embeddings are a deterministic function of that pair ' +
-      'and the model is env-only (§8), so a cross-workspace hit is byte-identical to a recompute.',
-  },
-  {
     file: 'apps/web/src/lib/server/policy/permissions.ts',
     name: 'SET_BY_ROLE',
     category: 'content-addressed',
@@ -549,15 +482,6 @@ export const MODULE_STATE_LEDGER: readonly LedgerEntry[] = [
       'fleet both workspaces render the same __QUACKBACK_URL__. Host-derived BASE_URL is ' +
       'SAAS-HOSTING-STACK.md section 9 work and is deliberately NOT done here; this entry exists so ' +
       'the gap is written down rather than implied to be closed.',
-  },
-  {
-    file: 'apps/web/src/lib/server/domains/ai/config.ts',
-    name: 'openai',
-    category: 'fleet-wide',
-    reason:
-      'Constructed from OPENAI_API_KEY and OPENAI_BASE_URL alone. §8 established the AI key is ' +
-      'fleet-wide (the control plane writes one key into every workspace); no workspace value reaches ' +
-      'the constructor and no request attaches per-caller headers.',
   },
   {
     file: 'apps/web/src/lib/server/functions/version.ts',
@@ -788,15 +712,6 @@ export const MODULE_STATE_LEDGER: readonly LedgerEntry[] = [
       '§8 establishes is fleet-wide for the 24 integrations it governs.',
   },
   {
-    file: 'apps/web/src/lib/server/domains/workflows/dispatcher.guards.ts',
-    name: 'warnedAudienceWorkflowIds',
-    category: 'process-lifetime',
-    reason:
-      'A log-once set of workflow ids with an unenforceable stored audience. Ids are TypeIDs over ' +
-      'UUIDs, so there is no cross-workspace collision to have; the only shared effect would be ' +
-      'suppressing a duplicate diagnostic. It grows only when a stored audience is malformed.',
-  },
-  {
     file: 'apps/web/src/lib/server/events/catalogue/define.ts',
     name: 'registry',
     category: 'process-lifetime',
@@ -1019,15 +934,6 @@ export const MODULE_STATE_LEDGER: readonly LedgerEntry[] = [
       'new RegExp looks like. Safe here only because its single use is String.replace, which resets ' +
       'lastIndex on every call; an .exec() loop over the same instance would interleave across ' +
       'requests. Ledgered rather than exempted so the next use of it is a visible diff.',
-  },
-  {
-    file: 'apps/web/src/lib/shared/workflows/interpolate.ts',
-    name: 'TOKEN_PATTERN',
-    category: 'process-lifetime',
-    reason:
-      'The same shape as SCRIPT_BREAKERS: a g-flagged RegExp with a mutable lastIndex, used once ' +
-      'through String.replace, which resets it. Holds no workspace value - the pattern is built from a ' +
-      'compile-time token grammar.',
   },
   {
     file: 'apps/web/src/lib/server/policy/migration-contract/scan.ts',
@@ -1300,16 +1206,6 @@ export const MODULE_STATE_LEDGER: readonly LedgerEntry[] = [
     reason:
       'SNS signing cert PEM keyed by the certificate URL. A cross-workspace hit returns the same ' +
       'bytes the requesting workspace would have fetched.',
-  },
-  {
-    file: 'apps/web/src/integrations/slack/server/agent/turns.ts',
-    name: 'inflight',
-    category: 'workspace-scoped-key',
-    keyedBy: 'slackInflightTurnKey',
-    reason:
-      'AbortControllers for in-flight Slack turns, keyed by Slack team, channel and thread. A Slack ' +
-      'team is bound to one workspace install, so a cross-workspace hit misses (different team id) ' +
-      'rather than cancelling another tenant’s turn.',
   },
   {
     file: 'packages/email/src/index.ts',

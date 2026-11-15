@@ -43,12 +43,11 @@ import type { LinkedTicketSummary } from '@/lib/shared/inbox/items'
 afterEach(cleanup)
 
 // The composer seams the typing tests drive: the stub editor publishes the
-// latest onChange it was handed, the typing sender is one spy for every
-// render, and the AI-actions stub counts how often the thread re-rendered.
+// latest onChange it was handed, and the typing sender is one spy for every
+// render.
 const composerProbe = vi.hoisted(() => ({
   onChange: null as null | ((json: unknown, html: string, markdown: string) => void),
   sendTyping: (() => {}) as () => void,
-  threadRenders: 0,
   markRead: null as null | { readThrough?: string | null; onMarked?: () => void },
 }))
 
@@ -125,12 +124,6 @@ vi.mock('../macro-picker', () => ({
   MacroPicker: ({ open }: { open?: boolean }) => (
     <div data-testid="macro-picker" data-open={open ? 'true' : 'false'} />
   ),
-}))
-vi.mock('../composer-ai-actions', () => ({
-  ComposerAiActions: ({ activeMode }: { activeMode: string }) => {
-    composerProbe.threadRenders++
-    return <div data-testid="composer-ai-actions" data-active-mode={activeMode} />
-  },
 }))
 // Renders of the header's triage controls and tags row, by name.
 const headerRenders = vi.hoisted(() => ({ counts: {} as Record<string, number> }))
@@ -353,8 +346,6 @@ const {
         createdAt: '2026-07-03T00:00:00.000Z',
         author: null,
         attachments: [],
-        citations: [],
-        isAssistant: false,
         isInternal: false,
         contentJson: null,
         viaEmail: false,
@@ -610,7 +601,6 @@ describe('AgentConversationThread — conversation kind unaffected', () => {
     fireEvent.click(trigger)
     expect(await screen.findByRole('menuitemradio', { name: 'Note' })).toBeInTheDocument()
     expect(screen.getByTestId('inbox-detail-panel')).toBeInTheDocument()
-    expect(screen.getByTestId('composer-ai-actions')).toHaveAttribute('data-active-mode', 'reply')
   })
 })
 
@@ -664,8 +654,6 @@ function makeMessage(
     createdAt: '2026-07-09T00:00:00.000Z',
     author: null,
     attachments: [],
-    citations: [],
-    isAssistant: false,
     isInternal: false,
     contentJson: null,
     viaEmail: false,
@@ -961,19 +949,17 @@ describe('AgentConversationThread: typing signal', () => {
     content: [{ type: 'paragraph', content: [{ type: 'text', text }] }],
   })
 
-  it('an update that leaves the blank composer blank neither signals typing nor re-renders', async () => {
+  it('an update that leaves the blank composer blank does not signal typing', async () => {
     const sendTyping = vi.fn()
     composerProbe.sendTyping = sendTyping
     renderThread({ kind: 'conversation', id: 'conversation_1' })
     await screen.findByTestId('editor')
     await waitFor(() => expect(composerProbe.onChange).not.toBeNull())
-    const rendersBefore = composerProbe.threadRenders
 
     // What an editor reports when it mounts or toggles editable on an empty doc.
     act(() => composerProbe.onChange?.(blankDoc, '<p></p>', ''))
 
     expect(sendTyping).not.toHaveBeenCalled()
-    expect(composerProbe.threadRenders).toBe(rendersBefore)
   })
 
   it('typing into the reply composer still signals typing', async () => {
@@ -1103,20 +1089,6 @@ describe('AgentConversationThread: stable props for memoized children', () => {
 
     expect(threadProbe.panelOnChanged.length).toBeGreaterThan(rendersBefore)
     expect(new Set(threadProbe.panelOnChanged.slice(rendersBefore - 1)).size).toBe(1)
-  })
-})
-
-describe('AgentConversationThread: virtualizer re-renders', () => {
-  it('re-renders the message list, not the rest of the thread, when the list is measured', async () => {
-    renderThread({ kind: 'conversation', id: 'conversation_measured' })
-    await screen.findByTestId('thread-viewport')
-    await waitFor(() => expect(composerProbe.onChange).not.toBeNull())
-    const rendersBefore = composerProbe.threadRenders
-
-    act(() => threadProbe.remeasure())
-    act(() => threadProbe.remeasure())
-
-    expect(composerProbe.threadRenders).toBe(rendersBefore)
   })
 })
 

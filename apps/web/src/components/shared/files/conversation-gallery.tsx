@@ -42,7 +42,6 @@ export interface GalleryMessage {
   attachments: ConversationAttachment[]
   createdAt: string
   senderType: 'visitor' | 'agent' | 'system'
-  isAssistant: boolean
   author: { displayName: string | null } | null
 }
 
@@ -68,9 +67,6 @@ function senderNameOf(
   visitorIsSelf: boolean
 ): string | undefined {
   if (m.author?.displayName) return m.author.displayName
-  if (m.isAssistant) {
-    return intl.formatMessage({ id: 'files.sender.assistant', defaultMessage: 'Assistant' })
-  }
   if (m.senderType === 'agent') {
     return intl.formatMessage({ id: 'files.sender.agent', defaultMessage: 'Agent' })
   }

@@ -41,7 +41,7 @@ function landingCopy(config: HelpCenterConfig | null | undefined, word: (copy: C
       ? word({
           id: 'portal.hc.home.description',
           defaultMessage:
-            'Search our guides or ask AI for an instant answer. Real answers, fast, no ticket required.',
+            'Search our guides for an answer. Real answers, fast, no ticket required.',
         })
       : storedDescription === DEFAULT_HELP_CENTER_CONFIG.homepageDescription
         ? word({

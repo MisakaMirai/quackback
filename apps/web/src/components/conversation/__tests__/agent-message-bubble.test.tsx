@@ -24,8 +24,6 @@ function baseMessage(over: Partial<AgentConversationMessageDTO> = {}): AgentConv
     createdAt: '2026-07-01T00:00:00.000Z',
     author: { principalId: 'principal_v' as never, displayName: 'Vic', avatarUrl: null },
     attachments: [],
-    citations: [],
-    isAssistant: false,
     isInternal: false,
     contentJson: null,
     viaEmail: false,
@@ -97,7 +95,6 @@ describe('AgentMessageBubble — edited mark', () => {
     const all = new Set(Object.values(PERMISSIONS))
     expect(canEditAgentMessage(own, 'principal_me', all)).toBe(true)
     expect(canEditAgentMessage(own, 'principal_other', all)).toBe(false)
-    expect(canEditAgentMessage({ ...own, isAssistant: true }, 'principal_me', all)).toBe(false)
     expect(canEditAgentMessage({ ...own, senderType: 'system' }, 'principal_me', all)).toBe(false)
     // A teammate who wrote as a customer does not get to edit that row.
     expect(canEditAgentMessage({ ...own, senderType: 'visitor' }, 'principal_me', all)).toBe(false)

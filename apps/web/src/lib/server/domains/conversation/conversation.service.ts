@@ -500,6 +500,15 @@ export async function sendVisitorMessage(
 
   if (created) {
     void emitConversationCreated(actor, author, txResult.conversation)
+    // Deterministic spam signals still apply without the removed AI classifier.
+    // Fire-and-forget: a filing failure leaves the new thread in triage.
+    void import('./conversation.spam-signals')
+      .then((m) =>
+        m.maybeAutoFileSignaledSpam(txResult.conversation.id, {
+          senderEmail: txResult.conversation.visitorEmail ?? null,
+        })
+      )
+      .catch((err) => log.warn({ err }, 'deterministic spam filing failed'))
   }
   // `created` is exactly notifyVisitorMessage's own isFirstMessage above —
   // the team bell's anti-spam gate (WO-3 slice 5) now reads it off this

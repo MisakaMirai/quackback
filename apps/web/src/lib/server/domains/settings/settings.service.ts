@@ -1111,15 +1111,6 @@ export async function isFeatureEnabled(flag: keyof FeatureFlags): Promise<boolea
 }
 
 /**
- * Whether the Copilot Q&A capability is enabled in the v3 assistant config.
- * Reads the cached workspace settings (`getWorkspaceSettings`) — the same
- * single-Redis-GET path `isFeatureEnabled` uses — so gating the copilot route
- * on its hot path costs no extra DB round-trip; every config mutation calls
- * `invalidateSettingsCache()`. Fails OPEN to the v3 default (on): a
- * missing/invalid/unreadable config must not silently disable a working
- * default, mirroring how the route already degrades.
- */
-/**
  * Update feature flags (partial update, merges with existing)
  */
 export async function updateFeatureFlags(

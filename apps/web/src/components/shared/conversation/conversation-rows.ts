@@ -15,11 +15,10 @@ import { INTERACTIVE_BLOCK_KINDS } from '@/lib/shared/db-types'
  *    `inReplyToMessageId` matches this block message's own id.
  *  - 'superseded' (amendment 2, widened): not chosen, and either a later
  *    visitor message exists that ISN'T this block's matching reply, a later
- *    HUMAN teammate message exists (a teammate took over — the run was
+ *    teammate message exists (a teammate took over — the run was
  *    interrupted, so a still-tappable stack would be a dead affordance), or
  *    the block PREDATES the conversation's most recent transition to closed
- *    (amendment 3, below). A later ASSISTANT/run message never supersedes
- *    (the bot can keep talking around a still-pending block).
+ *    (amendment 3, below).
  *  - 'pending': none of the above — still tappable/awaiting input.
  * Only assigned to interactive block kinds (buttons/collect/collectReply/
  * csat), which are the only ones that ever park a run awaiting a reply; SEND
@@ -55,7 +54,7 @@ export type { BlockState }
 /**
  * Compute every interactive block message's state in two linear passes over
  * `messages` (no client memory, no re-derivation loop per block): a backward
- * pass builds, for each position, whether any visitor/human-teammate message
+ * pass builds, for each position, whether any visitor/teammate message
  * follows it (suffix flags) plus a map of every blockReply's target id; a
  * forward pass then assigns each interactive block's state from that
  * precomputed data. O(n) total rather than an O(n²) "scan forward from every
@@ -75,7 +74,7 @@ export function computeBlockStates(
   const states = new Map<string, BlockState>()
   const n = messages.length
   const suffixVisitor: boolean[] = new Array(n)
-  const suffixHumanTeammate: boolean[] = new Array(n)
+  const suffixTeammate: boolean[] = new Array(n)
   const replyTargets = new Set<string>()
 
   // Amendment 3's ordering signal: the position of the LAST `chat_ended`
@@ -91,18 +90,18 @@ export function computeBlockStates(
   const hasCloseSignal = lastCloseIndex !== -1
 
   let anyVisitorAfter = false
-  let anyHumanTeammateAfter = false
+  let anyTeammateAfter = false
   for (let i = n - 1; i >= 0; i--) {
     // Captured BEFORE folding in messages[i] itself, so these represent
     // "exists at some index > i" — exactly what supersede/chosen need.
     suffixVisitor[i] = anyVisitorAfter
-    suffixHumanTeammate[i] = anyHumanTeammateAfter
+    suffixTeammate[i] = anyTeammateAfter
     const m = messages[i]
     if (m.senderType === 'visitor') {
       anyVisitorAfter = true
       if (m.blockReply) replyTargets.add(m.blockReply.inReplyToMessageId)
-    } else if (m.senderType === 'agent' && !m.isAssistant) {
-      anyHumanTeammateAfter = true
+    } else if (m.senderType === 'agent') {
+      anyTeammateAfter = true
     }
   }
 
@@ -115,11 +114,7 @@ export function computeBlockStates(
     const predatesLastClose = !hasCloseSignal || i < lastCloseIndex
     if (replyTargets.has(id)) {
       states.set(id, 'chosen')
-    } else if (
-      suffixVisitor[i] ||
-      suffixHumanTeammate[i] ||
-      (conversationClosed && predatesLastClose)
-    ) {
+    } else if (suffixVisitor[i] || suffixTeammate[i] || (conversationClosed && predatesLastClose)) {
       states.set(id, 'superseded')
     } else {
       states.set(id, 'pending')

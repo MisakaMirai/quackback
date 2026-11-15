@@ -120,7 +120,7 @@ describe.skipIf(!fixture.available)('rolling back past the reaction queues', () 
         )[0].count
       )
 
-    expect(await count()).toBe(2)
+    expect(await count()).toBe(1)
     await testDb.execute(forEvent(runbook.purge, eventId))
 
     expect(await count()).toBe(0)

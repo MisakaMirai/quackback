@@ -1,5 +1,5 @@
 /** Public message actions accept conversation and ticket parents. Private
- * Copilot transcripts stay outside this boundary. */
+ * Non-conversation transcripts stay outside this boundary. */
 import type { ConversationMessage } from '@/lib/server/db'
 import type { ConversationId, TicketId } from '@quackback/ids'
 import type { Actor } from '@/lib/server/policy/types'

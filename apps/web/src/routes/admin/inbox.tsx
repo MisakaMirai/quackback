@@ -730,19 +730,14 @@ function InboxPage() {
 
       // Thread caches: the open thread and any hover-prefetched (or previously
       // opened) thread for this event. Unvisited rows stay untouched. Ephemeral
-      // typing / assistant frames have nothing in the cache to patch.
+      // typing frames have nothing in the cache to patch.
       const conversationId =
         evt.kind === 'conversation'
           ? evt.conversation.id
           : 'conversationId' in evt
             ? evt.conversationId
             : undefined
-      if (
-        conversationId &&
-        evt.kind !== 'typing' &&
-        evt.kind !== 'assistant_activity' &&
-        evt.kind !== 'assistant_delta'
-      ) {
+      if (conversationId && evt.kind !== 'typing') {
         reconcileCachedThread<AgentThreadCache>(
           queryClient,
           conversationKeys.agentThread(conversationId),
