@@ -286,71 +286,6 @@
       "htmlTransferKB": 28.3,
       "componentRenders": 330
     },
-    "sweep:doc:admin:/admin/settings/agent": {
-      "dbQueries": 8,
-      "htmlKB": 76.3
-    },
-    "sweep:ui:admin:/admin/settings/agent": {
-      "dbQueries": 16,
-      "serverRequests": 3,
-      "requests": 130,
-      "jsRequests": 126,
-      "jsKB": 460.4,
-      "htmlTransferKB": 31.1,
-      "componentRenders": 548
-    },
-    "sweep:doc:admin:/admin/settings/connectors": {
-      "dbQueries": 7,
-      "htmlKB": 80.6
-    },
-    "sweep:ui:admin:/admin/settings/connectors": {
-      "dbQueries": 7,
-      "serverRequests": 1,
-      "requests": 108,
-      "jsRequests": 104,
-      "jsKB": 398.2,
-      "htmlTransferKB": 31.4,
-      "componentRenders": 405
-    },
-    "sweep:doc:admin:/admin/settings/copilot": {
-      "dbQueries": 6,
-      "htmlKB": 68.6
-    },
-    "sweep:ui:admin:/admin/settings/copilot": {
-      "dbQueries": 16,
-      "serverRequests": 3,
-      "requests": 127,
-      "jsRequests": 121,
-      "jsKB": 442.0,
-      "htmlTransferKB": 30.4,
-      "componentRenders": 467
-    },
-    "sweep:doc:admin:/admin/settings/skills": {
-      "dbQueries": 7,
-      "htmlKB": 67.1
-    },
-    "sweep:ui:admin:/admin/settings/skills": {
-      "dbQueries": 7,
-      "serverRequests": 1,
-      "requests": 108,
-      "jsRequests": 104,
-      "jsKB": 397.8,
-      "htmlTransferKB": 30.1,
-      "componentRenders": 375
-    },
-    "sweep:doc:admin:/admin/settings/workflows": {
-      "dbQueries": 7,
-      "htmlKB": 79.3
-    },
-    "sweep:ui:admin:/admin/settings/workflows": {
-      "dbQueries": 13,
-      "serverRequests": 2,
-      "requests": 146,
-      "jsRequests": 141,
-      "jsKB": 467.4,
-      "htmlTransferKB": 31.9,
-      "componentRenders": 495
-    },
     "sweep:doc:admin:/admin/changelog": {
       "dbQueries": 6,
       "htmlKB": 53.5
@@ -972,7 +907,7 @@
       "componentRenders": 264
     },
     "ui:portal-type-post-title": {
-      "dbQueries": 6,
+      "dbQueries": 7,
       "serverRequests": 1,
       "requests": 1,
       "jsRequests": 0,
@@ -1010,8 +945,8 @@
     "ui:admin-nav-inbox-to-roadmap": {
       "dbQueries": 26,
       "serverRequests": 3,
-      "requests": 45,
-      "jsRequests": 42,
+      "requests": 46,
+      "jsRequests": 43,
       "jsKB": 80.5,
       "htmlTransferKB": 0,
       "componentRenders": 448
