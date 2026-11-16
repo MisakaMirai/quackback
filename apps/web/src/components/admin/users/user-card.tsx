@@ -1,6 +1,7 @@
 import { CheckCircleIcon } from '@heroicons/react/24/solid'
 import { Avatar } from '@/components/ui/avatar'
 import { TimeAgo, getTimeAgo } from '@/components/ui/time-ago'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { cn } from '@/lib/shared/utils'
 import { countryName, countryFlag } from '@/lib/shared/country'
 import type { PortalUserListItemView } from '@/lib/shared/types'
@@ -24,10 +25,16 @@ interface UserCardProps {
 }
 
 export function UserCard({ user, isSelected, onClick, showCountry = false }: UserCardProps) {
+  const intl = useOptionalIntl()
   // Both fields are sanitised in the DTO (`user.service.ts`), so a placeholder
   // is already null by the time it reaches here.
   const displayEmail = user.email ?? user.contactEmail
-  const lastSeenTitle = user.lastSeenAt ? `Last seen ${getTimeAgo(user.lastSeenAt)}` : undefined
+  const lastSeenTitle = user.lastSeenAt
+    ? intl.formatMessage(
+        { id: 'admin.people.card.lastSeenTitle', defaultMessage: 'Last seen {time}' },
+        { time: getTimeAgo(user.lastSeenAt) }
+      )
+    : undefined
 
   return (
     <div
@@ -45,11 +52,15 @@ export function UserCard({ user, isSelected, onClick, showCountry = false }: Use
       {/* Name column */}
       <div className="min-w-0 flex-1 flex items-center gap-1.5">
         <h3 className="font-medium text-sm text-foreground truncate">
-          {user.name || 'Unnamed user'}
+          {user.name ||
+            intl.formatMessage({
+              id: 'common.userPicker.unnamed',
+              defaultMessage: 'Unnamed user',
+            })}
         </h3>
         {user.isLead ? (
           <span className="shrink-0 rounded-full border border-border/60 px-1.5 py-px text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-            Lead
+            {intl.formatMessage({ id: 'admin.people.lead', defaultMessage: 'Lead' })}
           </span>
         ) : (
           user.emailVerified && <CheckCircleIcon className="h-3.5 w-3.5 text-primary shrink-0" />
@@ -64,7 +75,9 @@ export function UserCard({ user, isSelected, onClick, showCountry = false }: Use
         {displayEmail ? (
           <p className="text-sm text-muted-foreground truncate">{displayEmail}</p>
         ) : (
-          <p className="text-sm text-muted-foreground/50 italic truncate">No email</p>
+          <p className="text-sm text-muted-foreground/50 italic truncate">
+            {intl.formatMessage({ id: 'common.userPicker.noEmail', defaultMessage: 'No email' })}
+          </p>
         )}
       </div>
 
@@ -100,13 +113,25 @@ export function UserCard({ user, isSelected, onClick, showCountry = false }: Use
           hidden when zero) so the column stays put and can be scanned straight
           down instead of decoded row by row. */}
       <div className="flex shrink-0 items-center gap-3 text-xs tabular-nums text-muted-foreground">
-        <span className={cn(METRIC_COLUMN_WIDTH, 'text-right')} title="Posts">
+        <span
+          className={cn(METRIC_COLUMN_WIDTH, 'text-right')}
+          title={intl.formatMessage({ id: 'common.userStats.ideas', defaultMessage: 'Posts' })}
+        >
           {user.postCount}
         </span>
-        <span className={cn(METRIC_COLUMN_WIDTH, 'text-right')} title="Comments">
+        <span
+          className={cn(METRIC_COLUMN_WIDTH, 'text-right')}
+          title={intl.formatMessage({
+            id: 'common.userStats.comments',
+            defaultMessage: 'Comments',
+          })}
+        >
           {user.commentCount}
         </span>
-        <span className={cn(METRIC_COLUMN_WIDTH, 'text-right')} title="Votes">
+        <span
+          className={cn(METRIC_COLUMN_WIDTH, 'text-right')}
+          title={intl.formatMessage({ id: 'common.userStats.votes', defaultMessage: 'Votes' })}
+        >
           {user.voteCount}
         </span>
       </div>

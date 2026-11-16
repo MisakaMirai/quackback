@@ -13,6 +13,7 @@ import { FilterList, StatusFilterList, BoardFilterList } from './single-select-f
 import { toggleItem } from '@/components/shared/filter-utils'
 import { FilterSection } from '@/components/shared/filter-section'
 import { MENU_ICON, MENU_ROW } from '@/components/ui/menu'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { cn } from '@/lib/shared/utils'
 import { usePermission } from '@/lib/client/hooks/use-permission'
 import { PERMISSIONS } from '@/lib/shared/permissions'
@@ -52,6 +53,7 @@ export const InboxFiltersPanel = memo(function InboxFiltersPanel({
   segments,
   moderationActive,
 }: InboxFiltersProps) {
+  const intl = useOptionalIntl()
   const { data: facetCounts } = useInboxFacetCounts(filters)
   // The queue and its count are read with post.approve.
   const canModerate = usePermission(PERMISSIONS.POST_APPROVE)
@@ -94,13 +96,23 @@ export const InboxFiltersPanel = memo(function InboxFiltersPanel({
   return (
     <div className="space-y-0">
       {canModerate && (
-        <FilterSection title="Review">
+        <FilterSection
+          title={intl.formatMessage({
+            id: 'admin.feedback.filterPanel.review',
+            defaultMessage: 'Review',
+          })}
+        >
           <ModerationRow active={moderationActive} />
         </FilterSection>
       )}
 
       {/* Status Filter */}
-      <FilterSection title="Status">
+      <FilterSection
+        title={intl.formatMessage({
+          id: 'portal.postDetail.metadata.status',
+          defaultMessage: 'Status',
+        })}
+      >
         <StatusFilterList
           statuses={statuses}
           selectedSlugs={filters.status || []}
@@ -111,7 +123,12 @@ export const InboxFiltersPanel = memo(function InboxFiltersPanel({
 
       {/* Board Filter */}
       {boards.length > 0 && (
-        <FilterSection title="Board">
+        <FilterSection
+          title={intl.formatMessage({
+            id: 'portal.postDetail.metadata.board',
+            defaultMessage: 'Board',
+          })}
+        >
           <BoardFilterList
             boards={boards}
             selectedIds={filters.board || []}
@@ -123,7 +140,12 @@ export const InboxFiltersPanel = memo(function InboxFiltersPanel({
 
       {/* Tags Filter */}
       {tags.length > 0 && (
-        <FilterSection title="Tags">
+        <FilterSection
+          title={intl.formatMessage({
+            id: 'portal.postDetail.metadata.tags',
+            defaultMessage: 'Tags',
+          })}
+        >
           <FilterList
             items={tags.map((tag) => ({ id: tag.id, name: tag.name, icon: TagIcon }))}
             selectedIds={filters.tags ?? []}
@@ -135,7 +157,12 @@ export const InboxFiltersPanel = memo(function InboxFiltersPanel({
 
       {/* Segments Filter */}
       {segments && segments.length > 0 && (
-        <FilterSection title="Segments">
+        <FilterSection
+          title={intl.formatMessage({
+            id: 'inbox.nav.segments',
+            defaultMessage: 'Segments',
+          })}
+        >
           <div className="space-y-1">
             {segments.map((segment) => {
               const isSelected = filters.segmentIds?.includes(segment.id)
@@ -172,11 +199,30 @@ export const InboxFiltersPanel = memo(function InboxFiltersPanel({
       )}
 
       {/* Team Response Filter */}
-      <FilterSection title="Team response">
+      <FilterSection
+        title={intl.formatMessage({
+          id: 'admin.feedback.filterPanel.teamResponse',
+          defaultMessage: 'Team response',
+        })}
+      >
         <FilterList
           items={[
-            { id: 'responded', name: 'Responded', icon: CheckIcon },
-            { id: 'unresponded', name: 'Unresponded', icon: ClockIcon },
+            {
+              id: 'responded',
+              name: intl.formatMessage({
+                id: 'admin.feedback.filterPanel.responded',
+                defaultMessage: 'Responded',
+              }),
+              icon: CheckIcon,
+            },
+            {
+              id: 'unresponded',
+              name: intl.formatMessage({
+                id: 'admin.feedback.filterPanel.unresponded',
+                defaultMessage: 'Unresponded',
+              }),
+              icon: ClockIcon,
+            },
           ]}
           selectedIds={filters.responded && filters.responded !== 'all' ? [filters.responded] : []}
           onSelect={(id) => {
@@ -190,9 +236,23 @@ export const InboxFiltersPanel = memo(function InboxFiltersPanel({
       </FilterSection>
 
       {/* Other Filters */}
-      <FilterSection title="Other">
+      <FilterSection
+        title={intl.formatMessage({
+          id: 'admin.feedback.filterPanel.other',
+          defaultMessage: 'Other',
+        })}
+      >
         <FilterList
-          items={[{ id: 'deleted', name: 'Deleted posts', icon: TrashIcon }]}
+          items={[
+            {
+              id: 'deleted',
+              name: intl.formatMessage({
+                id: 'admin.feedback.filterPanel.deletedPosts',
+                defaultMessage: 'Deleted posts',
+              }),
+              icon: TrashIcon,
+            },
+          ]}
           selectedIds={filters.showDeleted ? ['deleted'] : []}
           onSelect={() => {
             onFiltersChange({ showDeleted: !filters.showDeleted || undefined })
@@ -206,6 +266,7 @@ export const InboxFiltersPanel = memo(function InboxFiltersPanel({
 
 /** Opens the moderation queue, with the number of items waiting. */
 function ModerationRow({ active }: { active?: boolean }) {
+  const intl = useOptionalIntl()
   const { data } = useQuery(adminQueries.moderationStatus())
   return (
     <Link
@@ -220,7 +281,12 @@ function ModerationRow({ active }: { active?: boolean }) {
       )}
     >
       <ShieldCheckIcon className={MENU_ICON} aria-hidden="true" />
-      <span className="min-w-0 flex-1 truncate text-left">Moderation</span>
+      <span className="min-w-0 flex-1 truncate text-left">
+        {intl.formatMessage({
+          id: 'admin.settings.boards.tabModeration',
+          defaultMessage: 'Moderation',
+        })}
+      </span>
       <span className="ml-auto shrink-0 text-[11px] tabular-nums text-muted-foreground">
         {data?.pendingCount ?? 0}
       </span>

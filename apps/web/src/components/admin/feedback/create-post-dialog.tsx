@@ -28,6 +28,7 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form'
 import { FormError } from '@/components/shared/form-error'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { TitleInput } from '@/components/shared/title-input'
 import { AuthorSelector, type NewAuthor } from '@/components/shared/author-selector'
 import { useCreatePortalUser, useUpdatePortalUser } from '@/lib/client/mutations'
@@ -59,6 +60,7 @@ export function CreatePostDialog({
   onOpenChange: controlledOnOpenChange,
   trigger,
 }: CreatePostDialogProps) {
+  const intl = useOptionalIntl()
   const defaultStatusId = statuses.find((s) => s.isDefault)?.id || statuses[0]?.id || ''
   const [internalOpen, setInternalOpen] = useState(false)
   const isControlled = controlledOpen !== undefined
@@ -155,6 +157,18 @@ export function CreatePostDialog({
 
   const selectedBoard = boards.find((b) => b.id === watchedBoardId)
   const selectedStatus = statuses.find((s) => s.id === watchedStatusId)
+  const selectBoardLabel = intl.formatMessage({
+    id: 'admin.feedback.createPost.selectBoard',
+    defaultMessage: 'Select board',
+  })
+  const boardLabel = intl.formatMessage({
+    id: 'portal.postDetail.metadata.board',
+    defaultMessage: 'Board',
+  })
+  const statusLabel = intl.formatMessage({
+    id: 'portal.postDetail.metadata.status',
+    defaultMessage: 'Status',
+  })
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -165,7 +179,12 @@ export function CreatePostDialog({
         className="w-[95vw] max-w-5xl p-0 gap-0 overflow-hidden"
         onKeyDown={handleKeyDown}
       >
-        <DialogTitle className="sr-only">Create new post</DialogTitle>
+        <DialogTitle className="sr-only">
+          {intl.formatMessage({
+            id: 'admin.feedback.createPost.title',
+            defaultMessage: 'Create new post',
+          })}
+        </DialogTitle>
 
         <Form {...form}>
           <form onSubmit={handleSubmit}>
@@ -182,7 +201,10 @@ export function CreatePostDialog({
 
                   <TitleInput
                     control={form.control}
-                    placeholder="What's the feedback about?"
+                    placeholder={intl.formatMessage({
+                      id: 'admin.feedback.createPost.titlePlaceholder',
+                      defaultMessage: "What's the feedback about?",
+                    })}
                     autoFocus
                   />
 
@@ -203,7 +225,10 @@ export function CreatePostDialog({
                             <LazyRichTextEditor
                               value={contentJson || ''}
                               onDocumentChange={handleContentChange}
-                              placeholder="Add more details... Type / for commands"
+                              placeholder={intl.formatMessage({
+                                id: 'portal.postDetail.edit.detailsPlaceholder',
+                                defaultMessage: 'Add more details... Type / for commands',
+                              })}
                               minHeight="200px"
                               borderless
                               toolbarPosition="bottom"
@@ -251,7 +276,12 @@ export function CreatePostDialog({
                   <div className="space-y-1.5">
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <UserIcon className="h-4 w-4" />
-                      <span>Author</span>
+                      <span>
+                        {intl.formatMessage({
+                          id: 'portal.postDetail.metadata.author',
+                          defaultMessage: 'Author',
+                        })}
+                      </span>
                     </div>
                     <AuthorSelector
                       value={authorPrincipalId}
@@ -267,7 +297,7 @@ export function CreatePostDialog({
                   <div className="space-y-1.5">
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <FolderIcon className="h-4 w-4" />
-                      <span>Board</span>
+                      <span>{boardLabel}</span>
                     </div>
                     <FormField
                       control={form.control}
@@ -277,8 +307,8 @@ export function CreatePostDialog({
                           <Select onValueChange={field.onChange} value={field.value as string}>
                             <FormControl>
                               <SelectTrigger size="sm" className="w-full text-xs">
-                                <SelectValue placeholder="Select board">
-                                  {selectedBoard?.name || 'Select board'}
+                                <SelectValue placeholder={selectBoardLabel}>
+                                  {selectedBoard?.name || selectBoardLabel}
                                 </SelectValue>
                               </SelectTrigger>
                             </FormControl>
@@ -298,7 +328,7 @@ export function CreatePostDialog({
 
                   {/* Status */}
                   <div className="space-y-1.5">
-                    <span className="text-sm text-muted-foreground">Status</span>
+                    <span className="text-sm text-muted-foreground">{statusLabel}</span>
                     <FormField
                       control={form.control}
                       name="statusId"
@@ -348,7 +378,12 @@ export function CreatePostDialog({
                     <div className="space-y-1.5">
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <TagIcon className="h-4 w-4" />
-                        <span>Tags</span>
+                        <span>
+                          {intl.formatMessage({
+                            id: 'portal.postDetail.metadata.tags',
+                            defaultMessage: 'Tags',
+                          })}
+                        </span>
                       </div>
                       <Controller
                         control={form.control}
@@ -411,8 +446,8 @@ export function CreatePostDialog({
                         <FormControl>
                           <SelectTrigger size="sm" className="text-xs">
                             <FolderIcon className="h-3.5 w-3.5 mr-1 text-muted-foreground" />
-                            <SelectValue placeholder="Board">
-                              {selectedBoard?.name || 'Board'}
+                            <SelectValue placeholder={boardLabel}>
+                              {selectedBoard?.name || boardLabel}
                             </SelectValue>
                           </SelectTrigger>
                         </FormControl>
@@ -438,7 +473,7 @@ export function CreatePostDialog({
                       >
                         <FormControl>
                           <SelectTrigger size="sm" className="text-xs">
-                            <SelectValue placeholder="Status">
+                            <SelectValue placeholder={statusLabel}>
                               {selectedStatus && (
                                 <div className="flex items-center gap-1.5">
                                   <span
@@ -510,9 +545,22 @@ export function CreatePostDialog({
 
             <ModalFooter
               onCancel={() => setOpen(false)}
-              submitLabel={createPostMutation.isPending ? 'Creating...' : 'Create post'}
+              submitLabel={
+                createPostMutation.isPending
+                  ? intl.formatMessage({
+                      id: 'admin.feedback.createPost.creating',
+                      defaultMessage: 'Creating...',
+                    })
+                  : intl.formatMessage({
+                      id: 'admin.feedback.createPost.submit',
+                      defaultMessage: 'Create post',
+                    })
+              }
               isPending={createPostMutation.isPending}
-              hintAction="to create"
+              hintAction={intl.formatMessage({
+                id: 'admin.feedback.createPost.hintAction',
+                defaultMessage: 'to create',
+              })}
             />
           </form>
         </Form>

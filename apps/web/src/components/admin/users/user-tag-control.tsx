@@ -12,6 +12,7 @@ import type { PrincipalId, UserTagId } from '@quackback/ids'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { MENU_ROW } from '@/components/ui/menu'
 import { cn } from '@/lib/shared/utils'
 import {
@@ -27,6 +28,7 @@ interface UserTagControlProps {
 }
 
 export function UserTagControl({ principalId, canManage = false }: UserTagControlProps) {
+  const intl = useOptionalIntl()
   const { data: assigned } = useUserTagsForPrincipal(principalId)
   const { data: allTags } = useUserTags()
   const assignTag = useAssignUserTag()
@@ -44,9 +46,20 @@ export function UserTagControl({ principalId, canManage = false }: UserTagContro
       {
         onSuccess: () => {
           setPopoverOpen(false)
-          toast.success(`Tagged ${name}`)
+          toast.success(
+            intl.formatMessage(
+              { id: 'admin.people.tags.tagged', defaultMessage: 'Tagged {name}' },
+              { name }
+            )
+          )
         },
-        onError: () => toast.error(`Failed to add tag ${name}`),
+        onError: () =>
+          toast.error(
+            intl.formatMessage(
+              { id: 'admin.people.tags.addFailed', defaultMessage: 'Failed to add tag {name}' },
+              { name }
+            )
+          ),
       }
     )
   }
@@ -60,9 +73,20 @@ export function UserTagControl({ principalId, canManage = false }: UserTagContro
         onSuccess: () => {
           setNewName('')
           setPopoverOpen(false)
-          toast.success(`Tagged ${name}`)
+          toast.success(
+            intl.formatMessage(
+              { id: 'admin.people.tags.tagged', defaultMessage: 'Tagged {name}' },
+              { name }
+            )
+          )
         },
-        onError: () => toast.error(`Failed to add tag ${name}`),
+        onError: () =>
+          toast.error(
+            intl.formatMessage(
+              { id: 'admin.people.tags.addFailed', defaultMessage: 'Failed to add tag {name}' },
+              { name }
+            )
+          ),
       }
     )
   }
@@ -70,14 +94,27 @@ export function UserTagControl({ principalId, canManage = false }: UserTagContro
   const handleRemove = (tagId: UserTagId, name: string) => {
     removeTag.mutate(
       { principalId, tagId },
-      { onError: () => toast.error(`Failed to remove tag ${name}`) }
+      {
+        onError: () =>
+          toast.error(
+            intl.formatMessage(
+              {
+                id: 'admin.people.tags.removeFailed',
+                defaultMessage: 'Failed to remove tag {name}',
+              },
+              { name }
+            )
+          ),
+      }
     )
   }
 
   return (
     <div className="flex flex-wrap items-center gap-1.5">
       {tags.length === 0 && !canManage && (
-        <p className="text-sm text-muted-foreground/50 italic">No tags</p>
+        <p className="text-sm text-muted-foreground/50 italic">
+          {intl.formatMessage({ id: 'admin.people.tags.empty', defaultMessage: 'No tags' })}
+        </p>
       )}
       {tags.map((tag) => (
         <span
@@ -95,7 +132,13 @@ export function UserTagControl({ principalId, canManage = false }: UserTagContro
               type="button"
               onClick={() => handleRemove(tag.id, tag.name)}
               className="ml-0.5 opacity-0 transition-opacity group-hover:opacity-100 hover:text-red-500"
-              aria-label={`Remove tag ${tag.name}`}
+              aria-label={intl.formatMessage(
+                {
+                  id: 'admin.people.tags.removeAria',
+                  defaultMessage: 'Remove tag {name}',
+                },
+                { name: tag.name }
+              )}
             >
               <XMarkIcon className="h-3 w-3" />
             </button>
@@ -107,7 +150,7 @@ export function UserTagControl({ principalId, canManage = false }: UserTagContro
           <PopoverTrigger asChild>
             <Button variant="ghost" size="sm" className="h-6 px-2 text-xs gap-1">
               <PlusIcon className="h-3 w-3" />
-              Add tag
+              {intl.formatMessage({ id: 'admin.people.tags.add', defaultMessage: 'Add tag' })}
             </Button>
           </PopoverTrigger>
           <PopoverContent align="start" className="w-64 p-2">
@@ -115,7 +158,10 @@ export function UserTagControl({ principalId, canManage = false }: UserTagContro
               <Input
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
-                placeholder="New tag name"
+                placeholder={intl.formatMessage({
+                  id: 'admin.people.tags.newTagPlaceholder',
+                  defaultMessage: 'New tag name',
+                })}
                 className="h-8 text-sm"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
@@ -130,7 +176,7 @@ export function UserTagControl({ principalId, canManage = false }: UserTagContro
                 onClick={handleCreate}
                 disabled={!newName.trim() || assignTag.isPending}
               >
-                Add
+                {intl.formatMessage({ id: 'common.add', defaultMessage: 'Add' })}
               </Button>
             </div>
             {available.length > 0 && (

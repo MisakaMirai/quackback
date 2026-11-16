@@ -33,7 +33,9 @@ import {
   LinkIcon,
 } from '@heroicons/react/16/solid'
 import { IconGitMerge } from '@tabler/icons-react'
+import type { IntlShape } from 'react-intl'
 import { SOURCE_TYPE_LABELS } from '@/components/admin/feedback/source-type-icon'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { getLatestMergeStateByDuplicateId } from './post-activity-timeline.utils'
 import { toastError } from '@/lib/client/error-notice'
 
@@ -57,80 +59,182 @@ interface ActivityItem {
 
 interface ActivityDisplayConfig {
   icon: React.ComponentType<{ className?: string }>
-  label: (metadata: Record<string, unknown>, actorName: string | null) => string
-  detail?: (metadata: Record<string, unknown>) => React.ReactNode
+  label: (intl: IntlShape, metadata: Record<string, unknown>, actorName: string | null) => string
+  detail?: (intl: IntlShape, metadata: Record<string, unknown>) => React.ReactNode
 }
 
-const actorLabel = (name: string | null) => name ?? 'System'
+const actorLabel = (intl: IntlShape, name: string | null) =>
+  name ?? intl.formatMessage({ id: 'admin.ticketActivity.system', defaultMessage: 'System' })
 
-const SUGGESTION_TYPE_LABELS: Record<string, string> = {
-  create_post: 'create',
-  vote_on_post: 'vote',
-  duplicate_post: 'merge',
+const SUGGESTION_TYPE_LABELS: Record<string, { id: string; defaultMessage: string }> = {
+  create_post: { id: 'admin.feedback.activity.suggestionCreate', defaultMessage: 'create' },
+  vote_on_post: { id: 'admin.feedback.activity.suggestionVote', defaultMessage: 'vote' },
+  duplicate_post: { id: 'admin.feedback.activity.suggestionMerge', defaultMessage: 'merge' },
 }
 
 const ACTIVITY_CONFIG: Partial<Record<ActivityType, ActivityDisplayConfig>> = {
   'post.created': {
     icon: PlusIcon,
-    label: (m, a) =>
+    label: (intl, m, a) =>
       m.source === 'feedback_suggestion'
-        ? `${actorLabel(a)} created this post from feedback`
-        : `${actorLabel(a)} created this post`,
-    detail: (m) => {
+        ? intl.formatMessage(
+            {
+              id: 'admin.feedback.activity.createdFromSuggestion',
+              defaultMessage: '{actor} created this post from feedback',
+            },
+            { actor: actorLabel(intl, a) }
+          )
+        : intl.formatMessage(
+            {
+              id: 'admin.feedback.activity.created',
+              defaultMessage: '{actor} created this post',
+            },
+            { actor: actorLabel(intl, a) }
+          ),
+    detail: (intl, m) => {
       if (m.source === 'feedback_suggestion') {
-        const typeLabel =
-          SUGGESTION_TYPE_LABELS[m.suggestionType as string] ?? (m.suggestionType as string)
+        const suggestionType = SUGGESTION_TYPE_LABELS[m.suggestionType as string]
+        const typeLabel = suggestionType
+          ? intl.formatMessage(suggestionType)
+          : (m.suggestionType as string)
         return m.suggestionType ? (
-          <span className="text-xs text-muted-foreground">via {typeLabel} suggestion</span>
+          <span className="text-xs text-muted-foreground">
+            {intl.formatMessage(
+              {
+                id: 'admin.feedback.activity.viaSuggestion',
+                defaultMessage: 'via {type} suggestion',
+              },
+              { type: typeLabel }
+            )}
+          </span>
         ) : null
       }
-      return m.boardName ? `in ${m.boardName as string}` : undefined
+      return m.boardName
+        ? intl.formatMessage(
+            { id: 'admin.feedback.activity.inBoard', defaultMessage: 'in {board}' },
+            { board: m.boardName as string }
+          )
+        : undefined
     },
   },
   'vote.proxy': {
     icon: HandThumbUpIcon,
-    label: (m, a) => {
+    label: (intl, m, a) => {
       const voter = m.voterName as string | undefined
       return voter
-        ? `${actorLabel(a)} voted on behalf of ${voter}`
-        : `${actorLabel(a)} added a proxy vote`
+        ? intl.formatMessage(
+            {
+              id: 'admin.feedback.activity.votedOnBehalf',
+              defaultMessage: '{actor} voted on behalf of {voter}',
+            },
+            { actor: actorLabel(intl, a), voter }
+          )
+        : intl.formatMessage(
+            {
+              id: 'admin.feedback.activity.proxyVote',
+              defaultMessage: '{actor} added a proxy vote',
+            },
+            { actor: actorLabel(intl, a) }
+          )
     },
-    detail: (m) => {
+    detail: (intl, m) => {
       const st = m.sourceType as string | undefined
       return st ? (
-        <span className="text-xs text-muted-foreground">via {SOURCE_TYPE_LABELS[st] ?? st}</span>
+        <span className="text-xs text-muted-foreground">
+          {intl.formatMessage(
+            { id: 'admin.feedback.activity.viaSource', defaultMessage: 'via {source}' },
+            { source: SOURCE_TYPE_LABELS[st] ?? st }
+          )}
+        </span>
       ) : null
     },
   },
   'vote.removed': {
     icon: HandThumbUpIcon,
-    label: (m, a) => {
+    label: (intl, m, a) => {
       const voter = m.voterName as string | undefined
-      return voter ? `${actorLabel(a)} removed ${voter}'s vote` : `${actorLabel(a)} removed a vote`
+      return voter
+        ? intl.formatMessage(
+            {
+              id: 'admin.feedback.activity.removedVote',
+              defaultMessage: "{actor} removed {voter}'s vote",
+            },
+            { actor: actorLabel(intl, a), voter }
+          )
+        : intl.formatMessage(
+            {
+              id: 'admin.feedback.activity.removedVoteAnonymous',
+              defaultMessage: '{actor} removed a vote',
+            },
+            { actor: actorLabel(intl, a) }
+          )
     },
   },
   'post.deleted': {
     icon: TrashIcon,
-    label: (_, a) => `${actorLabel(a)} deleted this post`,
+    label: (intl, _, a) =>
+      intl.formatMessage(
+        {
+          id: 'admin.feedback.activity.deleted',
+          defaultMessage: '{actor} deleted this post',
+        },
+        { actor: actorLabel(intl, a) }
+      ),
   },
   'post.restored': {
     icon: ArrowUturnLeftIcon,
-    label: (_, a) => `${actorLabel(a)} restored this post`,
+    label: (intl, _, a) =>
+      intl.formatMessage(
+        {
+          id: 'admin.feedback.activity.restored',
+          defaultMessage: '{actor} restored this post',
+        },
+        { actor: actorLabel(intl, a) }
+      ),
   },
   'external.status_changed': {
     icon: LinkIcon,
-    label: (m) => {
-      const reference = (m.externalDisplayId as string | undefined) ?? 'A linked issue'
+    label: (intl, m) => {
+      const reference =
+        (m.externalDisplayId as string | undefined) ??
+        intl.formatMessage({
+          id: 'admin.feedback.activity.externalReference',
+          defaultMessage: 'A linked issue',
+        })
       const transition = m.transition as string | undefined
-      const verb =
-        transition === 'closed'
-          ? 'was closed'
-          : transition === 'reopened'
-            ? 'was reopened'
-            : `moved to "${(m.externalStatus as string | undefined) ?? 'a new status'}"`
-      return `${reference} ${verb}`
+      if (transition === 'closed') {
+        return intl.formatMessage(
+          {
+            id: 'admin.feedback.activity.externalClosed',
+            defaultMessage: '{reference} was closed',
+          },
+          { reference }
+        )
+      }
+      if (transition === 'reopened') {
+        return intl.formatMessage(
+          {
+            id: 'admin.feedback.activity.externalReopened',
+            defaultMessage: '{reference} was reopened',
+          },
+          { reference }
+        )
+      }
+      const status =
+        (m.externalStatus as string | undefined) ??
+        intl.formatMessage({
+          id: 'admin.feedback.activity.externalStatus',
+          defaultMessage: 'a new status',
+        })
+      return intl.formatMessage(
+        {
+          id: 'admin.feedback.activity.externalMoved',
+          defaultMessage: '{reference} moved to “{status}”',
+        },
+        { reference, status }
+      )
     },
-    detail: (m) => {
+    detail: (intl, m) => {
       const url = m.externalUrl as string | undefined
       if (!url) return null
       return (
@@ -140,15 +244,25 @@ const ACTIVITY_CONFIG: Partial<Record<ActivityType, ActivityDisplayConfig>> = {
           rel="noreferrer"
           className="text-xs text-muted-foreground underline underline-offset-2"
         >
-          View issue
+          {intl.formatMessage({
+            id: 'admin.feedback.activity.viewIssue',
+            defaultMessage: 'View issue',
+          })}
         </a>
       )
     },
   },
   'status.changed': {
     icon: ChatBubbleLeftIcon,
-    label: (_, a) => `${actorLabel(a)} changed status`,
-    detail: (m) => {
+    label: (intl, _, a) =>
+      intl.formatMessage(
+        {
+          id: 'admin.feedback.activity.statusChanged',
+          defaultMessage: '{actor} changed status',
+        },
+        { actor: actorLabel(intl, a) }
+      ),
+    detail: (_, m) => {
       const from = m.fromName as string | undefined
       const to = m.toName as string | undefined
       if (!from && !to) return null
@@ -183,27 +297,51 @@ const ACTIVITY_CONFIG: Partial<Record<ActivityType, ActivityDisplayConfig>> = {
   },
   'post.board_changed': {
     icon: FolderIcon,
-    label: (_, a) => `${actorLabel(a)} moved to a different board`,
-    detail: (m) => {
+    label: (intl, _, a) =>
+      intl.formatMessage(
+        {
+          id: 'admin.feedback.activity.boardChanged',
+          defaultMessage: '{actor} moved to a different board',
+        },
+        { actor: actorLabel(intl, a) }
+      ),
+    detail: (intl, m) => {
       const from = m.fromBoardName as string | undefined
       const to = m.toBoardName as string | undefined
       if (!from && !to) return null
       return (
         <span className="text-xs text-muted-foreground">
-          {from} &rarr; {to}
+          {intl.formatMessage(
+            { id: 'admin.ticketActivity.fromTo', defaultMessage: '{from} → {to}' },
+            { from: from ?? '', to: to ?? '' }
+          )}
         </span>
       )
     },
   },
   'post.merged_in': {
     icon: IconGitMerge,
-    label: (_, a) => `${actorLabel(a)} merged in a post`,
+    label: (intl, _, a) =>
+      intl.formatMessage(
+        {
+          id: 'admin.feedback.activity.mergedIn',
+          defaultMessage: '{actor} merged in a post',
+        },
+        { actor: actorLabel(intl, a) }
+      ),
     // Detail rendered by MergedInCard below (not the standard detail function)
   },
   'post.merged_away': {
     icon: IconGitMerge,
-    label: (_, a) => `${actorLabel(a)} merged this into another post`,
-    detail: (m) => (
+    label: (intl, _, a) =>
+      intl.formatMessage(
+        {
+          id: 'admin.feedback.activity.mergedAway',
+          defaultMessage: '{actor} merged this into another post',
+        },
+        { actor: actorLabel(intl, a) }
+      ),
+    detail: (_, m) => (
       <span className="text-xs text-muted-foreground truncate">
         {m.canonicalPostTitle as string}
       </span>
@@ -211,35 +349,77 @@ const ACTIVITY_CONFIG: Partial<Record<ActivityType, ActivityDisplayConfig>> = {
   },
   'post.unmerged': {
     icon: ArrowUturnLeftIcon,
-    label: (_, a) => `${actorLabel(a)} unmerged a post`,
-    detail: (m) => (
+    label: (intl, _, a) =>
+      intl.formatMessage(
+        {
+          id: 'admin.feedback.activity.unmergedPost',
+          defaultMessage: '{actor} unmerged a post',
+        },
+        { actor: actorLabel(intl, a) }
+      ),
+    detail: (_, m) => (
       <span className="text-xs text-muted-foreground truncate">{m.otherPostTitle as string}</span>
     ),
   },
   'owner.assigned': {
     icon: UserIcon,
-    label: (m, a) => `${actorLabel(a)} assigned ${(m.ownerName as string) ?? 'someone'}`,
-    detail: (m) =>
+    label: (intl, m, a) =>
+      intl.formatMessage(
+        {
+          id: 'admin.feedback.activity.assigned',
+          defaultMessage: '{actor} assigned {name}',
+        },
+        {
+          actor: actorLabel(intl, a),
+          name:
+            (m.ownerName as string) ??
+            intl.formatMessage({
+              id: 'admin.feedback.activity.someone',
+              defaultMessage: 'someone',
+            }),
+        }
+      ),
+    detail: (intl, m) =>
       m.previousOwnerName ? (
         <span className="text-xs text-muted-foreground">
-          Previously: {m.previousOwnerName as string}
+          {intl.formatMessage(
+            { id: 'admin.ticketActivity.previously', defaultMessage: 'Previously: {name}' },
+            { name: m.previousOwnerName as string }
+          )}
         </span>
       ) : null,
   },
   'owner.unassigned': {
     icon: UserIcon,
-    label: (_, a) => `${actorLabel(a)} removed assignee`,
-    detail: (m) =>
+    label: (intl, _, a) =>
+      intl.formatMessage(
+        {
+          id: 'admin.feedback.activity.unassigned',
+          defaultMessage: '{actor} removed assignee',
+        },
+        { actor: actorLabel(intl, a) }
+      ),
+    detail: (intl, m) =>
       m.previousOwnerName ? (
         <span className="text-xs text-muted-foreground">
-          Previously: {m.previousOwnerName as string}
+          {intl.formatMessage(
+            { id: 'admin.ticketActivity.previously', defaultMessage: 'Previously: {name}' },
+            { name: m.previousOwnerName as string }
+          )}
         </span>
       ) : null,
   },
   'tags.added': {
     icon: TagIcon,
-    label: (_, a) => `${actorLabel(a)} added tags`,
-    detail: (m) => {
+    label: (intl, _, a) =>
+      intl.formatMessage(
+        {
+          id: 'admin.feedback.activity.tagsAdded',
+          defaultMessage: '{actor} added tags',
+        },
+        { actor: actorLabel(intl, a) }
+      ),
+    detail: (_, m) => {
       const names = m.tagNames as string[] | undefined
       if (!names?.length) return null
       return (
@@ -258,8 +438,15 @@ const ACTIVITY_CONFIG: Partial<Record<ActivityType, ActivityDisplayConfig>> = {
   },
   'tags.removed': {
     icon: TagIcon,
-    label: (_, a) => `${actorLabel(a)} removed tags`,
-    detail: (m) => {
+    label: (intl, _, a) =>
+      intl.formatMessage(
+        {
+          id: 'admin.feedback.activity.tagsRemoved',
+          defaultMessage: '{actor} removed tags',
+        },
+        { actor: actorLabel(intl, a) }
+      ),
+    detail: (_, m) => {
       const names = m.tagNames as string[] | undefined
       if (!names?.length) return null
       return (
@@ -278,31 +465,80 @@ const ACTIVITY_CONFIG: Partial<Record<ActivityType, ActivityDisplayConfig>> = {
   },
   'comments.locked': {
     icon: LockClosedIcon,
-    label: (_, a) => `${actorLabel(a)} locked comments`,
+    label: (intl, _, a) =>
+      intl.formatMessage(
+        {
+          id: 'admin.feedback.activity.commentsLocked',
+          defaultMessage: '{actor} locked comments',
+        },
+        { actor: actorLabel(intl, a) }
+      ),
   },
   'comments.unlocked': {
     icon: LockOpenIcon,
-    label: (_, a) => `${actorLabel(a)} unlocked comments`,
+    label: (intl, _, a) =>
+      intl.formatMessage(
+        {
+          id: 'admin.feedback.activity.commentsUnlocked',
+          defaultMessage: '{actor} unlocked comments',
+        },
+        { actor: actorLabel(intl, a) }
+      ),
   },
   'comment.pinned': {
     icon: ChatBubbleLeftIcon,
-    label: (_, a) => `${actorLabel(a)} pinned a response`,
+    label: (intl, _, a) =>
+      intl.formatMessage(
+        {
+          id: 'admin.feedback.activity.commentPinned',
+          defaultMessage: '{actor} pinned a response',
+        },
+        { actor: actorLabel(intl, a) }
+      ),
   },
   'comment.unpinned': {
     icon: ChatBubbleLeftIcon,
-    label: (_, a) => `${actorLabel(a)} unpinned the response`,
+    label: (intl, _, a) =>
+      intl.formatMessage(
+        {
+          id: 'admin.feedback.activity.commentUnpinned',
+          defaultMessage: '{actor} unpinned the response',
+        },
+        { actor: actorLabel(intl, a) }
+      ),
   },
   'comment.deleted': {
     icon: TrashIcon,
-    label: (_, a) => `${actorLabel(a)} deleted their comment`,
+    label: (intl, _, a) =>
+      intl.formatMessage(
+        {
+          id: 'admin.feedback.activity.commentDeleted',
+          defaultMessage: '{actor} deleted their comment',
+        },
+        { actor: actorLabel(intl, a) }
+      ),
   },
   'comment.removed': {
     icon: TrashIcon,
-    label: (_, a) => `${actorLabel(a)} removed a comment`,
+    label: (intl, _, a) =>
+      intl.formatMessage(
+        {
+          id: 'admin.feedback.activity.commentRemoved',
+          defaultMessage: '{actor} removed a comment',
+        },
+        { actor: actorLabel(intl, a) }
+      ),
   },
   'comment.restored': {
     icon: ArrowUturnLeftIcon,
-    label: (_, a) => `${actorLabel(a)} restored a comment`,
+    label: (intl, _, a) =>
+      intl.formatMessage(
+        {
+          id: 'admin.feedback.activity.commentRestored',
+          defaultMessage: '{actor} restored a comment',
+        },
+        { actor: actorLabel(intl, a) }
+      ),
   },
 }
 
@@ -311,12 +547,15 @@ const ACTIVITY_CONFIG: Partial<Record<ActivityType, ActivityDisplayConfig>> = {
 // ============================================
 
 function MergedInCard({ activity, isUnmerged }: { activity: ActivityItem; isUnmerged: boolean }) {
+  const intl = useOptionalIntl()
   const queryClient = useQueryClient()
   const unmerge = useUnmergePost()
   const [confirmOpen, setConfirmOpen] = useState(false)
 
   const duplicatePostId = activity.metadata.duplicatePostId as string | undefined
-  const title = (activity.metadata.duplicatePostTitle as string) || 'Untitled'
+  const title =
+    (activity.metadata.duplicatePostTitle as string) ||
+    intl.formatMessage({ id: 'ask.results.untitled', defaultMessage: 'Untitled' })
   const voteCount = (activity.metadata.duplicateVoteCount as number) ?? 0
   const authorName = activity.metadata.duplicateAuthorName as string | null
 
@@ -325,9 +564,20 @@ function MergedInCard({ activity, isUnmerged }: { activity: ActivityItem; isUnme
     try {
       await unmerge.mutateAsync(duplicatePostId as PostId)
       queryClient.invalidateQueries({ queryKey: ['activity', 'post'] })
-      toast.success('Post unmerged successfully')
+      toast.success(
+        intl.formatMessage({
+          id: 'admin.feedback.merge.unmerged',
+          defaultMessage: 'Post unmerged successfully',
+        })
+      )
     } catch (err) {
-      toastError(err, 'Failed to unmerge post')
+      toastError(
+        err,
+        intl.formatMessage({
+          id: 'admin.feedback.merge.unmergeFailed',
+          defaultMessage: 'Failed to unmerge post',
+        })
+      )
     } finally {
       setConfirmOpen(false)
     }
@@ -342,7 +592,10 @@ function MergedInCard({ activity, isUnmerged }: { activity: ActivityItem; isUnme
         disabled={unmerge.isPending}
         className="text-xs shrink-0"
       >
-        Unmerge
+        {intl.formatMessage({
+          id: 'admin.feedback.merge.unmerge',
+          defaultMessage: 'Unmerge',
+        })}
       </Button>
     ) : undefined
 
@@ -359,16 +612,35 @@ function MergedInCard({ activity, isUnmerged }: { activity: ActivityItem; isUnme
       <AlertDialog open={confirmOpen} onOpenChange={(open) => !open && setConfirmOpen(false)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Unmerge this post?</AlertDialogTitle>
+            <AlertDialogTitle>
+              {intl.formatMessage({
+                id: 'admin.feedback.merge.unmergeTitle',
+                defaultMessage: 'Unmerge this post?',
+              })}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              <span className="font-medium text-foreground">{title}</span> will be restored as
-              independent feedback. Its votes will no longer count toward this post.
+              <span className="font-medium text-foreground">{title}</span>{' '}
+              {intl.formatMessage({
+                id: 'admin.feedback.merge.unmergeDescription',
+                defaultMessage:
+                  'will be restored as independent feedback. Its votes will no longer count toward this post.',
+              })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={unmerge.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={unmerge.isPending}>
+              {intl.formatMessage({ id: 'common.cancel', defaultMessage: 'Cancel' })}
+            </AlertDialogCancel>
             <AlertDialogAction onClick={handleUnmerge} disabled={unmerge.isPending}>
-              {unmerge.isPending ? 'Unmerging...' : 'Unmerge'}
+              {unmerge.isPending
+                ? intl.formatMessage({
+                    id: 'admin.feedback.merge.unmerging',
+                    defaultMessage: 'Unmerging...',
+                  })
+                : intl.formatMessage({
+                    id: 'admin.feedback.merge.unmerge',
+                    defaultMessage: 'Unmerge',
+                  })}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -388,12 +660,14 @@ function ActivityEntry({
   activity: ActivityItem
   mergeStateByDuplicateId: Map<string, boolean>
 }) {
+  const intl = useOptionalIntl()
   const config = ACTIVITY_CONFIG[activity.type as ActivityType]
   if (!config) return null
 
   const Icon = config.icon
-  const label = config.label(activity.metadata, activity.actorName)
-  const detail = activity.type === 'post.merged_in' ? null : config.detail?.(activity.metadata)
+  const label = config.label(intl, activity.metadata, activity.actorName)
+  const detail =
+    activity.type === 'post.merged_in' ? null : config.detail?.(intl, activity.metadata)
   const duplicatePostId = activity.metadata.duplicatePostId as string | undefined
 
   const isUnmerged =
@@ -421,6 +695,7 @@ function ActivityEntry({
 }
 
 export function PostActivityTimeline({ postId }: { postId: PostId }) {
+  const intl = useOptionalIntl()
   const { data, isLoading } = useQuery(activityQueries.forPost(postId))
   const activities = data as unknown as ActivityItem[] | undefined
   const mergeStateByDuplicateId = getLatestMergeStateByDuplicateId(activities ?? [])
@@ -444,9 +719,17 @@ export function PostActivityTimeline({ postId }: { postId: PostId }) {
   if (!activities?.length) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
-        <p className="text-sm text-muted-foreground">No activity recorded yet</p>
+        <p className="text-sm text-muted-foreground">
+          {intl.formatMessage({
+            id: 'admin.ticketActivity.empty',
+            defaultMessage: 'No activity recorded yet',
+          })}
+        </p>
         <p className="mt-1 text-xs text-muted-foreground">
-          Activity will appear here as changes are made to this post
+          {intl.formatMessage({
+            id: 'admin.feedback.activity.emptyDescription',
+            defaultMessage: 'Activity will appear here as changes are made to this post',
+          })}
         </p>
       </div>
     )

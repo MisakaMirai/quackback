@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { ArrowPathIcon } from '@heroicons/react/24/solid'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { getPortalInviteLinkFn } from '@/lib/server/functions/portal-invites'
 import { cn } from '@/lib/shared/utils'
 import { LocalDate } from '@/components/ui/local-date'
@@ -10,11 +11,15 @@ import type { PortalInvite } from './use-portal-invites'
 const INVITE_DATE: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' }
 
 export function InviteStatusBadge({ status }: { status: string | null }) {
+  const intl = useOptionalIntl()
   switch (status) {
     case 'pending':
       return (
         <Badge variant="outline" className="text-[11px] px-1.5 py-0">
-          Pending
+          {intl.formatMessage({
+            id: 'admin.people.invites.statusPending',
+            defaultMessage: 'Pending',
+          })}
         </Badge>
       )
     case 'accepted':
@@ -23,25 +28,38 @@ export function InviteStatusBadge({ status }: { status: string | null }) {
           variant="outline"
           className="border-green-500/30 text-green-600 text-[11px] px-1.5 py-0"
         >
-          Accepted
+          {intl.formatMessage({
+            id: 'admin.people.invites.statusAccepted',
+            defaultMessage: 'Accepted',
+          })}
         </Badge>
       )
     case 'canceled':
       return (
         <Badge variant="secondary" className="text-[11px] px-1.5 py-0">
-          Revoked
+          {intl.formatMessage({
+            id: 'admin.people.invites.statusRevoked',
+            defaultMessage: 'Revoked',
+          })}
         </Badge>
       )
     case 'expired':
       return (
         <Badge variant="destructive" className="text-[11px] px-1.5 py-0">
-          Expired
+          {intl.formatMessage({
+            id: 'admin.people.invites.statusExpired',
+            defaultMessage: 'Expired',
+          })}
         </Badge>
       )
     default:
       return (
         <Badge variant="outline" className="text-[11px] px-1.5 py-0">
-          {status ?? 'Unknown'}
+          {status ??
+            intl.formatMessage({
+              id: 'admin.people.invites.statusUnknown',
+              defaultMessage: 'Unknown',
+            })}
         </Badge>
       )
   }
@@ -65,6 +83,7 @@ interface InviteRowProps {
  * out of band when SMTP isn't reachable.
  */
 export function InviteRow({ invite, onRevoke, onResend, revoking, resending }: InviteRowProps) {
+  const intl = useOptionalIntl()
   const [confirmRevoke, setConfirmRevoke] = useState(false)
   const [copyState, setCopyState] = useState<'idle' | 'copying' | 'copied' | 'error'>('idle')
   // When the clipboard write is blocked (denied permission, unfocused doc), the
@@ -136,7 +155,10 @@ export function InviteRow({ invite, onRevoke, onResend, revoking, resending }: I
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm">{invite.email}</p>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            Sent <LocalDate date={sentDate} options={INVITE_DATE} locale="en-US" />
+            {intl.formatMessage(
+              { id: 'admin.people.invites.sent', defaultMessage: 'Sent {date}' },
+              { date: <LocalDate date={sentDate} options={INVITE_DATE} locale="en-US" /> }
+            )}
           </p>
         </div>
         <InviteStatusBadge status={invite.status} />
@@ -149,16 +171,25 @@ export function InviteRow({ invite, onRevoke, onResend, revoking, resending }: I
               onClick={() => void handleCopyLink()}
               disabled={copyState === 'copying' || revoking || resending}
               className="h-7 px-2 text-xs"
-              title="Mint a fresh sign-in link and copy it to your clipboard"
+              title={intl.formatMessage({
+                id: 'admin.people.invites.copyTitle',
+                defaultMessage: 'Mint a fresh sign-in link and copy it to your clipboard',
+              })}
             >
               {copyState === 'copying' && (
                 <ArrowPathIcon className="mr-1 h-3.5 w-3.5 animate-spin" />
               )}
               {copyState === 'copied'
-                ? 'Link copied'
+                ? intl.formatMessage({
+                    id: 'admin.people.invites.linkCopied',
+                    defaultMessage: 'Link copied',
+                  })
                 : copyState === 'error'
-                  ? 'Copy failed'
-                  : 'Copy link'}
+                  ? intl.formatMessage({
+                      id: 'admin.people.invites.copyFailed',
+                      defaultMessage: 'Copy failed',
+                    })
+                  : intl.formatMessage({ id: 'common.copyLink', defaultMessage: 'Copy link' })}
             </Button>
             <Button
               type="button"
@@ -168,7 +199,14 @@ export function InviteRow({ invite, onRevoke, onResend, revoking, resending }: I
               disabled={resending || revoking}
               className="h-7 px-2 text-xs"
             >
-              {resending ? <ArrowPathIcon className="h-3.5 w-3.5 animate-spin" /> : 'Resend'}
+              {resending ? (
+                <ArrowPathIcon className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                intl.formatMessage({
+                  id: 'admin.people.invites.resend',
+                  defaultMessage: 'Resend',
+                })
+              )}
             </Button>
             <Button
               type="button"
@@ -186,9 +224,15 @@ export function InviteRow({ invite, onRevoke, onResend, revoking, resending }: I
               {revoking ? (
                 <ArrowPathIcon className="h-3.5 w-3.5 animate-spin" />
               ) : confirmRevoke ? (
-                'Confirm revoke'
+                intl.formatMessage({
+                  id: 'admin.people.invites.confirmRevoke',
+                  defaultMessage: 'Confirm revoke',
+                })
               ) : (
-                'Revoke'
+                intl.formatMessage({
+                  id: 'admin.people.invites.revoke',
+                  defaultMessage: 'Revoke',
+                })
               )}
             </Button>
           </div>
@@ -197,7 +241,10 @@ export function InviteRow({ invite, onRevoke, onResend, revoking, resending }: I
       {fallbackLink && (
         <div className="mt-2 space-y-1">
           <p className="text-xs text-muted-foreground">
-            Couldn't copy automatically. Select and copy this link:
+            {intl.formatMessage({
+              id: 'admin.people.invites.copyFallback',
+              defaultMessage: "Couldn't copy automatically. Select and copy this link:",
+            })}
           </p>
           <input
             readOnly

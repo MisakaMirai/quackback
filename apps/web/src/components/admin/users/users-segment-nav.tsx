@@ -15,6 +15,7 @@ import { Link, useNavigate } from '@tanstack/react-router'
 import { FilterSection } from '@/components/shared/filter-section'
 import { PaneAddButton } from '@/components/shared/pane-add-button'
 import { MENU_ICON, MENU_ROW } from '@/components/ui/menu'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { cn } from '@/lib/shared/utils'
 import type { SegmentListItem } from '@/lib/client/hooks/use-segments-queries'
 
@@ -65,13 +66,19 @@ export function UsersSegmentNav({
   inLeadsMode,
   totalLeadCount,
 }: UsersSegmentNavProps) {
+  const intl = useOptionalIntl()
   const hasSelection = selectedSegmentIds.length > 0
   const navigate = useNavigate()
 
   return (
     <div className="space-y-0">
       <div className="pb-4">
-        <FilterSection title="Directory">
+        <FilterSection
+          title={intl.formatMessage({
+            id: 'admin.people.nav.directory',
+            defaultMessage: 'Directory',
+          })}
+        >
           {/* Directory group: the main user list, leads and the standalone
             Invitations view. */}
           <div className="space-y-1">
@@ -107,7 +114,12 @@ export function UsersSegmentNav({
               )}
             >
               <UsersIcon className={MENU_ICON} />
-              <span className="flex-1 truncate">All users</span>
+              <span className="flex-1 truncate">
+                {intl.formatMessage({
+                  id: 'admin.people.nav.allUsers',
+                  defaultMessage: 'All users',
+                })}
+              </span>
               <span className="text-xs text-muted-foreground/60 shrink-0 tabular-nums">
                 {totalUserCount}
               </span>
@@ -140,7 +152,12 @@ export function UsersSegmentNav({
               )}
             >
               <UserPlusIcon className={MENU_ICON} />
-              <span className="flex-1 truncate">All leads</span>
+              <span className="flex-1 truncate">
+                {intl.formatMessage({
+                  id: 'admin.people.nav.allLeads',
+                  defaultMessage: 'All leads',
+                })}
+              </span>
               {totalLeadCount !== undefined && (
                 <span className="text-xs text-muted-foreground/60 shrink-0 tabular-nums">
                   {totalLeadCount}
@@ -165,7 +182,12 @@ export function UsersSegmentNav({
               )}
             >
               <EnvelopeIcon className={MENU_ICON} />
-              <span className="flex-1 truncate">Invitations</span>
+              <span className="flex-1 truncate">
+                {intl.formatMessage({
+                  id: 'admin.people.invites.title',
+                  defaultMessage: 'Invitations',
+                })}
+              </span>
               {invitesPendingCount !== undefined && invitesPendingCount > 0 && (
                 <span className="text-xs text-muted-foreground/60 shrink-0 tabular-nums">
                   {invitesPendingCount}
@@ -179,8 +201,19 @@ export function UsersSegmentNav({
             FilterSection, with the add button in the header's action slot. */}
         <div className="mt-2">
           <FilterSection
-            title="Segments"
-            action={<PaneAddButton label="New segment" onClick={onCreateSegment} />}
+            title={intl.formatMessage({
+              id: 'admin.people.hover.segments',
+              defaultMessage: 'Segments',
+            })}
+            action={
+              <PaneAddButton
+                label={intl.formatMessage({
+                  id: 'admin.people.nav.newSegment',
+                  defaultMessage: 'New segment',
+                })}
+                onClick={onCreateSegment}
+              />
+            }
           >
             {isLoading ? (
               <div className="space-y-1">
@@ -189,7 +222,12 @@ export function UsersSegmentNav({
                 ))}
               </div>
             ) : !segments || segments.length === 0 ? (
-              <p className="text-xs text-muted-foreground px-2.5 py-1.5">No segments yet.</p>
+              <p className="text-xs text-muted-foreground px-2.5 py-1.5">
+                {intl.formatMessage({
+                  id: 'admin.people.nav.noSegments',
+                  defaultMessage: 'No segments yet.',
+                })}
+              </p>
             ) : (
               <div className="space-y-1">
                 {segments.map((seg) => (
@@ -234,6 +272,7 @@ function SegmentNavItem({
   onEvaluate?: () => void
   isEvaluating: boolean
 }) {
+  const intl = useOptionalIntl()
   return (
     <div
       className={cn(
@@ -249,7 +288,13 @@ function SegmentNavItem({
         <FunnelIcon className={MENU_ICON} />
         <span className="flex-1 truncate">{segment.name}</span>
         {segment.type === 'dynamic' && (
-          <BoltIcon className="h-2.5 w-2.5 shrink-0 opacity-50" title="Dynamic segment" />
+          <BoltIcon
+            className="h-2.5 w-2.5 shrink-0 opacity-50"
+            title={intl.formatMessage({
+              id: 'admin.people.nav.dynamicSegment',
+              defaultMessage: 'Dynamic segment',
+            })}
+          />
         )}
         <span className="group-hover:hidden text-xs text-muted-foreground/60 shrink-0 tabular-nums">
           {segment.memberCount}
@@ -267,7 +312,10 @@ function SegmentNavItem({
             }}
             disabled={isEvaluating}
             className="p-1 rounded text-muted-foreground hover:text-foreground transition-colors"
-            title="Re-evaluate"
+            title={intl.formatMessage({
+              id: 'admin.people.nav.reevaluate',
+              defaultMessage: 'Re-evaluate',
+            })}
           >
             <ArrowPathIcon className={cn('h-3 w-3', isEvaluating && 'animate-spin')} />
           </button>
@@ -279,7 +327,10 @@ function SegmentNavItem({
             onEdit()
           }}
           className="p-1 rounded text-muted-foreground hover:text-foreground transition-colors"
-          title="Edit segment"
+          title={intl.formatMessage({
+            id: 'admin.people.nav.editSegment',
+            defaultMessage: 'Edit segment',
+          })}
         >
           <PencilIcon className="h-3 w-3" />
         </button>
@@ -290,7 +341,10 @@ function SegmentNavItem({
             onDelete()
           }}
           className="p-1 rounded text-muted-foreground hover:text-destructive transition-colors"
-          title="Delete segment"
+          title={intl.formatMessage({
+            id: 'admin.people.nav.deleteSegment',
+            defaultMessage: 'Delete segment',
+          })}
         >
           <TrashIcon className="h-3 w-3" />
         </button>
@@ -313,18 +367,30 @@ export function MobileSegmentSelector({
   onSelectSegment: (segmentId: string, shiftKey: boolean) => void
   onClearSegments: () => void
 }) {
+  const intl = useOptionalIntl()
   const [open, setOpen] = useState(false)
 
   if (!segments || segments.length === 0) return null
 
   const selectedNames = segments.filter((s) => selectedSegmentIds.includes(s.id)).map((s) => s.name)
 
+  const allUsersLabel = intl.formatMessage({
+    id: 'admin.people.nav.allUsers',
+    defaultMessage: 'All users',
+  })
+
   const label =
     selectedNames.length === 0
-      ? 'All users'
+      ? allUsersLabel
       : selectedNames.length === 1
         ? selectedNames[0]
-        : `${selectedNames.length} segments`
+        : intl.formatMessage(
+            {
+              id: 'admin.people.nav.segmentCount',
+              defaultMessage: '{count, plural, one {# segment} other {# segments}}',
+            },
+            { count: selectedNames.length }
+          )
 
   return (
     <div className="relative">
@@ -357,7 +423,7 @@ export function MobileSegmentSelector({
                 selectedSegmentIds.length === 0 && 'bg-muted text-foreground'
               )}
             >
-              All users
+              {allUsersLabel}
             </button>
             <div className="border-b border-border/30 my-1" />
             {segments.map((seg) => (
