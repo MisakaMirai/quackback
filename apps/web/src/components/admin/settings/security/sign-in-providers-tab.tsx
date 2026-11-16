@@ -6,6 +6,7 @@ import { OAuthProviderGrid } from '@/components/admin/settings/auth-shared/oauth
 import { AuthProviderCredentialsDialog } from '@/components/admin/settings/portal-auth/auth-provider-credentials-dialog'
 import { SettingRows } from '@/components/admin/settings/setting-row'
 import { SettingsCard } from '@/components/admin/settings/settings-card'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { AUTOSAVE } from '@/lib/client/autosave'
 import { WarningBox } from '@/components/shared/warning-box'
 import { IdentityProvidersSection } from '@/components/admin/settings/security/identity-providers/provider-list'
@@ -46,6 +47,7 @@ export function SignInProvidersTab({
 }: SignInProvidersTabProps) {
   const router = useRouter()
   const queryClient = useQueryClient()
+  const intl = useOptionalIntl()
   const [isPending, startTransition] = useTransition()
 
   // ---------- Unified state ----------
@@ -203,18 +205,40 @@ export function SignInProvidersTab({
       {noAuthEnabled && (
         <WarningBox
           variant="warning"
-          title="No sign-in method enabled"
-          description="Visitors and team admins can't sign in. Enable at least one provider or configure an identity provider below."
+          title={intl.formatMessage({
+            id: 'admin.settings.security.signIn.noMethod.title',
+            defaultMessage: 'No sign-in method enabled',
+          })}
+          description={intl.formatMessage({
+            id: 'admin.settings.security.signIn.noMethod.description',
+            defaultMessage:
+              "Visitors and team admins can't sign in. Enable at least one provider or configure an identity provider below.",
+          })}
         />
       )}
 
       {/* Card 1: Built-in (password + magic link). Single toggle per row;
           writes to authConfig.oauth for both portal and team sign-in. */}
-      <SettingsCard title="Email" description="Built-in sign-in for users.">
+      <SettingsCard
+        title={intl.formatMessage({
+          id: 'admin.settings.security.signIn.emailCard.title',
+          defaultMessage: 'Email',
+        })}
+        description={intl.formatMessage({
+          id: 'admin.settings.security.signIn.emailCard.description',
+          defaultMessage: 'Built-in sign-in for users.',
+        })}
+      >
         <SettingRows>
           <MethodRow
-            label="Password"
-            description="Sign in with email and password."
+            label={intl.formatMessage({
+              id: 'admin.settings.security.signIn.password.label',
+              defaultMessage: 'Password',
+            })}
+            description={intl.formatMessage({
+              id: 'admin.settings.security.signIn.password.description',
+              defaultMessage: 'Sign in with email and password.',
+            })}
             checked={passwordEnabled}
             onCheckedChange={(v) => saveBuiltin('password', v)}
             disabled={busy || isLastMethod('password')}
@@ -225,11 +249,21 @@ export function SignInProvidersTab({
           <div className="ml-1 border-l-2 border-border/60 pl-4">
             <MethodRow
               muted={!passwordEnabled}
-              label="Require two-factor authentication"
+              label={intl.formatMessage({
+                id: 'admin.settings.security.signIn.twoFactor.label',
+                defaultMessage: 'Require two-factor authentication',
+              })}
               description={
                 passwordEnabled
-                  ? 'Users must enter a code from their authenticator app after their password.'
-                  : 'Turn on Password sign-in to require a second factor.'
+                  ? intl.formatMessage({
+                      id: 'admin.settings.security.signIn.twoFactor.descriptionOn',
+                      defaultMessage:
+                        'Users must enter a code from their authenticator app after their password.',
+                    })
+                  : intl.formatMessage({
+                      id: 'admin.settings.security.signIn.twoFactor.descriptionOff',
+                      defaultMessage: 'Turn on Password sign-in to require a second factor.',
+                    })
               }
               checked={twoFactorRequired}
               onCheckedChange={(v) => saveTwoFactor(v)}
@@ -237,11 +271,21 @@ export function SignInProvidersTab({
             />
           </div>
           <MethodRow
-            label="Email magic link"
+            label={intl.formatMessage({
+              id: 'admin.settings.security.signIn.magicLink.label',
+              defaultMessage: 'Email magic link',
+            })}
             description={
               emailConfigured
-                ? 'One-click link or 6-digit code by email.'
-                : 'Configure SMTP, Amazon SES or Resend to enable email delivery.'
+                ? intl.formatMessage({
+                    id: 'admin.settings.security.signIn.magicLink.description',
+                    defaultMessage: 'One-click link or 6-digit code by email.',
+                  })
+                : intl.formatMessage({
+                    id: 'admin.settings.security.signIn.magicLink.notConfigured',
+                    defaultMessage:
+                      'Configure SMTP, Amazon SES or Resend to enable email delivery.',
+                  })
             }
             checked={magicLinkEnabled}
             onCheckedChange={(v) => saveBuiltin('magicLink', v)}
@@ -253,8 +297,14 @@ export function SignInProvidersTab({
       {/* Card 2: Social sign-in. Configure credentials once; the toggle
           enables the provider on both portal and admin sign-in screens. */}
       <SettingsCard
-        title="Social sign-in"
-        description="Let users sign in with Google, GitHub, and more."
+        title={intl.formatMessage({
+          id: 'admin.settings.security.signIn.social.title',
+          defaultMessage: 'Social sign-in',
+        })}
+        description={intl.formatMessage({
+          id: 'admin.settings.security.signIn.social.description',
+          defaultMessage: 'Let users sign in with Google, GitHub, and more.',
+        })}
       >
         <OAuthProviderGrid
           enabled={oauthState}

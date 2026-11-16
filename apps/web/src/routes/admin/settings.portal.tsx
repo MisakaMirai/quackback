@@ -4,6 +4,8 @@ import { assertRoutePermission } from '@/lib/shared/route-permission'
 import { ClientOnly, createFileRoute, useBlocker, useRouter } from '@tanstack/react-router'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
+import type { MessageDescriptor } from 'react-intl'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { settingsQueries } from '@/lib/client/queries/settings'
 import {
   ComputerDesktopIcon,
@@ -84,6 +86,7 @@ export const Route = createFileRoute('/admin/settings/portal')({
 })
 
 function PortalPage() {
+  const intl = useOptionalIntl()
   const router = useRouter()
   const settings = useWorkspaceSettings()
   const session = useSessionContext()
@@ -142,7 +145,12 @@ function PortalPage() {
   useBlocker({
     shouldBlockFn: () => {
       if (!isDirty || saving) return false
-      return !window.confirm('You have unsaved portal changes. Leave without saving?')
+      return !window.confirm(
+        intl.formatMessage({
+          id: 'admin.settings.portal.unsavedChangesConfirm',
+          defaultMessage: 'You have unsaved portal changes. Leave without saving?',
+        })
+      )
     },
     enableBeforeUnload: () => isDirty,
   })
@@ -154,7 +162,12 @@ function PortalPage() {
       (i) => i.type === 'link' && !!i.url && !isValidNavLinkUrl(i.url)
     )
     if (navDirty && brokenLink) {
-      toast.error('Fix the link URL before saving (links need a full https:// address).')
+      toast.error(
+        intl.formatMessage({
+          id: 'admin.settings.portal.fixLinkUrl',
+          defaultMessage: 'Fix the link URL before saving (links need a full https:// address).',
+        })
+      )
       return
     }
 
@@ -239,8 +252,15 @@ function PortalPage() {
       <div className="grid grid-cols-1 xl:grid-cols-[minmax(360px,440px)_minmax(0,1fr)] gap-6 items-start">
         <div className="space-y-4 min-w-0">
           <SettingsCard
-            title="Appearance"
-            description="Theme, color palette and typography, also applied to the embedded widget."
+            title={intl.formatMessage({
+              id: 'admin.settings.portal.appearanceTitle',
+              defaultMessage: 'Appearance',
+            })}
+            description={intl.formatMessage({
+              id: 'admin.settings.portal.appearanceDescription',
+              defaultMessage:
+                'Theme, color palette and typography, also applied to the embedded widget.',
+            })}
           >
             <AppearanceSettings
               themeMode={state.themeMode}
@@ -258,8 +278,15 @@ function PortalPage() {
           </SettingsCard>
 
           <SettingsCard
-            title="Navigation"
-            description="The portal's top tabs. They apply to the help center and status pages too."
+            title={intl.formatMessage({
+              id: 'admin.settings.portal.navigationTitle',
+              defaultMessage: 'Navigation',
+            })}
+            description={intl.formatMessage({
+              id: 'admin.settings.portal.navigationDescription',
+              defaultMessage:
+                "The portal's top tabs. They apply to the help center and status pages too.",
+            })}
           >
             <PortalNavEditor
               items={navItems}
@@ -268,13 +295,24 @@ function PortalPage() {
               onReset={resetNavItems}
             />
             <p className="mt-3 text-xs text-muted-foreground">
-              Renamed tabs show your text in every language; untouched labels stay translated.
+              {intl.formatMessage({
+                id: 'admin.settings.portal.navigationRenameHint',
+                defaultMessage:
+                  'Renamed tabs show your text in every language; untouched labels stay translated.',
+              })}
             </p>
           </SettingsCard>
 
           <SettingsCard
-            title="Welcome message"
-            description="Shown above the post list on your portal home. Leave empty to show nothing."
+            title={intl.formatMessage({
+              id: 'admin.settings.portal.welcomeTitle',
+              defaultMessage: 'Welcome message',
+            })}
+            description={intl.formatMessage({
+              id: 'admin.settings.portal.welcomeDescription',
+              defaultMessage:
+                'Shown above the post list on your portal home. Leave empty to show nothing.',
+            })}
           >
             <WelcomeBodyEditor value={welcomeBody} onChange={setWelcomeBody} />
           </SettingsCard>
@@ -283,7 +321,12 @@ function PortalPage() {
         {/* ── Live portal preview ── */}
         <div className="xl:sticky xl:top-6 min-w-0 self-start">
           <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-2">
-            <span className="text-sm font-medium whitespace-nowrap">Live preview</span>
+            <span className="text-sm font-medium whitespace-nowrap">
+              {intl.formatMessage({
+                id: 'admin.settings.portal.livePreview',
+                defaultMessage: 'Live preview',
+              })}
+            </span>
             <div className="ms-auto flex flex-wrap items-center gap-1.5">
               <PreviewControls
                 previewMode={state.previewMode}
@@ -294,7 +337,10 @@ function PortalPage() {
               />
               <Button variant="outline" size="sm" asChild className="whitespace-nowrap">
                 <a href="/" target="_blank" rel="noopener noreferrer">
-                  Open portal
+                  {intl.formatMessage({
+                    id: 'admin.settings.portal.openPortal',
+                    defaultMessage: 'Open portal',
+                  })}
                   <NewTabHint />
                   <ArrowTopRightOnSquareIcon className="size-3.5 ms-1.5" />
                 </a>
@@ -356,15 +402,26 @@ const AppearanceSettings = memo(function AppearanceSettings({
   cssText,
   setCssText,
 }: AppearanceSettingsProps) {
+  const intl = useOptionalIntl()
   return (
     <div className="space-y-4">
       <div className="space-y-1.5">
-        <Label className="text-[13px] font-medium">Theme mode</Label>
+        <Label className="text-[13px] font-medium">
+          {intl.formatMessage({
+            id: 'admin.settings.portal.themeMode',
+            defaultMessage: 'Theme mode',
+          })}
+        </Label>
         <ThemeModeTiles value={themeMode} onChange={setThemeMode} />
       </div>
 
       <div className="space-y-1.5">
-        <Label className="text-[13px] font-medium">Preset</Label>
+        <Label className="text-[13px] font-medium">
+          {intl.formatMessage({
+            id: 'admin.settings.portal.preset',
+            defaultMessage: 'Preset',
+          })}
+        </Label>
         <div className="grid grid-cols-3 gap-2">
           {primaryPresetIds.map((presetId) => {
             const preset = themePresets[presetId]
@@ -396,7 +453,12 @@ const AppearanceSettings = memo(function AppearanceSettings({
       </div>
 
       <div className="space-y-1.5">
-        <Label className="text-[13px] font-medium">Font</Label>
+        <Label className="text-[13px] font-medium">
+          {intl.formatMessage({
+            id: 'admin.settings.portal.font',
+            defaultMessage: 'Font',
+          })}
+        </Label>
         <Select
           value={currentFontId}
           onValueChange={(id) => {
@@ -415,7 +477,11 @@ const AppearanceSettings = memo(function AppearanceSettings({
           <SelectTrigger className="w-full">
             <SelectValue>
               <span style={{ fontFamily: font }}>
-                {FONT_OPTIONS.find((f) => f.id === currentFontId)?.name || 'Select font'}
+                {FONT_OPTIONS.find((f) => f.id === currentFontId)?.name ||
+                  intl.formatMessage({
+                    id: 'admin.settings.portal.selectFont',
+                    defaultMessage: 'Select font',
+                  })}
               </span>
             </SelectValue>
           </SelectTrigger>
@@ -429,9 +495,19 @@ const AppearanceSettings = memo(function AppearanceSettings({
       </div>
 
       <div className="space-y-1.5">
-        <Label className="text-[13px] font-medium">Corner roundness</Label>
+        <Label className="text-[13px] font-medium">
+          {intl.formatMessage({
+            id: 'admin.settings.portal.cornerRoundness',
+            defaultMessage: 'Corner roundness',
+          })}
+        </Label>
         <div className="flex items-center gap-3">
-          <span className="text-xs text-muted-foreground w-12">Sharp</span>
+          <span className="text-xs text-muted-foreground w-12">
+            {intl.formatMessage({
+              id: 'admin.settings.portal.sharp',
+              defaultMessage: 'Sharp',
+            })}
+          </span>
           <Slider
             value={[radius * 100]}
             onValueChange={([v]) => setRadius(v / 100)}
@@ -440,7 +516,12 @@ const AppearanceSettings = memo(function AppearanceSettings({
             step={5}
             className="flex-1"
           />
-          <span className="text-xs text-muted-foreground w-12 text-right">Round</span>
+          <span className="text-xs text-muted-foreground w-12 text-right">
+            {intl.formatMessage({
+              id: 'admin.settings.portal.round',
+              defaultMessage: 'Round',
+            })}
+          </span>
           <div className="h-6 w-6 bg-primary shrink-0" style={{ borderRadius: `${radius}rem` }} />
         </div>
       </div>
@@ -466,6 +547,7 @@ const PreviewControls = memo(function PreviewControls({
   viewport,
   setViewport,
 }: PreviewControlsProps) {
+  const intl = useOptionalIntl()
   return (
     <>
       <div className="flex items-center gap-1 rounded-lg border border-border p-0.5">
@@ -473,13 +555,19 @@ const PreviewControls = memo(function PreviewControls({
           active={previewMode === 'light'}
           disabled={previewModeDisabled === 'light'}
           onClick={() => setPreviewMode('light')}
-          label="Light"
+          label={intl.formatMessage({
+            id: 'admin.settings.portal.previewLight',
+            defaultMessage: 'Light',
+          })}
         />
         <PreviewToggleButton
           active={previewMode === 'dark'}
           disabled={previewModeDisabled === 'dark'}
           onClick={() => setPreviewMode('dark')}
-          label="Dark"
+          label={intl.formatMessage({
+            id: 'admin.settings.portal.previewDark',
+            defaultMessage: 'Dark',
+          })}
         />
       </div>
       <div className="flex items-center gap-1 rounded-lg border border-border p-0.5">
@@ -487,14 +575,20 @@ const PreviewControls = memo(function PreviewControls({
           active={viewport === 'desktop'}
           onClick={() => setViewport('desktop')}
           icon={ComputerDesktopIcon}
-          label="Desktop"
+          label={intl.formatMessage({
+            id: 'admin.settings.portal.previewDesktop',
+            defaultMessage: 'Desktop',
+          })}
           iconOnly
         />
         <PreviewToggleButton
           active={viewport === 'mobile'}
           onClick={() => setViewport('mobile')}
           icon={DevicePhoneMobileIcon}
-          label="Mobile"
+          label={intl.formatMessage({
+            id: 'admin.settings.portal.previewMobile',
+            defaultMessage: 'Mobile',
+          })}
           iconOnly
         />
       </div>
@@ -510,6 +604,7 @@ function WelcomeBodyEditor({
   value: TiptapContent
   onChange: (v: TiptapContent) => void
 }) {
+  const intl = useOptionalIntl()
   const { upload: uploadImage } = useImageUpload({ prefix: 'portal-welcome' })
   // The editor reports its document once it mounts. The same document again
   // is not an edit, and adopting that copy would re-render the whole page.
@@ -526,7 +621,10 @@ function WelcomeBodyEditor({
     <RichTextEditor
       value={value}
       onDocumentChange={handleChange}
-      placeholder="Tell visitors what kind of feedback you'd love to hear…"
+      placeholder={intl.formatMessage({
+        id: 'admin.settings.portal.welcomePlaceholder',
+        defaultMessage: "Tell visitors what kind of feedback you'd love to hear…",
+      })}
       minHeight="160px"
       className="[&_button]:size-6 [&_button_svg]:size-3.5"
       features={{
@@ -552,11 +650,22 @@ function WelcomeBodyEditor({
 // ==============================================
 type FontCategory = (typeof FONT_OPTIONS)[number]['category']
 
+const FONT_CATEGORY_MESSAGES: Record<FontCategory, MessageDescriptor> = {
+  'Sans Serif': {
+    id: 'admin.settings.portal.fontCategory.sansSerif',
+    defaultMessage: 'Sans Serif',
+  },
+  Serif: { id: 'admin.settings.portal.fontCategory.serif', defaultMessage: 'Serif' },
+  Monospace: { id: 'admin.settings.portal.fontCategory.monospace', defaultMessage: 'Monospace' },
+  System: { id: 'admin.settings.portal.fontCategory.system', defaultMessage: 'System' },
+}
+
 function FontSelectGroup({ category }: { category: FontCategory }) {
+  const intl = useOptionalIntl()
   const fonts = FONT_OPTIONS.filter((f) => f.category === category)
   return (
     <SelectGroup>
-      <SelectLabel>{category}</SelectLabel>
+      <SelectLabel>{intl.formatMessage(FONT_CATEGORY_MESSAGES[category])}</SelectLabel>
       {fonts.map((f) => (
         <SelectItem key={f.id} value={f.id}>
           <span style={{ fontFamily: f.value }}>{f.name}</span>

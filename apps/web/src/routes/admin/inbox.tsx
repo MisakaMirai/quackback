@@ -2,6 +2,8 @@ import { createFileRoute, Navigate, redirect } from '@tanstack/react-router'
 import { useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
+import type { MessageDescriptor } from 'react-intl'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { ChatBubbleLeftRightIcon, TicketIcon } from '@heroicons/react/24/solid'
 import { isValidTypeId } from '@quackback/ids'
 import type {
@@ -384,6 +386,7 @@ function patchTicketInInboxLists(queryClient: QueryClient, ticket: TicketDTO): v
 }
 
 function InboxPage() {
+  const intl = useOptionalIntl()
   const queryClient = useQueryClient()
   const navigate = Route.useNavigate()
   const {
@@ -905,21 +908,40 @@ function InboxPage() {
   )
 
   // Toast the bulk summary: a clean line on full success, a partial-failure count
-  // otherwise. Verb is the past-tense action word ("Closed", "Snoozed", …).
-  const summarize = useCallback((verb: string, ok: number, fail: number) => {
-    if (fail === 0) {
-      toast.success(`${verb} ${ok} ${ok === 1 ? 'item' : 'items'}`)
-    } else {
-      toast.warning(`${ok} updated, ${fail} failed`)
-    }
-  }, [])
+  // otherwise. `verb` is the past-tense action word ("Closed", "Snoozed", …).
+  const summarize = useCallback(
+    (verb: MessageDescriptor, ok: number, fail: number) => {
+      if (fail === 0) {
+        toast.success(
+          intl.formatMessage(
+            {
+              id: 'admin.inbox.bulkSummary',
+              defaultMessage: '{verb} {count, plural, one {# item} other {# items}}',
+            },
+            { verb: intl.formatMessage(verb), count: ok }
+          )
+        )
+      } else {
+        toast.warning(
+          intl.formatMessage(
+            {
+              id: 'admin.inbox.bulkPartial',
+              defaultMessage: '{ok} updated, {fail} failed',
+            },
+            { ok, fail }
+          )
+        )
+      }
+    },
+    [intl]
+  )
 
   /** Apply a conversation-only bulk action, filtering the selection down to
    *  conversation ids (silently dropping any ticket ids — used by snooze/reopen,
    *  which have no ticket-row equivalent). No-ops when nothing conversation-kind
    *  is selected. */
   const runConversationOnlyBulk = useCallback(
-    async (action: BulkConversationAction, verb: string) => {
+    async (action: BulkConversationAction, verb: MessageDescriptor) => {
       const { conversationIds } = splitByKind(selectedIds)
       if (conversationIds.length === 0) return
       try {
@@ -928,10 +950,15 @@ function InboxPage() {
         if (res.failed.length === 0) clearSelection()
         else setBulkMenu(null)
       } catch {
-        toast.error('Bulk action failed')
+        toast.error(
+          intl.formatMessage({
+            id: 'admin.inbox.bulkActionFailed',
+            defaultMessage: 'Bulk action failed',
+          })
+        )
       }
     },
-    [selectedIds, bulk, summarize, clearSelection]
+    [selectedIds, bulk, summarize, clearSelection, intl]
   )
 
   /** Apply a bulk action to a mixed selection: conversation ids via the shared
@@ -941,7 +968,7 @@ function InboxPage() {
    *  conversation failures. */
   const runMixedBulk = useCallback(
     async (
-      verb: string,
+      verb: MessageDescriptor,
       conversationAction: BulkConversationAction | null,
       ticketAction: BulkTicketActionInput | null
     ): Promise<{
@@ -972,17 +999,20 @@ function InboxPage() {
   // server fn, refresh the inbox, and toast the outcome. Always dismisses any
   // open value menu so every control behaves the same.
   const runSolo = useCallback(
-    async (fn: () => Promise<unknown>, msg: { success: string; error: string }) => {
+    async (
+      fn: () => Promise<unknown>,
+      msg: { success: MessageDescriptor; error: MessageDescriptor }
+    ) => {
       setBulkMenu(null)
       try {
         await fn()
         refreshInbox()
-        toast.success(msg.success)
+        toast.success(intl.formatMessage(msg.success))
       } catch {
-        toast.error(msg.error)
+        toast.error(intl.formatMessage(msg.error))
       }
     },
-    [refreshInbox]
+    [refreshInbox, intl]
   )
 
   /** One "assign / assignTeam / priority"-shaped verb: a selection routes
@@ -997,14 +1027,14 @@ function InboxPage() {
     async <TArgs,>(
       args: TArgs,
       opts: {
-        verb: string
+        verb: MessageDescriptor
         bulkAction: (args: TArgs) => BulkConversationAction
         ticketBulkAction: (args: TArgs) => BulkTicketActionInput
         soloTicket: (ticketId: TicketId, args: TArgs) => Promise<unknown>
         soloConversation: (conversationId: ConversationId, args: TArgs) => Promise<unknown>
         messages: {
-          ticket: { success: string; error: string }
-          conversation: { success: string; error: string }
+          ticket: { success: MessageDescriptor; error: MessageDescriptor }
+          conversation: { success: MessageDescriptor; error: MessageDescriptor }
         }
       }
     ) => {
@@ -1024,7 +1054,7 @@ function InboxPage() {
   const applyAssign = useCallback(
     (assignTo: string | null) =>
       applyVerb(assignTo, {
-        verb: 'Assigned',
+        verb: { id: 'admin.inbox.verbAssigned', defaultMessage: 'Assigned' },
         bulkAction: (a) => ({ type: 'assign', assignTo: a }),
         ticketBulkAction: (a) => ({ type: 'assign', assignTo: a }),
         soloTicket: (id, a) =>
@@ -1032,10 +1062,22 @@ function InboxPage() {
         soloConversation: (id, a) =>
           assignConversationFn({ data: { conversationId: id, assignTo: a } }),
         messages: {
-          ticket: { success: 'Ticket assigned', error: 'Failed to assign ticket' },
+          ticket: {
+            success: { id: 'admin.inbox.ticketAssigned', defaultMessage: 'Ticket assigned' },
+            error: {
+              id: 'admin.inbox.ticketAssignFailed',
+              defaultMessage: 'Failed to assign ticket',
+            },
+          },
           conversation: {
-            success: 'Conversation assigned',
-            error: 'Failed to assign conversation',
+            success: {
+              id: 'admin.inbox.conversationAssigned',
+              defaultMessage: 'Conversation assigned',
+            },
+            error: {
+              id: 'admin.inbox.conversationAssignFailed',
+              defaultMessage: 'Failed to assign conversation',
+            },
           },
         },
       }),
@@ -1045,7 +1087,7 @@ function InboxPage() {
   const applyAssignTeam = useCallback(
     (teamId: string) =>
       applyVerb(teamId, {
-        verb: 'Assigned',
+        verb: { id: 'admin.inbox.verbAssigned', defaultMessage: 'Assigned' },
         bulkAction: (t) => ({ type: 'assign_team', teamId: t }),
         ticketBulkAction: (t) => ({ type: 'assign_team', teamId: t }),
         soloTicket: (id, t) =>
@@ -1053,8 +1095,14 @@ function InboxPage() {
         soloConversation: (id, t) =>
           assignConversationTeamFn({ data: { conversationId: id, teamId: t } }),
         messages: {
-          ticket: { success: 'Assigned to team', error: 'Failed to assign team' },
-          conversation: { success: 'Assigned to team', error: 'Failed to assign team' },
+          ticket: {
+            success: { id: 'admin.inbox.assignedToTeam', defaultMessage: 'Assigned to team' },
+            error: { id: 'admin.inbox.assignTeamFailed', defaultMessage: 'Failed to assign team' },
+          },
+          conversation: {
+            success: { id: 'admin.inbox.assignedToTeam', defaultMessage: 'Assigned to team' },
+            error: { id: 'admin.inbox.assignTeamFailed', defaultMessage: 'Failed to assign team' },
+          },
         },
       }),
     [applyVerb, assignTicketMutation]
@@ -1063,15 +1111,21 @@ function InboxPage() {
   const applyPriority = useCallback(
     (priority: ConversationPriority) =>
       applyVerb(priority, {
-        verb: 'Updated',
+        verb: { id: 'admin.inbox.verbUpdated', defaultMessage: 'Updated' },
         bulkAction: (p) => ({ type: 'priority', priority: p }),
         ticketBulkAction: (p) => ({ type: 'priority', priority: p }),
         soloTicket: (id, p) => priorityTicketMutation.mutateAsync({ ticketId: id, priority: p }),
         soloConversation: (id, p) =>
           setConversationPriorityFn({ data: { conversationId: id, priority: p } }),
         messages: {
-          ticket: { success: 'Priority updated', error: 'Failed to set priority' },
-          conversation: { success: 'Priority updated', error: 'Failed to set priority' },
+          ticket: {
+            success: { id: 'admin.inbox.priorityUpdated', defaultMessage: 'Priority updated' },
+            error: { id: 'admin.inbox.priorityFailed', defaultMessage: 'Failed to set priority' },
+          },
+          conversation: {
+            success: { id: 'admin.inbox.priorityUpdated', defaultMessage: 'Priority updated' },
+            error: { id: 'admin.inbox.priorityFailed', defaultMessage: 'Failed to set priority' },
+          },
         },
       }),
     [applyVerb, priorityTicketMutation]
@@ -1083,12 +1137,24 @@ function InboxPage() {
   const applySnooze = useCallback(
     async (until: string | null) => {
       if (hasSelection) {
-        return runConversationOnlyBulk({ type: 'snooze', until }, 'Snoozed')
+        return runConversationOnlyBulk(
+          { type: 'snooze', until },
+          { id: 'admin.inbox.verbSnoozed', defaultMessage: 'Snoozed' }
+        )
       }
       if (!selectedRef || selectedRef.kind === 'ticket') return
       return runSolo(
         () => snoozeConversationFn({ data: { conversationId: selectedRef.id, until } }),
-        { success: 'Conversation snoozed', error: 'Failed to snooze conversation' }
+        {
+          success: {
+            id: 'admin.inbox.conversationSnoozed',
+            defaultMessage: 'Conversation snoozed',
+          },
+          error: {
+            id: 'admin.inbox.conversationSnoozeFailed',
+            defaultMessage: 'Failed to snooze conversation',
+          },
+        }
       )
     },
     [hasSelection, selectedRef, runConversationOnlyBulk, runSolo]
@@ -1103,7 +1169,10 @@ function InboxPage() {
   const applyTag = useCallback(
     async (tagId: string) => {
       if (hasSelection) {
-        await runConversationOnlyBulk({ type: 'tag', tagId }, 'Tagged')
+        await runConversationOnlyBulk(
+          { type: 'tag', tagId },
+          { id: 'admin.inbox.verbTagged', defaultMessage: 'Tagged' }
+        )
         refreshInbox()
         return
       }
@@ -1117,7 +1186,10 @@ function InboxPage() {
           })
           void queryClient.invalidateQueries({ queryKey: CONVERSATION_TAGS_KEY })
         },
-        { success: 'Tag added', error: 'Failed to add tag' }
+        {
+          success: { id: 'admin.inbox.tagAdded', defaultMessage: 'Tag added' },
+          error: { id: 'admin.inbox.tagAddFailed', defaultMessage: 'Failed to add tag' },
+        }
       )
     },
     [hasSelection, selectedRef, runConversationOnlyBulk, runSolo, refreshInbox, queryClient]
@@ -1132,7 +1204,10 @@ function InboxPage() {
   const applyMacroReply = useCallback(
     async (macroId: string) => {
       if (hasSelection) {
-        await runConversationOnlyBulk({ type: 'macro', macroId }, 'Replied')
+        await runConversationOnlyBulk(
+          { type: 'macro', macroId },
+          { id: 'admin.inbox.verbReplied', defaultMessage: 'Replied' }
+        )
         refreshInbox()
         return
       }
@@ -1146,7 +1221,13 @@ function InboxPage() {
           })
           if (res.failed.length > 0) throw new Error(res.failed[0].reason)
         },
-        { success: 'Reply sent', error: 'Failed to send macro reply' }
+        {
+          success: { id: 'admin.inbox.replySent', defaultMessage: 'Reply sent' },
+          error: {
+            id: 'admin.inbox.macroReplyFailed',
+            defaultMessage: 'Failed to send macro reply',
+          },
+        }
       )
     },
     [hasSelection, selectedRef, runConversationOnlyBulk, runSolo, refreshInbox, bulk]
@@ -1157,7 +1238,12 @@ function InboxPage() {
     if (hasSelection) {
       const { ticketIds } = splitByKind(selectedIds)
       if (ticketIds.length > 0 && !closedStatusId) {
-        toast.error('No closed ticket status is configured')
+        toast.error(
+          intl.formatMessage({
+            id: 'admin.inbox.noClosedStatus',
+            defaultMessage: 'No closed ticket status is configured',
+          })
+        )
       }
       try {
         // `runMixedBulk` already does the succeeded/failed merge, the summary
@@ -1169,7 +1255,7 @@ function InboxPage() {
         // when there's no closed status configured — mirrors the pre-shared
         // behavior of silently skipping ticket ids in that case.
         const { conversationResult } = await runMixedBulk(
-          'Closed',
+          { id: 'admin.inbox.verbClosed', defaultMessage: 'Closed' },
           { type: 'close' },
           closedStatusId ? { type: 'set_status', statusId: closedStatusId } : null
         )
@@ -1187,19 +1273,36 @@ function InboxPage() {
             isMissingRequiredAttributesMessage(f.reason)
           ).length
           setCloseBlocked([
-            `${count} ${count === 1 ? 'conversation is' : 'conversations are'} missing required attributes.`,
+            intl.formatMessage(
+              {
+                id: 'admin.inbox.closeMissingAttributes',
+                defaultMessage:
+                  '{count, plural, one {# conversation is} other {# conversations are}} missing required attributes.',
+              },
+              { count }
+            ),
             ...blocked,
           ])
         }
       } catch {
-        toast.error('Bulk action failed')
+        toast.error(
+          intl.formatMessage({
+            id: 'admin.inbox.bulkActionFailed',
+            defaultMessage: 'Bulk action failed',
+          })
+        )
       }
       return
     }
     if (!selectedRef) return
     if (selectedRef.kind === 'ticket') {
       if (!closedStatusId) {
-        toast.error('No closed ticket status is configured')
+        toast.error(
+          intl.formatMessage({
+            id: 'admin.inbox.noClosedStatus',
+            defaultMessage: 'No closed ticket status is configured',
+          })
+        )
         return
       }
       return runSolo(
@@ -1208,18 +1311,35 @@ function InboxPage() {
             ticketId: selectedRef.id,
             statusId: closedStatusId as TicketStatusId,
           }),
-        { success: 'Ticket resolved', error: 'Failed to resolve ticket' }
+        {
+          success: { id: 'admin.inbox.ticketResolved', defaultMessage: 'Ticket resolved' },
+          error: {
+            id: 'admin.inbox.ticketResolveFailed',
+            defaultMessage: 'Failed to resolve ticket',
+          },
+        }
       )
     }
     setBulkMenu(null)
     try {
       await setConversationStatusFn({ data: { conversationId: selectedRef.id, status: 'closed' } })
       refreshInbox()
-      toast.success('Conversation closed')
+      toast.success(
+        intl.formatMessage({
+          id: 'admin.inbox.conversationClosed',
+          defaultMessage: 'Conversation closed',
+        })
+      )
     } catch (error) {
       const message = error instanceof Error ? error.message : null
       if (message && isMissingRequiredAttributesMessage(message)) setCloseBlocked([message])
-      else toast.error('Failed to close conversation')
+      else
+        toast.error(
+          intl.formatMessage({
+            id: 'admin.inbox.conversationCloseFailed',
+            defaultMessage: 'Failed to close conversation',
+          })
+        )
     }
   }, [
     hasSelection,
@@ -1230,6 +1350,7 @@ function InboxPage() {
     statusTicketMutation,
     runSolo,
     refreshInbox,
+    intl,
   ])
 
   // Reopen stays conversation-only for M2 — the ticket capability matrix (§2.5)
@@ -1237,12 +1358,24 @@ function InboxPage() {
   // status control), so a ticket-only target is a no-op here.
   const applyReopen = useCallback(async () => {
     if (hasSelection) {
-      return runConversationOnlyBulk({ type: 'reopen' }, 'Reopened')
+      return runConversationOnlyBulk(
+        { type: 'reopen' },
+        { id: 'admin.inbox.verbReopened', defaultMessage: 'Reopened' }
+      )
     }
     if (!selectedRef || selectedRef.kind === 'ticket') return
     return runSolo(
       () => setConversationStatusFn({ data: { conversationId: selectedRef.id, status: 'open' } }),
-      { success: 'Conversation reopened', error: 'Failed to reopen conversation' }
+      {
+        success: {
+          id: 'admin.inbox.conversationReopened',
+          defaultMessage: 'Conversation reopened',
+        },
+        error: {
+          id: 'admin.inbox.conversationReopenFailed',
+          defaultMessage: 'Failed to reopen conversation',
+        },
+      }
     )
   }, [hasSelection, selectedRef, runConversationOnlyBulk, runSolo])
 
@@ -1485,11 +1618,27 @@ function InboxPage() {
           <div className="hidden h-full items-center justify-center md:flex">
             <EmptyState
               icon={isTicketScope ? TicketIcon : ChatBubbleLeftRightIcon}
-              title={isTicketScope ? 'Select a ticket' : 'Select a conversation'}
+              title={
+                isTicketScope
+                  ? intl.formatMessage({
+                      id: 'admin.inbox.selectTicketTitle',
+                      defaultMessage: 'Select a ticket',
+                    })
+                  : intl.formatMessage({
+                      id: 'admin.inbox.selectConversationTitle',
+                      defaultMessage: 'Select a conversation',
+                    })
+              }
               description={
                 isTicketScope
-                  ? 'Choose a ticket from the list to view and reply.'
-                  : 'Choose a conversation from the list to view and reply.'
+                  ? intl.formatMessage({
+                      id: 'admin.inbox.selectTicketDescription',
+                      defaultMessage: 'Choose a ticket from the list to view and reply.',
+                    })
+                  : intl.formatMessage({
+                      id: 'admin.inbox.selectConversationDescription',
+                      defaultMessage: 'Choose a conversation from the list to view and reply.',
+                    })
               }
             />
           </div>
@@ -1515,8 +1664,18 @@ function InboxPage() {
           disableTag={hasTicketTarget}
           disableMacro={hasTicketTarget}
           spam={nav.kind === 'view' && nav.view === 'spam'}
-          onRestore={() => runConversationOnlyBulk({ type: 'restore_spam' }, 'Restored')}
-          onDeleteForever={() => runConversationOnlyBulk({ type: 'delete_forever' }, 'Deleted')}
+          onRestore={() =>
+            runConversationOnlyBulk(
+              { type: 'restore_spam' },
+              { id: 'admin.inbox.verbRestored', defaultMessage: 'Restored' }
+            )
+          }
+          onDeleteForever={() =>
+            runConversationOnlyBulk(
+              { type: 'delete_forever' },
+              { id: 'admin.inbox.verbDeleted', defaultMessage: 'Deleted' }
+            )
+          }
         />
       )}
 

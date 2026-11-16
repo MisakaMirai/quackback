@@ -3,6 +3,7 @@ import { PERMISSIONS } from '@/lib/shared/permissions'
 import { assertRoutePermission } from '@/lib/shared/route-permission'
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import { useMutation, useQueryClient, useSuspenseQuery, queryOptions } from '@tanstack/react-query'
+import { FormattedMessage } from 'react-intl'
 import { PlusIcon, TrashIcon } from '@heroicons/react/24/outline'
 import { isProductEnabled } from '@/lib/shared/types/settings'
 import {
@@ -29,8 +30,17 @@ import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { adminPageHead } from '@/lib/client/admin-head'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 
-const DAY_LABELS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+const DAY_MESSAGES = [
+  { id: 'admin.settings.officeHours.day.sunday', defaultMessage: 'Sunday' },
+  { id: 'admin.settings.officeHours.day.monday', defaultMessage: 'Monday' },
+  { id: 'admin.settings.officeHours.day.tuesday', defaultMessage: 'Tuesday' },
+  { id: 'admin.settings.officeHours.day.wednesday', defaultMessage: 'Wednesday' },
+  { id: 'admin.settings.officeHours.day.thursday', defaultMessage: 'Thursday' },
+  { id: 'admin.settings.officeHours.day.friday', defaultMessage: 'Friday' },
+  { id: 'admin.settings.officeHours.day.saturday', defaultMessage: 'Saturday' },
+]
 
 /** IANA zones for the timezone picker; resolved once at module load. */
 const TIME_ZONES: string[] = (() => {
@@ -89,6 +99,7 @@ function isScheduleValid(schedule: OfficeHoursSchedule): boolean {
 }
 
 function OfficeHoursPage() {
+  const intl = useOptionalIntl()
   const queryClient = useQueryClient()
   const { data } = useSuspenseQuery(officeHoursQuery)
   const [schedule, setSchedule] = useState<OfficeHoursSchedule>(
@@ -110,7 +121,11 @@ function OfficeHoursPage() {
   function save(next: OfficeHoursSchedule) {
     if (!isScheduleValid(next)) {
       setError(
-        'Each window needs a start and end time that differ, and every holiday needs a valid date.'
+        intl.formatMessage({
+          id: 'admin.settings.officeHours.invalidSchedule',
+          defaultMessage:
+            'Each window needs a start and end time that differ, and every holiday needs a valid date.',
+        })
       )
       return
     }
@@ -213,12 +228,27 @@ function OfficeHoursPage() {
 
   return (
     <SettingsPage page="/admin/settings/office-hours">
-      <SettingsCard title="Availability" description="Off means available 24/7.">
+      <SettingsCard
+        title={intl.formatMessage({
+          id: 'admin.settings.officeHours.availabilityTitle',
+          defaultMessage: 'Availability',
+        })}
+        description={intl.formatMessage({
+          id: 'admin.settings.officeHours.availabilityDescription',
+          defaultMessage: 'Off means available 24/7.',
+        })}
+      >
         <div className="space-y-5">
           <SettingRows>
             <SettingRow
-              label="Set office hours"
-              description="Customers see when you'll be back."
+              label={intl.formatMessage({
+                id: 'admin.settings.officeHours.enableLabel',
+                defaultMessage: 'Set office hours',
+              })}
+              description={intl.formatMessage({
+                id: 'admin.settings.officeHours.enableDescription',
+                defaultMessage: "Customers see when you'll be back.",
+              })}
               htmlFor="office-hours-enabled"
               control={
                 <Switch
@@ -236,23 +266,38 @@ function OfficeHoursPage() {
               <OfficeHoursPreview schedule={schedule} />
 
               <div className="space-y-1.5">
-                <Label>Timezone</Label>
+                <Label>
+                  {intl.formatMessage({
+                    id: 'admin.settings.officeHours.timezoneLabel',
+                    defaultMessage: 'Timezone',
+                  })}
+                </Label>
                 <Combobox
                   value={schedule.timezone}
                   onValueChange={(tz) => apply({ ...schedule, timezone: tz })}
                   options={tzOptions}
-                  ariaLabel="Timezone"
-                  searchPlaceholder="Search timezones…"
+                  ariaLabel={intl.formatMessage({
+                    id: 'admin.settings.officeHours.timezoneLabel',
+                    defaultMessage: 'Timezone',
+                  })}
+                  searchPlaceholder={intl.formatMessage({
+                    id: 'admin.settings.officeHours.timezoneSearchPlaceholder',
+                    defaultMessage: 'Search timezones…',
+                  })}
                   className="w-full max-w-sm"
                   disabled={isBusy}
                 />
                 <p className="text-xs text-muted-foreground">
-                  All the times below are interpreted in this timezone.
+                  {intl.formatMessage({
+                    id: 'admin.settings.officeHours.timezoneHint',
+                    defaultMessage: 'All the times below are interpreted in this timezone.',
+                  })}
                 </p>
               </div>
 
               <div className="space-y-4">
-                {DAY_LABELS.map((label, day) => {
+                {DAY_MESSAGES.map((dayMessage, day) => {
+                  const label = intl.formatMessage(dayMessage)
                   const rows = schedule.intervals
                     .map((iv, index) => ({ iv, index }))
                     .filter((r) => r.iv.day === day)
@@ -273,7 +318,10 @@ function OfficeHoursPage() {
                               onClick={() => copyDayToAll(day)}
                               className="text-xs text-muted-foreground"
                             >
-                              Copy to all days
+                              {intl.formatMessage({
+                                id: 'admin.settings.officeHours.copyToAllDays',
+                                defaultMessage: 'Copy to all days',
+                              })}
                             </Button>
                           )}
                           <Button
@@ -283,13 +331,22 @@ function OfficeHoursPage() {
                             disabled={isBusy}
                             onClick={() => addInterval(day)}
                           >
-                            <PlusIcon className="h-4 w-4" /> Add hours
+                            <PlusIcon className="h-4 w-4" />{' '}
+                            {intl.formatMessage({
+                              id: 'admin.settings.officeHours.addHours',
+                              defaultMessage: 'Add hours',
+                            })}
                           </Button>
                         </div>
                       </div>
 
                       {rows.length === 0 ? (
-                        <p className="text-xs text-muted-foreground">Closed</p>
+                        <p className="text-xs text-muted-foreground">
+                          {intl.formatMessage({
+                            id: 'admin.settings.officeHours.closed',
+                            defaultMessage: 'Closed',
+                          })}
+                        </p>
                       ) : (
                         rows.map(({ iv, index }) => (
                           <div key={index} className="flex items-center gap-3">
@@ -300,9 +357,20 @@ function OfficeHoursPage() {
                               onBlur={() => save(schedule)}
                               disabled={isBusy}
                               className="w-32"
-                              aria-label={`${label} start`}
+                              aria-label={intl.formatMessage(
+                                {
+                                  id: 'admin.settings.officeHours.startAria',
+                                  defaultMessage: '{day} start',
+                                },
+                                { day: label }
+                              )}
                             />
-                            <span className="text-xs text-muted-foreground">to</span>
+                            <span className="text-xs text-muted-foreground">
+                              {intl.formatMessage({
+                                id: 'admin.settings.officeHours.to',
+                                defaultMessage: 'to',
+                              })}
+                            </span>
                             <Input
                               type="time"
                               value={iv.end}
@@ -310,14 +378,26 @@ function OfficeHoursPage() {
                               onBlur={() => save(schedule)}
                               disabled={isBusy}
                               className="w-32"
-                              aria-label={`${label} end`}
+                              aria-label={intl.formatMessage(
+                                {
+                                  id: 'admin.settings.officeHours.endAria',
+                                  defaultMessage: '{day} end',
+                                },
+                                { day: label }
+                              )}
                             />
                             <button
                               type="button"
                               onClick={() => setPendingRemoval({ kind: 'window', index })}
                               disabled={isBusy}
                               className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-destructive transition-colors"
-                              aria-label={`Remove ${label} window`}
+                              aria-label={intl.formatMessage(
+                                {
+                                  id: 'admin.settings.officeHours.removeWindowAria',
+                                  defaultMessage: 'Remove {day} window',
+                                },
+                                { day: label }
+                              )}
                             >
                               <TrashIcon className="h-4 w-4" />
                             </button>
@@ -330,21 +410,37 @@ function OfficeHoursPage() {
               </div>
 
               <p className="text-xs text-muted-foreground">
-                A window whose end is earlier than its start runs overnight into the next day (for
-                example 22:00 to 06:00).
+                {intl.formatMessage({
+                  id: 'admin.settings.officeHours.overnightHint',
+                  defaultMessage:
+                    'A window whose end is earlier than its start runs overnight into the next day (for example 22:00 to 06:00).',
+                })}
               </p>
 
               <div className="space-y-3 border-t border-border/40 pt-4">
                 <div className="space-y-1">
-                  <Label>Holidays</Label>
+                  <Label>
+                    {intl.formatMessage({
+                      id: 'admin.settings.officeHours.holidaysLabel',
+                      defaultMessage: 'Holidays',
+                    })}
+                  </Label>
                   <p className="text-xs text-muted-foreground">
-                    Days you&apos;re closed on top of the weekly windows. SLA clocks pause and reply
-                    expectations don&apos;t fire. Dates are read in the schedule timezone.
+                    {intl.formatMessage({
+                      id: 'admin.settings.officeHours.holidaysDescription',
+                      defaultMessage:
+                        "Days you're closed on top of the weekly windows. SLA clocks pause and reply expectations don't fire. Dates are read in the schedule timezone.",
+                    })}
                   </p>
                 </div>
 
                 {(schedule.holidays ?? []).length === 0 ? (
-                  <p className="text-xs text-muted-foreground">None</p>
+                  <p className="text-xs text-muted-foreground">
+                    {intl.formatMessage({
+                      id: 'common.none',
+                      defaultMessage: 'None',
+                    })}
+                  </p>
                 ) : (
                   <div className="space-y-2">
                     {(schedule.holidays ?? []).map((h, index) => (
@@ -356,7 +452,13 @@ function OfficeHoursPage() {
                           onBlur={() => save(schedule)}
                           disabled={isBusy}
                           className="w-40"
-                          aria-label={`Holiday ${index + 1} date`}
+                          aria-label={intl.formatMessage(
+                            {
+                              id: 'admin.settings.officeHours.holidayDateAria',
+                              defaultMessage: 'Holiday {number} date',
+                            },
+                            { number: index + 1 }
+                          )}
                         />
                         <Input
                           type="text"
@@ -366,9 +468,18 @@ function OfficeHoursPage() {
                           }
                           onBlur={() => save(schedule)}
                           disabled={isBusy}
-                          placeholder="Name (optional)"
+                          placeholder={intl.formatMessage({
+                            id: 'admin.settings.officeHours.holidayNamePlaceholder',
+                            defaultMessage: 'Name (optional)',
+                          })}
                           className="flex-1"
-                          aria-label={`Holiday ${index + 1} name`}
+                          aria-label={intl.formatMessage(
+                            {
+                              id: 'admin.settings.officeHours.holidayNameAria',
+                              defaultMessage: 'Holiday {number} name',
+                            },
+                            { number: index + 1 }
+                          )}
                         />
                         <label className="flex items-center gap-2 text-xs text-muted-foreground whitespace-nowrap cursor-pointer">
                           <Checkbox
@@ -377,17 +488,32 @@ function OfficeHoursPage() {
                               toggleHolidayRecurring(index, checked === true)
                             }
                             disabled={isBusy}
-                            aria-label={`Holiday ${index + 1} repeats every year`}
+                            aria-label={intl.formatMessage(
+                              {
+                                id: 'admin.settings.officeHours.holidayRecurringAria',
+                                defaultMessage: 'Holiday {number} repeats every year',
+                              },
+                              { number: index + 1 }
+                            )}
                             data-in-label
                           />
-                          Every year
+                          {intl.formatMessage({
+                            id: 'admin.settings.officeHours.everyYear',
+                            defaultMessage: 'Every year',
+                          })}
                         </label>
                         <button
                           type="button"
                           onClick={() => setPendingRemoval({ kind: 'holiday', index })}
                           disabled={isBusy}
                           className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-destructive transition-colors"
-                          aria-label={`Remove holiday ${index + 1}`}
+                          aria-label={intl.formatMessage(
+                            {
+                              id: 'admin.settings.officeHours.removeHolidayAria',
+                              defaultMessage: 'Remove holiday {number}',
+                            },
+                            { number: index + 1 }
+                          )}
                         >
                           <TrashIcon className="h-4 w-4" />
                         </button>
@@ -404,7 +530,11 @@ function OfficeHoursPage() {
                     disabled={isBusy}
                     onClick={addHoliday}
                   >
-                    <PlusIcon className="h-4 w-4" /> Add holiday
+                    <PlusIcon className="h-4 w-4" />{' '}
+                    {intl.formatMessage({
+                      id: 'admin.settings.officeHours.addHoliday',
+                      defaultMessage: 'Add holiday',
+                    })}
                   </Button>
                 </div>
               </div>
@@ -417,13 +547,39 @@ function OfficeHoursPage() {
       <ConfirmDialog
         open={pendingRemoval !== null}
         onOpenChange={(open) => !open && setPendingRemoval(null)}
-        title={pendingRemoval?.kind === 'holiday' ? 'Delete holiday?' : 'Delete window?'}
+        title={
+          pendingRemoval?.kind === 'holiday'
+            ? intl.formatMessage({
+                id: 'admin.settings.officeHours.deleteHolidayTitle',
+                defaultMessage: 'Delete holiday?',
+              })
+            : intl.formatMessage({
+                id: 'admin.settings.officeHours.deleteWindowTitle',
+                defaultMessage: 'Delete window?',
+              })
+        }
         description={
           pendingRemoval?.kind === 'holiday'
-            ? 'That day no longer counts as closed.'
-            : 'That window no longer counts as open.'
+            ? intl.formatMessage({
+                id: 'admin.settings.officeHours.deleteHolidayDescription',
+                defaultMessage: 'That day no longer counts as closed.',
+              })
+            : intl.formatMessage({
+                id: 'admin.settings.officeHours.deleteWindowDescription',
+                defaultMessage: 'That window no longer counts as open.',
+              })
         }
-        confirmLabel={pendingRemoval?.kind === 'holiday' ? 'Delete holiday' : 'Delete window'}
+        confirmLabel={
+          pendingRemoval?.kind === 'holiday'
+            ? intl.formatMessage({
+                id: 'admin.settings.officeHours.deleteHolidayConfirm',
+                defaultMessage: 'Delete holiday',
+              })
+            : intl.formatMessage({
+                id: 'admin.settings.officeHours.deleteWindowConfirm',
+                defaultMessage: 'Delete window',
+              })
+        }
         variant="destructive"
         onConfirm={() => {
           if (pendingRemoval?.kind === 'holiday') removeHoliday(pendingRemoval.index)
@@ -437,6 +593,7 @@ function OfficeHoursPage() {
 
 /** "Open now" / "Opens <when>" line, computed with the shared resolver. */
 function OfficeHoursPreview({ schedule }: { schedule: OfficeHoursSchedule }) {
+  const intl = useOptionalIntl()
   // Compute after mount only, so the SSR pass and the first client render match.
   const [now, setNow] = useState<Date | null>(null)
   useEffect(() => {
@@ -470,13 +627,27 @@ function OfficeHoursPreview({ schedule }: { schedule: OfficeHoursSchedule }) {
         aria-hidden
       />
       {open ? (
-        <span className="font-medium text-foreground">Open now</span>
+        <span className="font-medium text-foreground">
+          {intl.formatMessage({
+            id: 'admin.settings.officeHours.openNow',
+            defaultMessage: 'Open now',
+          })}
+        </span>
       ) : opensLabel ? (
         <span className="text-muted-foreground">
-          Closed &middot; opens <span className="font-medium text-foreground">{opensLabel}</span>
+          <FormattedMessage
+            id="admin.settings.officeHours.closedOpens"
+            defaultMessage="Closed · opens {time}"
+            values={{ time: <span className="font-medium text-foreground">{opensLabel}</span> }}
+          />
         </span>
       ) : (
-        <span className="text-muted-foreground">Closed</span>
+        <span className="text-muted-foreground">
+          {intl.formatMessage({
+            id: 'admin.settings.officeHours.closed',
+            defaultMessage: 'Closed',
+          })}
+        </span>
       )}
     </div>
   )

@@ -16,6 +16,7 @@ import { useUpdateHelpCenterConfig } from '@/lib/client/mutations/settings'
 import { useDebouncedSave } from '@/lib/client/hooks/use-debounced-save'
 import { isProductEnabled, type HelpCenterConfig } from '@/lib/shared/types/settings'
 import { adminPageHead } from '@/lib/client/admin-head'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 
 /**
  * Split by concern, matching the Access & Security page's `?tab=` pattern:
@@ -50,6 +51,7 @@ function HelpCenterSettingsRoute() {
 }
 
 function HelpCenterSettingsPage() {
+  const intl = useOptionalIntl()
   const router = useRouter()
   const navigate = useNavigate()
   const search = Route.useSearch()
@@ -107,34 +109,65 @@ function HelpCenterSettingsPage() {
         className="space-y-6"
       >
         <TabsList>
-          <TabsTrigger value="general">General</TabsTrigger>
-          <TabsTrigger value="domains-languages">Domains & languages</TabsTrigger>
+          <TabsTrigger value="general">
+            {intl.formatMessage({
+              id: 'admin.settings.helpCenter.tabGeneral',
+              defaultMessage: 'General',
+            })}
+          </TabsTrigger>
+          <TabsTrigger value="domains-languages">
+            {intl.formatMessage({
+              id: 'admin.settings.helpCenter.tabDomainsLanguages',
+              defaultMessage: 'Domains & languages',
+            })}
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="general" className="space-y-6">
-          <SettingsCard title="Homepage" description="Customize the help center landing page.">
+          <SettingsCard
+            title={intl.formatMessage({
+              id: 'admin.settings.helpCenter.homepageCardTitle',
+              defaultMessage: 'Homepage',
+            })}
+            description={intl.formatMessage({
+              id: 'admin.settings.helpCenter.homepageCardDescription',
+              defaultMessage: 'Customize the help center landing page.',
+            })}
+          >
             <div className="space-y-4">
               <div className="space-y-1.5">
                 <Label htmlFor="homepage-title" className="text-sm font-medium">
-                  Title
+                  {intl.formatMessage({
+                    id: 'admin.settings.helpCenter.homepageTitleLabel',
+                    defaultMessage: 'Title',
+                  })}
                 </Label>
                 <Input
                   id="homepage-title"
                   value={homepageTitle}
                   onChange={(e) => handleTitleChange(e.target.value)}
-                  placeholder="How can we help?"
+                  placeholder={intl.formatMessage({
+                    id: 'admin.settings.helpCenter.homepageTitlePlaceholder',
+                    defaultMessage: 'How can we help?',
+                  })}
                 />
               </div>
 
               <div className="space-y-1.5">
                 <Label htmlFor="homepage-description" className="text-sm font-medium">
-                  Description
+                  {intl.formatMessage({
+                    id: 'admin.settings.helpCenter.homepageDescriptionLabel',
+                    defaultMessage: 'Description',
+                  })}
                 </Label>
                 <Input
                   id="homepage-description"
                   value={homepageDescription}
                   onChange={(e) => handleDescriptionChange(e.target.value)}
-                  placeholder="Search our knowledge base or browse by category"
+                  placeholder={intl.formatMessage({
+                    id: 'admin.settings.helpCenter.homepageDescriptionPlaceholder',
+                    defaultMessage: 'Search our knowledge base or browse by category',
+                  })}
                 />
               </div>
             </div>

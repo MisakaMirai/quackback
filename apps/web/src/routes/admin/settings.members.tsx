@@ -11,6 +11,7 @@ import { MembersTab } from '@/components/admin/settings/team/members-tab'
 import { TeamsTab } from '@/components/admin/settings/teams/teams-tab'
 import { RolesTab } from '@/components/admin/settings/team/roles-tab'
 import { adminPageHead } from '@/lib/client/admin-head'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 
 const TABS = ['members', 'teams', 'roles'] as const
 type MembersPageTab = (typeof TABS)[number]
@@ -51,6 +52,7 @@ export const Route = createFileRoute('/admin/settings/members')({
 })
 
 function MembersPage() {
+  const intl = useOptionalIntl()
   const { currentMember, canManageTeams, canManageMembers } = Route.useLoaderData()
   const { tab: requested = 'members', q } = Route.useSearch()
   const tab = requested === 'teams' && !canManageTeams ? 'members' : requested
@@ -65,14 +67,34 @@ function MembersPage() {
   return (
     <SettingsPage
       page="/admin/settings/members"
-      description="Who has access to your workspace."
+      description={intl.formatMessage({
+        id: 'admin.settings.members.description',
+        defaultMessage: 'Who has access to your workspace.',
+      })}
       width="wide"
     >
       <Tabs value={tab} onValueChange={setTab} variant="line" className="space-y-6">
         <TabsList>
-          <TabsTrigger value="members">Members</TabsTrigger>
-          {canManageTeams && <TabsTrigger value="teams">Teams</TabsTrigger>}
-          <TabsTrigger value="roles">Roles</TabsTrigger>
+          <TabsTrigger value="members">
+            {intl.formatMessage({
+              id: 'admin.settings.members.tabMembers',
+              defaultMessage: 'Members',
+            })}
+          </TabsTrigger>
+          {canManageTeams && (
+            <TabsTrigger value="teams">
+              {intl.formatMessage({
+                id: 'admin.settings.members.tabTeams',
+                defaultMessage: 'Teams',
+              })}
+            </TabsTrigger>
+          )}
+          <TabsTrigger value="roles">
+            {intl.formatMessage({
+              id: 'admin.settings.members.tabRoles',
+              defaultMessage: 'Roles',
+            })}
+          </TabsTrigger>
         </TabsList>
         <TabsContent value="members">
           <MembersTab

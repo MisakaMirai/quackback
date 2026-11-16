@@ -17,6 +17,7 @@ import { settingsQueries } from '@/lib/client/queries/settings'
 import { readBatch } from '@/lib/client/queries/read-batch'
 import { useBaseUrl } from '@/lib/client/hooks/use-root-context'
 import { adminPageHead } from '@/lib/client/admin-head'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 
 // The two guides are long and sit on the Webhooks and MCP tabs, so they load
 // with their tab rather than with the Keys tab every visit opens on.
@@ -56,6 +57,7 @@ export const Route = createFileRoute('/admin/settings/developers')({
 })
 
 function ApiPage() {
+  const intl = useOptionalIntl()
   const search = Route.useSearch()
   const tab: ApiTab = search.tab ?? 'keys'
   const navigate = useNavigate()
@@ -87,9 +89,24 @@ function ApiPage() {
         className="space-y-6"
       >
         <TabsList>
-          <TabsTrigger value="keys">Keys</TabsTrigger>
-          <TabsTrigger value="webhooks">Webhooks</TabsTrigger>
-          <TabsTrigger value="mcp">MCP</TabsTrigger>
+          <TabsTrigger value="keys">
+            {intl.formatMessage({
+              id: 'admin.settings.developers.tabKeys',
+              defaultMessage: 'Keys',
+            })}
+          </TabsTrigger>
+          <TabsTrigger value="webhooks">
+            {intl.formatMessage({
+              id: 'admin.settings.developers.tabWebhooks',
+              defaultMessage: 'Webhooks',
+            })}
+          </TabsTrigger>
+          <TabsTrigger value="mcp">
+            {intl.formatMessage({
+              id: 'admin.settings.developers.tabMcp',
+              defaultMessage: 'MCP',
+            })}
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="keys" className="space-y-6">

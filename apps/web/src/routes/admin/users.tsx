@@ -6,6 +6,7 @@ import { ExclamationCircleIcon } from '@heroicons/react/24/solid'
 import { Button } from '@/components/ui/button'
 import { errorMessage } from '@/components/shared/error-page'
 import { adminPageHead } from '@/lib/client/admin-head'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 
 const searchSchema = z.object({
   search: z.string().optional(),
@@ -73,15 +74,24 @@ export const Route = createFileRoute('/admin/users')({
 
 function UsersErrorComponent({ error, reset }: { error: unknown; reset: () => void }) {
   const message = errorMessage(error)
+  const intl = useOptionalIntl()
   return (
     <div className="flex items-center justify-center min-h-[400px] p-4">
       <Alert variant="destructive" className="max-w-2xl">
         <ExclamationCircleIcon className="h-4 w-4" />
-        <AlertTitle>Failed to load users</AlertTitle>
+        <AlertTitle>
+          {intl.formatMessage({
+            id: 'admin.users.loadFailed',
+            defaultMessage: 'Failed to load users',
+          })}
+        </AlertTitle>
         <AlertDescription className="mt-2">
           <p className="mb-4">{message}</p>
           <Button onClick={reset} variant="outline" size="sm">
-            Try again
+            {intl.formatMessage({
+              id: 'common.errorPage.tryAgain',
+              defaultMessage: 'Try again',
+            })}
           </Button>
         </AlertDescription>
       </Alert>

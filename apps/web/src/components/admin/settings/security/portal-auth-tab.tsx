@@ -5,6 +5,7 @@ import { useMutation, useQuery } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { SettingRow } from '@/components/admin/settings/setting-row'
 import { VisibilityTiles } from '@/components/admin/settings/visibility-tiles'
 import { AUTOSAVE } from '@/lib/client/autosave'
@@ -49,22 +50,35 @@ interface PortalAuthTabProps {
 
 type Visibility = 'public' | 'private'
 
-const VISIBILITY_OPTIONS = [
-  {
-    value: 'public',
-    title: 'Everyone',
-    description: 'Anyone can view your portal without signing in.',
-  },
-  {
-    value: 'private',
-    title: 'Only your team and users you invite',
-    description: 'Everyone else sees a sign-in page.',
-  },
-] satisfies { value: Visibility; title: string; description: string }[]
-
 export function PortalAuthTab({ portalConfig, teamOpenSignup }: PortalAuthTabProps) {
   const router = useRouter()
+  const intl = useOptionalIntl()
   const [isPending, startTransition] = useTransition()
+
+  const visibilityOptions = [
+    {
+      value: 'public' as Visibility,
+      title: intl.formatMessage({
+        id: 'admin.settings.security.portalAccess.visibility.everyone.title',
+        defaultMessage: 'Everyone',
+      }),
+      description: intl.formatMessage({
+        id: 'admin.settings.security.portalAccess.visibility.everyone.description',
+        defaultMessage: 'Anyone can view your portal without signing in.',
+      }),
+    },
+    {
+      value: 'private' as Visibility,
+      title: intl.formatMessage({
+        id: 'admin.settings.security.portalAccess.visibility.private.title',
+        defaultMessage: 'Only your team and users you invite',
+      }),
+      description: intl.formatMessage({
+        id: 'admin.settings.security.portalAccess.visibility.private.description',
+        defaultMessage: 'Everyone else sees a sign-in page.',
+      }),
+    },
+  ] satisfies { value: Visibility; title: string; description: string }[]
 
   // --- Portal visibility + allowed-domains: shared busy lock ---
   //
@@ -253,12 +267,22 @@ export function PortalAuthTab({ portalConfig, teamOpenSignup }: PortalAuthTabPro
 
     // Basic client-side validation matching server normalization rules
     if (raw.includes('://') || raw.includes('@') || /\s/.test(raw) || !raw.includes('.')) {
-      setDomainInputError('Enter a valid domain, e.g. acme.com')
+      setDomainInputError(
+        intl.formatMessage({
+          id: 'admin.settings.security.portalAccess.domains.invalid',
+          defaultMessage: 'Enter a valid domain, e.g. acme.com',
+        })
+      )
       return
     }
 
     if (allowedDomainsRef.current.includes(raw)) {
-      setDomainInputError('Domain already in the list')
+      setDomainInputError(
+        intl.formatMessage({
+          id: 'admin.settings.security.portalAccess.domains.duplicate',
+          defaultMessage: 'Domain already in the list',
+        })
+      )
       return
     }
 
@@ -293,13 +317,22 @@ export function PortalAuthTab({ portalConfig, teamOpenSignup }: PortalAuthTabPro
       {/* Portal visibility: the who-can-view choice and the anonymous switch.
           The four authorization channels each get their own SettingsCard below
           (only when private) so each one stands on its own. */}
-      <SettingsCard title="Portal visibility" description="Choose who can view your portal.">
+      <SettingsCard
+        title={intl.formatMessage({
+          id: 'admin.settings.security.portalAccess.visibility.title',
+          defaultMessage: 'Portal visibility',
+        })}
+        description={intl.formatMessage({
+          id: 'admin.settings.security.portalAccess.visibility.description',
+          defaultMessage: 'Choose who can view your portal.',
+        })}
+      >
         <div className="space-y-4">
           <VisibilityTiles
             name="portal-visibility"
             value={visibility}
             onChange={handleVisibilitySelect}
-            options={VISIBILITY_OPTIONS}
+            options={visibilityOptions}
             disabled={isAccessBusy}
             className="sm:grid-cols-2"
           />
@@ -308,15 +341,30 @@ export function PortalAuthTab({ portalConfig, teamOpenSignup }: PortalAuthTabPro
               appears at the exact moment an admin picks the private option. */}
           {visibility === 'private' && (
             <p className="text-[13px] text-muted-foreground">
-              <span className="font-medium text-foreground">Your team always has access.</span> Use
-              the cards below to authorize additional visitors.
+              <span className="font-medium text-foreground">
+                {intl.formatMessage({
+                  id: 'admin.settings.security.portalAccess.teamAccessTitle',
+                  defaultMessage: 'Your team always has access.',
+                })}
+              </span>{' '}
+              {intl.formatMessage({
+                id: 'admin.settings.security.portalAccess.teamAccessBody',
+                defaultMessage: 'Use the cards below to authorize additional visitors.',
+              })}
             </p>
           )}
 
           <div className="border-t border-border/50 pt-1">
             <SettingRow
-              label="Allow anonymous interaction"
-              description="When off, all boards require sign-in for voting, commenting, and submitting posts."
+              label={intl.formatMessage({
+                id: 'admin.settings.security.portalAccess.allowAnonymous.label',
+                defaultMessage: 'Allow anonymous interaction',
+              })}
+              description={intl.formatMessage({
+                id: 'admin.settings.security.portalAccess.allowAnonymous.description',
+                defaultMessage:
+                  'When off, all boards require sign-in for voting, commenting, and submitting posts.',
+              })}
               htmlFor="allow-anonymous"
               className="pb-0"
               control={
@@ -325,7 +373,10 @@ export function PortalAuthTab({ portalConfig, teamOpenSignup }: PortalAuthTabPro
                   checked={allowAnonymous}
                   onCheckedChange={(checked) => anonMutation.mutate(checked)}
                   disabled={anonBusy || isPending}
-                  aria-label="Allow anonymous interaction"
+                  aria-label={intl.formatMessage({
+                    id: 'admin.settings.security.portalAccess.allowAnonymous.label',
+                    defaultMessage: 'Allow anonymous interaction',
+                  })}
                 />
               }
             />
@@ -338,11 +389,21 @@ export function PortalAuthTab({ portalConfig, teamOpenSignup }: PortalAuthTabPro
           read still has to decide whether anyone can join it. */}
       <SettingsCard>
         <SettingRow
-          label="Let visitors create an account"
+          label={intl.formatMessage({
+            id: 'admin.settings.security.portalAccess.openSignup.label',
+            defaultMessage: 'Let visitors create an account',
+          })}
           description={
             openSignup
-              ? 'Anyone can create an account to post, vote and comment.'
-              : 'Only users you invite, and users already holding an account, can sign in.'
+              ? intl.formatMessage({
+                  id: 'admin.settings.security.portalAccess.openSignup.enabledDescription',
+                  defaultMessage: 'Anyone can create an account to post, vote and comment.',
+                })
+              : intl.formatMessage({
+                  id: 'admin.settings.security.portalAccess.openSignup.disabledDescription',
+                  defaultMessage:
+                    'Only users you invite, and users already holding an account, can sign in.',
+                })
           }
           htmlFor="portal-open-signup-toggle"
           className="py-0"
@@ -352,7 +413,10 @@ export function PortalAuthTab({ portalConfig, teamOpenSignup }: PortalAuthTabPro
               checked={openSignup}
               onCheckedChange={(checked) => signupMutation.mutate(checked)}
               disabled={signupBusy || isPending}
-              aria-label="Let visitors create an account"
+              aria-label={intl.formatMessage({
+                id: 'admin.settings.security.portalAccess.openSignup.label',
+                defaultMessage: 'Let visitors create an account',
+              })}
             />
           }
         />
@@ -364,8 +428,15 @@ export function PortalAuthTab({ portalConfig, teamOpenSignup }: PortalAuthTabPro
       {visibility === 'private' && (
         <>
           <SettingsCard
-            title="Allowed email domains"
-            description="Anyone signed in with a verified email on these domains can view the portal."
+            title={intl.formatMessage({
+              id: 'admin.settings.security.portalAccess.domains.title',
+              defaultMessage: 'Allowed email domains',
+            })}
+            description={intl.formatMessage({
+              id: 'admin.settings.security.portalAccess.domains.description',
+              defaultMessage:
+                'Anyone signed in with a verified email on these domains can view the portal.',
+            })}
           >
             <div className="space-y-4">
               <div className="flex gap-2">
@@ -379,7 +450,10 @@ export function PortalAuthTab({ portalConfig, teamOpenSignup }: PortalAuthTabPro
                     onKeyDown={handleDomainKeyDown}
                     placeholder="acme.com"
                     disabled={isAccessBusy}
-                    aria-label="Add email domain"
+                    aria-label={intl.formatMessage({
+                      id: 'admin.settings.security.portalAccess.domains.addAria',
+                      defaultMessage: 'Add email domain',
+                    })}
                     aria-invalid={!!domainInputError}
                     className={cn(domainInputError && 'border-destructive')}
                   />
@@ -396,12 +470,19 @@ export function PortalAuthTab({ portalConfig, teamOpenSignup }: PortalAuthTabPro
                   className="h-9 shrink-0"
                 >
                   <PlusIcon className="mr-1 h-3.5 w-3.5" />
-                  Add
+                  {intl.formatMessage({ id: 'common.add', defaultMessage: 'Add' })}
                 </Button>
               </div>
 
               {allowedDomains.length > 0 ? (
-                <ul className="space-y-1.5" role="list" aria-label="Allowed domains">
+                <ul
+                  className="space-y-1.5"
+                  role="list"
+                  aria-label={intl.formatMessage({
+                    id: 'admin.settings.security.portalAccess.domains.listAria',
+                    defaultMessage: 'Allowed domains',
+                  })}
+                >
                   {allowedDomains.map((domain) => (
                     <li
                       key={domain}
@@ -413,7 +494,13 @@ export function PortalAuthTab({ portalConfig, teamOpenSignup }: PortalAuthTabPro
                         onClick={() => handleRemoveDomain(domain)}
                         disabled={isAccessBusy}
                         className="ml-2 rounded p-0.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive disabled:opacity-40 transition-colors"
-                        aria-label={`Remove ${domain}`}
+                        aria-label={intl.formatMessage(
+                          {
+                            id: 'admin.settings.security.idp.domains.removeAria',
+                            defaultMessage: 'Remove {domain}',
+                          },
+                          { domain }
+                        )}
                       >
                         <XMarkIcon className="h-3.5 w-3.5" />
                       </button>
@@ -422,8 +509,11 @@ export function PortalAuthTab({ portalConfig, teamOpenSignup }: PortalAuthTabPro
                 </ul>
               ) : (
                 <p className="text-xs text-muted-foreground">
-                  No domains yet. Add one to grant access to everyone with a verified address at
-                  that domain.
+                  {intl.formatMessage({
+                    id: 'admin.settings.security.portalAccess.domains.empty',
+                    defaultMessage:
+                      'No domains yet. Add one to grant access to everyone with a verified address at that domain.',
+                  })}
                 </p>
               )}
             </div>
@@ -432,18 +522,36 @@ export function PortalAuthTab({ portalConfig, teamOpenSignup }: PortalAuthTabPro
           <PortalInvitesSection />
 
           <SettingsCard
-            title="Allowed segments"
-            description="Members of these segments can view the portal. Segments are defined on the Users page."
+            title={intl.formatMessage({
+              id: 'admin.settings.security.portalAccess.segments.title',
+              defaultMessage: 'Allowed segments',
+            })}
+            description={intl.formatMessage({
+              id: 'admin.settings.security.portalAccess.segments.description',
+              defaultMessage:
+                'Members of these segments can view the portal. Segments are defined on the Users page.',
+            })}
           >
             {segmentsQuery.isLoading ? (
-              <p className="text-xs text-muted-foreground">Loading segments…</p>
+              <p className="text-xs text-muted-foreground">
+                {intl.formatMessage({
+                  id: 'admin.settings.security.portalAccess.segments.loading',
+                  defaultMessage: 'Loading segments…',
+                })}
+              </p>
             ) : segmentsQuery.isError ? (
               <p className="text-xs text-destructive">
-                Could not load segments. Reload the page to try again.
+                {intl.formatMessage({
+                  id: 'admin.settings.security.portalAccess.segments.loadFailed',
+                  defaultMessage: 'Could not load segments. Reload the page to try again.',
+                })}
               </p>
             ) : (segmentsQuery.data ?? []).length === 0 ? (
               <p className="text-xs text-muted-foreground">
-                No segments defined yet. Create segments on the Users page.
+                {intl.formatMessage({
+                  id: 'admin.settings.security.portalAccess.segments.empty',
+                  defaultMessage: 'No segments defined yet. Create segments on the Users page.',
+                })}
               </p>
             ) : (
               <div className="space-y-3">
@@ -457,8 +565,14 @@ export function PortalAuthTab({ portalConfig, teamOpenSignup }: PortalAuthTabPro
                 />
                 {allowedSegmentIds.length > 0 && (
                   <p className="text-xs text-muted-foreground">
-                    Members of {allowedSegmentIds.length} selected segment
-                    {allowedSegmentIds.length === 1 ? '' : 's'} can access this portal.
+                    {intl.formatMessage(
+                      {
+                        id: 'admin.settings.security.portalAccess.segments.selectedCount',
+                        defaultMessage:
+                          'Members of {count, plural, one {# selected segment} other {# selected segments}} can access this portal.',
+                      },
+                      { count: allowedSegmentIds.length }
+                    )}
                   </p>
                 )}
               </div>
@@ -492,17 +606,27 @@ export function PortalAuthTab({ portalConfig, teamOpenSignup }: PortalAuthTabPro
  * the cluttered per-row controls live in their natural home next to People.
  */
 function PortalInvitesSection() {
+  const intl = useOptionalIntl()
   const portal = usePortalInvites()
   const totalCount = portal.invites.length
 
   return (
     <SettingsCard
-      title="Email invites"
-      description="Invite users by email. They get a magic link to sign in."
+      title={intl.formatMessage({
+        id: 'admin.settings.security.portalAccess.invites.title',
+        defaultMessage: 'Email invites',
+      })}
+      description={intl.formatMessage({
+        id: 'admin.settings.security.portalAccess.invites.description',
+        defaultMessage: 'Invite users by email. They get a magic link to sign in.',
+      })}
       action={
         <Button type="button" size="sm" variant="outline" onClick={portal.openDialog}>
           <PlusIcon className="mr-1.5 h-3.5 w-3.5" />
-          Invite users
+          {intl.formatMessage({
+            id: 'admin.settings.security.portalAccess.invites.action',
+            defaultMessage: 'Invite users',
+          })}
         </Button>
       }
     >
@@ -553,11 +677,17 @@ function InviteSummary({
   pendingCount: number
   acceptedCount: number
 }) {
+  const intl = useOptionalIntl()
   if (loading) {
     return (
       <div className="flex items-center gap-2 text-xs text-muted-foreground">
         <ArrowPathIcon className="h-3.5 w-3.5 animate-spin" />
-        <span>Loading invites…</span>
+        <span>
+          {intl.formatMessage({
+            id: 'admin.settings.security.portalAccess.invites.loading',
+            defaultMessage: 'Loading invites…',
+          })}
+        </span>
       </div>
     )
   }
@@ -565,27 +695,58 @@ function InviteSummary({
   if (totalCount === 0) {
     return (
       <p className="text-xs text-muted-foreground">
-        No invites sent yet. Use Invite users to send the first one.
+        {intl.formatMessage({
+          id: 'admin.settings.security.portalAccess.invites.empty',
+          defaultMessage: 'No invites sent yet. Use Invite users to send the first one.',
+        })}
       </p>
     )
   }
 
   const summary = [
-    pendingCount > 0 ? `${pendingCount} pending` : null,
-    acceptedCount > 0 ? `${acceptedCount} accepted` : null,
+    pendingCount > 0
+      ? intl.formatMessage(
+          {
+            id: 'admin.settings.security.portalAccess.invites.pendingCount',
+            defaultMessage: '{count} pending',
+          },
+          { count: pendingCount }
+        )
+      : null,
+    acceptedCount > 0
+      ? intl.formatMessage(
+          {
+            id: 'admin.settings.security.portalAccess.invites.acceptedCount',
+            defaultMessage: '{count} accepted',
+          },
+          { count: acceptedCount }
+        )
+      : null,
   ]
     .filter(Boolean)
     .join(' · ')
 
   return (
     <div className="flex items-center justify-between gap-3">
-      <p className="text-xs text-muted-foreground">{summary || `${totalCount} invites`}</p>
+      <p className="text-xs text-muted-foreground">
+        {summary ||
+          intl.formatMessage(
+            {
+              id: 'admin.settings.security.portalAccess.invites.totalCount',
+              defaultMessage: '{count} invites',
+            },
+            { count: totalCount }
+          )}
+      </p>
       <Link
         to="/admin/users"
         search={{ invites: 'pending' as const }}
         className={`${INLINE_LINK} inline-flex items-center gap-1 text-xs`}
       >
-        Manage invites
+        {intl.formatMessage({
+          id: 'admin.settings.security.portalAccess.invites.manage',
+          defaultMessage: 'Manage invites',
+        })}
         <ArrowRightIcon className="h-3 w-3" />
       </Link>
     </div>

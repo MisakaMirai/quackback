@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ConversationAttributesList } from '@/components/admin/settings/conversation-data/conversation-attributes-list'
 import { ConversationTagsManager } from '@/components/admin/settings/conversation-data/conversation-tags-manager'
 import { adminPageHead } from '@/lib/client/admin-head'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 
 const searchSchema = z.object({
   tab: z.enum(['attributes', 'tags']).optional(),
@@ -32,6 +33,7 @@ export const Route = createFileRoute('/admin/settings/conversation-data')({
 })
 
 function ConversationDataPage() {
+  const intl = useOptionalIntl()
   const search = Route.useSearch()
   const tab: ConversationDataTab = search.tab ?? 'attributes'
   const navigate = useNavigate()
@@ -52,8 +54,18 @@ function ConversationDataPage() {
         className="space-y-6"
       >
         <TabsList>
-          <TabsTrigger value="attributes">Attributes</TabsTrigger>
-          <TabsTrigger value="tags">Tags</TabsTrigger>
+          <TabsTrigger value="attributes">
+            {intl.formatMessage({
+              id: 'admin.settings.conversationData.tabAttributes',
+              defaultMessage: 'Attributes',
+            })}
+          </TabsTrigger>
+          <TabsTrigger value="tags">
+            {intl.formatMessage({
+              id: 'admin.settings.conversationData.tabTags',
+              defaultMessage: 'Tags',
+            })}
+          </TabsTrigger>
         </TabsList>
         <TabsContent value="attributes" className="space-y-6">
           <ConversationAttributesList />
