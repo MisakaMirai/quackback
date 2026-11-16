@@ -476,7 +476,11 @@ function RolesEditor({ provider, label }: { provider: IdentityProvider; label: s
                     title={draft.claimPath.trim()}
                     className="max-w-32 truncate rounded bg-muted px-1.5 py-0.5 font-mono text-xs"
                   >
-                    {draft.claimPath.trim() || 'claim'}
+                    {draft.claimPath.trim() ||
+                      intl.formatMessage({
+                        id: 'admin.settings.security.idp.roles.claimFallback',
+                        defaultMessage: 'claim',
+                      })}
                   </code>
                   <span className="text-muted-foreground">
                     {intl.formatMessage({

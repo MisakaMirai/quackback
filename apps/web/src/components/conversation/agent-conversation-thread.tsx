@@ -208,6 +208,7 @@ import {
 import { TypingDots } from '@/components/shared/typing-dots'
 import { EmojiPicker } from '@/components/shared/emoji-picker'
 import { Avatar } from '@/components/ui/avatar'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { Skeleton } from '@/components/ui/skeleton'
 import { EmptyState } from '@/components/shared/empty-state'
 import { Button } from '@/components/ui/button'
@@ -301,6 +302,7 @@ function ThreadMessages({
   skipInitialScroll: () => boolean
   handleRef: RefObject<ThreadMessagesHandle | null>
 }) {
+  const intl = useOptionalIntl()
   const scrollRef = useRef<HTMLDivElement>(null)
   // Mounted once the thread has loaded, so there is nothing left to wait for.
   const virtualizer = useThreadVirtualizer({
@@ -370,12 +372,27 @@ function ThreadMessages({
               ? 'border-primary bg-primary text-primary-foreground hover:bg-primary/90'
               : 'border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground'
           )}
-          aria-label={hasNewBelow ? 'New messages — jump to latest' : 'Jump to latest'}
+          aria-label={
+            hasNewBelow
+              ? intl.formatMessage({
+                  id: 'inbox.agentThread.newMessagesJump',
+                  defaultMessage: 'New messages: jump to latest',
+                })
+              : intl.formatMessage({
+                  id: 'widget.messenger.jumpToLatest',
+                  defaultMessage: 'Jump to latest',
+                })
+          }
         >
           {hasNewBelow && (
             <>
               <span className="size-1.5 rounded-full bg-primary-foreground" />
-              <span>New messages</span>
+              <span>
+                {intl.formatMessage({
+                  id: 'inbox.agentThread.newMessages',
+                  defaultMessage: 'New messages',
+                })}
+              </span>
             </>
           )}
           <ChevronDownIcon className="h-4 w-4" />
@@ -449,6 +466,7 @@ export function AgentConversationThread({
   markRead?: boolean
 }) {
   const queryClient = useQueryClient()
+  const intl = useOptionalIntl()
   const isTicket = item.kind === 'ticket'
   const conversationId = item.kind === 'conversation' ? item.id : null
   const ticketId = item.kind === 'ticket' ? item.id : null
@@ -468,7 +486,9 @@ export function AgentConversationThread({
   // current agent's display name attributes optimistic reactions.
   const myName = useRouteContext({
     from: '__root__',
-    select: (context) => context.session?.user?.name ?? 'You',
+    select: (context) =>
+      context.session?.user?.name ??
+      intl.formatMessage({ id: 'widget.messenger.you', defaultMessage: 'You' }),
   })
   const myPrincipalId = usePrincipalId()
   const showTickets = useFeatureFlag('supportTickets')
@@ -642,6 +662,10 @@ export function AgentConversationThread({
   })
 
   const conversation = convThread?.conversation
+  const visitorFallback = intl.formatMessage({
+    id: 'admin.inbox.contact.visitor',
+    defaultMessage: 'Visitor',
+  })
   const messages: AgentConversationMessageDTO[] = isTicket
     ? (ticketThread?.messages ?? [])
     : (convThread?.messages ?? [])
@@ -705,7 +729,13 @@ export function AgentConversationThread({
       queryClient.setQueryData(threadKey, (prev: AgentThreadCache | undefined) =>
         prependOlderAgentMessages(prev, page)
       ),
-    onError: () => toast.error('Failed to load older messages'),
+    onError: () =>
+      toast.error(
+        intl.formatMessage({
+          id: 'inbox.agentThread.loadOlderFailed',
+          defaultMessage: 'Failed to load older messages',
+        })
+      ),
   })
   const [ticketLoadingOlder, setTicketLoadingOlder] = useState(false)
   const loadOlderTicket = useCallback(async () => {
@@ -717,11 +747,16 @@ export function AgentConversationThread({
         prependOlderTicketMessages(prev, page)
       )
     } catch {
-      toast.error('Failed to load older messages')
+      toast.error(
+        intl.formatMessage({
+          id: 'inbox.agentThread.loadOlderFailed',
+          defaultMessage: 'Failed to load older messages',
+        })
+      )
     } finally {
       setTicketLoadingOlder(false)
     }
-  }, [ticketId, ticketLoadingOlder, messages, queryClient, ticketThreadKey])
+  }, [ticketId, ticketLoadingOlder, messages, queryClient, ticketThreadKey, intl])
   const loadingOlder = isTicket ? ticketLoadingOlder : convLoadingOlder
   const loadOlder = isTicket ? loadOlderTicket : loadOlderConversation
 
@@ -1039,7 +1074,12 @@ export function AgentConversationThread({
       // Restore the composer to the exact draft cleared at send time so a failed
       // send never loses the typed reply.
       vars.restoreDraft?.()
-      toast.error('Failed to send message')
+      toast.error(
+        intl.formatMessage({
+          id: 'inbox.agentThread.sendFailed',
+          defaultMessage: 'Failed to send message',
+        })
+      )
     },
   })
 
@@ -1082,7 +1122,12 @@ export function AgentConversationThread({
     },
     onError: (_error, vars) => {
       vars.restoreDraft?.()
-      toast.error('Failed to add note')
+      toast.error(
+        intl.formatMessage({
+          id: 'inbox.agentThread.addNoteFailed',
+          defaultMessage: 'Failed to add note',
+        })
+      )
     },
   })
 
@@ -1105,7 +1150,13 @@ export function AgentConversationThread({
     mutationFn: (messageId: ConversationMessageId) =>
       deleteConversationMessageFn({ data: { messageId } }),
     onSuccess: (_r, messageId) => removeActiveMessage(messageId),
-    onError: () => toast.error('Failed to delete message'),
+    onError: () =>
+      toast.error(
+        intl.formatMessage({
+          id: 'inbox.agentThread.deleteMessageFailed',
+          defaultMessage: 'Failed to delete message',
+        })
+      ),
   })
 
   const handleEditMessage = useCallback(
@@ -1120,11 +1171,16 @@ export function AgentConversationThread({
         patchActiveMessage(message.id, () => message)
         onChanged()
       } catch {
-        toast.error('Failed to edit message')
+        toast.error(
+          intl.formatMessage({
+            id: 'inbox.agentThread.editMessageFailed',
+            defaultMessage: 'Failed to edit message',
+          })
+        )
         throw new Error('Failed to edit message')
       }
     },
-    [onChanged, patchActiveMessage]
+    [onChanged, patchActiveMessage, intl]
   )
 
   // Toggle the caller's emoji reaction on a message (optimistic; the SSE
@@ -1148,7 +1204,12 @@ export function AgentConversationThread({
     onSuccess: (data, vars) =>
       patchActiveMessage(vars.messageId, (m) => ({ ...m, reactions: data.reactions })),
     onError: () => {
-      toast.error('Failed to update reaction')
+      toast.error(
+        intl.formatMessage({
+          id: 'inbox.agentThread.reactionUpdateFailed',
+          defaultMessage: 'Failed to update reaction',
+        })
+      )
       invalidateActiveThread()
     },
   })
@@ -1170,7 +1231,12 @@ export function AgentConversationThread({
       void queryClient.invalidateQueries({ queryKey: conversationKeys.agentFlagged() })
     },
     onError: () => {
-      toast.error('Failed to update flag')
+      toast.error(
+        intl.formatMessage({
+          id: 'inbox.agentThread.flagUpdateFailed',
+          defaultMessage: 'Failed to update flag',
+        })
+      )
       invalidateActiveThread()
     },
   })
@@ -1184,10 +1250,18 @@ export function AgentConversationThread({
         data: { conversationId: conversationId ?? INACTIVE_CONVERSATION_ID },
       }),
     onSuccess: () => {
-      toast.success('SLA removed')
+      toast.success(
+        intl.formatMessage({ id: 'inbox.agentThread.slaRemoved', defaultMessage: 'SLA removed' })
+      )
       refreshThread()
     },
-    onError: () => toast.error('Failed to remove SLA'),
+    onError: () =>
+      toast.error(
+        intl.formatMessage({
+          id: 'inbox.agentThread.slaRemoveFailed',
+          defaultMessage: 'Failed to remove SLA',
+        })
+      ),
   })
 
   // Mark unread from a message. The conversation and ticket fns each need their
@@ -1206,7 +1280,13 @@ export function AgentConversationThread({
             data: { conversationId: conversationId ?? INACTIVE_CONVERSATION_ID, messageId },
           }),
     onSuccess: () => onChanged(),
-    onError: () => toast.error('Failed to mark unread'),
+    onError: () =>
+      toast.error(
+        intl.formatMessage({
+          id: 'inbox.agentThread.markUnreadFailed',
+          defaultMessage: 'Failed to mark unread',
+        })
+      ),
   })
   const retryGithubMutation = useMutation({
     mutationFn: async (messageId: ConversationMessageId) => {
@@ -1214,7 +1294,13 @@ export function AgentConversationThread({
       await retryGitHubAgentMessageFn({ data: { messageId } })
     },
     onError: (error) => {
-      toastError(error, 'Could not send to GitHub.')
+      toastError(
+        error,
+        intl.formatMessage({
+          id: 'inbox.agentThread.githubSendFailed',
+          defaultMessage: 'Could not send to GitHub.',
+        })
+      )
     },
   })
 
@@ -1292,7 +1378,13 @@ export function AgentConversationThread({
         data: { conversationId: conversationId ?? INACTIVE_CONVERSATION_ID, until },
       }),
     onSuccess: () => refreshThread(),
-    onError: () => toast.error('Failed to snooze conversation'),
+    onError: () =>
+      toast.error(
+        intl.formatMessage({
+          id: 'admin.inbox.conversationSnoozeFailed',
+          defaultMessage: 'Failed to snooze conversation',
+        })
+      ),
   })
   const snooze = (until: string | null) => snoozeMutation.mutate(until)
 
@@ -1305,18 +1397,42 @@ export function AgentConversationThread({
   const blockMutation = useMutation({
     mutationFn: () => blockPersonFn({ data: { principalId: conversation!.visitor.principalId } }),
     onSuccess: () => {
-      toast.success('Person blocked')
+      toast.success(
+        intl.formatMessage({
+          id: 'inbox.agentThread.personBlocked',
+          defaultMessage: 'Person blocked',
+        })
+      )
       void queryClient.invalidateQueries({ queryKey: blockStatusKey })
     },
-    onError: (e) => toastError(e, 'Failed to block'),
+    onError: (e) =>
+      toastError(
+        e,
+        intl.formatMessage({
+          id: 'inbox.agentThread.blockFailed',
+          defaultMessage: 'Failed to block',
+        })
+      ),
   })
   const unblockMutation = useMutation({
     mutationFn: () => unblockPersonFn({ data: { principalId: conversation!.visitor.principalId } }),
     onSuccess: () => {
-      toast.success('Person unblocked')
+      toast.success(
+        intl.formatMessage({
+          id: 'inbox.agentThread.personUnblocked',
+          defaultMessage: 'Person unblocked',
+        })
+      )
       void queryClient.invalidateQueries({ queryKey: blockStatusKey })
     },
-    onError: (e) => toastError(e, 'Failed to unblock'),
+    onError: (e) =>
+      toastError(
+        e,
+        intl.formatMessage({
+          id: 'inbox.agentThread.unblockFailed',
+          defaultMessage: 'Failed to unblock',
+        })
+      ),
   })
 
   // Export transcript (overflow menu, both kinds).
@@ -1333,20 +1449,34 @@ export function AgentConversationThread({
             })
       )
     } catch {
-      toast.error('Could not export the transcript. Please try again.')
+      toast.error(
+        intl.formatMessage({
+          id: 'inbox.agentThread.exportFailed',
+          defaultMessage: 'Could not export the transcript. Please try again.',
+        })
+      )
     } finally {
       setExporting(false)
     }
-  }, [exporting, isTicket, ticketId, conversationId])
+  }, [exporting, isTicket, ticketId, conversationId, intl])
 
   // Copy link (overflow menu, both kinds): /admin/inbox?i=<id>.
   const copyLink = useCallback(() => {
     const url = `${window.location.origin}/admin/inbox?i=${item.id}`
     void navigator.clipboard.writeText(url).then(
-      () => toast.success('Link copied'),
-      () => toast.error('Could not copy the link')
+      () =>
+        toast.success(
+          intl.formatMessage({ id: 'inbox.agentThread.linkCopied', defaultMessage: 'Link copied' })
+        ),
+      () =>
+        toast.error(
+          intl.formatMessage({
+            id: 'inbox.agentThread.linkCopyFailed',
+            defaultMessage: 'Could not copy the link',
+          })
+        )
     )
-  }, [item.id])
+  }, [item.id, intl])
 
   // Close (conversations) / Resolve (tickets) — the primary button. A
   // conversation close keeps the required-attributes guard (a local
@@ -1372,10 +1502,18 @@ export function AgentConversationThread({
     mutationFn: (statusId: string) =>
       setTicketStatusFn({ data: { ticketId: ticketId ?? INACTIVE_TICKET_ID, statusId } }),
     onSuccess: () => {
-      toast.success('Ticket resolved')
+      toast.success(
+        intl.formatMessage({ id: 'admin.inbox.ticketResolved', defaultMessage: 'Ticket resolved' })
+      )
       onChanged()
     },
-    onError: () => toast.error('Failed to resolve ticket'),
+    onError: () =>
+      toast.error(
+        intl.formatMessage({
+          id: 'admin.inbox.ticketResolveFailed',
+          defaultMessage: 'Failed to resolve ticket',
+        })
+      ),
   })
   // Closing a conversation that still links an OPEN customer ticket asks
   // first (the one-row rule would then hide that open ticket from every
@@ -1396,7 +1534,12 @@ export function AgentConversationThread({
     if (isTicket) {
       const closedStatusId = resolveDefaultClosedStatusId(ticketStatusList)
       if (!closedStatusId) {
-        toast.error('No closed ticket status is configured')
+        toast.error(
+          intl.formatMessage({
+            id: 'admin.inbox.noClosedStatus',
+            defaultMessage: 'No closed ticket status is configured',
+          })
+        )
         return
       }
       resolveTicketMutation.mutate(closedStatusId)
@@ -1428,6 +1571,7 @@ export function AgentConversationThread({
     closeConversationMutation,
     queryClient,
     conversationId,
+    intl,
   ])
   // The close confirm's two non-cancel actions. "Resolve ticket and close"
   // stamps the workspace's resolved closed-category status on the linked
@@ -1443,7 +1587,12 @@ export function AgentConversationThread({
     if (!closeConfirmTicket) return
     const statusId = resolveResolvedStatusId(ticketStatusList)
     if (!statusId) {
-      toast.error('No closed ticket status is configured')
+      toast.error(
+        intl.formatMessage({
+          id: 'admin.inbox.noClosedStatus',
+          defaultMessage: 'No closed ticket status is configured',
+        })
+      )
       return
     }
     try {
@@ -1452,12 +1601,23 @@ export function AgentConversationThread({
         statusId: statusId as TicketStatusId,
       })
     } catch {
-      toast.error('Failed to resolve ticket')
+      toast.error(
+        intl.formatMessage({
+          id: 'admin.inbox.ticketResolveFailed',
+          defaultMessage: 'Failed to resolve ticket',
+        })
+      )
       return
     }
     setCloseConfirmTicket(null)
     closeConversationMutation.mutate('closed')
-  }, [closeConfirmTicket, ticketStatusList, linkedTicketStatusMutation, closeConversationMutation])
+  }, [
+    closeConfirmTicket,
+    ticketStatusList,
+    linkedTicketStatusMutation,
+    closeConversationMutation,
+    intl,
+  ])
 
   // Seed an insert into a mode's draft, then remount that editor so the new
   // value is loaded and the cursor lands at its end. The unified RichTextEditor
@@ -1595,6 +1755,10 @@ export function AgentConversationThread({
         // merge would render invisible and be dropped on the next edit. Take
         // the snapshot's own nodes verbatim — full fidelity (marks, mentions,
         // embeds) with no parsing involved and no server import here.
+        const keptBelow = intl.formatMessage({
+          id: 'inbox.agentThread.failedSendKeptBelow',
+          defaultMessage: 'failed to send, kept below',
+        })
         const failedContent = (snapshot.json as unknown as { content?: unknown[] }).content ?? []
         const mergedJson = {
           ...(current.json as unknown as Record<string, unknown>),
@@ -1602,14 +1766,14 @@ export function AgentConversationThread({
             ...((current.json as unknown as { content?: unknown[] }).content ?? []),
             {
               type: 'paragraph',
-              content: [{ type: 'text', text: '— failed to send, kept below —' }],
+              content: [{ type: 'text', text: keptBelow }],
             },
             ...failedContent,
           ],
         } as TiptapContent
         const merged: ComposerDraft = {
           json: mergedJson,
-          markdown: `${current.markdown.replace(/\s+$/, '')}\n\n--- failed to send, kept below ---\n\n${failedMarkdown}`,
+          markdown: `${current.markdown.replace(/\s+$/, '')}\n\n--- ${keptBelow} ---\n\n${failedMarkdown}`,
         }
         if (useNote) {
           drafts.set('note', merged)
@@ -1618,7 +1782,12 @@ export function AgentConversationThread({
           drafts.set('reply', merged)
           setReplyKey((k) => k + 1)
         }
-        toast.error('Failed to send message — kept below your new typing')
+        toast.error(
+          intl.formatMessage({
+            id: 'inbox.agentThread.failedSendKeptBelowToast',
+            defaultMessage: 'Failed to send message, kept below your new typing',
+          })
+        )
       }
       // The restore remounts the editor (destroying the focused node), so hand
       // focus back once the new instance commits.
@@ -1700,7 +1869,15 @@ export function AgentConversationThread({
               disabled={loadingOlder}
               className="rounded-full border border-border/60 px-3 py-1 text-[11px] text-muted-foreground hover:bg-muted disabled:opacity-50 transition-colors"
             >
-              {loadingOlder ? 'Loading…' : 'Load earlier messages'}
+              {loadingOlder
+                ? intl.formatMessage({
+                    id: 'widget.messenger.loadingOlder',
+                    defaultMessage: 'Loading…',
+                  })
+                : intl.formatMessage({
+                    id: 'widget.messenger.loadOlder',
+                    defaultMessage: 'Load earlier messages',
+                  })}
             </button>
           </div>
         )
@@ -1734,17 +1911,32 @@ export function AgentConversationThread({
         return (
           <p className="py-8 text-center text-sm text-muted-foreground">
             {isTicket
-              ? 'No replies yet. Send the first message to the requester.'
-              : 'No messages yet'}
+              ? intl.formatMessage({
+                  id: 'inbox.agentThread.noRepliesYet',
+                  defaultMessage: 'No replies yet. Send the first message to the requester.',
+                })
+              : intl.formatMessage({
+                  id: 'inbox.agentThread.noMessages',
+                  defaultMessage: 'No messages yet',
+                })}
           </p>
         )
       case 'seen':
-        return <p className="pe-1 text-end text-xs text-muted-foreground/50">Seen</p>
+        return (
+          <p className="pe-1 text-end text-xs text-muted-foreground/50">
+            {intl.formatMessage({ id: 'widget.messenger.seen', defaultMessage: 'Seen' })}
+          </p>
+        )
       case 'typing':
         return (
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground/70">
             <TypingDots />
-            <span>{conversation?.visitor.displayName ?? 'Visitor'} is typing…</span>
+            <span>
+              {intl.formatMessage(
+                { id: 'inbox.agentThread.typing', defaultMessage: '{name} is typing…' },
+                { name: conversation?.visitor.displayName ?? visitorFallback }
+              )}
+            </span>
           </div>
         )
     }
@@ -1790,8 +1982,14 @@ export function AgentConversationThread({
       <div className="flex h-full flex-1 min-w-0 items-center justify-center">
         <EmptyState
           icon={ChatBubbleLeftRightIcon}
-          title="Ticket not found"
-          description="It may have been deleted or you no longer have access."
+          title={intl.formatMessage({
+            id: 'inbox.agentThread.ticketNotFoundTitle',
+            defaultMessage: 'Ticket not found',
+          })}
+          description={intl.formatMessage({
+            id: 'inbox.agentThread.ticketNotFoundDescription',
+            defaultMessage: 'It may have been deleted or you no longer have access.',
+          })}
         />
       </div>
     )
@@ -1810,7 +2008,10 @@ export function AgentConversationThread({
       type="button"
       onClick={onBack}
       className="-ml-1 flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted md:hidden"
-      aria-label="Back to list"
+      aria-label={intl.formatMessage({
+        id: 'inbox.agentThread.backToList',
+        defaultMessage: 'Back to list',
+      })}
     >
       <ChevronLeftIcon className="h-5 w-5" />
     </button>
@@ -1845,8 +2046,14 @@ export function AgentConversationThread({
       {!isTicket && showTickets && !panelTicket && (
         <button
           type="button"
-          title="Create ticket"
-          aria-label="Create ticket"
+          title={intl.formatMessage({
+            id: 'admin.inbox.createTicket.create',
+            defaultMessage: 'Create ticket',
+          })}
+          aria-label={intl.formatMessage({
+            id: 'admin.inbox.createTicket.create',
+            defaultMessage: 'Create ticket',
+          })}
           onClick={() => setCreateTicketOpen(true)}
           className={headerIconButtonClass}
         >
@@ -1856,8 +2063,14 @@ export function AgentConversationThread({
       {lastMessage && (
         <button
           type="button"
-          title="Save for later"
-          aria-label="Save for later"
+          title={intl.formatMessage({
+            id: 'inbox.agentThread.saveForLater',
+            defaultMessage: 'Save for later',
+          })}
+          aria-label={intl.formatMessage({
+            id: 'inbox.agentThread.saveForLater',
+            defaultMessage: 'Save for later',
+          })}
           aria-pressed={lastMessageFlagged}
           onClick={toggleSaveForLater}
           className={headerIconButtonClass}
@@ -1910,7 +2123,7 @@ export function AgentConversationThread({
       >
         <CheckIcon className="h-4 w-4" />
         {isTicket
-          ? 'Resolve'
+          ? intl.formatMessage({ id: 'inbox.agentThread.resolve', defaultMessage: 'Resolve' })
           : channelCloseActionLabel(conversation?.channel, isClosedConversation)}
       </Button>
     </div>
@@ -1941,17 +2154,20 @@ export function AgentConversationThread({
           {backButton}
           <Avatar
             src={conversation?.visitor.avatarUrl ?? null}
-            name={conversation?.visitor.displayName ?? 'Visitor'}
+            name={conversation?.visitor.displayName ?? visitorFallback}
             className="size-8 text-xs shrink-0"
           />
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold">
-              {conversation?.visitor.displayName ?? 'Visitor'}
+              {conversation?.visitor.displayName ?? visitorFallback}
             </p>
             <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground capitalize">
               {isOtherAgentTyping ? (
                 <span className="font-medium normal-case text-amber-600">
-                  Another agent is replying…
+                  {intl.formatMessage({
+                    id: 'inbox.agentThread.anotherAgentReplying',
+                    defaultMessage: 'Another agent is replying…',
+                  })}
                 </span>
               ) : (
                 conversation?.status
@@ -2073,7 +2289,10 @@ export function AgentConversationThread({
                 borderless
                 minHeight="4.5rem"
                 autofocus={noteKey > 0 ? 'end' : false}
-                placeholder="Add an internal note for your team…"
+                placeholder={intl.formatMessage({
+                  id: 'inbox.agentThread.notePlaceholder',
+                  defaultMessage: 'Add an internal note for your team…',
+                })}
                 className="max-h-64 overflow-y-auto"
                 onDocumentChange={onNoteChange}
                 onSubmit={onSend}
@@ -2112,7 +2331,10 @@ export function AgentConversationThread({
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 className="flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted disabled:opacity-40 transition-colors"
-                aria-label="Attach files"
+                aria-label={intl.formatMessage({
+                  id: 'inbox.agentThread.attachFiles',
+                  defaultMessage: 'Attach files',
+                })}
               >
                 <PaperClipIcon className="h-4 w-4" />
               </button>
@@ -2134,8 +2356,17 @@ export function AgentConversationThread({
                 >
                   <ChatBubbleLeftRightIcon className="size-4" />
                   {(provenanceConversations?.count ?? 0) > 1
-                    ? `Share with ${provenanceConversations?.count} conversations`
-                    : 'Share with conversation'}
+                    ? intl.formatMessage(
+                        {
+                          id: 'inbox.agentThread.shareWithConversations',
+                          defaultMessage: 'Share with {count} conversations',
+                        },
+                        { count: provenanceConversations?.count }
+                      )
+                    : intl.formatMessage({
+                        id: 'inbox.agentThread.shareWithConversation',
+                        defaultMessage: 'Share with conversation',
+                      })}
                 </Button>
               )}
               {capabilities.macros && !noteMode && conversationId && (
@@ -2166,12 +2397,22 @@ export function AgentConversationThread({
                     ? 'rounded-full px-4 text-[13px] font-medium'
                     : 'w-8'
                 )}
-                aria-label={noteMode || !capabilities.reply ? 'Add note' : 'Send reply'}
+                aria-label={
+                  noteMode || !capabilities.reply
+                    ? intl.formatMessage({
+                        id: 'inbox.agentThread.addNoteAria',
+                        defaultMessage: 'Add note',
+                      })
+                    : intl.formatMessage({
+                        id: 'inbox.agentThread.sendReplyAria',
+                        defaultMessage: 'Send reply',
+                      })
+                }
               >
                 {noteMode || !capabilities.reply ? (
                   <PencilSquareIcon className="h-4 w-4" />
                 ) : replyFirst ? (
-                  'Send'
+                  intl.formatMessage({ id: 'widget.messenger.send', defaultMessage: 'Send' })
                 ) : (
                   <PaperAirplaneIcon className="h-4 w-4" />
                 )}
@@ -2228,9 +2469,26 @@ export function AgentConversationThread({
           <ConfirmDialog
             open={blockConfirmOpen}
             onOpenChange={setBlockConfirmOpen}
-            title={`Block ${conversation?.visitor.displayName || 'this person'}?`}
-            description="They will not be able to send new messages or sign in again. Their existing activity stays, and you can unblock them at any time."
-            confirmLabel="Block"
+            title={intl.formatMessage(
+              { id: 'inbox.agentThread.blockConfirmTitle', defaultMessage: 'Block {name}?' },
+              {
+                name:
+                  conversation?.visitor.displayName ||
+                  intl.formatMessage({
+                    id: 'inbox.agentThread.thisPerson',
+                    defaultMessage: 'this person',
+                  }),
+              }
+            )}
+            description={intl.formatMessage({
+              id: 'inbox.agentThread.blockConfirmDescription',
+              defaultMessage:
+                'They will not be able to send new messages or sign in again. Their existing activity stays, and you can unblock them at any time.',
+            })}
+            confirmLabel={intl.formatMessage({
+              id: 'admin.people.detail.block',
+              defaultMessage: 'Block',
+            })}
             variant="destructive"
             isPending={blockMutation.isPending}
             onConfirm={confirmBlock}
@@ -2306,13 +2564,14 @@ const SnoozeMenu = memo(function SnoozeMenu({
   onPickCustom: () => void
   className: string
 }) {
+  const intl = useOptionalIntl()
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button
           type="button"
-          title="Snooze"
-          aria-label="Snooze"
+          title={intl.formatMessage({ id: 'inbox.bulk.snooze', defaultMessage: 'Snooze' })}
+          aria-label={intl.formatMessage({ id: 'inbox.bulk.snooze', defaultMessage: 'Snooze' })}
           disabled={pending}
           className={className}
         >
@@ -2321,16 +2580,23 @@ const SnoozeMenu = memo(function SnoozeMenu({
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <DropdownMenuItem onClick={() => onSnooze(inHours(4).toISOString())}>
-          Later today
+          {intl.formatMessage({ id: 'inbox.bulk.laterToday', defaultMessage: 'Later today' })}
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => onSnooze(tomorrowAt(9).toISOString())}>
-          Tomorrow
+          {intl.formatMessage({ id: 'inbox.bulk.tomorrow', defaultMessage: 'Tomorrow' })}
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => onSnooze(nextMondayAt(9).toISOString())}>
-          Next week
+          {intl.formatMessage({ id: 'inbox.bulk.nextWeek', defaultMessage: 'Next week' })}
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => onSnooze(null)}>Until they reply</DropdownMenuItem>
-        <DropdownMenuItem onClick={onPickCustom}>Pick a date &amp; time…</DropdownMenuItem>
+        <DropdownMenuItem onClick={() => onSnooze(null)}>
+          {intl.formatMessage({ id: 'inbox.bulk.untilReply', defaultMessage: 'Until they reply' })}
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={onPickCustom}>
+          {intl.formatMessage({
+            id: 'inbox.agentThread.pickDateTime',
+            defaultMessage: 'Pick a date & time…',
+          })}
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   )
@@ -2374,12 +2640,23 @@ const ThreadOverflowMenu = memo(function ThreadOverflowMenu({
   onCopyLink: () => void
   className: string
 }) {
+  const intl = useOptionalIntl()
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button
           type="button"
-          aria-label={isTicket ? 'More ticket actions' : 'More conversation actions'}
+          aria-label={
+            isTicket
+              ? intl.formatMessage({
+                  id: 'inbox.agentThread.moreTicketActions',
+                  defaultMessage: 'More ticket actions',
+                })
+              : intl.formatMessage({
+                  id: 'inbox.agentThread.moreConversationActions',
+                  defaultMessage: 'More conversation actions',
+                })
+          }
           className={className}
         >
           <EllipsisHorizontalIcon className="h-5 w-5" />
@@ -2388,44 +2665,75 @@ const ThreadOverflowMenu = memo(function ThreadOverflowMenu({
       <DropdownMenuContent align="end">
         <DropdownMenuItem onClick={onExport}>
           <ArrowDownTrayIcon className="h-3.5 w-3.5" />
-          {exporting ? 'Exporting…' : 'Export transcript'}
+          {exporting
+            ? intl.formatMessage({
+                id: 'inbox.agentThread.exporting',
+                defaultMessage: 'Exporting…',
+              })
+            : intl.formatMessage({
+                id: 'inbox.agentThread.exportTranscript',
+                defaultMessage: 'Export transcript',
+              })}
         </DropdownMenuItem>
         {canBlock && (
           <DropdownMenuItem onClick={onToggleBlock}>
             <NoSymbolIcon className="h-3.5 w-3.5" />
-            {visitorBlocked ? 'Unblock person' : 'Block person'}
+            {visitorBlocked
+              ? intl.formatMessage({
+                  id: 'inbox.agentThread.unblockPerson',
+                  defaultMessage: 'Unblock person',
+                })
+              : intl.formatMessage({
+                  id: 'inbox.agentThread.blockPerson',
+                  defaultMessage: 'Block person',
+                })}
           </DropdownMenuItem>
         )}
         {canAddParticipant && (
           <DropdownMenuItem onClick={onAddParticipant}>
             <UserPlusIcon className="h-3.5 w-3.5" />
-            Add customer…
+            {intl.formatMessage({
+              id: 'inbox.agentThread.addCustomer',
+              defaultMessage: 'Add customer…',
+            })}
           </DropdownMenuItem>
         )}
         {canEnd && (
           <DropdownMenuItem onClick={onEnd}>
             <ArrowTopRightOnSquareIcon className="h-3.5 w-3.5" />
-            End conversation
+            {intl.formatMessage({
+              id: 'admin.inbox.end.title',
+              defaultMessage: 'End conversation',
+            })}
           </DropdownMenuItem>
         )}
         {canConvert && (
           <DropdownMenuItem onClick={onConvert}>
             <ArrowTopRightOnSquareIcon className="h-3.5 w-3.5" />
-            Convert to post
+            {intl.formatMessage({
+              id: 'inbox.agentThread.convertToPost',
+              defaultMessage: 'Convert to post',
+            })}
           </DropdownMenuItem>
         )}
         {slaPolicyName !== null && (
           <>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={onRemoveSla} disabled={removeSlaPending}>
-              Remove SLA ({slaPolicyName})
+              {intl.formatMessage(
+                {
+                  id: 'inbox.agentThread.removeSla',
+                  defaultMessage: 'Remove SLA ({slaPolicyName})',
+                },
+                { slaPolicyName }
+              )}
             </DropdownMenuItem>
           </>
         )}
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={onCopyLink}>
           <LinkIcon className="h-3.5 w-3.5" />
-          Copy link
+          {intl.formatMessage({ id: 'common.copyLink', defaultMessage: 'Copy link' })}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
@@ -2439,6 +2747,7 @@ const ComposerModeMenu = memo(function ComposerModeMenu({
   noteMode: boolean
   onModeChange: (mode: string) => void
 }) {
+  const intl = useOptionalIntl()
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -2451,14 +2760,20 @@ const ComposerModeMenu = memo(function ComposerModeMenu({
               : 'bg-muted text-foreground hover:bg-muted/80'
           )}
         >
-          {noteMode ? 'Note' : 'Reply'}
+          {noteMode
+            ? intl.formatMessage({ id: 'inbox.agentThread.modeNote', defaultMessage: 'Note' })
+            : intl.formatMessage({ id: 'inbox.agentThread.modeReply', defaultMessage: 'Reply' })}
           <ChevronDownIcon className="h-3 w-3" />
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start">
         <DropdownMenuRadioGroup value={noteMode ? 'note' : 'reply'} onValueChange={onModeChange}>
-          <DropdownMenuRadioItem value="reply">Reply</DropdownMenuRadioItem>
-          <DropdownMenuRadioItem value="note">Note</DropdownMenuRadioItem>
+          <DropdownMenuRadioItem value="reply">
+            {intl.formatMessage({ id: 'inbox.agentThread.modeReply', defaultMessage: 'Reply' })}
+          </DropdownMenuRadioItem>
+          <DropdownMenuRadioItem value="note">
+            {intl.formatMessage({ id: 'inbox.agentThread.modeNote', defaultMessage: 'Note' })}
+          </DropdownMenuRadioItem>
         </DropdownMenuRadioGroup>
       </DropdownMenuContent>
     </DropdownMenu>
@@ -2483,6 +2798,7 @@ const CloseConfirmDialog = memo(function CloseConfirmDialog({
   onCloseOnly: () => void
   onResolveAndClose: () => void
 }) {
+  const intl = useOptionalIntl()
   const issue = isNativeIssueChannel(channel)
   return (
     <AlertDialog
@@ -2494,27 +2810,52 @@ const CloseConfirmDialog = memo(function CloseConfirmDialog({
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>
-            Ticket {ticket ? formatTicketNumber(ticket.number) : ''} is still open
+            {intl.formatMessage(
+              {
+                id: 'inbox.agentThread.closeTitle',
+                defaultMessage: 'Ticket {number} is still open',
+              },
+              { number: ticket ? formatTicketNumber(ticket.number) : '' }
+            )}
           </AlertDialogTitle>
           <AlertDialogDescription>
             {issue
-              ? 'Closing the issue leaves the ticket open — and with its own inbox row folded into the conversation, it can go stale unnoticed.'
-              : 'Closing the conversation leaves the ticket open — and with its own inbox row folded into the conversation, it can go stale unnoticed.'}
+              ? intl.formatMessage({
+                  id: 'inbox.agentThread.closeDescriptionIssue',
+                  defaultMessage:
+                    'Closing the issue leaves the ticket open, and with its own inbox row folded into the conversation, it can go stale unnoticed.',
+                })
+              : intl.formatMessage({
+                  id: 'inbox.agentThread.closeDescriptionConversation',
+                  defaultMessage:
+                    'Closing the conversation leaves the ticket open, and with its own inbox row folded into the conversation, it can go stale unnoticed.',
+                })}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <Button type="button" variant="outline" disabled={pending} onClick={onCancel}>
-            Cancel
+            {intl.formatMessage({ id: 'common.cancel', defaultMessage: 'Cancel' })}
           </Button>
           <Button type="button" variant="secondary" disabled={pending} onClick={onCloseOnly}>
-            {issue ? 'Close issue only' : 'Close conversation only'}
+            {issue
+              ? intl.formatMessage({
+                  id: 'inbox.agentThread.closeIssueOnly',
+                  defaultMessage: 'Close issue only',
+                })
+              : intl.formatMessage({
+                  id: 'inbox.agentThread.closeConversationOnly',
+                  defaultMessage: 'Close conversation only',
+                })}
           </Button>
           {/* Resolving the linked ticket requires `ticket.set_status`
               (B24) — without it the mutation can only 403, so the
               combined action is hidden rather than left to error. */}
           {canResolveTicket && (
             <Button type="button" disabled={pending} onClick={onResolveAndClose}>
-              Resolve ticket and close
+              {intl.formatMessage({
+                id: 'inbox.agentThread.resolveAndClose',
+                defaultMessage: 'Resolve ticket and close',
+              })}
             </Button>
           )}
         </AlertDialogFooter>
@@ -2538,13 +2879,20 @@ const SnoozeCustomDialog = memo(function SnoozeCustomDialog({
   pending: boolean
   onSnooze: (until: string) => void
 }) {
+  const intl = useOptionalIntl()
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
-          <DialogTitle>Snooze until</DialogTitle>
+          <DialogTitle>
+            {intl.formatMessage({ id: 'inbox.bulk.snoozeUntil', defaultMessage: 'Snooze until' })}
+          </DialogTitle>
           <DialogDescription>
-            The conversation leaves your open queue and returns at the time you pick.
+            {intl.formatMessage({
+              id: 'inbox.agentThread.snoozeDialogDescription',
+              defaultMessage:
+                'The conversation leaves your open queue and returns at the time you pick.',
+            })}
           </DialogDescription>
         </DialogHeader>
         <SnoozeNaturalInput onResolve={onDateChange} disabled={pending} />
@@ -2556,7 +2904,7 @@ const SnoozeCustomDialog = memo(function SnoozeCustomDialog({
         />
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
+            {intl.formatMessage({ id: 'common.cancel', defaultMessage: 'Cancel' })}
           </Button>
           <Button
             disabled={!date || pending}
@@ -2566,7 +2914,7 @@ const SnoozeCustomDialog = memo(function SnoozeCustomDialog({
               onOpenChange(false)
             }}
           >
-            Snooze
+            {intl.formatMessage({ id: 'inbox.bulk.snooze', defaultMessage: 'Snooze' })}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -2646,10 +2994,13 @@ const DetailsSheet = memo(function DetailsSheet({
   open: boolean
   onOpenChange: (open: boolean) => void
 } & Omit<ComponentProps<typeof InboxDetailPanel>, 'visible' | 'overlay'>) {
+  const intl = useOptionalIntl()
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="w-[22rem] max-w-[90vw] gap-0 p-0 sm:max-w-[22rem]">
-        <SheetTitle className="sr-only">Details</SheetTitle>
+        <SheetTitle className="sr-only">
+          {intl.formatMessage({ id: 'inbox.agentThread.details', defaultMessage: 'Details' })}
+        </SheetTitle>
         <InboxDetailPanel {...panelProps} visible={open} overlay />
       </SheetContent>
     </Sheet>
@@ -2665,11 +3016,15 @@ const DetailsSheetTrigger = memo(function DetailsSheetTrigger({
   onOpen: () => void
   className: string
 }) {
+  const intl = useOptionalIntl()
   return (
     <button
       type="button"
-      title="Details"
-      aria-label="Details"
+      title={intl.formatMessage({ id: 'inbox.agentThread.details', defaultMessage: 'Details' })}
+      aria-label={intl.formatMessage({
+        id: 'inbox.agentThread.details',
+        defaultMessage: 'Details',
+      })}
       aria-expanded={open}
       onClick={onOpen}
       className={cn(className, 'min-[1680px]:hidden')}

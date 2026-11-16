@@ -43,6 +43,7 @@ const SAME_AS_ENGLISH_EVERYWHERE = [
   'Quackback AI',
   'CSAT',
   'SLA',
+  'JWKS URI',
   'jane@example.com',
   'you@example.com',
   'name@company.com',
