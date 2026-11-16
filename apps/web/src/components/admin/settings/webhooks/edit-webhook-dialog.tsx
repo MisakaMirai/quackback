@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Switch } from '@/components/ui/switch'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { SettingRow } from '@/components/admin/settings/setting-row'
 import {
   Dialog,
@@ -39,6 +40,7 @@ function knownEvents(events: string[]): string[] {
 }
 
 export function EditWebhookDialog({ webhook, open, onOpenChange }: EditWebhookDialogProps) {
+  const intl = useOptionalIntl()
   const router = useRouter()
   const queryClient = useQueryClient()
   const [isPending, startTransition] = useTransition()
@@ -67,7 +69,12 @@ export function EditWebhookDialog({ webhook, open, onOpenChange }: EditWebhookDi
     setError(null)
 
     if (selectedEvents.length === 0) {
-      setError('Select at least one event')
+      setError(
+        intl.formatMessage({
+          id: 'admin.webhooks.selectEventError',
+          defaultMessage: 'Select at least one event',
+        })
+      )
       return
     }
 
@@ -88,7 +95,15 @@ export function EditWebhookDialog({ webhook, open, onOpenChange }: EditWebhookDi
 
       onOpenChange(false)
     } catch (err) {
-      setError(errorText(err, 'Failed to update webhook'))
+      setError(
+        errorText(
+          err,
+          intl.formatMessage({
+            id: 'admin.webhooks.edit.failed',
+            defaultMessage: 'Failed to update webhook',
+          })
+        )
+      )
     }
   }
 
@@ -109,14 +124,29 @@ export function EditWebhookDialog({ webhook, open, onOpenChange }: EditWebhookDi
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Edit webhook</DialogTitle>
-            <DialogDescription>Update webhook configuration.</DialogDescription>
+            <DialogTitle>
+              {intl.formatMessage({
+                id: 'admin.webhooks.edit.title',
+                defaultMessage: 'Edit webhook',
+              })}
+            </DialogTitle>
+            <DialogDescription>
+              {intl.formatMessage({
+                id: 'admin.webhooks.edit.description',
+                defaultMessage: 'Update webhook configuration.',
+              })}
+            </DialogDescription>
           </DialogHeader>
 
           <form onSubmit={handleSubmit}>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label htmlFor="edit-url">Endpoint URL</Label>
+                <Label htmlFor="edit-url">
+                  {intl.formatMessage({
+                    id: 'admin.webhooks.endpointUrl',
+                    defaultMessage: 'Endpoint URL',
+                  })}
+                </Label>
                 <Input
                   id="edit-url"
                   type="url"
@@ -129,7 +159,12 @@ export function EditWebhookDialog({ webhook, open, onOpenChange }: EditWebhookDi
               </div>
 
               <div className="space-y-2">
-                <Label>Events</Label>
+                <Label>
+                  {intl.formatMessage({
+                    id: 'admin.webhooks.events',
+                    defaultMessage: 'Events',
+                  })}
+                </Label>
                 <div className="space-y-2">
                   {WEBHOOK_EVENT_CONFIG.map((event) => (
                     <label
@@ -141,7 +176,13 @@ export function EditWebhookDialog({ webhook, open, onOpenChange }: EditWebhookDi
                         onCheckedChange={() => toggleEvent(event.id)}
                         disabled={isPending}
                         className="mt-0.5"
-                        aria-label={`Subscribe to ${event.label} events`}
+                        aria-label={intl.formatMessage(
+                          {
+                            id: 'admin.webhooks.subscribeToEventsAria',
+                            defaultMessage: 'Subscribe to {event} events',
+                          },
+                          { event: event.label }
+                        )}
                         data-in-label
                       />
                       <div>
@@ -154,12 +195,21 @@ export function EditWebhookDialog({ webhook, open, onOpenChange }: EditWebhookDi
               </div>
 
               <SettingRow
-                label="Send events"
+                label={intl.formatMessage({
+                  id: 'admin.webhooks.edit.sendEvents',
+                  defaultMessage: 'Send events',
+                })}
                 htmlFor="webhook-enabled"
                 description={
                   wasAutoDisabled
-                    ? 'Turning this on resets the failure count'
-                    : 'When off, the webhook receives no events'
+                    ? intl.formatMessage({
+                        id: 'admin.webhooks.edit.resetsFailureCount',
+                        defaultMessage: 'Turning this on resets the failure count',
+                      })
+                    : intl.formatMessage({
+                        id: 'admin.webhooks.edit.offDescription',
+                        defaultMessage: 'When off, the webhook receives no events',
+                      })
                 }
                 control={
                   <Switch
@@ -174,14 +224,35 @@ export function EditWebhookDialog({ webhook, open, onOpenChange }: EditWebhookDi
               {wasAutoDisabled && (
                 <WarningBox
                   variant="warning"
-                  title={`Auto-disabled after ${webhook.failureCount} failures`}
-                  description={webhook.lastError ? `Last error: ${webhook.lastError}` : undefined}
+                  title={intl.formatMessage(
+                    {
+                      id: 'admin.webhooks.edit.autoDisabledTitle',
+                      defaultMessage: 'Auto-disabled after {count} failures',
+                    },
+                    { count: webhook.failureCount }
+                  )}
+                  description={
+                    webhook.lastError
+                      ? intl.formatMessage(
+                          {
+                            id: 'admin.webhooks.edit.lastError',
+                            defaultMessage: 'Last error: {error}',
+                          },
+                          { error: webhook.lastError }
+                        )
+                      : undefined
+                  }
                 />
               )}
 
               {/* Rotate secret section */}
               <div className="space-y-2">
-                <Label>Signing secret</Label>
+                <Label>
+                  {intl.formatMessage({
+                    id: 'admin.webhooks.signingSecret',
+                    defaultMessage: 'Signing secret',
+                  })}
+                </Label>
                 {newSecret ? (
                   <div className="space-y-2">
                     <div className="flex items-center gap-2 rounded-lg bg-success/10 border border-success/20 p-3">
@@ -192,17 +263,26 @@ export function EditWebhookDialog({ webhook, open, onOpenChange }: EditWebhookDi
                         value={newSecret}
                         variant="ghost"
                         size="sm"
-                        aria-label="Copy secret to clipboard"
+                        aria-label={intl.formatMessage({
+                          id: 'admin.webhooks.edit.copySecretAria',
+                          defaultMessage: 'Copy secret to clipboard',
+                        })}
                       />
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      Save this secret now. It won't be shown again.
+                      {intl.formatMessage({
+                        id: 'admin.webhooks.edit.secretSaveNote',
+                        defaultMessage: "Save this secret now. It won't be shown again.",
+                      })}
                     </p>
                   </div>
                 ) : (
                   <div className="flex items-center justify-between rounded-lg border p-3">
                     <p className="text-xs text-muted-foreground">
-                      Rotate to generate a new signing secret
+                      {intl.formatMessage({
+                        id: 'admin.webhooks.edit.rotateHint',
+                        defaultMessage: 'Rotate to generate a new signing secret',
+                      })}
                     </p>
                     <Button
                       type="button"
@@ -212,7 +292,10 @@ export function EditWebhookDialog({ webhook, open, onOpenChange }: EditWebhookDi
                       disabled={isPending}
                     >
                       <ArrowPathIcon className="h-4 w-4 mr-1.5" />
-                      Rotate secret
+                      {intl.formatMessage({
+                        id: 'admin.webhooks.rotateSecret',
+                        defaultMessage: 'Rotate secret',
+                      })}
                     </Button>
                   </div>
                 )}
@@ -228,10 +311,18 @@ export function EditWebhookDialog({ webhook, open, onOpenChange }: EditWebhookDi
                 onClick={() => onOpenChange(false)}
                 disabled={isPending}
               >
-                Cancel
+                {intl.formatMessage({ id: 'common.cancel', defaultMessage: 'Cancel' })}
               </Button>
               <Button type="submit" disabled={isPending || !url || selectedEvents.length === 0}>
-                {isPending ? 'Saving...' : 'Save changes'}
+                {isPending
+                  ? intl.formatMessage({
+                      id: 'admin.webhooks.edit.saving',
+                      defaultMessage: 'Saving...',
+                    })
+                  : intl.formatMessage({
+                      id: 'admin.webhooks.edit.saveChanges',
+                      defaultMessage: 'Save changes',
+                    })}
               </Button>
             </DialogFooter>
           </form>

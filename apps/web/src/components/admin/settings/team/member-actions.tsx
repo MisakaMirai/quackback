@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
+import { FormattedMessage } from 'react-intl'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import {
@@ -30,6 +31,7 @@ import {
 import { adminResetTwoFactorFn } from '@/lib/server/functions/admin-reset-two-factor'
 import { settingsQueries } from '@/lib/client/queries/settings'
 import { toastError } from '@/lib/client/error-notice'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 
 interface MemberActionsProps {
   principalId: string
@@ -56,6 +58,7 @@ export function MemberActions({
   assignedRoleId,
   isLastAdmin,
 }: MemberActionsProps) {
+  const intl = useOptionalIntl()
   const queryClient = useQueryClient()
   const [isLoading, setIsLoading] = useState(false)
   const [pendingRole, setPendingRole] = useState<RoleChoice | null>(null)
@@ -80,7 +83,13 @@ export function MemberActions({
       await queryClient.invalidateQueries({ queryKey: ['settings', 'team'] })
       await queryClient.invalidateQueries({ queryKey: ['settings', 'roles'] })
     } catch (error) {
-      toastError(error, "Couldn't update role. Try again.")
+      toastError(
+        error,
+        intl.formatMessage({
+          id: 'admin.settings.team.memberActions.roleUpdateFailed',
+          defaultMessage: "Couldn't update role. Try again.",
+        })
+      )
     } finally {
       setIsLoading(false)
       setPendingRole(null)
@@ -93,7 +102,13 @@ export function MemberActions({
       await removeTeamMemberFn({ data: { principalId } })
       await queryClient.invalidateQueries({ queryKey: ['settings', 'team'] })
     } catch (error) {
-      toastError(error, "Couldn't remove teammate. Try again.")
+      toastError(
+        error,
+        intl.formatMessage({
+          id: 'admin.settings.team.memberActions.removeFailed',
+          defaultMessage: "Couldn't remove teammate. Try again.",
+        })
+      )
     } finally {
       setIsLoading(false)
       setRemoveDialogOpen(false)
@@ -107,7 +122,13 @@ export function MemberActions({
       await adminResetTwoFactorFn({ data: { userId } })
       await queryClient.invalidateQueries({ queryKey: ['settings', 'team'] })
     } catch (error) {
-      toastError(error, "Couldn't reset two-factor authentication.")
+      toastError(
+        error,
+        intl.formatMessage({
+          id: 'admin.settings.team.memberActions.resetTfaFailed',
+          defaultMessage: "Couldn't reset two-factor authentication.",
+        })
+      )
     } finally {
       setIsLoading(false)
       setResetTfaDialogOpen(false)
@@ -121,12 +142,31 @@ export function MemberActions({
       const result = await forceSignOutUserFn({ data: { userId } })
       toast.success(
         result.revokeCount
-          ? `Signed ${memberName} out of ${result.revokeCount} session${result.revokeCount === 1 ? '' : 's'}.`
-          : `${memberName} had no active sessions.`
+          ? intl.formatMessage(
+              {
+                id: 'admin.settings.team.memberActions.forceSignOutSuccess',
+                defaultMessage:
+                  'Signed {name} out of {count, plural, one {# session} other {# sessions}}.',
+              },
+              { name: memberName, count: result.revokeCount }
+            )
+          : intl.formatMessage(
+              {
+                id: 'admin.settings.team.memberActions.noSessions',
+                defaultMessage: '{name} had no active sessions.',
+              },
+              { name: memberName }
+            )
       )
       await queryClient.invalidateQueries({ queryKey: ['settings', 'team'] })
     } catch (error) {
-      toastError(error, 'Failed to sign user out')
+      toastError(
+        error,
+        intl.formatMessage({
+          id: 'admin.settings.team.memberActions.signOutFailed',
+          defaultMessage: 'Failed to sign user out',
+        })
+      )
     } finally {
       setIsLoading(false)
       setForceSignOutDialogOpen(false)
@@ -137,6 +177,15 @@ export function MemberActions({
   const isCurrent = (choice: { role: 'admin' | 'member'; roleId?: string }) =>
     choice.roleId ? assignedRoleId === choice.roleId : memberRole === choice.role && !holdsCustom
 
+  const adminLabel = intl.formatMessage({
+    id: 'onboarding.live.invite.admin',
+    defaultMessage: 'Admin',
+  })
+  const memberLabel = intl.formatMessage({
+    id: 'onboarding.live.invite.member',
+    defaultMessage: 'Member',
+  })
+
   return (
     <>
       <DropdownMenu>
@@ -144,36 +193,50 @@ export function MemberActions({
           <Button
             variant="ghost"
             size="icon-sm"
-            aria-label={`Actions for ${memberName}`}
+            aria-label={intl.formatMessage(
+              {
+                id: 'admin.settings.team.memberActions.actionsFor',
+                defaultMessage: 'Actions for {name}',
+              },
+              { name: memberName }
+            )}
             className="size-7 text-muted-foreground"
           >
             <EllipsisHorizontalIcon className="size-4" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuLabel>Change role</DropdownMenuLabel>
+          <DropdownMenuLabel>
+            {intl.formatMessage({
+              id: 'admin.settings.team.memberActions.changeRole',
+              defaultMessage: 'Change role',
+            })}
+          </DropdownMenuLabel>
           <DropdownMenuItem
             className="gap-2"
             disabled={!canChangeRole || isCurrent({ role: 'admin' })}
-            onClick={() => setPendingRole({ role: 'admin', label: 'Admin' })}
+            onClick={() => setPendingRole({ role: 'admin', label: adminLabel })}
           >
             <ShieldCheckIcon className="h-4 w-4" />
-            Admin
+            {adminLabel}
             {isCurrent({ role: 'admin' }) && <CheckIcon className="ml-auto h-3.5 w-3.5" />}
           </DropdownMenuItem>
           <DropdownMenuItem
             className="gap-2"
             disabled={!canChangeRole || isCurrent({ role: 'member' })}
-            onClick={() => setPendingRole({ role: 'member', label: 'Member' })}
+            onClick={() => setPendingRole({ role: 'member', label: memberLabel })}
           >
             <UserIcon className="h-4 w-4" />
-            Member
+            {memberLabel}
             {isCurrent({ role: 'member' }) && <CheckIcon className="ml-auto h-3.5 w-3.5" />}
           </DropdownMenuItem>
           {customRoles.length > 0 && (
             <>
               <DropdownMenuLabel className="uppercase tracking-wider text-muted-foreground">
-                Custom
+                {intl.formatMessage({
+                  id: 'admin.settings.security.idp.table.custom',
+                  defaultMessage: 'Custom',
+                })}
               </DropdownMenuLabel>
               {customRoles.map((r) => (
                 <DropdownMenuItem
@@ -193,13 +256,19 @@ export function MemberActions({
           {userId ? (
             <DropdownMenuItem onClick={() => setResetTfaDialogOpen(true)} className="gap-2">
               <ShieldExclamationIcon className="h-4 w-4" />
-              Reset two-factor
+              {intl.formatMessage({
+                id: 'admin.settings.team.memberActions.resetTwoFactor',
+                defaultMessage: 'Reset two-factor',
+              })}
             </DropdownMenuItem>
           ) : null}
           {userId ? (
             <DropdownMenuItem onClick={() => setForceSignOutDialogOpen(true)} className="gap-2">
               <ArrowRightOnRectangleIcon className="h-4 w-4" />
-              Sign out everywhere
+              {intl.formatMessage({
+                id: 'admin.settings.team.memberActions.signOutEverywhere',
+                defaultMessage: 'Sign out everywhere',
+              })}
             </DropdownMenuItem>
           ) : null}
           <DropdownMenuSeparator />
@@ -210,7 +279,10 @@ export function MemberActions({
             className="gap-2"
           >
             <UserMinusIcon className="h-4 w-4" />
-            Remove from team
+            {intl.formatMessage({
+              id: 'admin.settings.team.memberActions.removeFromTeam',
+              defaultMessage: 'Remove from team',
+            })}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -218,26 +290,58 @@ export function MemberActions({
       <ConfirmDialog
         open={pendingRole != null}
         onOpenChange={(open) => !open && setPendingRole(null)}
-        title={`Change role to ${pendingRole?.label}?`}
+        title={intl.formatMessage(
+          {
+            id: 'admin.settings.team.memberActions.changeRoleTitle',
+            defaultMessage: 'Change role to {role}?',
+          },
+          { role: pendingRole?.label ?? '' }
+        )}
         description={
           pendingRole?.role === 'admin' ? (
-            <>
-              <strong>{memberName}</strong> will be able to manage team settings, members, and all
-              workspace configurations.
-            </>
+            <FormattedMessage
+              id="admin.settings.team.memberActions.changeRoleAdminDesc"
+              defaultMessage="<strong>{name}</strong> will be able to manage team settings, members, and all workspace configurations."
+              values={{
+                name: memberName,
+                strong: (chunks: ReactNode) => <strong>{chunks}</strong>,
+              }}
+            />
           ) : pendingRole?.roleId ? (
-            <>
-              <strong>{memberName}</strong> will hold the "{pendingRole.label}" role and exactly the
-              permissions it grants.
-            </>
+            <FormattedMessage
+              id="admin.settings.team.memberActions.changeRoleCustomDesc"
+              defaultMessage='<strong>{name}</strong> will hold the "{role}" role and exactly the permissions it grants.'
+              values={{
+                name: memberName,
+                role: pendingRole.label,
+                strong: (chunks: ReactNode) => <strong>{chunks}</strong>,
+              }}
+            />
           ) : (
-            <>
-              <strong>{memberName}</strong> will no longer be able to manage team settings or
-              members.
-            </>
+            <FormattedMessage
+              id="admin.settings.team.memberActions.changeRoleMemberDesc"
+              defaultMessage="<strong>{name}</strong> will no longer be able to manage team settings or members."
+              values={{
+                name: memberName,
+                strong: (chunks: ReactNode) => <strong>{chunks}</strong>,
+              }}
+            />
           )
         }
-        confirmLabel={isLoading ? 'Updating...' : `Change to ${pendingRole?.label ?? ''}`}
+        confirmLabel={
+          isLoading
+            ? intl.formatMessage({
+                id: 'admin.settings.team.memberActions.updating',
+                defaultMessage: 'Updating...',
+              })
+            : intl.formatMessage(
+                {
+                  id: 'admin.settings.team.memberActions.changeTo',
+                  defaultMessage: 'Change to {role}',
+                },
+                { role: pendingRole?.label ?? '' }
+              )
+        }
         isPending={isLoading}
         onConfirm={handleRoleChange}
       />
@@ -245,16 +349,32 @@ export function MemberActions({
       <ConfirmDialog
         open={removeDialogOpen}
         onOpenChange={setRemoveDialogOpen}
-        title="Remove team member?"
+        title={intl.formatMessage({
+          id: 'admin.settings.team.memberActions.removeTitle',
+          defaultMessage: 'Remove team member?',
+        })}
         description={
-          <>
-            <strong>{memberName}</strong> will be removed from the team and converted to a portal
-            user. They will lose access to the admin dashboard but can still interact with the
-            feedback portal.
-          </>
+          <FormattedMessage
+            id="admin.settings.team.memberActions.removeDesc"
+            defaultMessage="<strong>{name}</strong> will be removed from the team and converted to a portal user. They will lose access to the admin dashboard but can still interact with the feedback portal."
+            values={{
+              name: memberName,
+              strong: (chunks: ReactNode) => <strong>{chunks}</strong>,
+            }}
+          />
         }
         variant="destructive"
-        confirmLabel={isLoading ? 'Removing...' : 'Remove from team'}
+        confirmLabel={
+          isLoading
+            ? intl.formatMessage({
+                id: 'admin.settings.team.memberActions.removing',
+                defaultMessage: 'Removing...',
+              })
+            : intl.formatMessage({
+                id: 'admin.settings.team.memberActions.removeFromTeam',
+                defaultMessage: 'Remove from team',
+              })
+        }
         isPending={isLoading}
         onConfirm={handleRemove}
       />
@@ -262,17 +382,32 @@ export function MemberActions({
       <ConfirmDialog
         open={resetTfaDialogOpen}
         onOpenChange={setResetTfaDialogOpen}
-        title="Reset two-factor authentication?"
+        title={intl.formatMessage({
+          id: 'admin.settings.team.memberActions.resetTfaTitle',
+          defaultMessage: 'Reset two-factor authentication?',
+        })}
         description={
-          <>
-            <strong>{memberName}</strong>&apos;s two-factor enrollment will be cleared and any
-            trusted devices revoked. They&apos;ll be able to sign in with just their password until
-            they re-enroll. Use this only when they&apos;ve lost their authenticator and backup
-            codes.
-          </>
+          <FormattedMessage
+            id="admin.settings.team.memberActions.resetTfaDesc"
+            defaultMessage="<strong>{name}</strong>'s two-factor enrollment will be cleared and any trusted devices revoked. They'll be able to sign in with just their password until they re-enroll. Use this only when they've lost their authenticator and backup codes."
+            values={{
+              name: memberName,
+              strong: (chunks: ReactNode) => <strong>{chunks}</strong>,
+            }}
+          />
         }
         variant="destructive"
-        confirmLabel={isLoading ? 'Resetting...' : 'Reset two-factor'}
+        confirmLabel={
+          isLoading
+            ? intl.formatMessage({
+                id: 'admin.settings.team.memberActions.resetting',
+                defaultMessage: 'Resetting...',
+              })
+            : intl.formatMessage({
+                id: 'admin.settings.team.memberActions.resetTwoFactor',
+                defaultMessage: 'Reset two-factor',
+              })
+        }
         isPending={isLoading}
         onConfirm={handleResetTfa}
       />
@@ -280,16 +415,32 @@ export function MemberActions({
       <ConfirmDialog
         open={forceSignOutDialogOpen}
         onOpenChange={setForceSignOutDialogOpen}
-        title="Sign out everywhere?"
+        title={intl.formatMessage({
+          id: 'admin.settings.team.memberActions.signOutTitle',
+          defaultMessage: 'Sign out everywhere?',
+        })}
         description={
-          <>
-            All active sessions for <strong>{memberName}</strong> will be revoked. They&apos;ll need
-            to sign in again on every device. Use this when an account is compromised, a device is
-            lost, or a team member is leaving.
-          </>
+          <FormattedMessage
+            id="admin.settings.team.memberActions.signOutDesc"
+            defaultMessage="All active sessions for <strong>{name}</strong> will be revoked. They'll need to sign in again on every device. Use this when an account is compromised, a device is lost, or a team member is leaving."
+            values={{
+              name: memberName,
+              strong: (chunks: ReactNode) => <strong>{chunks}</strong>,
+            }}
+          />
         }
         variant="destructive"
-        confirmLabel={isLoading ? 'Signing out...' : 'Sign out everywhere'}
+        confirmLabel={
+          isLoading
+            ? intl.formatMessage({
+                id: 'admin.settings.team.memberActions.signingOut',
+                defaultMessage: 'Signing out...',
+              })
+            : intl.formatMessage({
+                id: 'admin.settings.team.memberActions.signOutEverywhere',
+                defaultMessage: 'Sign out everywhere',
+              })
+        }
         isPending={isLoading}
         onConfirm={handleForceSignOut}
       />

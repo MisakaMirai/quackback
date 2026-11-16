@@ -15,6 +15,8 @@ import { usersKeys } from '@/lib/client/hooks/use-users-queries'
 import { changeTeamRoleFn } from '@/lib/server/functions/team-people'
 import type { ChangeRoleRefusalCode } from '@/lib/shared/team-people'
 import { withArticle, type RoleChoice } from '@/components/admin/settings/team/add-people'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
+import type { IntlShape } from 'react-intl'
 import {
   RoleNotes,
   RoleSelect,
@@ -34,25 +36,53 @@ export interface ChangeRoleDialogProps {
 }
 
 /** Why a change was refused, in plain words. GRANT_CEILING shows by the field instead. */
-function refusalCopy(code: ChangeRoleRefusalCode, personName: string): string {
+function refusalCopy(code: ChangeRoleRefusalCode, personName: string, intl: IntlShape): string {
   switch (code) {
     case 'LAST_ADMIN':
-      return `${personName} is the last admin. Make someone else an admin first.`
+      return intl.formatMessage(
+        {
+          id: 'admin.settings.team.changeRole.lastAdmin',
+          defaultMessage: '{name} is the last admin. Make someone else an admin first.',
+        },
+        { name: personName }
+      )
     case 'CANNOT_MODIFY_SELF':
-      return "You can't change your own role."
+      return intl.formatMessage({
+        id: 'admin.settings.team.changeRole.self',
+        defaultMessage: "You can't change your own role.",
+      })
     case 'SEAT_LIMIT':
-      return 'The plan has no seats left for this role.'
+      return intl.formatMessage({
+        id: 'admin.settings.team.changeRole.noSeats',
+        defaultMessage: 'The plan has no seats left for this role.',
+      })
     case 'NOT_ELIGIBLE':
-      return `${personName} can't hold a team role.`
+      return intl.formatMessage(
+        {
+          id: 'admin.settings.team.changeRole.notEligible',
+          defaultMessage: "{name} can't hold a team role.",
+        },
+        { name: personName }
+      )
     case 'NOT_FOUND':
-      return `${personName} is no longer on the team.`
+      return intl.formatMessage(
+        {
+          id: 'admin.settings.team.changeRole.notFound',
+          defaultMessage: '{name} is no longer on the team.',
+        },
+        { name: personName }
+      )
     default:
-      return "Couldn't change the role. Try again."
+      return intl.formatMessage({
+        id: 'admin.settings.team.changeRole.failed',
+        defaultMessage: "Couldn't change the role. Try again.",
+      })
   }
 }
 
 /** Change a teammate's role from outside the Members table. */
 export function ChangeRoleDialog({ open, onOpenChange, ...rest }: ChangeRoleDialogProps) {
+  const intl = useOptionalIntl()
   const [session, setSession] = useState(0)
   const [wasOpen, setWasOpen] = useState(open)
   if (open !== wasOpen) {
@@ -63,7 +93,15 @@ export function ChangeRoleDialog({ open, onOpenChange, ...rest }: ChangeRoleDial
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Change {rest.personName}&apos;s role</DialogTitle>
+          <DialogTitle>
+            {intl.formatMessage(
+              {
+                id: 'admin.settings.team.changeRole.title',
+                defaultMessage: "Change {name}'s role",
+              },
+              { name: rest.personName }
+            )}
+          </DialogTitle>
         </DialogHeader>
         <ChangeRoleForm key={session} onClose={() => onOpenChange(false)} {...rest} />
       </DialogContent>
@@ -79,6 +117,7 @@ function ChangeRoleForm({
   onChanged,
   onClose,
 }: Omit<ChangeRoleDialogProps, 'open' | 'onOpenChange'> & { onClose: () => void }) {
+  const intl = useOptionalIntl()
   const queryClient = useQueryClient()
   const initial = roleValueOf(current)
   const [value, setValue] = useState(initial)
@@ -101,7 +140,7 @@ function ChangeRoleForm({
       if (!result.ok) {
         setError({
           refusedGrant: result.code === 'GRANT_CEILING',
-          message: refusalCopy(result.code, personName),
+          message: refusalCopy(result.code, personName, intl),
         })
         return
       }
@@ -111,11 +150,29 @@ function ChangeRoleForm({
         queryClient.invalidateQueries({ queryKey: usersKeys.all }),
       ])
       onChanged?.(role)
-      toast.success(`${personName} is now ${withArticle(role.label)}.`)
+      toast.success(
+        intl.formatMessage(
+          {
+            id: 'admin.settings.team.changeRole.success',
+            defaultMessage: '{name} is now {role}.',
+          },
+          {
+            name: personName,
+            // English needs the article ("an Editor"); Chinese does not.
+            role: intl.locale.startsWith('en') ? withArticle(role.label) : role.label,
+          }
+        )
+      )
       onClose()
     } catch {
       // Never raw server text: a failed call reads the same whatever went wrong.
-      setError({ refusedGrant: false, message: "Couldn't change the role. Try again." })
+      setError({
+        refusedGrant: false,
+        message: intl.formatMessage({
+          id: 'admin.settings.team.changeRole.failed',
+          defaultMessage: "Couldn't change the role. Try again.",
+        }),
+      })
     } finally {
       setSaving(false)
     }
@@ -131,7 +188,9 @@ function ChangeRoleForm({
     >
       {error && !refused && <FormError message={error.message} />}
       <div className="space-y-1.5">
-        <Label htmlFor="change-role-select">Role</Label>
+        <Label htmlFor="change-role-select">
+          {intl.formatMessage({ id: 'apiKeys.column.role', defaultMessage: 'Role' })}
+        </Label>
         <RoleSelect
           id="change-role-select"
           value={value}
@@ -147,10 +206,18 @@ function ChangeRoleForm({
       </div>
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onClose}>
-          Cancel
+          {intl.formatMessage({ id: 'common.cancel', defaultMessage: 'Cancel' })}
         </Button>
         <Button type="submit" disabled={saving || value === initial}>
-          {saving ? 'Saving...' : 'Change role'}
+          {saving
+            ? intl.formatMessage({
+                id: 'admin.settings.team.changeRole.saving',
+                defaultMessage: 'Saving...',
+              })
+            : intl.formatMessage({
+                id: 'admin.settings.team.changeRole.submit',
+                defaultMessage: 'Change role',
+              })}
         </Button>
       </DialogFooter>
     </form>

@@ -7,6 +7,9 @@ import { TableCell, TableRow } from '@/components/ui/table'
 import { LocalDate } from '@/components/ui/local-date'
 import { cancelInvitationFn, resendInvitationFn } from '@/lib/server/functions/admin'
 import { formatDistanceToNow } from 'date-fns'
+import { zhCN, zhTW } from 'date-fns/locale'
+import type { IntlShape } from 'react-intl'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import type { InviteId } from '@quackback/ids'
 
 export interface PendingInvitation {
@@ -24,16 +27,39 @@ export interface PendingInvitation {
 
 const RESEND_COOLDOWN_MS = 5 * 60 * 1000 // 5 minutes
 
-export function getExpiryText(expiresAt: string) {
+/** date-fns locale for a react-intl locale, so relative times read naturally. */
+function dateFnsLocale(locale: string) {
+  if (locale.startsWith('zh-TW') || locale.startsWith('zh-Hant')) return zhTW
+  if (locale.startsWith('zh')) return zhCN
+  return undefined
+}
+
+export function getExpiryText(expiresAt: string, intl: IntlShape) {
   const now = new Date()
   const expiry = new Date(expiresAt)
   const isExpired = now > expiry
   const msUntilExpiry = expiry.getTime() - now.getTime()
   const isExpiringSoon = !isExpired && msUntilExpiry < 2 * 24 * 60 * 60 * 1000
+  const distance = formatDistanceToNow(expiry, {
+    addSuffix: false,
+    locale: dateFnsLocale(intl.locale),
+  })
 
   const text = isExpired
-    ? `Expired ${formatDistanceToNow(expiry, { addSuffix: false })} ago`
-    : `Expires in ${formatDistanceToNow(expiry, { addSuffix: false })}`
+    ? intl.formatMessage(
+        {
+          id: 'admin.settings.team.pendingInvitations.expiredAgo',
+          defaultMessage: 'Expired {distance} ago',
+        },
+        { distance }
+      )
+    : intl.formatMessage(
+        {
+          id: 'admin.settings.team.pendingInvitations.expiresIn',
+          defaultMessage: 'Expires in {distance}',
+        },
+        { distance }
+      )
 
   const className = isExpired
     ? 'text-destructive'
@@ -48,7 +74,8 @@ const INVITE_DATE: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric'
 
 /** When an invitation was sent, e.g. "Oct 1", in the viewer's zone once hydrated. */
 export function InviteDate({ date }: { date: string }) {
-  return <LocalDate date={date} options={INVITE_DATE} locale="en-US" />
+  const intl = useOptionalIntl()
+  return <LocalDate date={date} options={INVITE_DATE} locale={intl.locale} />
 }
 
 interface InvitationActionsProps {
@@ -66,9 +93,10 @@ export function InvitationActions({
   onError,
   onInviteLink,
 }: InvitationActionsProps) {
+  const intl = useOptionalIntl()
   const [loading, setLoading] = useState<'resend' | 'cancel' | null>(null)
 
-  const expiry = getExpiryText(inv.expiresAt)
+  const expiry = getExpiryText(inv.expiresAt, intl)
   const lastSent = inv.lastSentAt ? new Date(inv.lastSentAt) : new Date(inv.createdAt)
   const canResendNow = !expiry.isExpired && Date.now() - lastSent.getTime() >= RESEND_COOLDOWN_MS
   const remaining = RESEND_COOLDOWN_MS - (Date.now() - lastSent.getTime())
@@ -76,9 +104,18 @@ export function InvitationActions({
 
   const resendDisabled = !canResendNow || loading !== null
   const resendTitle = expiry.isExpired
-    ? 'Invitation expired'
+    ? intl.formatMessage({
+        id: 'admin.settings.team.pendingInvitations.expired',
+        defaultMessage: 'Invitation expired',
+      })
     : minutesUntilResend
-      ? `Wait ${minutesUntilResend} min to resend`
+      ? intl.formatMessage(
+          {
+            id: 'admin.settings.team.pendingInvitations.waitToResend',
+            defaultMessage: 'Wait {minutes} min to resend',
+          },
+          { minutes: minutesUntilResend }
+        )
       : undefined
 
   const handleResend = async () => {
@@ -93,7 +130,14 @@ export function InvitationActions({
         onInviteLink(inv.id, result.inviteLink)
       }
     } catch (err) {
-      onError(err instanceof Error ? err.message : 'Failed to resend invitation')
+      onError(
+        err instanceof Error
+          ? err.message
+          : intl.formatMessage({
+              id: 'admin.settings.team.pendingInvitations.resendFailed',
+              defaultMessage: 'Failed to resend invitation',
+            })
+      )
     } finally {
       setLoading(null)
     }
@@ -108,7 +152,14 @@ export function InvitationActions({
       })
       onCancelled(inv.id)
     } catch (err) {
-      onError(err instanceof Error ? err.message : 'Failed to cancel invitation')
+      onError(
+        err instanceof Error
+          ? err.message
+          : intl.formatMessage({
+              id: 'admin.settings.team.pendingInvitations.cancelFailed',
+              defaultMessage: 'Failed to cancel invitation',
+            })
+      )
     } finally {
       setLoading(null)
     }
@@ -123,7 +174,14 @@ export function InvitationActions({
         disabled={resendDisabled}
         title={resendTitle}
       >
-        {loading === 'resend' ? <ArrowPathIcon className="h-4 w-4 animate-spin" /> : 'Resend'}
+        {loading === 'resend' ? (
+          <ArrowPathIcon className="h-4 w-4 animate-spin" />
+        ) : (
+          intl.formatMessage({
+            id: 'admin.settings.team.pendingInvitations.resend',
+            defaultMessage: 'Resend',
+          })
+        )}
       </Button>
 
       <TooltipProvider>
@@ -139,7 +197,12 @@ export function InvitationActions({
               <XMarkIcon className="h-4 w-4" />
             </Button>
           </TooltipTrigger>
-          <TooltipContent>Cancel invitation</TooltipContent>
+          <TooltipContent>
+            {intl.formatMessage({
+              id: 'admin.settings.team.pendingInvitations.cancelInvitation',
+              defaultMessage: 'Cancel invitation',
+            })}
+          </TooltipContent>
         </Tooltip>
       </TooltipProvider>
     </div>

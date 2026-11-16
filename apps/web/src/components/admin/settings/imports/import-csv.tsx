@@ -27,6 +27,7 @@ import { toast } from 'sonner'
 import { adminQueries } from '@/lib/client/queries/admin'
 import { CSV_TEMPLATE } from '@/lib/shared/schemas/import'
 import type { ImportRunListItem } from '@/lib/server/functions/data-runs'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 
 type Step = 'idle' | 'reviewing' | 'committing' | 'done' | 'failed'
 
@@ -56,17 +57,23 @@ interface PreviewResponse {
 const IMPORT_SOURCES = [
   {
     value: 'feedback_portal',
+    labelId: 'admin.settings.imports.csv.sourceFeedbackLabel',
     label: 'Feedback portal CSV',
+    hintId: 'admin.settings.imports.csv.sourceFeedbackHint',
     hint: 'Boards, posts, votes and comments from a feedback portal CSV export.',
   },
   {
     value: 'support_suite',
+    labelId: 'admin.settings.imports.csv.sourceSupportLabel',
     label: 'Support suite CSV',
+    hintId: 'admin.settings.imports.csv.sourceSupportHint',
     hint: 'Help articles and conversation history from a support suite CSV export.',
   },
   {
     value: 'help_center',
+    labelId: 'admin.settings.imports.csv.sourceHelpCenterLabel',
     label: 'Help center CSV',
+    hintId: 'admin.settings.imports.csv.sourceHelpCenterHint',
     hint: 'Categories and articles from a help center CSV export.',
   },
 ] as const
@@ -89,6 +96,7 @@ function downloadTemplate() {
  * server contract is the template itself, with no column-mapping step.
  */
 export function ImportCsv() {
+  const intl = useOptionalIntl()
   const queryClient = useQueryClient()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [step, setStep] = useState<Step>('idle')
@@ -111,7 +119,13 @@ export function ImportCsv() {
     },
     queryFn: async () => {
       const res = await fetch(`/api/import/runs/${runId}`)
-      if (!res.ok) throw new Error('Failed to load import run')
+      if (!res.ok)
+        throw new Error(
+          intl.formatMessage({
+            id: 'admin.settings.imports.csv.loadRunFailed',
+            defaultMessage: 'Failed to load import run',
+          })
+        )
       const body = (await res.json()) as { run: ImportRunListItem }
       return body.run
     },
@@ -153,7 +167,13 @@ export function ImportCsv() {
       })
       const body = await res.json()
       if (!res.ok) {
-        toast.error(body.error ?? 'Could not read that CSV')
+        toast.error(
+          body.error ??
+            intl.formatMessage({
+              id: 'admin.settings.imports.csv.readFailed',
+              defaultMessage: 'Could not read that CSV',
+            })
+        )
         if (fileInputRef.current) fileInputRef.current.value = ''
         return
       }
@@ -161,7 +181,12 @@ export function ImportCsv() {
       setPreview(body as PreviewResponse)
       setStep('reviewing')
     } catch {
-      toast.error('Could not read that CSV')
+      toast.error(
+        intl.formatMessage({
+          id: 'admin.settings.imports.csv.readFailed',
+          defaultMessage: 'Could not read that CSV',
+        })
+      )
     } finally {
       setIsSubmitting(false)
     }
@@ -173,13 +198,24 @@ export function ImportCsv() {
       const res = await fetch('/api/import', { method: 'POST', body: buildFormData('commit') })
       const body = await res.json()
       if (res.status !== 202) {
-        toast.error(body.error ?? 'Could not start the import')
+        toast.error(
+          body.error ??
+            intl.formatMessage({
+              id: 'admin.settings.imports.csv.startFailed',
+              defaultMessage: 'Could not start the import',
+            })
+        )
         return
       }
       setRunId(body.runId as string)
       setStep('committing')
     } catch {
-      toast.error('Could not start the import')
+      toast.error(
+        intl.formatMessage({
+          id: 'admin.settings.imports.csv.startFailed',
+          defaultMessage: 'Could not start the import',
+        })
+      )
     } finally {
       setIsSubmitting(false)
     }
@@ -189,11 +225,18 @@ export function ImportCsv() {
     return <ImportProgress step={step} run={run} onReset={reset} />
   }
 
+  const selectedSource = IMPORT_SOURCES.find((s) => s.value === source)
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
         <label>
-          <span className="sr-only">Source</span>
+          <span className="sr-only">
+            {intl.formatMessage({
+              id: 'admin.settings.imports.csv.sourceAria',
+              defaultMessage: 'Source',
+            })}
+          </span>
           <Select value={source} onValueChange={setSource}>
             <SelectTrigger className="w-[200px]">
               <SelectValue />
@@ -201,7 +244,7 @@ export function ImportCsv() {
             <SelectContent>
               {IMPORT_SOURCES.map((s) => (
                 <SelectItem key={s.value} value={s.value}>
-                  {s.label}
+                  {intl.formatMessage({ id: s.labelId, defaultMessage: s.label })}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -209,7 +252,12 @@ export function ImportCsv() {
         </label>
         <Select value={boardId} onValueChange={setBoardId}>
           <SelectTrigger className="w-[240px]">
-            <SelectValue placeholder="Default board (optional)" />
+            <SelectValue
+              placeholder={intl.formatMessage({
+                id: 'admin.settings.imports.csv.defaultBoard',
+                defaultMessage: 'Default board (optional)',
+              })}
+            />
           </SelectTrigger>
           <SelectContent>
             {boards.map((b) => (
@@ -221,13 +269,19 @@ export function ImportCsv() {
         </Select>
         <Button variant="outline" size="sm" onClick={downloadTemplate}>
           <ArrowDownTrayIcon className="size-4" />
-          Download template
+          {intl.formatMessage({
+            id: 'admin.settings.imports.csv.downloadTemplate',
+            defaultMessage: 'Download template',
+          })}
         </Button>
       </div>
 
-      {step === 'idle' && (
+      {step === 'idle' && selectedSource && (
         <p className="text-[13px] text-muted-foreground">
-          {IMPORT_SOURCES.find((s) => s.value === source)?.hint}
+          {intl.formatMessage({
+            id: selectedSource.hintId,
+            defaultMessage: selectedSource.hint,
+          })}
         </p>
       )}
 
@@ -236,14 +290,23 @@ export function ImportCsv() {
           <ArrowUpTrayIcon className="size-6 text-muted-foreground" />
           <span className="text-sm font-medium">
             {isSubmitting
-              ? 'Reading CSV…'
+              ? intl.formatMessage({
+                  id: 'admin.settings.imports.csv.reading',
+                  defaultMessage: 'Reading CSV…',
+                })
               : file
                 ? file.name
-                : 'Drop your CSV here, or click to browse'}
+                : intl.formatMessage({
+                    id: 'admin.settings.imports.csv.dropzone',
+                    defaultMessage: 'Drop your CSV here, or click to browse',
+                  })}
           </span>
           <span className="text-xs text-muted-foreground">
-            Needs title and content columns, up to 10MB and 10,000 rows. Each row needs author_email
-            or author_name. Keep source_id filled to re-run without duplicates.
+            {intl.formatMessage({
+              id: 'admin.settings.imports.csv.uploadHelp',
+              defaultMessage:
+                'Needs title and content columns, up to 10MB and 10,000 rows. Each row needs author_email or author_name. Keep source_id filled to re-run without duplicates.',
+            })}
           </span>
           <input
             ref={fileInputRef}
@@ -293,10 +356,26 @@ function ImportReview({
   onCommit: () => void
   onReset: () => void
 }) {
+  const intl = useOptionalIntl()
   const creations = [
-    ...preview.creates.boards.map((name) => `${name} (board)`),
-    ...preview.creates.statuses.map((name) => `${name} (status)`),
-    ...preview.creates.tags.map((name) => `${name} (tag)`),
+    ...preview.creates.boards.map((name) =>
+      intl.formatMessage(
+        { id: 'admin.settings.imports.csv.createBoard', defaultMessage: '{name} (board)' },
+        { name }
+      )
+    ),
+    ...preview.creates.statuses.map((name) =>
+      intl.formatMessage(
+        { id: 'admin.settings.imports.csv.createStatus', defaultMessage: '{name} (status)' },
+        { name }
+      )
+    ),
+    ...preview.creates.tags.map((name) =>
+      intl.formatMessage(
+        { id: 'admin.settings.imports.csv.createTag', defaultMessage: '{name} (tag)' },
+        { name }
+      )
+    ),
   ]
   const willCreate = preview.totalRows - preview.updatedCount - preview.errors.length
 
@@ -305,13 +384,30 @@ function ImportReview({
       <div className="rounded-lg border border-border p-4">
         <p className="text-sm font-medium">{fileName}</p>
         <p className="mt-1 text-sm text-muted-foreground">
-          {preview.totalRows} rows: {willCreate} new posts, {preview.updatedCount} updates,{' '}
-          {preview.errors.length} skipped with errors.
+          {intl.formatMessage(
+            {
+              id: 'admin.settings.imports.csv.reviewSummary',
+              defaultMessage:
+                '{total} rows: {created} new posts, {updated} updates, {skipped} skipped with errors.',
+            },
+            {
+              total: preview.totalRows,
+              created: willCreate,
+              updated: preview.updatedCount,
+              skipped: preview.errors.length,
+            }
+          )}
         </p>
         {creations.length > 0 && (
           <p className="mt-2 text-xs text-muted-foreground">
-            Will create: {creations.join(', ')}. Anything not already in your workspace is created
-            on import.
+            {intl.formatMessage(
+              {
+                id: 'admin.settings.imports.csv.willCreate',
+                defaultMessage:
+                  'Will create: {items}. Anything not already in your workspace is created on import.',
+              },
+              { items: creations.join(', ') }
+            )}
           </p>
         )}
       </div>
@@ -320,13 +416,25 @@ function ImportReview({
         <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-xs">
           {preview.errors.slice(0, 5).map((err) => (
             <p key={err.row} className="text-destructive">
-              Row {err.row}: {err.message}
+              {intl.formatMessage(
+                {
+                  id: 'admin.settings.imports.csv.rowError',
+                  defaultMessage: 'Row {row}: {message}',
+                },
+                { row: err.row, message: err.message }
+              )}
             </p>
           ))}
           {preview.errors.length > 5 && (
             <p className="mt-1 text-muted-foreground">
-              …and {preview.errors.length - 5} more (full list available in import history after the
-              run).
+              {intl.formatMessage(
+                {
+                  id: 'admin.settings.imports.csv.moreErrors',
+                  defaultMessage:
+                    '…and {count} more (full list available in import history after the run).',
+                },
+                { count: preview.errors.length - 5 }
+              )}
             </p>
           )}
         </div>
@@ -337,12 +445,42 @@ function ImportReview({
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Row</TableHead>
-                <TableHead>Title</TableHead>
-                <TableHead>Board</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Author</TableHead>
-                <TableHead className="text-right">Action</TableHead>
+                <TableHead>
+                  {intl.formatMessage({
+                    id: 'admin.settings.imports.csv.row',
+                    defaultMessage: 'Row',
+                  })}
+                </TableHead>
+                <TableHead>
+                  {intl.formatMessage({
+                    id: 'admin.settings.helpCenter.homepageTitleLabel',
+                    defaultMessage: 'Title',
+                  })}
+                </TableHead>
+                <TableHead>
+                  {intl.formatMessage({
+                    id: 'portal.postDetail.metadata.board',
+                    defaultMessage: 'Board',
+                  })}
+                </TableHead>
+                <TableHead>
+                  {intl.formatMessage({
+                    id: 'admin.changelog.filters.status',
+                    defaultMessage: 'Status',
+                  })}
+                </TableHead>
+                <TableHead>
+                  {intl.formatMessage({
+                    id: 'portal.postDetail.metadata.author',
+                    defaultMessage: 'Author',
+                  })}
+                </TableHead>
+                <TableHead className="text-right">
+                  {intl.formatMessage({
+                    id: 'admin.settings.imports.csv.action',
+                    defaultMessage: 'Action',
+                  })}
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -352,19 +490,42 @@ function ImportReview({
                   <TableCell className="max-w-[220px] truncate" title={row.title}>
                     {row.title}
                   </TableCell>
-                  <TableCell className="text-muted-foreground">{row.board ?? 'default'}</TableCell>
-                  <TableCell className="text-muted-foreground">{row.status ?? 'default'}</TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {row.board ??
+                      intl.formatMessage({
+                        id: 'admin.settings.imports.csv.default',
+                        defaultMessage: 'default',
+                      })}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {row.status ??
+                      intl.formatMessage({
+                        id: 'admin.settings.imports.csv.default',
+                        defaultMessage: 'default',
+                      })}
+                  </TableCell>
                   <TableCell className="text-muted-foreground">
                     {row.author}
                     {row.isNewAuthor && (
                       <Badge variant="secondary" className="ml-1.5">
-                        new
+                        {intl.formatMessage({
+                          id: 'admin.settings.imports.csv.newAuthor',
+                          defaultMessage: 'new',
+                        })}
                       </Badge>
                     )}
                   </TableCell>
                   <TableCell className="text-right">
                     <Badge variant={row.action === 'update' ? 'default' : 'outline'}>
-                      {row.action === 'update' ? 'Update' : 'Create'}
+                      {row.action === 'update'
+                        ? intl.formatMessage({
+                            id: 'ui.editor.linkUpdate',
+                            defaultMessage: 'Update',
+                          })
+                        : intl.formatMessage({
+                            id: 'admin.settings.imports.csv.create',
+                            defaultMessage: 'Create',
+                          })}
                     </Badge>
                   </TableCell>
                 </TableRow>
@@ -376,10 +537,24 @@ function ImportReview({
 
       <div className="flex items-center gap-3">
         <Button onClick={onCommit} disabled={isSubmitting}>
-          {isSubmitting ? 'Starting…' : `Import ${willCreate} posts`}
+          {isSubmitting
+            ? intl.formatMessage({
+                id: 'admin.settings.imports.csv.starting',
+                defaultMessage: 'Starting…',
+              })
+            : intl.formatMessage(
+                {
+                  id: 'admin.settings.imports.csv.importPosts',
+                  defaultMessage: 'Import {count, plural, one {# post} other {# posts}}',
+                },
+                { count: willCreate }
+              )}
         </Button>
         <Button variant="ghost" onClick={onReset} disabled={isSubmitting}>
-          Choose a different file
+          {intl.formatMessage({
+            id: 'admin.settings.imports.csv.chooseDifferentFile',
+            defaultMessage: 'Choose a different file',
+          })}
         </Button>
       </div>
     </div>
@@ -395,12 +570,16 @@ function ImportProgress({
   run: ImportRunListItem | undefined
   onReset: () => void
 }) {
+  const intl = useOptionalIntl()
   if (step === 'committing') {
     return (
       <div className="flex items-center gap-3 rounded-lg border border-border p-4">
         <ArrowDownTrayIcon className="size-5 animate-pulse text-muted-foreground" />
         <p className="text-sm text-muted-foreground">
-          Importing… this usually takes a few seconds.
+          {intl.formatMessage({
+            id: 'admin.settings.imports.csv.importing',
+            defaultMessage: 'Importing… this usually takes a few seconds.',
+          })}
         </p>
       </div>
     )
@@ -411,16 +590,52 @@ function ImportProgress({
       <div className="space-y-3 rounded-lg border border-border p-4">
         <div className="flex items-center gap-2">
           <CheckCircleIcon className="size-5 text-success" />
-          <p className="text-sm font-medium">Import complete</p>
+          <p className="text-sm font-medium">
+            {intl.formatMessage({
+              id: 'admin.settings.imports.csv.importComplete',
+              defaultMessage: 'Import complete',
+            })}
+          </p>
         </div>
         <p className="text-sm text-muted-foreground">
-          {run.totals.created} created
-          {run.totals.updated > 0 && `, ${run.totals.updated} updated`}
-          {run.totals.skipped > 0 && `, ${run.totals.skipped} skipped`}
-          {run.totals.errors > 0 && ` (${run.totals.errors} row errors, see import history)`}.
+          {intl.formatMessage(
+            {
+              id: 'admin.settings.imports.csv.createdCount',
+              defaultMessage: '{count} created',
+            },
+            { count: run.totals.created }
+          )}
+          {run.totals.updated > 0 &&
+            intl.formatMessage(
+              {
+                id: 'admin.settings.imports.csv.updatedSuffix',
+                defaultMessage: ', {count} updated',
+              },
+              { count: run.totals.updated }
+            )}
+          {run.totals.skipped > 0 &&
+            intl.formatMessage(
+              {
+                id: 'admin.settings.imports.csv.skippedSuffix',
+                defaultMessage: ', {count} skipped',
+              },
+              { count: run.totals.skipped }
+            )}
+          {run.totals.errors > 0 &&
+            intl.formatMessage(
+              {
+                id: 'admin.settings.imports.csv.errorsSuffix',
+                defaultMessage: ' ({count} row errors, see import history)',
+              },
+              { count: run.totals.errors }
+            )}
+          .
         </p>
         <Button variant="outline" size="sm" onClick={onReset}>
-          Import another file
+          {intl.formatMessage({
+            id: 'admin.settings.imports.csv.importAnotherFile',
+            defaultMessage: 'Import another file',
+          })}
         </Button>
       </div>
     )
@@ -430,13 +645,22 @@ function ImportProgress({
     <div className="space-y-3 rounded-lg border border-destructive/30 p-4">
       <div className="flex items-center gap-2">
         <ExclamationCircleIcon className="size-5 text-destructive" />
-        <p className="text-sm font-medium">Import failed</p>
+        <p className="text-sm font-medium">
+          {intl.formatMessage({
+            id: 'admin.settings.imports.csv.importFailed',
+            defaultMessage: 'Import failed',
+          })}
+        </p>
       </div>
       <p className="text-sm text-muted-foreground">
-        {run?.errorReport?.[0]?.message ?? 'Something went wrong while importing.'}
+        {run?.errorReport?.[0]?.message ??
+          intl.formatMessage({
+            id: 'admin.settings.imports.csv.importFailedFallback',
+            defaultMessage: 'Something went wrong while importing.',
+          })}
       </p>
       <Button variant="outline" size="sm" onClick={onReset}>
-        Try again
+        {intl.formatMessage({ id: 'common.errorPage.tryAgain', defaultMessage: 'Try again' })}
       </Button>
     </div>
   )

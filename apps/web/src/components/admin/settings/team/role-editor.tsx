@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import type { IntlShape } from 'react-intl'
 import { useSuspenseQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
 import { toast } from 'sonner'
@@ -10,6 +11,7 @@ import {
 } from '@/lib/shared/permissions'
 import { CATEGORY_LABELS } from '@/lib/client/permission-labels'
 import { usePermissions, useHasPermission } from '@/lib/client/hooks/use-root-context'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { settingsQueries } from '@/lib/client/queries/settings'
 import { createRoleFn, updateRoleFn, deleteRoleFn, listRolesFn } from '@/lib/server/functions/roles'
 import { Badge } from '@/components/ui/badge'
@@ -45,11 +47,6 @@ type RoleEditorProps =
 
 const ROLES_TAB = { to: '/admin/settings/members', search: { tab: 'roles' } } as const
 
-const CRUMBS = [
-  { label: 'Members & Teams', to: '/admin/settings/members' },
-  { label: 'Roles', to: '/admin/settings/members', search: { tab: 'roles' } },
-]
-
 /**
  * Full-page create / edit / view surface for a role, shared by /roles/new and
  * /roles/:roleId. Custom roles are editable by role.manage holders; system
@@ -57,11 +54,30 @@ const CRUMBS = [
  * mode adds a Start-from band that stages a source role into the grid.
  */
 export function RoleEditor(props: RoleEditorProps) {
+  const intl = useOptionalIntl()
   const { data } = useSuspenseQuery(settingsQueries.roles())
   const held = usePermissions()
   const canManage = useHasPermission(PERMISSIONS.ROLE_MANAGE)
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+
+  const crumbs = [
+    {
+      label: intl.formatMessage({
+        id: 'admin.settings.team.roleEditor.crumbMembers',
+        defaultMessage: 'Members & Teams',
+      }),
+      to: '/admin/settings/members',
+    },
+    {
+      label: intl.formatMessage({
+        id: 'admin.settings.members.tabRoles',
+        defaultMessage: 'Roles',
+      }),
+      to: '/admin/settings/members',
+      search: { tab: 'roles' },
+    },
+  ]
 
   const isCreate = props.mode === 'create'
   const role = props.mode === 'edit' ? data.roles.find((r) => r.id === props.roleId) : undefined
@@ -79,7 +95,7 @@ export function RoleEditor(props: RoleEditorProps) {
     isCreate && sourceId !== 'blank' ? data.roles.find((r) => r.id === sourceId) : null
 
   const [name, setName] = useState(
-    isCreate ? (sourceRole ? `${sourceRole.name} copy`.slice(0, 64) : '') : (role?.name ?? '')
+    isCreate ? (sourceRole ? autoName(sourceRole, intl) : '') : (role?.name ?? '')
   )
   const [description, setDescription] = useState(role?.description ?? '')
   const [selected, setSelected] = useState<Set<PermissionKey>>(() =>
@@ -105,18 +121,25 @@ export function RoleEditor(props: RoleEditorProps) {
     [role?.newPermissionKeys]
   )
 
+  const warnDropped = (dropped: number) => {
+    toast.info(
+      intl.formatMessage(
+        {
+          id: 'admin.settings.team.roleEditor.droppedPermissions',
+          defaultMessage:
+            "{count, plural, one {# permission you don't hold was left off.} other {# permissions you don't hold were left off.}}",
+        },
+        { count: dropped }
+      )
+    )
+  }
+
   // Duplicating via ?from stages source∩ceiling on mount; surface any keys the
   // ceiling dropped once (the Select's own toast only fires on re-pick).
   useEffect(() => {
     if (!isCreate || !sourceRole) return
     const dropped = sourceRole.permissionKeys.filter((k) => !held.has(k as PermissionKey)).length
-    if (dropped > 0) {
-      toast.info(
-        `${dropped} permission${dropped === 1 ? '' : 's'} you don't hold ${
-          dropped === 1 ? 'was' : 'were'
-        } left off.`
-      )
-    }
+    if (dropped > 0) warnDropped(dropped)
     // Mount-only: sourceRole is fixed for the life of this route (key on ?from).
   }, [])
 
@@ -125,16 +148,12 @@ export function RoleEditor(props: RoleEditorProps) {
     const next = nextId === 'blank' ? null : (data.roles.find((r) => r.id === nextId) ?? null)
     setSelected(stageFrom(next, held))
     // Only auto-fill the name while the user hasn't typed their own.
-    setName((prev) => (prev === '' || prev === autoName(sourceRole) ? autoName(next) : prev))
+    setName((prev) =>
+      prev === '' || prev === autoName(sourceRole, intl) ? autoName(next, intl) : prev
+    )
     if (next) {
       const dropped = next.permissionKeys.filter((k) => !held.has(k as PermissionKey)).length
-      if (dropped > 0) {
-        toast.info(
-          `${dropped} permission${dropped === 1 ? '' : 's'} you don't hold ${
-            dropped === 1 ? 'was' : 'were'
-          } left off.`
-        )
-      }
+      if (dropped > 0) warnDropped(dropped)
     }
   }
 
@@ -161,16 +180,39 @@ export function RoleEditor(props: RoleEditorProps) {
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['settings', 'roles'] })
-      toast.success(isCreate ? 'Role created' : 'Role saved')
+      toast.success(
+        isCreate
+          ? intl.formatMessage({
+              id: 'admin.settings.team.roleEditor.createdToast',
+              defaultMessage: 'Role created',
+            })
+          : intl.formatMessage({
+              id: 'admin.settings.team.roleEditor.savedToast',
+              defaultMessage: 'Role saved',
+            })
+      )
       navigate(ROLES_TAB)
     },
     onError: (error) => {
-      toastError(error, "Couldn't save role. Try again.")
+      toastError(
+        error,
+        intl.formatMessage({
+          id: 'admin.settings.team.roleEditor.saveFailed',
+          defaultMessage: "Couldn't save role. Try again.",
+        })
+      )
     },
   })
 
   if (props.mode === 'edit' && !role) {
-    return <p className="text-sm text-muted-foreground">Role not found.</p>
+    return (
+      <p className="text-sm text-muted-foreground">
+        {intl.formatMessage({
+          id: 'admin.settings.team.roleEditor.notFound',
+          defaultMessage: 'Role not found.',
+        })}
+      </p>
+    )
   }
 
   const duplicate = () =>
@@ -188,17 +230,25 @@ export function RoleEditor(props: RoleEditorProps) {
     })
   }
 
-  const countWord = isCreate ? 'selected' : 'granted'
-
   return (
     <SettingsPage
-      title={isCreate ? 'New role' : (role?.name ?? '')}
+      title={
+        isCreate
+          ? intl.formatMessage({
+              id: 'admin.settings.team.roleEditor.newRole',
+              defaultMessage: 'New role',
+            })
+          : (role?.name ?? '')
+      }
       description={readOnly ? role?.description || undefined : undefined}
-      crumbs={CRUMBS}
+      crumbs={crumbs}
       actions={
         canManage && !isCreate ? (
           <Button variant="outline" size="sm" onClick={duplicate}>
-            Duplicate
+            {intl.formatMessage({
+              id: 'admin.settings.security.idp.table.duplicate',
+              defaultMessage: 'Duplicate',
+            })}
           </Button>
         ) : undefined
       }
@@ -207,24 +257,40 @@ export function RoleEditor(props: RoleEditorProps) {
         <SettingsCard>
           <div className="space-y-4">
             <div className="space-y-1.5">
-              <Label htmlFor="role-editor-name">Name</Label>
+              <Label htmlFor="role-editor-name">
+                {intl.formatMessage({
+                  id: 'admin.people.new.nameLabel',
+                  defaultMessage: 'Name',
+                })}
+              </Label>
               <Input
                 id="role-editor-name"
                 className="max-w-xs font-medium"
                 value={name}
                 maxLength={64}
-                placeholder="Support Lead"
+                placeholder={intl.formatMessage({
+                  id: 'admin.settings.team.roleEditor.namePlaceholder',
+                  defaultMessage: 'Support Lead',
+                })}
                 onChange={(e) => setName(e.target.value)}
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="role-editor-description">Description</Label>
+              <Label htmlFor="role-editor-description">
+                {intl.formatMessage({
+                  id: 'admin.roadmap.form.description',
+                  defaultMessage: 'Description',
+                })}
+              </Label>
               <Input
                 id="role-editor-description"
                 className="w-full max-w-md"
                 value={description}
                 maxLength={280}
-                placeholder="What is this role for?"
+                placeholder={intl.formatMessage({
+                  id: 'admin.settings.team.roleEditor.descriptionPlaceholder',
+                  defaultMessage: 'What is this role for?',
+                })}
                 onChange={(e) => setDescription(e.target.value)}
               />
             </div>
@@ -234,22 +300,42 @@ export function RoleEditor(props: RoleEditorProps) {
 
       {isCreate && (
         <div className="flex flex-wrap items-center gap-3 rounded-lg border bg-muted/30 px-3.5 py-2.5">
-          <Label className="text-[13px] text-muted-foreground">Start from</Label>
+          <Label className="text-[13px] text-muted-foreground">
+            {intl.formatMessage({
+              id: 'admin.settings.team.roleEditor.startFrom',
+              defaultMessage: 'Start from',
+            })}
+          </Label>
           <Select value={sourceId} onValueChange={onSourceChange}>
             <SelectTrigger size="sm" className="w-[280px]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="blank">Blank, no permissions</SelectItem>
+              <SelectItem value="blank">
+                {intl.formatMessage({
+                  id: 'admin.settings.team.roleEditor.blankOption',
+                  defaultMessage: 'Blank, no permissions',
+                })}
+              </SelectItem>
               {data.roles.map((r) => (
                 <SelectItem key={r.id} value={r.id}>
-                  Duplicate {r.name} · {r.permissionKeys.length} permissions
+                  {intl.formatMessage(
+                    {
+                      id: 'admin.settings.team.roleEditor.duplicateOption',
+                      defaultMessage:
+                        'Duplicate {name} · {count, plural, one {# permission} other {# permissions}}',
+                    },
+                    { name: r.name, count: r.permissionKeys.length }
+                  )}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
           <span className="text-xs text-muted-foreground">
-            Picking a role stages its permissions below. Edit from there.
+            {intl.formatMessage({
+              id: 'admin.settings.team.roleEditor.stageHint',
+              defaultMessage: 'Picking a role stages its permissions below. Edit from there.',
+            })}
           </span>
         </div>
       )}
@@ -258,7 +344,13 @@ export function RoleEditor(props: RoleEditorProps) {
         <SearchInput
           value={search}
           onChange={setSearch}
-          placeholder={`Filter ${PERMISSION_CATALOGUE.length} permissions…`}
+          placeholder={intl.formatMessage(
+            {
+              id: 'admin.settings.team.roleEditor.filterPlaceholder',
+              defaultMessage: 'Filter {count} permissions…',
+            },
+            { count: PERMISSION_CATALOGUE.length }
+          )}
         />
       </div>
 
@@ -276,7 +368,13 @@ export function RoleEditor(props: RoleEditorProps) {
                 <Checkbox
                   checked={grantedCount === 0 ? false : allOn ? true : 'indeterminate'}
                   disabled={readOnly || togglable.length === 0}
-                  aria-label={`Toggle all ${CATEGORY_LABELS[category]} permissions`}
+                  aria-label={intl.formatMessage(
+                    {
+                      id: 'admin.settings.team.roleEditor.toggleCategory',
+                      defaultMessage: 'Toggle all {category} permissions',
+                    },
+                    { category: CATEGORY_LABELS[category] }
+                  )}
                   onCheckedChange={(checked) => {
                     setSelected((prev) => {
                       const next = new Set(prev)
@@ -307,11 +405,17 @@ export function RoleEditor(props: RoleEditorProps) {
                   <span className="text-sm font-medium">{CATEGORY_LABELS[category]}</span>
                   {inCategory.some((p) => newKeys.has(p.key)) && (
                     <Badge size="sm" variant="outline">
-                      New
+                      {intl.formatMessage({ id: 'common.new', defaultMessage: 'New' })}
                     </Badge>
                   )}
                   <span className="ml-auto text-[13px] text-muted-foreground tabular-nums">
-                    {grantedCount} of {inCategory.length}
+                    {intl.formatMessage(
+                      {
+                        id: 'admin.settings.team.roleEditor.grantedCount',
+                        defaultMessage: '{granted} of {total}',
+                      },
+                      { granted: grantedCount, total: inCategory.length }
+                    )}
                   </span>
                 </button>
               </div>
@@ -338,12 +442,15 @@ export function RoleEditor(props: RoleEditorProps) {
                         <span className="font-mono text-xs">{p.key}</span>
                         {newKeys.has(p.key) && (
                           <Badge size="sm" variant="outline">
-                            New
+                            {intl.formatMessage({ id: 'common.new', defaultMessage: 'New' })}
                           </Badge>
                         )}
                         {aboveCeiling && (
                           <span className="ml-auto hidden text-right text-xs text-muted-foreground sm:block">
-                            You don't hold this
+                            {intl.formatMessage({
+                              id: 'admin.settings.team.roleEditor.aboveCeiling',
+                              defaultMessage: "You don't hold this",
+                            })}
                           </span>
                         )}
                       </li>
@@ -359,10 +466,28 @@ export function RoleEditor(props: RoleEditorProps) {
       {!readOnly && (
         <div className="sticky bottom-0 flex items-center justify-between gap-3 rounded-lg border bg-background px-4 py-3 shadow-sm">
           <span className="text-xs text-muted-foreground">
-            {selected.size} of {PERMISSION_CATALOGUE.length} {countWord}
+            {isCreate
+              ? intl.formatMessage(
+                  {
+                    id: 'admin.settings.team.roleEditor.selectedCount',
+                    defaultMessage: '{selected} of {total} selected',
+                  },
+                  { selected: selected.size, total: PERMISSION_CATALOGUE.length }
+                )
+              : intl.formatMessage(
+                  {
+                    id: 'admin.settings.team.roleEditor.grantedSummary',
+                    defaultMessage: '{selected} of {total} granted',
+                  },
+                  { selected: selected.size, total: PERMISSION_CATALOGUE.length }
+                )}
             {isCreate && sourceRole && (
               <>
-                {' · staged from '}
+                {' · '}
+                {intl.formatMessage({
+                  id: 'admin.settings.team.roleEditor.stagedFrom',
+                  defaultMessage: 'staged from',
+                })}{' '}
                 <span className="font-medium text-foreground">{sourceRole.name}</span>
               </>
             )}
@@ -370,7 +495,14 @@ export function RoleEditor(props: RoleEditorProps) {
               <>
                 {' · '}
                 <span className="font-medium text-foreground">
-                  {newKeys.size} permission{newKeys.size === 1 ? '' : 's'} added since last edit
+                  {intl.formatMessage(
+                    {
+                      id: 'admin.settings.team.roleEditor.addedSinceEdit',
+                      defaultMessage:
+                        '{count, plural, one {# permission added since last edit} other {# permissions added since last edit}}',
+                    },
+                    { count: newKeys.size }
+                  )}
                 </span>
               </>
             )}
@@ -383,11 +515,14 @@ export function RoleEditor(props: RoleEditorProps) {
                 className="mr-auto"
                 onClick={() => setDeleteOpen(true)}
               >
-                Delete role
+                {intl.formatMessage({
+                  id: 'admin.settings.team.roleEditor.deleteRole',
+                  defaultMessage: 'Delete role',
+                })}
               </Button>
             )}
             <Button variant="outline" size="sm" onClick={() => navigate(ROLES_TAB)}>
-              Cancel
+              {intl.formatMessage({ id: 'common.cancel', defaultMessage: 'Cancel' })}
             </Button>
             <Button
               size="sm"
@@ -396,11 +531,23 @@ export function RoleEditor(props: RoleEditorProps) {
             >
               {submit.isPending
                 ? isCreate
-                  ? 'Creating…'
-                  : 'Saving…'
+                  ? intl.formatMessage({
+                      id: 'admin.settings.team.roleEditor.creating',
+                      defaultMessage: 'Creating…',
+                    })
+                  : intl.formatMessage({
+                      id: 'admin.settings.team.roleEditor.saving',
+                      defaultMessage: 'Saving…',
+                    })
                 : isCreate
-                  ? 'Create role'
-                  : 'Save role'}
+                  ? intl.formatMessage({
+                      id: 'admin.settings.team.roleEditor.createRole',
+                      defaultMessage: 'Create role',
+                    })
+                  : intl.formatMessage({
+                      id: 'admin.settings.team.roleEditor.saveRole',
+                      defaultMessage: 'Save role',
+                    })}
             </Button>
           </div>
         </div>
@@ -429,6 +576,7 @@ function DeleteRoleDialog({
   role: RoleWithMeta
   roles: RoleWithMeta[]
 }) {
+  const intl = useOptionalIntl()
   const [reassignTo, setReassignTo] = useState('')
   const navigate = useNavigate()
   const queryClient = useQueryClient()
@@ -443,11 +591,22 @@ function DeleteRoleDialog({
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['settings', 'roles'] })
       await queryClient.invalidateQueries({ queryKey: ['settings', 'team'] })
-      toast.success('Role deleted')
+      toast.success(
+        intl.formatMessage({
+          id: 'admin.settings.team.roleEditor.deletedToast',
+          defaultMessage: 'Role deleted',
+        })
+      )
       navigate(ROLES_TAB)
     },
     onError: (error) => {
-      toastError(error, "Couldn't delete role. Try again.")
+      toastError(
+        error,
+        intl.formatMessage({
+          id: 'admin.settings.team.roleEditor.deleteFailed',
+          defaultMessage: "Couldn't delete role. Try again.",
+        })
+      )
     },
   })
 
@@ -455,19 +614,44 @@ function DeleteRoleDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Delete role?</DialogTitle>
+          <DialogTitle>
+            {intl.formatMessage({
+              id: 'admin.settings.team.roleEditor.deleteTitle',
+              defaultMessage: 'Delete role?',
+            })}
+          </DialogTitle>
           <DialogDescription>
             {needsReassign
-              ? `${role.memberCount} member${role.memberCount === 1 ? '' : 's'} hold this role. Choose the role they should move to. They keep workspace access either way.`
-              : 'Nobody holds this role. This removes it permanently.'}
+              ? intl.formatMessage(
+                  {
+                    id: 'admin.settings.team.roleEditor.deleteDescriptionMembers',
+                    defaultMessage:
+                      '{count, plural, one {# member hold this role. Choose the role they should move to. They keep workspace access either way.} other {# members hold this role. Choose the role they should move to. They keep workspace access either way.}}',
+                  },
+                  { count: role.memberCount }
+                )
+              : intl.formatMessage({
+                  id: 'admin.settings.team.roleEditor.deleteDescriptionNobody',
+                  defaultMessage: 'Nobody holds this role. This removes it permanently.',
+                })}
           </DialogDescription>
         </DialogHeader>
         {needsReassign && (
           <div className="space-y-2">
-            <Label>Reassign members to</Label>
+            <Label>
+              {intl.formatMessage({
+                id: 'admin.settings.team.roleEditor.reassignTo',
+                defaultMessage: 'Reassign members to',
+              })}
+            </Label>
             <Select value={reassignTo} onValueChange={setReassignTo}>
               <SelectTrigger>
-                <SelectValue placeholder="Choose a role" />
+                <SelectValue
+                  placeholder={intl.formatMessage({
+                    id: 'admin.settings.team.roleEditor.chooseRole',
+                    defaultMessage: 'Choose a role',
+                  })}
+                />
               </SelectTrigger>
               <SelectContent>
                 {targets.map((r) => (
@@ -481,14 +665,22 @@ function DeleteRoleDialog({
         )}
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
+            {intl.formatMessage({ id: 'common.cancel', defaultMessage: 'Cancel' })}
           </Button>
           <Button
             variant="destructive"
             onClick={() => remove.mutate()}
             disabled={remove.isPending || (needsReassign && !reassignTo)}
           >
-            {remove.isPending ? 'Deleting…' : 'Delete role'}
+            {remove.isPending
+              ? intl.formatMessage({
+                  id: 'admin.settings.team.roleEditor.deleting',
+                  defaultMessage: 'Deleting…',
+                })
+              : intl.formatMessage({
+                  id: 'admin.settings.team.roleEditor.deleteRole',
+                  defaultMessage: 'Delete role',
+                })}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -505,6 +697,12 @@ function stageFrom(
   return new Set((source.permissionKeys as PermissionKey[]).filter((k) => held.has(k)))
 }
 
-function autoName(source: RoleWithMeta | null | undefined): string {
-  return source ? `${source.name} copy`.slice(0, 64) : ''
+function autoName(source: RoleWithMeta | null | undefined, intl: IntlShape): string {
+  if (!source) return ''
+  return intl
+    .formatMessage(
+      { id: 'admin.settings.team.roleEditor.copyName', defaultMessage: '{name} copy' },
+      { name: source.name }
+    )
+    .slice(0, 64)
 }

@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useRouter } from '@tanstack/react-router'
 import { WarningBox } from '@/components/shared/warning-box'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -32,6 +33,7 @@ export function RotateWebhookSecretDialog({
 }: RotateWebhookSecretDialogProps) {
   const router = useRouter()
   const queryClient = useQueryClient()
+  const intl = useOptionalIntl()
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
 
@@ -50,7 +52,15 @@ export function RotateWebhookSecretDialog({
       onOpenChange(false)
     } catch (err) {
       console.error('Failed to rotate webhook secret:', err)
-      setError(errorText(err, 'Failed to rotate secret'))
+      setError(
+        errorText(
+          err,
+          intl.formatMessage({
+            id: 'admin.webhooks.rotate.failed',
+            defaultMessage: 'Failed to rotate secret',
+          })
+        )
+      )
     }
   }
 
@@ -58,22 +68,42 @@ export function RotateWebhookSecretDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Rotate signing secret</DialogTitle>
+          <DialogTitle>
+            {intl.formatMessage({
+              id: 'admin.webhooks.rotate.title',
+              defaultMessage: 'Rotate signing secret',
+            })}
+          </DialogTitle>
           <DialogDescription>
-            Generate a new signing secret for this webhook endpoint.
+            {intl.formatMessage({
+              id: 'admin.webhooks.rotate.description',
+              defaultMessage: 'Generate a new signing secret for this webhook endpoint.',
+            })}
           </DialogDescription>
         </DialogHeader>
 
         <div className="py-4">
           <WarningBox
             variant="warning"
-            title="The old secret will stop working immediately"
-            description="Your endpoint will need to use the new secret to verify webhook signatures. Make sure to update your code before rotating."
+            title={intl.formatMessage({
+              id: 'admin.webhooks.rotate.warningTitle',
+              defaultMessage: 'The old secret will stop working immediately',
+            })}
+            description={intl.formatMessage({
+              id: 'admin.webhooks.rotate.warningBody',
+              defaultMessage:
+                'Your endpoint will need to use the new secret to verify webhook signatures. Make sure to update your code before rotating.',
+            })}
           />
 
           <div className="mt-4 rounded-lg border p-3 bg-muted/30">
             <p className="text-xs text-muted-foreground">
-              <strong>Endpoint:</strong>{' '}
+              <strong>
+                {intl.formatMessage({
+                  id: 'admin.webhooks.rotate.endpointLabel',
+                  defaultMessage: 'Endpoint:',
+                })}
+              </strong>{' '}
               <code className="font-mono text-foreground break-all">{webhook.url}</code>
             </p>
           </div>
@@ -88,10 +118,18 @@ export function RotateWebhookSecretDialog({
             onClick={() => onOpenChange(false)}
             disabled={isPending}
           >
-            Cancel
+            {intl.formatMessage({ id: 'common.cancel', defaultMessage: 'Cancel' })}
           </Button>
           <Button onClick={handleRotate} disabled={isPending}>
-            {isPending ? 'Rotating...' : 'Rotate secret'}
+            {isPending
+              ? intl.formatMessage({
+                  id: 'admin.webhooks.rotate.rotating',
+                  defaultMessage: 'Rotating...',
+                })
+              : intl.formatMessage({
+                  id: 'admin.webhooks.rotateSecret',
+                  defaultMessage: 'Rotate secret',
+                })}
           </Button>
         </DialogFooter>
       </DialogContent>
