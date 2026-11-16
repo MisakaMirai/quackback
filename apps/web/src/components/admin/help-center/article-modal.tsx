@@ -9,6 +9,7 @@ import { ModalHeader } from '@/components/shared/modal-header'
 import { ModalFooter } from '@/components/shared/modal-footer'
 import { Form } from '@/components/ui/form'
 import { Button } from '@/components/ui/button'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import { HelpCenterFormFields } from './help-center-form-fields'
 import {
@@ -37,6 +38,7 @@ interface ArticleModalContentProps {
 }
 
 export function ArticleModalContent({ articleId, onClose }: ArticleModalContentProps) {
+  const intl = useOptionalIntl()
   const [contentJson, setContentJson] = useState<JSONContent | null>(null)
   const [translationsOpen, setTranslationsOpen] = useState(false)
   const [feedbackOpen, setFeedbackOpen] = useState(false)
@@ -171,7 +173,10 @@ export function ArticleModalContent({ articleId, onClose }: ArticleModalContentP
     <Form {...form}>
       <form onSubmit={handleSubmit} onKeyDown={handleKeyDown} className="flex h-full flex-col">
         <ModalHeader
-          section="Help center"
+          section={intl.formatMessage({
+            id: 'admin.nav.helpCenter',
+            defaultMessage: 'Help center',
+          })}
           title={article.title}
           onClose={onClose}
           viewUrl={publicArticleUrl}
@@ -194,7 +199,17 @@ export function ArticleModalContent({ articleId, onClose }: ArticleModalContentP
 
         <ModalFooter
           onCancel={onClose}
-          submitLabel={updateArticleMutation.isPending ? 'Saving...' : 'Save changes'}
+          submitLabel={
+            updateArticleMutation.isPending
+              ? intl.formatMessage({
+                  id: 'admin.helpCenter.actions.saving',
+                  defaultMessage: 'Saving...',
+                })
+              : intl.formatMessage({
+                  id: 'admin.helpCenter.actions.saveChanges',
+                  defaultMessage: 'Save changes',
+                })
+          }
           isPending={updateArticleMutation.isPending}
           submitDisabled={!isDirty}
         >
@@ -202,12 +217,20 @@ export function ArticleModalContent({ articleId, onClose }: ArticleModalContentP
             <SheetTrigger asChild>
               <Button type="button" variant="outline" size="sm" className="lg:hidden">
                 <Cog6ToothIcon className="mr-1.5 h-4 w-4" />
-                Settings
+                {intl.formatMessage({
+                  id: 'admin.helpCenter.actions.settings',
+                  defaultMessage: 'Settings',
+                })}
               </Button>
             </SheetTrigger>
             <SheetContent side="bottom" className="h-[70vh]">
               <SheetHeader>
-                <SheetTitle>Article settings</SheetTitle>
+                <SheetTitle>
+                  {intl.formatMessage({
+                    id: 'admin.helpCenter.settings.title',
+                    defaultMessage: 'Article settings',
+                  })}
+                </SheetTitle>
               </SheetHeader>
               <div className="overflow-y-auto py-4">
                 <HelpCenterMetadataSidebarContent {...sidebar} />

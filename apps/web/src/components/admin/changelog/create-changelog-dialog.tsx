@@ -9,6 +9,7 @@ import { useCreateChangelog } from '@/lib/client/mutations/changelog'
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { Cog6ToothIcon } from '@heroicons/react/24/solid'
 import { NewButton } from '@/components/shared/new-button'
 import { Form } from '@/components/ui/form'
@@ -34,6 +35,7 @@ export function CreateChangelogDialog({
   open: openProp,
   onOpenChange,
 }: CreateChangelogDialogProps) {
+  const intl = useOptionalIntl()
   const [internalOpen, setInternalOpen] = useState(false)
   const isControlled = openProp !== undefined
   const open = isControlled ? openProp : internalOpen
@@ -144,15 +146,32 @@ export function CreateChangelogDialog({
 
   const getSubmitButtonText = () => {
     if (createChangelogMutation.isPending) {
-      return publishState.type === 'published' ? 'Publishing...' : 'Saving...'
+      return publishState.type === 'published'
+        ? intl.formatMessage({
+            id: 'admin.changelog.actions.publishing',
+            defaultMessage: 'Publishing...',
+          })
+        : intl.formatMessage({
+            id: 'admin.changelog.actions.saving',
+            defaultMessage: 'Saving...',
+          })
     }
     switch (publishState.type) {
       case 'draft':
-        return 'Save draft'
+        return intl.formatMessage({
+          id: 'admin.changelog.actions.saveDraft',
+          defaultMessage: 'Save draft',
+        })
       case 'scheduled':
-        return 'Schedule'
+        return intl.formatMessage({
+          id: 'admin.changelog.schedule',
+          defaultMessage: 'Schedule',
+        })
       case 'published':
-        return 'Publish now'
+        return intl.formatMessage({
+          id: 'admin.changelog.actions.publishNow',
+          defaultMessage: 'Publish now',
+        })
     }
   }
 
@@ -168,7 +187,12 @@ export function CreateChangelogDialog({
         onKeyDown={handleKeyDown}
         showCloseButton={false}
       >
-        <DialogTitle className="sr-only">Create changelog entry</DialogTitle>
+        <DialogTitle className="sr-only">
+          {intl.formatMessage({
+            id: 'admin.changelog.create.title',
+            defaultMessage: 'Create changelog entry',
+          })}
+        </DialogTitle>
 
         <Form {...form}>
           <form onSubmit={handleSubmit} className="flex flex-col h-full">
@@ -219,12 +243,20 @@ export function CreateChangelogDialog({
                 <SheetTrigger asChild>
                   <Button type="button" variant="outline" size="sm" className="lg:hidden">
                     <Cog6ToothIcon className="h-4 w-4 mr-1.5" />
-                    Settings
+                    {intl.formatMessage({
+                      id: 'admin.changelog.actions.settings',
+                      defaultMessage: 'Settings',
+                    })}
                   </Button>
                 </SheetTrigger>
                 <SheetContent side="bottom" className="h-[70vh]">
                   <SheetHeader>
-                    <SheetTitle>Entry settings</SheetTitle>
+                    <SheetTitle>
+                      {intl.formatMessage({
+                        id: 'admin.changelog.settings.title',
+                        defaultMessage: 'Entry settings',
+                      })}
+                    </SheetTitle>
                   </SheetHeader>
                   <div className="py-4 overflow-y-auto">
                     <ChangelogMetadataSidebarContent

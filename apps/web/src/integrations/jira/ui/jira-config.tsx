@@ -12,6 +12,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { useUpdateIntegration } from '@/lib/client/mutations'
 import { fetchExternalStatusesFn } from '@/lib/server/functions/external-statuses'
 import {
@@ -43,8 +44,14 @@ interface JiraConfigProps {
 const EVENT_CONFIG = [
   {
     id: 'post.created' as const,
-    label: 'Create issue from new feedback',
-    description: 'Automatically create a Jira issue when new feedback is submitted',
+    label: {
+      id: 'admin.integrations.config.eventCreateIssue',
+      defaultMessage: 'Create issue from new feedback',
+    },
+    description: {
+      id: 'admin.integrations.jira.eventCreateIssueDescription',
+      defaultMessage: 'Automatically create a Jira issue when new feedback is submitted',
+    },
   },
 ]
 
@@ -62,6 +69,7 @@ export function JiraConfig({
   initialEventMappings,
   enabled,
 }: JiraConfigProps) {
+  const intl = useOptionalIntl()
   const updateMutation = useUpdateIntegration()
 
   const { projectId: initialProjectId, issueTypeId: initialIssueTypeId } = parseChannelId(
@@ -96,24 +104,37 @@ export function JiraConfig({
       const result = await fetchJiraProjectsFn()
       setProjects(result)
     } catch {
-      setProjectError('Failed to load projects. Please try again.')
+      setProjectError(
+        intl.formatMessage({
+          id: 'admin.integrations.config.loadProjectsFailed',
+          defaultMessage: 'Failed to load projects. Please try again.',
+        })
+      )
     } finally {
       setLoadingProjects(false)
     }
-  }, [])
+  }, [intl])
 
-  const fetchIssueTypes = useCallback(async (projectId: string) => {
-    setLoadingIssueTypes(true)
-    setIssueTypeError(null)
-    try {
-      const result = await fetchJiraIssueTypesFn({ data: { projectId } })
-      setIssueTypes(result.filter((t: JiraIssueType) => !t.subtask))
-    } catch {
-      setIssueTypeError('Failed to load issue types. Please try again.')
-    } finally {
-      setLoadingIssueTypes(false)
-    }
-  }, [])
+  const fetchIssueTypes = useCallback(
+    async (projectId: string) => {
+      setLoadingIssueTypes(true)
+      setIssueTypeError(null)
+      try {
+        const result = await fetchJiraIssueTypesFn({ data: { projectId } })
+        setIssueTypes(result.filter((t: JiraIssueType) => !t.subtask))
+      } catch {
+        setIssueTypeError(
+          intl.formatMessage({
+            id: 'admin.integrations.config.loadIssueTypesFailed',
+            defaultMessage: 'Failed to load issue types. Please try again.',
+          })
+        )
+      } finally {
+        setLoadingIssueTypes(false)
+      }
+    },
+    [intl]
+  )
 
   useEffect(() => {
     fetchProjects()
@@ -164,9 +185,17 @@ export function JiraConfig({
       <div className="flex items-center justify-between">
         <div>
           <Label htmlFor="enabled-toggle" className="text-base font-medium">
-            Integration enabled
+            {intl.formatMessage({
+              id: 'admin.integrations.config.enabled',
+              defaultMessage: 'Integration enabled',
+            })}
           </Label>
-          <p className="text-xs text-muted-foreground">Turn off to pause all Jira issue syncing</p>
+          <p className="text-xs text-muted-foreground">
+            {intl.formatMessage({
+              id: 'admin.integrations.jira.disableHint',
+              defaultMessage: 'Turn off to pause all Jira issue syncing',
+            })}
+          </p>
         </div>
         <Switch
           id="enabled-toggle"
@@ -178,7 +207,12 @@ export function JiraConfig({
 
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <Label htmlFor="project-select">Project</Label>
+          <Label htmlFor="project-select">
+            {intl.formatMessage({
+              id: 'admin.integrations.config.project',
+              defaultMessage: 'Project',
+            })}
+          </Label>
           <Button
             variant="ghost"
             size="sm"
@@ -187,7 +221,10 @@ export function JiraConfig({
             className="h-8 gap-1.5 text-xs"
           >
             <ArrowPathIcon className={`h-3.5 w-3.5 ${loadingProjects ? 'animate-spin' : ''}`} />
-            Refresh
+            {intl.formatMessage({
+              id: 'admin.integrations.config.refresh',
+              defaultMessage: 'Refresh',
+            })}
           </Button>
         </div>
         {projectError ? (
@@ -202,10 +239,20 @@ export function JiraConfig({
               {loadingProjects ? (
                 <div className="flex items-center gap-2">
                   <ArrowPathIcon className="h-4 w-4 animate-spin" />
-                  <span>Loading projects...</span>
+                  <span>
+                    {intl.formatMessage({
+                      id: 'admin.integrations.config.loadingProjects',
+                      defaultMessage: 'Loading projects...',
+                    })}
+                  </span>
                 </div>
               ) : (
-                <SelectValue placeholder="Select a project" />
+                <SelectValue
+                  placeholder={intl.formatMessage({
+                    id: 'admin.integrations.config.selectProject',
+                    defaultMessage: 'Select a project',
+                  })}
+                />
               )}
             </SelectTrigger>
             <SelectContent>
@@ -223,12 +270,20 @@ export function JiraConfig({
           </Select>
         )}
         <p className="text-xs text-muted-foreground">
-          New feedback issues will be created in this project.
+          {intl.formatMessage({
+            id: 'admin.integrations.jira.projectHint',
+            defaultMessage: 'New feedback issues will be created in this project.',
+          })}
         </p>
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="issue-type-select">Issue type</Label>
+        <Label htmlFor="issue-type-select">
+          {intl.formatMessage({
+            id: 'admin.integrations.config.issueType',
+            defaultMessage: 'Issue type',
+          })}
+        </Label>
         {issueTypeError ? (
           <p className="text-sm text-destructive">{issueTypeError}</p>
         ) : (
@@ -241,11 +296,26 @@ export function JiraConfig({
               {loadingIssueTypes ? (
                 <div className="flex items-center gap-2">
                   <ArrowPathIcon className="h-4 w-4 animate-spin" />
-                  <span>Loading issue types...</span>
+                  <span>
+                    {intl.formatMessage({
+                      id: 'admin.integrations.config.loadingIssueTypes',
+                      defaultMessage: 'Loading issue types...',
+                    })}
+                  </span>
                 </div>
               ) : (
                 <SelectValue
-                  placeholder={selectedProject ? 'Select an issue type' : 'Select a project first'}
+                  placeholder={
+                    selectedProject
+                      ? intl.formatMessage({
+                          id: 'admin.integrations.config.selectIssueType',
+                          defaultMessage: 'Select an issue type',
+                        })
+                      : intl.formatMessage({
+                          id: 'admin.integrations.config.selectProjectFirst',
+                          defaultMessage: 'Select a project first',
+                        })
+                  }
                 />
               )}
             </SelectTrigger>
@@ -259,13 +329,26 @@ export function JiraConfig({
           </Select>
         )}
         <p className="text-xs text-muted-foreground">
-          The issue type used when creating new issues from feedback.
+          {intl.formatMessage({
+            id: 'admin.integrations.jira.issueTypeHint',
+            defaultMessage: 'The issue type used when creating new issues from feedback.',
+          })}
         </p>
       </div>
 
       <div className="space-y-3">
-        <Label className="text-base font-medium">Events</Label>
-        <p className="text-xs text-muted-foreground">Choose which events trigger issue creation</p>
+        <Label className="text-base font-medium">
+          {intl.formatMessage({
+            id: 'admin.integrations.config.events',
+            defaultMessage: 'Events',
+          })}
+        </Label>
+        <p className="text-xs text-muted-foreground">
+          {intl.formatMessage({
+            id: 'admin.integrations.config.chooseEventsIssueCreation',
+            defaultMessage: 'Choose which events trigger issue creation',
+          })}
+        </p>
         <div className="space-y-3 pt-2">
           {EVENT_CONFIG.map((event) => (
             <div
@@ -273,8 +356,10 @@ export function JiraConfig({
               className="flex items-center justify-between rounded-lg border border-border/50 p-3"
             >
               <div>
-                <div className="font-medium text-sm">{event.label}</div>
-                <div className="text-xs text-muted-foreground">{event.description}</div>
+                <div className="font-medium text-sm">{intl.formatMessage(event.label)}</div>
+                <div className="text-xs text-muted-foreground">
+                  {intl.formatMessage(event.description)}
+                </div>
               </div>
               <Switch
                 checked={eventSettings[event.id] ?? false}
@@ -289,13 +374,22 @@ export function JiraConfig({
       {saving && (
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <ArrowPathIcon className="h-4 w-4 animate-spin" />
-          <span>Saving...</span>
+          <span>
+            {intl.formatMessage({
+              id: 'admin.integrations.config.saving',
+              defaultMessage: 'Saving...',
+            })}
+          </span>
         </div>
       )}
 
       {updateMutation.isError && (
         <div className="text-sm text-destructive">
-          {updateMutation.error?.message || 'Failed to save changes'}
+          {updateMutation.error?.message ||
+            intl.formatMessage({
+              id: 'admin.integrations.config.saveFailed',
+              defaultMessage: 'Failed to save changes',
+            })}
         </div>
       )}
 

@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import {
   Select,
   SelectContent,
@@ -36,10 +37,26 @@ const LOCALE_LABELS: Record<string, string> = {
   'zh-tw': '繁體中文',
 }
 
-const STATUS_LABELS: Record<string, string> = {
-  untranslated: 'Untranslated',
-  draft: 'Draft',
-  published: 'Published',
+type TranslationStatus = 'untranslated' | 'draft' | 'published'
+
+function statusLabel(intl: ReturnType<typeof useOptionalIntl>, status: string): string {
+  switch (status as TranslationStatus) {
+    case 'draft':
+      return intl.formatMessage({
+        id: 'admin.helpCenter.status.draft',
+        defaultMessage: 'Draft',
+      })
+    case 'published':
+      return intl.formatMessage({
+        id: 'admin.helpCenter.status.published',
+        defaultMessage: 'Published',
+      })
+    default:
+      return intl.formatMessage({
+        id: 'admin.helpCenter.status.untranslated',
+        defaultMessage: 'Untranslated',
+      })
+  }
 }
 
 interface ArticleTranslationsDialogProps {
@@ -59,6 +76,7 @@ export function ArticleTranslationsDialog({
   open,
   onOpenChange,
 }: ArticleTranslationsDialogProps) {
+  const intl = useOptionalIntl()
   const configQuery = useQuery({ ...settingsQueries.helpCenterConfig(), enabled: open })
   const additionalLocales = configQuery.data?.locales?.additional ?? []
 
@@ -78,11 +96,19 @@ export function ArticleTranslationsDialog({
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Translations</DialogTitle>
+            <DialogTitle>
+              {intl.formatMessage({
+                id: 'admin.helpCenter.translations.title',
+                defaultMessage: 'Translations',
+              })}
+            </DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
-            No additional locales are enabled yet. Enable one under Help center settings &gt;
-            Domains &amp; languages.
+            {intl.formatMessage({
+              id: 'admin.helpCenter.translations.noLocales',
+              defaultMessage:
+                'No additional locales are enabled yet. Enable one under Help center settings > Domains & languages.',
+            })}
           </p>
         </DialogContent>
       </Dialog>
@@ -93,13 +119,23 @@ export function ArticleTranslationsDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Translations</DialogTitle>
+          <DialogTitle>
+            {intl.formatMessage({
+              id: 'admin.helpCenter.translations.title',
+              defaultMessage: 'Translations',
+            })}
+          </DialogTitle>
         </DialogHeader>
 
         <div className="flex items-center gap-2">
           <Select value={locale ?? undefined} onValueChange={setLocale}>
             <SelectTrigger className="w-48">
-              <SelectValue placeholder="Choose a locale..." />
+              <SelectValue
+                placeholder={intl.formatMessage({
+                  id: 'admin.helpCenter.translations.localePlaceholder',
+                  defaultMessage: 'Choose a locale...',
+                })}
+              />
             </SelectTrigger>
             <SelectContent>
               {additionalLocales.map((l) => (
@@ -111,11 +147,10 @@ export function ArticleTranslationsDialog({
           </Select>
           {locale && (
             <span className="text-xs text-muted-foreground">
-              {
-                STATUS_LABELS[
-                  statusesQuery.data?.find((s) => s.locale === locale)?.status ?? 'untranslated'
-                ]
-              }
+              {statusLabel(
+                intl,
+                statusesQuery.data?.find((s) => s.locale === locale)?.status ?? 'untranslated'
+              )}
             </span>
           )}
         </div>
@@ -142,6 +177,7 @@ function TranslationForm({
   locale: string
   onSaved: () => void
 }) {
+  const intl = useOptionalIntl()
   const queryClient = useQueryClient()
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
@@ -194,7 +230,15 @@ function TranslationForm({
       if (status === 'untranslated') setStatus('draft')
       onSaved()
     } catch (err) {
-      setError(errorText(err, 'Could not save the translation'))
+      setError(
+        errorText(
+          err,
+          intl.formatMessage({
+            id: 'admin.helpCenter.translations.saveError',
+            defaultMessage: 'Could not save the translation',
+          })
+        )
+      )
     } finally {
       setSaving(false)
     }
@@ -211,7 +255,15 @@ function TranslationForm({
       setStatus(next)
       onSaved()
     } catch (err) {
-      setError(errorText(err, 'Could not update the translation status'))
+      setError(
+        errorText(
+          err,
+          intl.formatMessage({
+            id: 'admin.helpCenter.translations.statusError',
+            defaultMessage: 'Could not update the translation status',
+          })
+        )
+      )
     } finally {
       setSaving(false)
     }
@@ -228,7 +280,15 @@ function TranslationForm({
       setContent('')
       onSaved()
     } catch (err) {
-      setError(errorText(err, 'Could not delete the translation'))
+      setError(
+        errorText(
+          err,
+          intl.formatMessage({
+            id: 'admin.helpCenter.translations.deleteError',
+            defaultMessage: 'Could not delete the translation',
+          })
+        )
+      )
     } finally {
       setSaving(false)
       void queryClient.invalidateQueries({
@@ -248,11 +308,21 @@ function TranslationForm({
   return (
     <div className="space-y-3">
       <div className="space-y-1.5">
-        <Label htmlFor="translation-title">Title</Label>
+        <Label htmlFor="translation-title">
+          {intl.formatMessage({
+            id: 'admin.helpCenter.translations.titleLabel',
+            defaultMessage: 'Title',
+          })}
+        </Label>
         <Input id="translation-title" value={title} onChange={(e) => setTitle(e.target.value)} />
       </div>
       <div className="space-y-1.5">
-        <Label htmlFor="translation-description">Description</Label>
+        <Label htmlFor="translation-description">
+          {intl.formatMessage({
+            id: 'admin.helpCenter.form.description',
+            defaultMessage: 'Description',
+          })}
+        </Label>
         <Input
           id="translation-description"
           value={description}
@@ -260,7 +330,12 @@ function TranslationForm({
         />
       </div>
       <div className="space-y-1.5">
-        <Label htmlFor="translation-content">Content (Markdown)</Label>
+        <Label htmlFor="translation-content">
+          {intl.formatMessage({
+            id: 'admin.helpCenter.translations.contentLabel',
+            defaultMessage: 'Content (Markdown)',
+          })}
+        </Label>
         <Textarea
           id="translation-content"
           value={content}
@@ -276,7 +351,10 @@ function TranslationForm({
           disabled={saving || status === 'untranslated'}
           onClick={handleDelete}
         >
-          Delete translation
+          {intl.formatMessage({
+            id: 'admin.helpCenter.translations.delete',
+            defaultMessage: 'Delete translation',
+          })}
         </Button>
         <div className="flex gap-2">
           <Button
@@ -286,11 +364,22 @@ function TranslationForm({
             onClick={handlePublishToggle}
           >
             <InlineSpinner visible={saving} />
-            {status === 'published' ? 'Unpublish' : 'Publish'}
+            {status === 'published'
+              ? intl.formatMessage({
+                  id: 'admin.helpCenter.translations.unpublish',
+                  defaultMessage: 'Unpublish',
+                })
+              : intl.formatMessage({
+                  id: 'admin.helpCenter.actions.publish',
+                  defaultMessage: 'Publish',
+                })}
           </Button>
           <Button type="button" disabled={saving} onClick={handleSave}>
             <InlineSpinner visible={saving} />
-            Save draft
+            {intl.formatMessage({
+              id: 'admin.helpCenter.actions.saveDraft',
+              defaultMessage: 'Save draft',
+            })}
           </Button>
         </div>
       </DialogFooter>
