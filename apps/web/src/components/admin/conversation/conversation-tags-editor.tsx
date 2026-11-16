@@ -18,6 +18,7 @@ import {
   CONVERSATION_TAGS_KEY,
 } from '@/lib/client/hooks/use-conversation-tags'
 import { ColorSwatches, DEFAULT_TAG_COLOR } from '@/components/shared/color-swatches'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 
 /** The slice of the thread query cache this editor writes (it owns `tags`). */
 type ThreadCache = { conversation: ConversationDTO; messages: unknown[]; hasMore?: boolean }
@@ -43,6 +44,7 @@ export const ConversationTagsEditor = memo(function ConversationTagsEditor({
   conversationId: ConversationId
   tags: ConversationTagDTO[]
 }) {
+  const intl = useOptionalIntl()
   const queryClient = useQueryClient()
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
@@ -84,7 +86,13 @@ export const ConversationTagsEditor = memo(function ConversationTagsEditor({
       patchThreadTags(() => updated)
       invalidateLists()
     },
-    onError: () => toast.error('Failed to add tag'),
+    onError: () =>
+      toast.error(
+        intl.formatMessage({
+          id: 'admin.inbox.tagAddFailed',
+          defaultMessage: 'Failed to add tag',
+        })
+      ),
   })
   const removeMut = useMutation({
     mutationFn: (tagId: ConversationTagId) =>
@@ -93,7 +101,13 @@ export const ConversationTagsEditor = memo(function ConversationTagsEditor({
       patchThreadTags(() => updated)
       invalidateLists()
     },
-    onError: () => toast.error('Failed to remove tag'),
+    onError: () =>
+      toast.error(
+        intl.formatMessage({
+          id: 'admin.inbox.tags.removeFailed',
+          defaultMessage: 'Failed to remove tag',
+        })
+      ),
   })
   const updateMut = useMutation({
     mutationFn: (v: { id: ConversationTagId; name?: string; color?: string }) =>
@@ -104,7 +118,13 @@ export const ConversationTagsEditor = memo(function ConversationTagsEditor({
       invalidateLists()
       setEditingId(null)
     },
-    onError: () => toast.error('Failed to update tag'),
+    onError: () =>
+      toast.error(
+        intl.formatMessage({
+          id: 'admin.settings.conversationData.tags.updateFailed',
+          defaultMessage: 'Failed to update tag',
+        })
+      ),
   })
   const deleteMut = useMutation({
     mutationFn: (id: ConversationTagId) => deleteConversationTagFn({ data: { id } }),
@@ -114,7 +134,13 @@ export const ConversationTagsEditor = memo(function ConversationTagsEditor({
       invalidateLists()
       setEditingId(null)
     },
-    onError: () => toast.error('Failed to delete tag'),
+    onError: () =>
+      toast.error(
+        intl.formatMessage({
+          id: 'admin.settings.conversationData.tags.deleteFailed',
+          defaultMessage: 'Failed to delete tag',
+        })
+      ),
   })
 
   const taggedIds = new Set(tags.map((t) => t.id))
@@ -158,7 +184,7 @@ export const ConversationTagsEditor = memo(function ConversationTagsEditor({
             className="inline-flex items-center gap-0.5 rounded-full border border-dashed border-border/60 px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground/70 transition-colors hover:border-border hover:bg-muted/40 hover:text-muted-foreground"
           >
             <PlusIcon className="h-2.5 w-2.5" />
-            Add
+            {intl.formatMessage({ id: 'common.add', defaultMessage: 'Add' })}
           </button>
         </PopoverTrigger>
         <PopoverContent align="start" className="w-64 p-1.5">
@@ -166,7 +192,10 @@ export const ConversationTagsEditor = memo(function ConversationTagsEditor({
             autoFocus
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search or create…"
+            placeholder={intl.formatMessage({
+              id: 'admin.settings.boards.access.searchOrCreate',
+              defaultMessage: 'Search or create…',
+            })}
             className="mb-1.5 w-full rounded-md border border-border bg-background px-2 py-1 text-[13px] outline-none focus:ring-2 focus:ring-ring/20"
           />
           <ScrollArea className="max-h-56">
@@ -193,20 +222,31 @@ export const ConversationTagsEditor = memo(function ConversationTagsEditor({
                       <div className="flex items-center justify-between">
                         {confirmDelete ? (
                           <span className="flex items-center gap-1 text-[11px]">
-                            <span className="text-muted-foreground">Delete everywhere?</span>
+                            <span className="text-muted-foreground">
+                              {intl.formatMessage({
+                                id: 'admin.inbox.tags.deleteEverywhere',
+                                defaultMessage: 'Delete everywhere?',
+                              })}
+                            </span>
                             <button
                               type="button"
                               onClick={() => deleteMut.mutate(t.id)}
                               className="rounded px-1.5 py-0.5 font-medium text-destructive hover:bg-destructive/10"
                             >
-                              Yes
+                              {intl.formatMessage({
+                                id: 'portal.tickets.details.yes',
+                                defaultMessage: 'Yes',
+                              })}
                             </button>
                             <button
                               type="button"
                               onClick={() => setConfirmDelete(false)}
                               className="rounded px-1.5 py-0.5 text-muted-foreground hover:bg-muted/60"
                             >
-                              No
+                              {intl.formatMessage({
+                                id: 'portal.tickets.details.no',
+                                defaultMessage: 'No',
+                              })}
                             </button>
                           </span>
                         ) : (
@@ -215,7 +255,8 @@ export const ConversationTagsEditor = memo(function ConversationTagsEditor({
                             onClick={() => setConfirmDelete(true)}
                             className="inline-flex items-center gap-1 rounded px-1.5 py-1 text-[11px] text-destructive hover:bg-destructive/10"
                           >
-                            <TrashIcon className="h-3 w-3" /> Delete
+                            <TrashIcon className="h-3 w-3" />{' '}
+                            {intl.formatMessage({ id: 'common.delete', defaultMessage: 'Delete' })}
                           </button>
                         )}
                         <div className="flex items-center gap-1">
@@ -224,7 +265,7 @@ export const ConversationTagsEditor = memo(function ConversationTagsEditor({
                             onClick={() => setEditingId(null)}
                             className="rounded px-1.5 py-1 text-[11px] text-muted-foreground hover:bg-muted/60"
                           >
-                            Cancel
+                            {intl.formatMessage({ id: 'common.cancel', defaultMessage: 'Cancel' })}
                           </button>
                           <button
                             type="button"
@@ -238,7 +279,10 @@ export const ConversationTagsEditor = memo(function ConversationTagsEditor({
                             }
                             className="rounded bg-primary px-2 py-1 text-[11px] font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
                           >
-                            Save
+                            {intl.formatMessage({
+                              id: 'admin.settings.conversationData.tags.save',
+                              defaultMessage: 'Save',
+                            })}
                           </button>
                         </div>
                       </div>
@@ -266,7 +310,10 @@ export const ConversationTagsEditor = memo(function ConversationTagsEditor({
                     </button>
                     <button
                       type="button"
-                      aria-label={`Edit ${t.name}`}
+                      aria-label={intl.formatMessage(
+                        { id: 'admin.inbox.tags.editAria', defaultMessage: 'Edit {name}' },
+                        { name: t.name }
+                      )}
                       onClick={() => beginEdit(t)}
                       className="shrink-0 rounded p-0.5 text-muted-foreground/0 transition-colors group-hover:text-muted-foreground/70 hover:!text-foreground"
                     >
@@ -292,7 +339,12 @@ export const ConversationTagsEditor = memo(function ConversationTagsEditor({
                       style={{ backgroundColor: createColor }}
                     />
                     <span className="truncate">
-                      Create “<span className="font-medium text-foreground">{query.trim()}</span>”
+                      {intl.formatMessage(
+                        { id: 'admin.inbox.tags.create', defaultMessage: 'Create “{name}”' },
+                        {
+                          name: <span className="font-medium text-foreground">{query.trim()}</span>,
+                        }
+                      )}
                     </span>
                   </button>
                   <div className="mt-1.5">
@@ -302,11 +354,24 @@ export const ConversationTagsEditor = memo(function ConversationTagsEditor({
               )}
 
               {loadingTags && matching.length === 0 && (
-                <p className="px-1.5 py-1 text-xs text-muted-foreground/70">Loading tags…</p>
+                <p className="px-1.5 py-1 text-xs text-muted-foreground/70">
+                  {intl.formatMessage({
+                    id: 'admin.inbox.tags.loading',
+                    defaultMessage: 'Loading tags…',
+                  })}
+                </p>
               )}
               {!loadingTags && matching.length === 0 && !showCreate && (
                 <p className="px-1.5 py-1 text-xs text-muted-foreground">
-                  {q ? 'No matching tags' : 'No tags yet. Type to create one'}
+                  {q
+                    ? intl.formatMessage({
+                        id: 'admin.inbox.tags.noMatches',
+                        defaultMessage: 'No matching tags',
+                      })
+                    : intl.formatMessage({
+                        id: 'admin.inbox.tags.empty',
+                        defaultMessage: 'No tags yet. Type to create one',
+                      })}
                 </p>
               )}
             </div>

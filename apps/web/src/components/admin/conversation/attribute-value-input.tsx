@@ -23,6 +23,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/shared/utils'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 
 const NONE = '__none__'
 
@@ -40,13 +41,17 @@ export function AttributeValueInput({
   onChange: (value: AttributeInputValue) => void
   className?: string
 }) {
+  const intl = useOptionalIntl()
   switch (definition.fieldType) {
     case 'text':
       return (
         <Input
           value={typeof value === 'string' ? value : ''}
           onChange={(e) => onChange(e.target.value === '' ? null : e.target.value)}
-          placeholder="Value"
+          placeholder={intl.formatMessage({
+            id: 'admin.attributeValue.placeholder',
+            defaultMessage: 'Value',
+          })}
           className={cn('h-8 text-sm', className)}
         />
       )
@@ -83,10 +88,17 @@ export function AttributeValueInput({
           onValueChange={(next) => onChange(next === NONE ? null : next)}
         >
           <SelectTrigger size="sm" className={cn('text-sm', className)}>
-            <SelectValue placeholder="Choose value" />
+            <SelectValue
+              placeholder={intl.formatMessage({
+                id: 'admin.attributeValue.chooseValue',
+                defaultMessage: 'Choose value',
+              })}
+            />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value={NONE}>None</SelectItem>
+            <SelectItem value={NONE}>
+              {intl.formatMessage({ id: 'common.none', defaultMessage: 'None' })}
+            </SelectItem>
             {options.map((o) => (
               <SelectItem key={o.id} value={o.id} title={o.description ?? undefined}>
                 {o.label}
@@ -111,7 +123,12 @@ export function AttributeValueInput({
               )}
             >
               <span className="truncate">
-                {labels.length > 0 ? labels.join(', ') : 'Choose values'}
+                {labels.length > 0
+                  ? labels.join(', ')
+                  : intl.formatMessage({
+                      id: 'admin.attributeValue.chooseValues',
+                      defaultMessage: 'Choose values',
+                    })}
               </span>
               <ChevronDownIcon className="h-3 w-3 shrink-0 text-muted-foreground" />
             </button>

@@ -1,5 +1,5 @@
 import { memo } from 'react'
-import { FormattedMessage } from 'react-intl'
+import type { IntlShape } from 'react-intl'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   InboxIcon,
@@ -43,6 +43,7 @@ import { FilterSection } from '@/components/shared/filter-section'
 import { PaneAddButton } from '@/components/shared/pane-add-button'
 import { MENU_ROW } from '@/components/ui/menu'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { cn } from '@/lib/shared/utils'
 
 // The active left-nav selection (one view / label / segment / team / custom
@@ -69,16 +70,28 @@ import { useFeatureFlag } from '@/lib/client/hooks/use-root-context'
 // teammate's own work and secondary personal feeds.
 // Status is no longer a view; it's a list filter. The Tickets section
 // (below) renders as its own nav group (§2.3).
+// The `label` stays the English source string (a URL/view allowlist test asserts
+// it); `labelId` is what the nav actually renders, so it follows the locale.
 export const CONVERSATION_VIEWS = [
-  { view: 'all', label: 'All conversations', Icon: InboxIcon },
-  { view: 'mine', label: 'Assigned to me', Icon: UserIcon },
-  { view: 'unassigned', label: 'Unassigned', Icon: InboxArrowDownIcon },
-  { view: 'mentions', label: 'Mentions', Icon: AtSymbolIcon },
-  { view: 'created_by_me', label: 'Created by me', Icon: PencilSquareIcon },
-  { view: 'saved', label: 'Saved messages', Icon: BookmarkIcon },
+  { view: 'all', label: 'All conversations', labelId: 'inbox.nav.all', Icon: InboxIcon },
+  { view: 'mine', label: 'Assigned to me', labelId: 'inbox.nav.mine', Icon: UserIcon },
+  {
+    view: 'unassigned',
+    label: 'Unassigned',
+    labelId: 'inbox.assign.unassigned',
+    Icon: InboxArrowDownIcon,
+  },
+  { view: 'mentions', label: 'Mentions', labelId: 'inbox.nav.mentions', Icon: AtSymbolIcon },
+  {
+    view: 'created_by_me',
+    label: 'Created by me',
+    labelId: 'inbox.nav.createdByMe',
+    Icon: PencilSquareIcon,
+  },
+  { view: 'saved', label: 'Saved messages', labelId: 'inbox.nav.saved', Icon: BookmarkIcon },
   // The spam lifecycle's holding pen: spam-ended threads leave every triage
   // scope above and land here, restorable from the thread.
-  { view: 'spam', label: 'Spam', Icon: NoSymbolIcon },
+  { view: 'spam', label: 'Spam', labelId: 'inbox.nav.spam', Icon: NoSymbolIcon },
 ] as const
 
 /**
@@ -113,16 +126,32 @@ export function showsTestView(counts: { test: number } | undefined, active: bool
 }
 
 function TestViewLabel() {
-  return <FormattedMessage id="inbox.view.test" defaultMessage="Test conversations" />
+  const intl = useOptionalIntl()
+  return <>{intl.formatMessage({ id: 'inbox.view.test', defaultMessage: 'Test conversations' })}</>
 }
 
 /** The Tickets nav section (UNIFIED-INBOX-SPEC.md §2.3), visible only when
  *  `supportTickets` is enabled — see `useSupportTicketsEnabled`. */
 export const TICKET_INBOX_VIEWS = [
-  { view: 'tickets_all', label: 'All tickets', Icon: InboxIcon },
-  { view: 'tickets_customer', label: 'Customer', Icon: TicketIcon },
-  { view: 'tickets_back_office', label: 'Back office', Icon: BuildingOffice2Icon },
-  { view: 'tickets_tracker', label: 'Trackers', Icon: RectangleStackIcon },
+  { view: 'tickets_all', label: 'All tickets', labelId: 'inbox.nav.ticketsAll', Icon: InboxIcon },
+  {
+    view: 'tickets_customer',
+    label: 'Customer',
+    labelId: 'inbox.nav.ticketsCustomer',
+    Icon: TicketIcon,
+  },
+  {
+    view: 'tickets_back_office',
+    label: 'Back office',
+    labelId: 'inbox.nav.ticketsBackOffice',
+    Icon: BuildingOffice2Icon,
+  },
+  {
+    view: 'tickets_tracker',
+    label: 'Trackers',
+    labelId: 'inbox.nav.trackers',
+    Icon: RectangleStackIcon,
+  },
 ] as const
 
 /** Shared (deduped) source of `supportTickets` — gates the Tickets nav section. */
@@ -182,45 +211,55 @@ export function useInboxTeams(): { data: InboxTeam[] | undefined } {
   return useQuery(inboxTeamsQueryOptions())
 }
 
-/** Human label for the active scope, resolving a tag/segment/team/view id. */
+/** Localized names for the built-in scopes, used for the header label fallback
+ *  and by `scopeLabelFor`. */
+const VIEW_LABELS: Record<InboxView, { id: string; defaultMessage: string }> = {
+  all: { id: 'inbox.nav.all', defaultMessage: 'All conversations' },
+  mine: { id: 'inbox.nav.mine', defaultMessage: 'Assigned to me' },
+  unassigned: { id: 'inbox.assign.unassigned', defaultMessage: 'Unassigned' },
+  mentions: { id: 'inbox.nav.mentions', defaultMessage: 'Mentions' },
+  created_by_me: { id: 'inbox.nav.createdByMe', defaultMessage: 'Created by me' },
+  saved: { id: 'inbox.nav.saved', defaultMessage: 'Saved messages' },
+  spam: { id: 'inbox.nav.spam', defaultMessage: 'Spam' },
+  test: { id: 'inbox.view.test', defaultMessage: 'Test conversations' },
+  tickets_all: { id: 'inbox.nav.ticketsAll', defaultMessage: 'All tickets' },
+  tickets_customer: { id: 'inbox.nav.customerTickets', defaultMessage: 'Customer tickets' },
+  tickets_back_office: {
+    id: 'inbox.nav.backOfficeTickets',
+    defaultMessage: 'Back office tickets',
+  },
+  tickets_tracker: { id: 'inbox.nav.trackers', defaultMessage: 'Trackers' },
+}
+
+const FALLBACK_LABELS = {
+  label: { id: 'inbox.nav.fallbackLabel', defaultMessage: 'Label' },
+  segment: { id: 'inbox.nav.fallbackSegment', defaultMessage: 'Segment' },
+  team: { id: 'inbox.nav.fallbackTeam', defaultMessage: 'Team' },
+  view: { id: 'inbox.nav.fallbackView', defaultMessage: 'View' },
+}
+
+/** Human label for the active scope, resolving a tag/segment/team/view id.
+ *  Pass `intl` to localize the built-in names; without it the English default
+ *  message is returned (for non-React callers). */
 export function scopeLabelFor(
   nav: InboxNavItem,
   tags?: ConversationTagWithCount[],
   segments?: InboxSegmentWithCount[],
   teams?: InboxTeam[],
-  views?: ConversationViewDTO[]
+  views?: ConversationViewDTO[],
+  intl?: IntlShape
 ): string {
-  if (nav.kind === 'tag') return tags?.find((t) => t.id === nav.tagId)?.name ?? 'Label'
+  const text = (label: { id: string; defaultMessage: string }) =>
+    intl ? intl.formatMessage(label) : label.defaultMessage
+  if (nav.kind === 'tag')
+    return tags?.find((t) => t.id === nav.tagId)?.name ?? text(FALLBACK_LABELS.label)
   if (nav.kind === 'segment')
-    return segments?.find((s) => s.id === nav.segmentId)?.name ?? 'Segment'
-  if (nav.kind === 'team') return teams?.find((t) => t.id === nav.teamId)?.name ?? 'Team'
-  if (nav.kind === 'custom') return views?.find((v) => v.id === nav.viewId)?.name ?? 'View'
-  switch (nav.view) {
-    case 'mentions':
-      return 'Mentions'
-    case 'created_by_me':
-      return 'Created by me'
-    case 'spam':
-      return 'Spam'
-    case 'test':
-      return 'Test conversations'
-    case 'saved':
-      return 'Saved messages'
-    case 'mine':
-      return 'Assigned to me'
-    case 'unassigned':
-      return 'Unassigned'
-    case 'tickets_all':
-      return 'All tickets'
-    case 'tickets_customer':
-      return 'Customer tickets'
-    case 'tickets_back_office':
-      return 'Back office tickets'
-    case 'tickets_tracker':
-      return 'Trackers'
-    default:
-      return 'All conversations'
-  }
+    return segments?.find((s) => s.id === nav.segmentId)?.name ?? text(FALLBACK_LABELS.segment)
+  if (nav.kind === 'team')
+    return teams?.find((t) => t.id === nav.teamId)?.name ?? text(FALLBACK_LABELS.team)
+  if (nav.kind === 'custom')
+    return views?.find((v) => v.id === nav.viewId)?.name ?? text(FALLBACK_LABELS.view)
+  return text(VIEW_LABELS[nav.view])
 }
 
 // Mirrors the settings secondary-nav item aesthetic (settings-nav.tsx) so the
@@ -399,12 +438,20 @@ function ViewsFilterSection({
   onEditView?: (view: ConversationViewDTO) => void
 }) {
   const { pin, unpin, remove } = useViewMutations()
+  const intl = useOptionalIntl()
   // The section is always shown (with its + button) so views can be created
   // from an empty inbox; when there are none it renders just the create action.
   return (
     <FilterSection
-      title="Saved views"
-      action={onCreateView ? <PaneAddButton label="New view" onClick={onCreateView} /> : undefined}
+      title={intl.formatMessage({ id: 'inbox.nav.savedViews', defaultMessage: 'Saved views' })}
+      action={
+        onCreateView ? (
+          <PaneAddButton
+            label={intl.formatMessage({ id: 'inbox.nav.newView', defaultMessage: 'New view' })}
+            onClick={onCreateView}
+          />
+        ) : undefined
+      }
     >
       {views.length > 0 && (
         <div className="space-y-1">
@@ -433,7 +480,10 @@ function ViewsFilterSection({
                   <DropdownMenuTrigger asChild>
                     <button
                       type="button"
-                      aria-label={`Manage view ${v.name}`}
+                      aria-label={intl.formatMessage(
+                        { id: 'inbox.nav.manageView', defaultMessage: 'Manage view {name}' },
+                        { name: v.name }
+                      )}
                       className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-muted-foreground opacity-0 transition-opacity hover:bg-muted group-hover:opacity-100"
                     >
                       <EllipsisHorizontalIcon className="h-4 w-4" />
@@ -449,16 +499,20 @@ function ViewsFilterSection({
                       ) : (
                         <StarIcon className="h-4 w-4" />
                       )}
-                      {v.isPinned ? 'Unpin' : 'Pin'}
+                      {v.isPinned
+                        ? intl.formatMessage({ id: 'inbox.nav.unpin', defaultMessage: 'Unpin' })
+                        : intl.formatMessage({ id: 'inbox.nav.pin', defaultMessage: 'Pin' })}
                     </DropdownMenuItem>
                     {onEditView && (
-                      <DropdownMenuItem onClick={() => onEditView(v)}>Edit</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => onEditView(v)}>
+                        {intl.formatMessage({ id: 'inbox.action.edit', defaultMessage: 'Edit' })}
+                      </DropdownMenuItem>
                     )}
                     <DropdownMenuItem
                       className="text-destructive"
                       onClick={() => remove.mutate(v.id)}
                     >
-                      Delete
+                      {intl.formatMessage({ id: 'common.delete', defaultMessage: 'Delete' })}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -524,6 +578,7 @@ export const InboxNavSidebar = memo(function InboxNavSidebar({
   const { data: views } = useConversationViews()
   const { data: counts } = useInboxCounts()
   const showTickets = useSupportTicketsEnabled()
+  const intl = useOptionalIntl()
   const activeKey = inboxNavKey(nav)
   const teamRows = teamNavRows(teams)
   const testActive = activeKey === inboxNavKey(TEST_ITEM)
@@ -534,13 +589,21 @@ export const InboxNavSidebar = memo(function InboxNavSidebar({
       className="hidden w-64 shrink-0 flex-col overflow-hidden border-e border-chrome-hairline bg-background lg:flex xl:w-72"
     >
       <div className="px-5 py-3.5">
-        <PageHeader as="h2" title="Support" />
+        <PageHeader
+          as="h2"
+          title={intl.formatMessage({ id: 'admin.nav.support', defaultMessage: 'Support' })}
+        />
       </div>
       <ScrollArea className="min-h-0 flex-1">
         <div className="px-2.5 pb-5">
-          <FilterSection title="Conversations">
+          <FilterSection
+            title={intl.formatMessage({
+              id: 'inbox.nav.conversations',
+              defaultMessage: 'Conversations',
+            })}
+          >
             <div className="space-y-1">
-              {CONVERSATION_VIEWS.map(({ view, label, Icon }) => {
+              {CONVERSATION_VIEWS.map(({ view, label, labelId, Icon }) => {
                 const item: InboxNavItem = { kind: 'view', view }
                 const active = activeKey === inboxNavKey(item)
                 return (
@@ -552,7 +615,9 @@ export const InboxNavSidebar = memo(function InboxNavSidebar({
                     className={itemClass(active)}
                   >
                     <Icon className={cn('size-4 shrink-0', active && 'text-primary')} />
-                    <span className="min-w-0 flex-1 truncate text-left">{label}</span>
+                    <span className="min-w-0 flex-1 truncate text-left">
+                      {intl.formatMessage({ id: labelId, defaultMessage: label })}
+                    </span>
                     <NavRowCount count={countForConversationView(view, counts)} />
                   </button>
                 )
@@ -575,9 +640,11 @@ export const InboxNavSidebar = memo(function InboxNavSidebar({
           </FilterSection>
 
           {showTickets && (
-            <FilterSection title="Tickets">
+            <FilterSection
+              title={intl.formatMessage({ id: 'inbox.nav.tickets', defaultMessage: 'Tickets' })}
+            >
               <div className="space-y-1">
-                {TICKET_INBOX_VIEWS.map(({ view, label, Icon }) => {
+                {TICKET_INBOX_VIEWS.map(({ view, label, labelId, Icon }) => {
                   const item: InboxNavItem = { kind: 'view', view }
                   const active = activeKey === inboxNavKey(item)
                   const count = countForTicketView(view, counts)
@@ -590,7 +657,9 @@ export const InboxNavSidebar = memo(function InboxNavSidebar({
                       className={itemClass(active)}
                     >
                       <Icon className={cn('size-4 shrink-0', active && 'text-primary')} />
-                      <span className="min-w-0 flex-1 truncate text-left">{label}</span>
+                      <span className="min-w-0 flex-1 truncate text-left">
+                        {intl.formatMessage({ id: labelId, defaultMessage: label })}
+                      </span>
                       <NavRowCount count={count} />
                     </button>
                   )
@@ -600,7 +669,7 @@ export const InboxNavSidebar = memo(function InboxNavSidebar({
           )}
 
           <ScopeFilterSection
-            title="Teams"
+            title={intl.formatMessage({ id: 'inbox.nav.teams', defaultMessage: 'Teams' })}
             rows={teamRows}
             activeKey={activeKey}
             onSelect={onSelect}
@@ -615,14 +684,14 @@ export const InboxNavSidebar = memo(function InboxNavSidebar({
             onEditView={onEditView}
           />
           <ScopeFilterSection
-            title="Tags"
+            title={intl.formatMessage({ id: 'inbox.nav.tags', defaultMessage: 'Tags' })}
             rows={tags ?? []}
             activeKey={activeKey}
             onSelect={onSelect}
             makeItem={tagNavItem}
           />
           <ScopeFilterSection
-            title="Segments"
+            title={intl.formatMessage({ id: 'inbox.nav.segments', defaultMessage: 'Segments' })}
             rows={segments ?? []}
             activeKey={activeKey}
             onSelect={onSelect}
@@ -652,6 +721,7 @@ export function InboxScopeMenu({
   const { data: views } = useConversationViews()
   const { data: counts } = useInboxCounts()
   const showTickets = useSupportTicketsEnabled()
+  const intl = useOptionalIntl()
   const activeKey = inboxNavKey(nav)
   const teamRows = teamNavRows(teams)
   return (
@@ -661,15 +731,15 @@ export function InboxScopeMenu({
           type="button"
           className="flex items-center gap-1 text-sm font-semibold leading-tight"
         >
-          <span className="truncate">{scopeLabelFor(nav, tags, segments, teams, views)}</span>
+          <span className="truncate">{scopeLabelFor(nav, tags, segments, teams, views, intl)}</span>
           <ChevronDownIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-56">
         <DropdownMenuLabel className="uppercase tracking-wide text-muted-foreground">
-          Conversations
+          {intl.formatMessage({ id: 'inbox.nav.conversations', defaultMessage: 'Conversations' })}
         </DropdownMenuLabel>
-        {CONVERSATION_VIEWS.map(({ view, label, Icon }) => {
+        {CONVERSATION_VIEWS.map(({ view, label, labelId, Icon }) => {
           const item: InboxNavItem = { kind: 'view', view }
           const count = countForConversationView(view, counts)
           return (
@@ -679,7 +749,9 @@ export function InboxScopeMenu({
               className={cn('gap-2', activeKey === inboxNavKey(item) && 'text-primary')}
             >
               <Icon className="h-4 w-4" />
-              <span className="min-w-0 flex-1 truncate">{label}</span>
+              <span className="min-w-0 flex-1 truncate">
+                {intl.formatMessage({ id: labelId, defaultMessage: label })}
+              </span>
               <NavRowCount count={count} />
             </DropdownMenuItem>
           )
@@ -700,9 +772,9 @@ export function InboxScopeMenu({
           <>
             <DropdownMenuSeparator />
             <DropdownMenuLabel className="uppercase tracking-wide text-muted-foreground">
-              Tickets
+              {intl.formatMessage({ id: 'inbox.nav.tickets', defaultMessage: 'Tickets' })}
             </DropdownMenuLabel>
-            {TICKET_INBOX_VIEWS.map(({ view, label, Icon }) => {
+            {TICKET_INBOX_VIEWS.map(({ view, label, labelId, Icon }) => {
               const item: InboxNavItem = { kind: 'view', view }
               const count = countForTicketView(view, counts)
               return (
@@ -712,7 +784,9 @@ export function InboxScopeMenu({
                   className={cn('gap-2', activeKey === inboxNavKey(item) && 'text-primary')}
                 >
                   <Icon className="h-4 w-4" />
-                  <span className="min-w-0 flex-1 truncate">{label}</span>
+                  <span className="min-w-0 flex-1 truncate">
+                    {intl.formatMessage({ id: labelId, defaultMessage: label })}
+                  </span>
                   <NavRowCount count={count} />
                 </DropdownMenuItem>
               )
@@ -721,7 +795,7 @@ export function InboxScopeMenu({
         )}
         <DropdownMenuSeparator />
         <ScopeMenuSection
-          title="Teams"
+          title={intl.formatMessage({ id: 'inbox.nav.teams', defaultMessage: 'Teams' })}
           rows={teamRows}
           activeKey={activeKey}
           onSelect={onSelect}
@@ -732,7 +806,7 @@ export function InboxScopeMenu({
           <>
             <DropdownMenuSeparator />
             <DropdownMenuLabel className="uppercase tracking-wide text-muted-foreground">
-              Saved views
+              {intl.formatMessage({ id: 'inbox.nav.savedViews', defaultMessage: 'Saved views' })}
             </DropdownMenuLabel>
             {(views ?? []).map((v) => {
               const item: InboxNavItem = { kind: 'custom', viewId: v.id }
@@ -754,14 +828,14 @@ export function InboxScopeMenu({
           </>
         )}
         <ScopeMenuSection
-          title="Tags"
+          title={intl.formatMessage({ id: 'inbox.nav.tags', defaultMessage: 'Tags' })}
           rows={tags ?? []}
           activeKey={activeKey}
           onSelect={onSelect}
           makeItem={tagNavItem}
         />
         <ScopeMenuSection
-          title="Segments"
+          title={intl.formatMessage({ id: 'inbox.nav.segments', defaultMessage: 'Segments' })}
           rows={segments ?? []}
           activeKey={activeKey}
           onSelect={onSelect}
