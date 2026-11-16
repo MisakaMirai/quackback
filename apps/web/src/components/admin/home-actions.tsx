@@ -1,4 +1,7 @@
+'use client'
+
 import { Fragment, Suspense, lazy, useState } from 'react'
+import { useIntl } from 'react-intl'
 import { useNavigate, useRouteContext } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import { ChevronDownIcon } from '@heroicons/react/24/solid'
@@ -48,7 +51,31 @@ const ReportIncidentDialog = lazy(() =>
   }))
 )
 
+const PRODUCT_LABEL_IDS = {
+  feedback: 'admin.settings.nav.page.feedback',
+  support: 'admin.settings.nav.page.support',
+  changelog: 'admin.settings.nav.page.changelog',
+  helpCenter: 'admin.settings.nav.page.help-center',
+  status: 'admin.settings.nav.page.status',
+} as const
+
+const ACTION_MESSAGES: Record<HomeActionId, { id: string; defaultMessage: string }> = {
+  'new-post': { id: 'admin.home.action.newPost', defaultMessage: 'New post' },
+  'new-changelog': { id: 'admin.home.action.newChangelog', defaultMessage: 'New changelog' },
+  'new-conversation': {
+    id: 'admin.home.action.newConversation',
+    defaultMessage: 'New conversation',
+  },
+  'new-ticket': { id: 'admin.home.action.newTicket', defaultMessage: 'New ticket' },
+  'new-article': { id: 'admin.home.action.newArticle', defaultMessage: 'New article' },
+  'report-incident': {
+    id: 'admin.home.action.reportIncident',
+    defaultMessage: 'Report incident',
+  },
+}
+
 export function HomeActions({ flags }: { flags: Partial<FeatureFlags> | undefined }) {
+  const intl = useIntl()
   const groups = homeActionGroups(flags)
   const [action, setAction] = useState<HomeActionId | null>(null)
   const close = () => setAction(null)
@@ -60,7 +87,7 @@ export function HomeActions({ flags }: { flags: Partial<FeatureFlags> | undefine
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="outline" size="sm">
-            Actions
+            {intl.formatMessage({ id: 'admin.home.actions', defaultMessage: 'Actions' })}
             <ChevronDownIcon className="size-3.5" />
           </Button>
         </DropdownMenuTrigger>
@@ -70,11 +97,14 @@ export function HomeActions({ flags }: { flags: Partial<FeatureFlags> | undefine
               {index > 0 ? <DropdownMenuSeparator /> : null}
               <DropdownMenuGroup>
                 <DropdownMenuLabel className="uppercase tracking-wide text-muted-foreground">
-                  {group.label}
+                  {intl.formatMessage({
+                    id: PRODUCT_LABEL_IDS[group.productId],
+                    defaultMessage: group.label,
+                  })}
                 </DropdownMenuLabel>
                 {group.actions.map((item) => (
                   <DropdownMenuItem key={item.id} onClick={() => setAction(item.id)}>
-                    {item.label}
+                    {intl.formatMessage(ACTION_MESSAGES[item.id])}
                   </DropdownMenuItem>
                 ))}
               </DropdownMenuGroup>

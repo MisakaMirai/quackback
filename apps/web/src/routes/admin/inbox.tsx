@@ -536,7 +536,7 @@ function InboxPage() {
   const { data: navSegments } = useInboxSegmentsWithCounts()
   const { data: navTeams } = useInboxTeams()
   const { data: navViews } = useConversationViews()
-  const scopeLabel = scopeLabelFor(nav, navTags, navSegments, navTeams, navViews)
+  const scopeLabel = scopeLabelFor(nav, navTags, navSegments, navTeams, navViews, intl)
 
   // The active custom view (if any): its saved rules become the list-query
   // params, and its own sort is the default until the user re-sorts. The
