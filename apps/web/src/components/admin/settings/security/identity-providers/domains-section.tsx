@@ -14,11 +14,13 @@
 import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useServerFn } from '@tanstack/react-start'
+import type { IntlShape } from 'react-intl'
 import { CheckCircleIcon, ClockIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/solid'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { WarningBox } from '@/components/shared/warning-box'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
@@ -45,14 +47,26 @@ import { errorText } from '@/lib/client/error-text'
 
 const VERIFY_REASON_MESSAGES: Record<
   Exclude<VerifyDomainResult, { verified: true }>['reason'],
-  string
+  { id: string; defaultMessage: string }
 > = {
-  'no-record':
-    "Couldn't find a TXT record at that name. Add the record above and wait for DNS propagation, then try again.",
-  mismatch:
-    "Found a TXT record but the value didn't match. Double-check the value (it should start with `qb-domain-verify=`).",
-  'lookup-failed': 'DNS lookup failed. Try again in a moment.',
-  'no-pending-domain': 'No pending domain to verify.',
+  'no-record': {
+    id: 'admin.settings.security.idp.domains.verify.noRecord',
+    defaultMessage:
+      "Couldn't find a TXT record at that name. Add the record above and wait for DNS propagation, then try again.",
+  },
+  mismatch: {
+    id: 'admin.settings.security.idp.domains.verify.mismatch',
+    defaultMessage:
+      "Found a TXT record but the value didn't match. Double-check the value (it should start with `qb-domain-verify=`).",
+  },
+  'lookup-failed': {
+    id: 'admin.settings.security.idp.domains.verify.lookupFailed',
+    defaultMessage: 'DNS lookup failed. Try again in a moment.',
+  },
+  'no-pending-domain': {
+    id: 'admin.settings.security.idp.domains.verify.noPending',
+    defaultMessage: 'No pending domain to verify.',
+  },
 }
 
 const SSO_DOMAIN_PROOFS_KEY = ['settings', 'ssoDomainProofs'] as const
@@ -60,16 +74,28 @@ const SSO_DOMAIN_PROOFS_KEY = ['settings', 'ssoDomainProofs'] as const
 /** The TXT record a pending domain needs, with what the last Verify found. */
 export function ssoTxtRecord(
   domain: Pick<VerifiedDomain, 'name' | 'verificationToken'>,
-  result: VerifyDomainResult | null
+  result: VerifyDomainResult | null,
+  intl?: IntlShape
 ): DnsRecordRow {
   const record = {
-    label: 'Verification',
+    label: intl
+      ? intl.formatMessage({
+          id: 'admin.settings.security.idp.domains.verificationRecord',
+          defaultMessage: 'Verification',
+        })
+      : 'Verification',
     type: 'TXT',
     name: SSO_VERIFY_RECORD_HOST,
     value: ssoVerifyRecordValue(domain.verificationToken),
   }
   return result && !result.verified
-    ? { ...record, state: 'problem', problem: VERIFY_REASON_MESSAGES[result.reason] }
+    ? {
+        ...record,
+        state: 'problem',
+        problem: intl
+          ? intl.formatMessage(VERIFY_REASON_MESSAGES[result.reason])
+          : VERIFY_REASON_MESSAGES[result.reason].defaultMessage,
+      }
     : { ...record, state: 'waiting' }
 }
 
@@ -81,6 +107,7 @@ export function DomainsSection({
   disabled: boolean
 }) {
   const queryClient = useQueryClient()
+  const intl = useOptionalIntl()
   const addDomain = useServerFn(addProviderDomainFn)
   const [draftName, setDraftName] = useState('')
   const [adding, setAdding] = useState(false)
@@ -114,7 +141,15 @@ export function DomainsSection({
       await refresh()
       setDraftName('')
     } catch (err) {
-      setAddError(errorText(err, 'Could not add domain.'))
+      setAddError(
+        errorText(
+          err,
+          intl.formatMessage({
+            id: 'admin.settings.security.idp.domains.addFailed',
+            defaultMessage: 'Could not add domain.',
+          })
+        )
+      )
     } finally {
       setAdding(false)
     }
@@ -123,16 +158,27 @@ export function DomainsSection({
   return (
     <div className="space-y-3">
       <div>
-        <Label className="font-medium">Domains</Label>
+        <Label className="font-medium">
+          {intl.formatMessage({
+            id: 'admin.settings.security.idp.domains.title',
+            defaultMessage: 'Domains',
+          })}
+        </Label>
         <p className="mt-1 text-sm text-muted-foreground">
-          Users at a verified domain are sent to this provider. Require SSO to make it their only
-          way in.
+          {intl.formatMessage({
+            id: 'admin.settings.security.idp.domains.description',
+            defaultMessage:
+              'Users at a verified domain are sent to this provider. Require SSO to make it their only way in.',
+          })}
         </p>
       </div>
 
       {!provider ? (
         <p className="rounded-md border border-dashed border-border/50 bg-muted/20 p-3 text-sm text-muted-foreground">
-          Save the provider first to add a domain.
+          {intl.formatMessage({
+            id: 'admin.settings.security.idp.domains.saveFirst',
+            defaultMessage: 'Save the provider first to add a domain.',
+          })}
         </p>
       ) : (
         <>
@@ -154,8 +200,15 @@ export function DomainsSection({
           {hasVerified && enforceable && !domains.some((d) => d.enforced) && (
             <WarningBox
               variant="warning"
-              title="Before you require SSO"
-              description="Generate recovery codes first. They are the only way back in if SSO breaks."
+              title={intl.formatMessage({
+                id: 'admin.settings.security.idp.domains.warningTitle',
+                defaultMessage: 'Before you require SSO',
+              })}
+              description={intl.formatMessage({
+                id: 'admin.settings.security.idp.domains.warningBody',
+                defaultMessage:
+                  'Generate recovery codes first. They are the only way back in if SSO breaks.',
+              })}
             />
           )}
 
@@ -167,7 +220,10 @@ export function DomainsSection({
                 placeholder="example.com"
                 disabled={adding || disabled}
                 className="h-9"
-                aria-label="Add domain"
+                aria-label={intl.formatMessage({
+                  id: 'admin.settings.security.idp.domains.addDomain',
+                  defaultMessage: 'Add domain',
+                })}
               />
               <Button
                 type="submit"
@@ -177,7 +233,15 @@ export function DomainsSection({
                 disabled={adding || disabled || !draftName.trim()}
               >
                 <PlusIcon className="mr-1 h-3.5 w-3.5" />
-                {adding ? 'Adding…' : 'Add domain'}
+                {adding
+                  ? intl.formatMessage({
+                      id: 'admin.settings.security.idp.domains.adding',
+                      defaultMessage: 'Adding…',
+                    })
+                  : intl.formatMessage({
+                      id: 'admin.settings.security.idp.domains.addDomain',
+                      defaultMessage: 'Add domain',
+                    })}
               </Button>
             </div>
             {addError && (
@@ -212,6 +276,7 @@ function DomainRow({
   const verify = useServerFn(verifyProviderDomainFn)
   const setEnforced = useServerFn(setDomainEnforcedFn)
   const remove = useServerFn(removeVerifiedDomainFn)
+  const intl = useOptionalIntl()
 
   const [pending, setPending] = useState(false)
   const [verifyResult, setVerifyResult] = useState<VerifyDomainResult | null>(null)
@@ -226,7 +291,15 @@ function DomainRow({
       await remove({ data: { id: domain.id } })
       await onChanged()
     } catch (err) {
-      setEnforceError(errorText(err, 'Could not remove domain.'))
+      setEnforceError(
+        errorText(
+          err,
+          intl.formatMessage({
+            id: 'admin.settings.security.idp.domains.removeFailed',
+            defaultMessage: 'Could not remove domain.',
+          })
+        )
+      )
     } finally {
       setPending(false)
       setRemoveOpen(false)
@@ -258,8 +331,16 @@ function DomainRow({
       const msg = err instanceof Error ? err.message : ''
       setEnforceError(
         msg === 'recovery_codes_required'
-          ? 'Generate recovery codes before enforcing SSO. They are the only break-glass way back in.'
-          : msg || 'Could not update enforcement.'
+          ? intl.formatMessage({
+              id: 'admin.settings.security.idp.domains.recoveryCodesRequired',
+              defaultMessage:
+                'Generate recovery codes before enforcing SSO. They are the only break-glass way back in.',
+            })
+          : msg ||
+              intl.formatMessage({
+                id: 'admin.settings.security.idp.domains.enforceFailed',
+                defaultMessage: 'Could not update enforcement.',
+              })
       )
     } finally {
       setPending(false)
@@ -277,23 +358,46 @@ function DomainRow({
           )}
           <span className="truncate text-sm font-medium">{domain.name}</span>
           <span className="text-sm text-muted-foreground">
-            {isVerified ? (provenBy ? verifiedThroughLabel(provenBy) : null) : 'Pending'}
+            {isVerified
+              ? provenBy
+                ? verifiedThroughLabel(provenBy)
+                : null
+              : intl.formatMessage({
+                  id: 'admin.settings.security.idp.domains.pending',
+                  defaultMessage: 'Pending',
+                })}
           </span>
         </div>
         <div className="flex shrink-0 items-center gap-3">
           {isVerified && (
             <label
               className="flex items-center gap-1.5 text-sm"
-              title={enforceable ? undefined : 'Pass a connection test first.'}
+              title={
+                enforceable
+                  ? undefined
+                  : intl.formatMessage({
+                      id: 'admin.settings.security.idp.domains.testFirst',
+                      defaultMessage: 'Pass a connection test first.',
+                    })
+              }
             >
               <Checkbox
                 checked={domain.enforced}
                 onCheckedChange={(v) => void handleEnforce(v === true)}
                 disabled={pending || disabled || !enforceable}
-                aria-label={`Require SSO for ${domain.name}`}
+                aria-label={intl.formatMessage(
+                  {
+                    id: 'admin.settings.security.idp.domains.requireSsoAria',
+                    defaultMessage: 'Require SSO for {domain}',
+                  },
+                  { domain: domain.name }
+                )}
                 data-in-label
               />
-              Require SSO
+              {intl.formatMessage({
+                id: 'admin.settings.security.idp.domains.requireSso',
+                defaultMessage: 'Require SSO',
+              })}
             </label>
           )}
           {!isVerified && (
@@ -305,7 +409,15 @@ function DomainRow({
               onClick={handleVerify}
               disabled={pending || disabled}
             >
-              {pending ? 'Verifying…' : 'Verify'}
+              {pending
+                ? intl.formatMessage({
+                    id: 'admin.settings.security.idp.domains.verifying',
+                    defaultMessage: 'Verifying…',
+                  })
+                : intl.formatMessage({
+                    id: 'admin.settings.security.idp.verify',
+                    defaultMessage: 'Verify',
+                  })}
             </Button>
           )}
           <Button
@@ -315,7 +427,13 @@ function DomainRow({
             className="h-8 w-8 text-muted-foreground hover:text-destructive"
             onClick={() => setRemoveOpen(true)}
             disabled={pending || disabled}
-            aria-label={`Remove ${domain.name}`}
+            aria-label={intl.formatMessage(
+              {
+                id: 'admin.settings.security.idp.domains.removeAria',
+                defaultMessage: 'Remove {domain}',
+              },
+              { domain: domain.name }
+            )}
           >
             <TrashIcon className="h-4 w-4" />
           </Button>
@@ -324,22 +442,34 @@ function DomainRow({
 
       {!isVerified && provenBy && (
         <p className="text-xs text-muted-foreground">
-          {`${pendingProvenLabel(provenBy)}. Click Verify to use it.`}
+          {intl.formatMessage(
+            {
+              id: 'admin.settings.security.idp.domains.coveredNote',
+              defaultMessage: '{proven}. Click Verify to use it.',
+            },
+            { proven: pendingProvenLabel(provenBy) }
+          )}
         </p>
       )}
       {!isVerified && !provenBy && (
         <div className="space-y-1">
           <p className="text-xs text-muted-foreground">
-            {`Add this record to ${domain.name}, then click Verify.`}
+            {intl.formatMessage(
+              {
+                id: 'admin.settings.security.idp.domains.addRecordNote',
+                defaultMessage: 'Add this record to {domain}, then click Verify.',
+              },
+              { domain: domain.name }
+            )}
           </p>
-          <DnsRecordTable records={[ssoTxtRecord(domain, verifyResult)]} />
+          <DnsRecordTable records={[ssoTxtRecord(domain, verifyResult, intl)]} />
         </div>
       )}
 
       {provenBy && verifyResult && !verifyResult.verified && (
         <Alert variant="destructive">
           <AlertDescription className="text-xs">
-            {VERIFY_REASON_MESSAGES[verifyResult.reason]}
+            {intl.formatMessage(VERIFY_REASON_MESSAGES[verifyResult.reason])}
           </AlertDescription>
         </Alert>
       )}
@@ -352,14 +482,36 @@ function DomainRow({
       <ConfirmDialog
         open={removeOpen}
         onOpenChange={setRemoveOpen}
-        title={`Remove ${isVerified ? 'verified' : 'pending'} domain?`}
+        title={
+          isVerified
+            ? intl.formatMessage({
+                id: 'admin.settings.security.idp.domains.removeVerifiedTitle',
+                defaultMessage: 'Remove verified domain?',
+              })
+            : intl.formatMessage({
+                id: 'admin.settings.security.idp.domains.removePendingTitle',
+                defaultMessage: 'Remove pending domain?',
+              })
+        }
         description={
           isVerified
-            ? `Stops routing *@${domain.name} emails to this provider.`
-            : `Discards the pending verification token for ${domain.name}.`
+            ? intl.formatMessage(
+                {
+                  id: 'admin.settings.security.idp.domains.removeVerifiedBody',
+                  defaultMessage: 'Stops routing *@{domain} emails to this provider.',
+                },
+                { domain: domain.name }
+              )
+            : intl.formatMessage(
+                {
+                  id: 'admin.settings.security.idp.domains.removePendingBody',
+                  defaultMessage: 'Discards the pending verification token for {domain}.',
+                },
+                { domain: domain.name }
+              )
         }
         variant="destructive"
-        confirmLabel="Remove"
+        confirmLabel={intl.formatMessage({ id: 'common.remove', defaultMessage: 'Remove' })}
         isPending={pending}
         onConfirm={handleRemove}
       />

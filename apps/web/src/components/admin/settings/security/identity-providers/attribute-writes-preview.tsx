@@ -8,6 +8,8 @@
 
 import { TimeAgo } from '@/components/ui/time-ago'
 import { Badge } from '@/components/ui/badge'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
+import type { IntlShape } from 'react-intl'
 import { getClaimByPath } from '@/lib/shared/oidc-claim-mapping'
 import { planClaimAttributeWrites } from '@/lib/shared/plan-claim-attribute-writes'
 import { captureIdentityCaption, type SsoTestCapture } from '@/lib/shared/sso-test-capture'
@@ -39,6 +41,7 @@ export function AttributeWritesPreview({
   hideCaptureChrome?: boolean
 }) {
   const { data: attributes } = useUserAttributes()
+  const intl = useOptionalIntl()
   const defs = (attributes ?? []).map((d) => ({
     key: d.key,
     type: d.type,
@@ -49,7 +52,10 @@ export function AttributeWritesPreview({
     return (
       <div className="space-y-2 rounded-md border border-border/40 bg-muted/20 px-3 py-3">
         <p className="text-xs text-muted-foreground">
-          Run a test sign-in to preview what these mappings would write.
+          {intl.formatMessage({
+            id: 'admin.settings.security.idp.writes.empty',
+            defaultMessage: 'Run a test sign-in to preview what these mappings would write.',
+          })}
         </p>
         <TestSignInButton registrationId={registrationId} disabled={!canTest} />
       </div>
@@ -82,7 +88,12 @@ export function AttributeWritesPreview({
     <div className="space-y-2 rounded-md border border-border/40 bg-muted/20 px-3 py-3 text-[12.5px]">
       {!hideCaptureChrome && (
         <div>
-          <div className="font-medium">Attribute writes from your last test sign-in</div>
+          <div className="font-medium">
+            {intl.formatMessage({
+              id: 'admin.settings.security.idp.writes.title',
+              defaultMessage: 'Attribute writes from your last test sign-in',
+            })}
+          </div>
           <div className="mt-0.5 text-muted-foreground">
             {captureIdentityCaption(capture)} · <TimeAgo date={capture.capturedAt} /> ·{' '}
             <TestSignInButton
@@ -91,12 +102,22 @@ export function AttributeWritesPreview({
               size="sm"
               disabled={!canTest}
             >
-              Re-test
+              {intl.formatMessage({
+                id: 'admin.settings.security.idp.writes.retest',
+                defaultMessage: 'Re-test',
+              })}
             </TestSignInButton>
           </div>
         </div>
       )}
-      {hideCaptureChrome && <div className="font-medium">User attributes</div>}
+      {hideCaptureChrome && (
+        <div className="font-medium">
+          {intl.formatMessage({
+            id: 'admin.settings.security.idp.writes.userAttributes',
+            defaultMessage: 'User attributes',
+          })}
+        </div>
+      )}
 
       {plan && (Object.keys(plan.valid).length > 0 || (plan.skips?.length ?? 0) > 0) ? (
         <dl className="grid grid-cols-[6.6em_1fr] gap-x-2.5 gap-y-1 text-[12px]">
@@ -117,13 +138,22 @@ export function AttributeWritesPreview({
                         “{String(written)}”
                         {joined && (
                           <Badge variant="outline" className="ml-1 align-middle">
-                            array joined to text
+                            {intl.formatMessage({
+                              id: 'admin.settings.security.idp.writes.arrayJoined',
+                              defaultMessage: 'array joined to text',
+                            })}
                           </Badge>
                         )}
                       </>
                     ) : (
                       <span className="text-muted-foreground">
-                        skipped: {skipReason(skip?.reason, raw)}
+                        {intl.formatMessage(
+                          {
+                            id: 'admin.settings.security.idp.writes.skipped',
+                            defaultMessage: 'skipped: {reason}',
+                          },
+                          { reason: skipReason(intl, skip?.reason, raw) }
+                        )}
                       </span>
                     )}
                   </dd>
@@ -132,26 +162,53 @@ export function AttributeWritesPreview({
             })}
         </dl>
       ) : (
-        <p className="text-xs text-muted-foreground">No attribute mappings yet.</p>
+        <p className="text-xs text-muted-foreground">
+          {intl.formatMessage({
+            id: 'admin.settings.security.idp.writes.none',
+            defaultMessage: 'No attribute mappings yet.',
+          })}
+        </p>
       )}
 
       {stale ? (
-        <p className="text-xs text-warning">Configuration changed since capture. Re-test.</p>
+        <p className="text-xs text-warning">
+          {intl.formatMessage({
+            id: 'admin.settings.security.idp.writes.stale',
+            defaultMessage: 'Configuration changed since capture. Re-test.',
+          })}
+        </p>
       ) : (
         <p className="text-xs text-muted-foreground">
-          Assumes the user has no attributes yet. With Overwrite off, someone who already has a
-          value keeps it.
+          {intl.formatMessage({
+            id: 'admin.settings.security.idp.writes.assumes',
+            defaultMessage:
+              'Assumes the user has no attributes yet. With Overwrite off, someone who already has a value keeps it.',
+          })}
         </p>
       )}
     </div>
   )
 }
 
-function skipReason(reason: string | undefined, raw: unknown): string {
+function skipReason(intl: IntlShape, reason: string | undefined, raw: unknown): string {
   if (reason === 'type_mismatch') {
     const kind = raw === null ? 'null' : Array.isArray(raw) ? 'array' : typeof raw
-    return `type mismatch (${kind})`
+    return intl.formatMessage(
+      {
+        id: 'admin.settings.security.idp.writes.typeMismatch',
+        defaultMessage: 'type mismatch ({kind})',
+      },
+      { kind }
+    )
   }
-  if (reason === 'kept_existing') return 'kept existing'
-  return 'missing claim'
+  if (reason === 'kept_existing') {
+    return intl.formatMessage({
+      id: 'admin.settings.security.idp.writes.keptExisting',
+      defaultMessage: 'kept existing',
+    })
+  }
+  return intl.formatMessage({
+    id: 'admin.settings.security.idp.writes.missingClaim',
+    defaultMessage: 'missing claim',
+  })
 }

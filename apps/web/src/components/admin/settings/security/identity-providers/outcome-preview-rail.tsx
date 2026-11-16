@@ -12,6 +12,7 @@ import { useState } from 'react'
 import { TimeAgo } from '@/components/ui/time-ago'
 import { Button } from '@/components/ui/button'
 import { MENU_LABEL } from '@/components/ui/menu'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { cn } from '@/lib/shared/utils'
 import {
   captureIdentityCaption,
@@ -85,6 +86,7 @@ export function OutcomePreviewRail({
   registrationId: string
   canTest: boolean
 }) {
+  const intl = useOptionalIntl()
   const preview = previewClaimMapping({
     draft,
     capture,
@@ -92,14 +94,36 @@ export function OutcomePreviewRail({
     providerPolicy,
     roles,
   })
-  const cta = dirty ? 'Save and test' : capture ? 'Test again' : 'Test sign-in'
+  const cta = dirty
+    ? intl.formatMessage({
+        id: 'admin.settings.security.idp.saveAndTest',
+        defaultMessage: 'Save and test',
+      })
+    : capture
+      ? intl.formatMessage({
+          id: 'admin.settings.security.idp.testAgain',
+          defaultMessage: 'Test again',
+        })
+      : intl.formatMessage({
+          id: 'admin.settings.security.idp.testSignIn',
+          defaultMessage: 'Test sign-in',
+        })
 
   if (!preview.capture) {
     return (
       <aside className="flex flex-col gap-3 rounded-lg border border-border/40 bg-muted/20 px-4 py-4 text-sm">
-        <h3 className={cn(MENU_LABEL, 'font-mono')}>Preview</h3>
+        <h3 className={cn(MENU_LABEL, 'font-mono')}>
+          {intl.formatMessage({
+            id: 'admin.settings.security.idp.preview',
+            defaultMessage: 'Preview',
+          })}
+        </h3>
         <p className="text-muted-foreground">
-          Run a test sign-in to inspect this IdP&apos;s claims and preview how they map.
+          {intl.formatMessage({
+            id: 'admin.settings.security.idp.rail.emptyBody',
+            defaultMessage:
+              "Run a test sign-in to inspect this IdP's claims and preview how they map.",
+          })}
         </p>
         <TestCta
           cta={cta}
@@ -123,7 +147,12 @@ export function OutcomePreviewRail({
     <aside className="flex min-w-0 flex-col gap-4 rounded-lg border border-border/40 bg-muted/20 px-4 py-4 text-sm">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h3 className={cn(MENU_LABEL, 'font-mono')}>Last test sign-in</h3>
+          <h3 className={cn(MENU_LABEL, 'font-mono')}>
+            {intl.formatMessage({
+              id: 'admin.settings.security.idp.lastTest',
+              defaultMessage: 'Last test sign-in',
+            })}
+          </h3>
           <div className="mt-1.5 font-medium">{captureIdentityCaption(preview.capture)}</div>
           <div className="text-muted-foreground">
             <TimeAgo date={preview.capture.capturedAt} />
@@ -138,10 +167,22 @@ export function OutcomePreviewRail({
         />
       </div>
 
-      {dirty && <p className="font-medium">Preview of unsaved changes</p>}
+      {dirty && (
+        <p className="font-medium">
+          {intl.formatMessage({
+            id: 'admin.settings.security.idp.rail.unsaved',
+            defaultMessage: 'Preview of unsaved changes',
+          })}
+        </p>
+      )}
 
       {preview.status === 'mapping_failed' && (
-        <p className="text-warning">Connection test did not pass.</p>
+        <p className="text-warning">
+          {intl.formatMessage({
+            id: 'admin.settings.security.idp.rail.connectionFailed',
+            defaultMessage: 'Connection test did not pass.',
+          })}
+        </p>
       )}
 
       {preview.status === 'needs_retest' && preview.limitations[0] && (
@@ -150,43 +191,93 @@ export function OutcomePreviewRail({
 
       {preview.stale && preview.status === 'ready' && (
         <p className="text-warning">
-          Configuration changed since this test. Test again to confirm it.
+          {intl.formatMessage({
+            id: 'admin.settings.security.idp.rail.staleConfig',
+            defaultMessage: 'Configuration changed since this test. Test again to confirm it.',
+          })}
         </p>
       )}
 
       {identity && (
         <dl className="grid grid-cols-[6.6em_1fr] gap-x-3 gap-y-1.5 border-t border-border/40 pt-3">
-          <dt className="text-muted-foreground">Name</dt>
+          <dt className="text-muted-foreground">
+            {intl.formatMessage({
+              id: 'admin.settings.security.idp.rail.name',
+              defaultMessage: 'Name',
+            })}
+          </dt>
           <dd className="min-w-0 break-words">
-            {identity.name ?? 'Not supplied'}
+            {identity.name ??
+              intl.formatMessage({
+                id: 'admin.settings.security.idp.rail.notSupplied',
+                defaultMessage: 'Not supplied',
+              })}
             {identity.nameSynthesized && (
-              <span className="text-muted-foreground"> (generated)</span>
+              <span className="text-muted-foreground">
+                {' '}
+                {intl.formatMessage({
+                  id: 'admin.settings.security.idp.rail.generated',
+                  defaultMessage: '(generated)',
+                })}
+              </span>
             )}
           </dd>
           {identity.image && (
             <>
-              <dt className="text-muted-foreground">Avatar</dt>
+              <dt className="text-muted-foreground">
+                {intl.formatMessage({
+                  id: 'admin.settings.security.idp.rail.avatar',
+                  defaultMessage: 'Avatar',
+                })}
+              </dt>
               <dd className="min-w-0">
                 <PictureWithUrl url={identity.image} className="size-6" iconClassName="size-3" />
               </dd>
             </>
           )}
-          <dt className="text-muted-foreground">Email</dt>
+          <dt className="text-muted-foreground">
+            {intl.formatMessage({
+              id: 'admin.settings.security.idp.rail.email',
+              defaultMessage: 'Email',
+            })}
+          </dt>
           <dd className="min-w-0 break-all">
             <EmailValue identity={identity} draft={draft} />
           </dd>
-          <dt className="text-muted-foreground">Account ID</dt>
+          <dt className="text-muted-foreground">
+            {intl.formatMessage({
+              id: 'admin.settings.security.idp.rail.accountId',
+              defaultMessage: 'Account ID',
+            })}
+          </dt>
           <dd className="min-w-0 break-all font-mono text-xs">
-            {identity.id ?? `Not supplied by ${effectiveIdPath(draft)}`}
+            {identity.id ??
+              intl.formatMessage(
+                {
+                  id: 'admin.settings.security.idp.rail.notSuppliedBy',
+                  defaultMessage: 'Not supplied by {path}',
+                },
+                { path: effectiveIdPath(draft) }
+              )}
           </dd>
         </dl>
       )}
 
       {preview.status !== 'needs_retest' && (
         <div className="border-t border-border/40 pt-3">
-          <h3 className={cn(MENU_LABEL, 'mb-1.5 font-mono')}>Role</h3>
+          <h3 className={cn(MENU_LABEL, 'mb-1.5 font-mono')}>
+            {intl.formatMessage({
+              id: 'admin.settings.security.idp.rail.roleTitle',
+              defaultMessage: 'Role',
+            })}
+          </h3>
           {providerPolicy.autoCreateUsers === false ? (
-            <p>Roles are not applied because account creation is off.</p>
+            <p>
+              {intl.formatMessage({
+                id: 'admin.settings.security.idp.rail.rolesOff',
+                defaultMessage: 'Roles are not applied because account creation is off.',
+              })}
+            </p>
           ) : (
             <p
               className={cn(
@@ -207,8 +298,11 @@ export function OutcomePreviewRail({
           )}
           {hasAdminRule && providerPolicy.autoCreateUsers !== false && (
             <p className="mt-1.5 text-muted-foreground">
-              An admin rule grants admin access even outside this provider&apos;s verified domains.
-              A test that matches another rule does not limit this admin rule.
+              {intl.formatMessage({
+                id: 'admin.settings.security.idp.rail.adminRuleNote',
+                defaultMessage:
+                  "An admin rule grants admin access even outside this provider's verified domains. A test that matches another rule does not limit this admin rule.",
+              })}
             </p>
           )}
         </div>
@@ -243,11 +337,39 @@ function EmailValue({
   identity: ProfileOutcome
   draft: IdentityProviderClaimMapping | null
 }) {
-  if (identity.kind === 'placeholder_required') return <>A placeholder address will be used.</>
-  if (identity.kind === 'missing_email') {
-    return <>Not supplied by {effectiveEmailPath(draft)}</>
+  const intl = useOptionalIntl()
+  if (identity.kind === 'placeholder_required') {
+    return (
+      <>
+        {intl.formatMessage({
+          id: 'admin.settings.security.idp.rail.placeholderEmail',
+          defaultMessage: 'A placeholder address will be used.',
+        })}
+      </>
+    )
   }
-  return <>{identity.email ?? 'Not supplied'}</>
+  if (identity.kind === 'missing_email') {
+    return (
+      <>
+        {intl.formatMessage(
+          {
+            id: 'admin.settings.security.idp.rail.notSuppliedBy',
+            defaultMessage: 'Not supplied by {path}',
+          },
+          { path: effectiveEmailPath(draft) }
+        )}
+      </>
+    )
+  }
+  return (
+    <>
+      {identity.email ??
+        intl.formatMessage({
+          id: 'admin.settings.security.idp.rail.notSupplied',
+          defaultMessage: 'Not supplied',
+        })}
+    </>
+  )
 }
 
 function TestCta({
@@ -291,6 +413,7 @@ export function TestDetails({
   identity: ProfileOutcome | null
   className?: string
 }) {
+  const intl = useOptionalIntl()
   const [showProtocol, setShowProtocol] = useState(false)
   const claims = capture.claims
   const keys = Object.keys(claims).filter(
@@ -309,26 +432,48 @@ export function TestDetails({
 
   return (
     <details className={cn('border-t border-border/40 pt-3 text-sm', className)}>
-      <summary className="cursor-pointer font-medium">View test details</summary>
+      <summary className="cursor-pointer font-medium">
+        {intl.formatMessage({
+          id: 'admin.settings.security.idp.rail.testDetails',
+          defaultMessage: 'View test details',
+        })}
+      </summary>
       <div className="mt-3 space-y-4">
         {provenance.length > 0 && (
           <div>
-            <h4 className={cn(MENU_LABEL, 'mb-1.5 font-mono')}>Where each field came from</h4>
+            <h4 className={cn(MENU_LABEL, 'mb-1.5 font-mono')}>
+              {intl.formatMessage({
+                id: 'admin.settings.security.idp.rail.provenanceTitle',
+                defaultMessage: 'Where each field came from',
+              })}
+            </h4>
             <dl className="grid grid-cols-[6.6em_1fr] gap-x-3 gap-y-1">
               {provenance.map((p) => (
                 <div key={p.field} className="contents">
                   <dt className="text-muted-foreground">{PROFILE_FIELD_SPECS[p.field].label}</dt>
                   <dd className="min-w-0 break-all">
                     <span className="font-mono text-xs">{p.path}</span>
-                    <span className="text-muted-foreground"> from {p.source}</span>
+                    <span className="text-muted-foreground">
+                      {' '}
+                      {intl.formatMessage(
+                        {
+                          id: 'admin.settings.security.idp.rail.fromSource',
+                          defaultMessage: 'from {source}',
+                        },
+                        { source: p.source }
+                      )}
+                    </span>
                   </dd>
                 </div>
               ))}
             </dl>
             {identity?.warnings.includes('subject_mismatch') && (
               <p className="mt-1.5 text-muted-foreground">
-                A source whose subject did not match was kept for diagnostics and excluded from the
-                sign-in outcome.
+                {intl.formatMessage({
+                  id: 'admin.settings.security.idp.rail.subjectMismatch',
+                  defaultMessage:
+                    'A source whose subject did not match was kept for diagnostics and excluded from the sign-in outcome.',
+                })}
               </p>
             )}
           </div>
@@ -336,15 +481,32 @@ export function TestDetails({
 
         {sources.length > 0 && (
           <div>
-            <h4 className={cn(MENU_LABEL, 'mb-1.5 font-mono')}>Sources</h4>
+            <h4 className={cn(MENU_LABEL, 'mb-1.5 font-mono')}>
+              {intl.formatMessage({
+                id: 'admin.settings.security.idp.rail.sourcesTitle',
+                defaultMessage: 'Sources',
+              })}
+            </h4>
             <ul className="space-y-0.5">
               {sources.map((snapshot) => (
                 <li key={snapshot.source}>
                   <span className="font-medium">{SOURCE_WORDS[snapshot.source]}</span>
                   <span className="text-muted-foreground">
                     {snapshot.unavailable
-                      ? `: unavailable (${snapshot.unavailable})`
-                      : `: ${Object.keys(snapshot.claims ?? {}).length} claims`}
+                      ? intl.formatMessage(
+                          {
+                            id: 'admin.settings.security.idp.rail.sourceUnavailable',
+                            defaultMessage: ': unavailable ({reason})',
+                          },
+                          { reason: snapshot.unavailable }
+                        )
+                      : intl.formatMessage(
+                          {
+                            id: 'admin.settings.security.idp.rail.sourceClaims',
+                            defaultMessage: ': {count} claims',
+                          },
+                          { count: Object.keys(snapshot.claims ?? {}).length }
+                        )}
                   </span>
                 </li>
               ))}
@@ -354,24 +516,43 @@ export function TestDetails({
 
         <div>
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h4 className={cn(MENU_LABEL, 'font-mono')}>Claims</h4>
+            <h4 className={cn(MENU_LABEL, 'font-mono')}>
+              {intl.formatMessage({
+                id: 'admin.settings.security.idp.rail.claimsTitle',
+                defaultMessage: 'Claims',
+              })}
+            </h4>
             <label className="flex items-center gap-1.5 text-xs">
               <input
                 type="checkbox"
                 checked={showProtocol}
                 onChange={(e) => setShowProtocol(e.target.checked)}
               />
-              Show protocol claims
+              {intl.formatMessage({
+                id: 'admin.settings.security.idp.rail.showProtocol',
+                defaultMessage: 'Show protocol claims',
+              })}
             </label>
           </div>
           <p className="mt-1 text-muted-foreground">
-            Personal data. Share only with people who should have access.
+            {intl.formatMessage({
+              id: 'admin.settings.security.idp.rail.personalData',
+              defaultMessage: 'Personal data. Share only with people who should have access.',
+            })}
           </p>
           <dl className="mt-2 space-y-1.5 font-mono text-[11px]">
             {keys.map((key) => (
               <div key={key} className="min-w-0">
                 <dt className="break-all text-muted-foreground">{key}</dt>
-                <dd className="min-w-0 break-all">{escapeClaimValue(claims[key])}</dd>
+                <dd className="min-w-0 break-all">
+                  {escapeClaimValue(
+                    claims[key],
+                    intl.formatMessage({
+                      id: 'admin.settings.security.idp.rail.notSupplied',
+                      defaultMessage: 'Not supplied',
+                    })
+                  )}
+                </dd>
               </div>
             ))}
           </dl>
@@ -381,13 +562,13 @@ export function TestDetails({
   )
 }
 
-function escapeClaimValue(value: unknown): string {
-  if (value === undefined || value === null || value === '') return 'Not supplied'
+function escapeClaimValue(value: unknown, notSupplied: string): string {
+  if (value === undefined || value === null || value === '') return notSupplied
   if (typeof value === 'string') return value
   if (typeof value === 'number' || typeof value === 'boolean') return String(value)
   try {
     return JSON.stringify(value)
   } catch {
-    return 'Not supplied'
+    return notSupplied
   }
 }

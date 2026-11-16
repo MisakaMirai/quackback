@@ -18,6 +18,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Checkbox } from '@/components/ui/checkbox'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { SettingsCard } from '@/components/admin/settings/settings-card'
 import { SettingRow } from '@/components/admin/settings/setting-row'
 import type { IdentityProvider } from '@/lib/server/domains/settings/identity-providers.service'
@@ -31,6 +32,7 @@ import { useProviderSave } from './use-provider-save'
 import type { ProviderPatch } from './use-provider-save'
 
 export function SignInCard({ provider }: { provider: IdentityProvider }) {
+  const intl = useOptionalIntl()
   const { saving, save, saveClaimMapping } = useProviderSave(provider)
   const [showButton, setShowButton] = useState(provider.showButton)
   const [label, setLabel] = useState(provider.label)
@@ -51,7 +53,11 @@ export function SignInCard({ provider }: { provider: IdentityProvider }) {
 
   const handleSave = async () => {
     if (reportMissingIdpFields({ label })) return
-    const ok = await save(patch, 'Sign-in settings saved.')
+    const savedMessage = intl.formatMessage({
+      id: 'admin.settings.security.idp.signIn.saved',
+      defaultMessage: 'Sign-in settings saved.',
+    })
+    const ok = await save(patch, savedMessage)
     if (!ok || allowMissingEmail === storedAllowMissingEmail) return
     // The missing-email policy lives in claim_mapping, so it is a second,
     // ops-based write. Existing role rules are untouched by it, which is why
@@ -64,32 +70,63 @@ export function SignInCard({ provider }: { provider: IdentityProvider }) {
         operations: diffClaimMappingOperations(provider.claimMapping, proposed),
         acknowledgeAdminRules: true,
       },
-      'Sign-in settings saved.'
+      savedMessage
     )
   }
 
   return (
     <div id="signin" className="scroll-mt-6">
-      <SettingsCard title="Sign-in & access" contentClassName="space-y-6">
+      <SettingsCard
+        title={intl.formatMessage({
+          id: 'admin.settings.security.idp.signIn.title',
+          defaultMessage: 'Sign-in & access',
+        })}
+        contentClassName="space-y-6"
+      >
         <div className="space-y-4">
           <SwitchRow
-            label="Show sign-in button"
+            label={intl.formatMessage({
+              id: 'admin.settings.security.idp.signIn.showButton',
+              defaultMessage: 'Show sign-in button',
+            })}
             checked={showButton}
             onChange={setShowButton}
             disabled={saving}
             description={
               !showButton && provider.domains.some((d) => d.verifiedAt)
-                ? 'Users at a verified domain are still sent here from the email step.'
+                ? intl.formatMessage({
+                    id: 'admin.settings.security.idp.signIn.verifiedDomainNote',
+                    defaultMessage:
+                      'Users at a verified domain are still sent here from the email step.',
+                  })
                 : undefined
             }
           />
 
           <Disclosure
-            title="Sign-in appearance"
-            summary={label.trim() ? `Sign in with ${label.trim()}` : undefined}
+            title={intl.formatMessage({
+              id: 'admin.settings.security.idp.signIn.appearance',
+              defaultMessage: 'Sign-in appearance',
+            })}
+            summary={
+              label.trim()
+                ? intl.formatMessage(
+                    {
+                      id: 'admin.settings.security.idp.signIn.summary',
+                      defaultMessage: 'Sign in with {provider}',
+                    },
+                    { provider: label.trim() }
+                  )
+                : undefined
+            }
           >
             <div className="space-y-2">
-              <Label htmlFor="idp-label">Display name</Label>
+              <Label htmlFor="idp-label">
+                {intl.formatMessage({
+                  id: 'admin.settings.security.idp.displayName',
+                  defaultMessage: 'Display name',
+                })}
+              </Label>
               <Input
                 id="idp-label"
                 value={label}
@@ -97,11 +134,22 @@ export function SignInCard({ provider }: { provider: IdentityProvider }) {
                 disabled={saving}
               />
               <p className="text-sm text-muted-foreground">
-                The button reads &ldquo;Sign in with {label.trim() || provider.label}&rdquo;.
+                {intl.formatMessage(
+                  {
+                    id: 'admin.settings.security.idp.signIn.buttonReads',
+                    defaultMessage: 'The button reads “Sign in with {provider}”.',
+                  },
+                  { provider: label.trim() || provider.label }
+                )}
               </p>
             </div>
             <div className="space-y-2">
-              <Label>Logo</Label>
+              <Label>
+                {intl.formatMessage({
+                  id: 'admin.settings.security.idp.signIn.logo',
+                  defaultMessage: 'Logo',
+                })}
+              </Label>
               <IdentityProviderLogoUploader provider={provider} />
             </div>
           </Disclosure>
@@ -109,7 +157,10 @@ export function SignInCard({ provider }: { provider: IdentityProvider }) {
 
         <div className="border-t border-border/40 pt-5">
           <SwitchRow
-            label="Create accounts on first sign-in"
+            label={intl.formatMessage({
+              id: 'admin.settings.security.idp.signIn.createAccounts',
+              defaultMessage: 'Create accounts on first sign-in',
+            })}
             checked={autoCreateUsers}
             onChange={setAutoCreateUsers}
             disabled={saving}
@@ -121,24 +172,43 @@ export function SignInCard({ provider }: { provider: IdentityProvider }) {
         </div>
 
         <Disclosure
-          title="Account options"
+          title={intl.formatMessage({
+            id: 'admin.settings.security.idp.signIn.accountOptions',
+            defaultMessage: 'Account options',
+          })}
           defaultOpen={storedAllowMissingEmail}
-          summary={allowMissingEmail ? 'Sign-in without email allowed' : undefined}
+          summary={
+            allowMissingEmail
+              ? intl.formatMessage({
+                  id: 'admin.settings.security.idp.signIn.missingEmailSummary',
+                  defaultMessage: 'Sign-in without email allowed',
+                })
+              : undefined
+          }
         >
           <div className="flex items-start gap-2 text-sm">
             <Checkbox
               checked={allowMissingEmail}
               onCheckedChange={(v) => setAllowMissingEmail(v === true)}
               disabled={saving}
-              aria-label="Let users sign in without an email address"
+              aria-label={intl.formatMessage({
+                id: 'admin.settings.security.idp.allowMissingEmail',
+                defaultMessage: 'Let users sign in without an email address',
+              })}
               className="mt-0.5"
             />
             <span>
-              Let users sign in without an email address
+              {intl.formatMessage({
+                id: 'admin.settings.security.idp.allowMissingEmail',
+                defaultMessage: 'Let users sign in without an email address',
+              })}
               {allowMissingEmail && (
                 <span className="mt-1 block text-muted-foreground">
-                  They get a permanent placeholder address and are asked for a real one afterwards.
-                  Turning this off later does not change accounts that already have a placeholder.
+                  {intl.formatMessage({
+                    id: 'admin.settings.security.idp.signIn.allowMissingEmailBody',
+                    defaultMessage:
+                      'They get a permanent placeholder address and are asked for a real one afterwards. Turning this off later does not change accounts that already have a placeholder.',
+                  })}
                 </span>
               )}
             </span>
@@ -147,7 +217,15 @@ export function SignInCard({ provider }: { provider: IdentityProvider }) {
 
         <div className="flex justify-end border-t border-border/40 pt-5">
           <Button type="button" size="sm" onClick={handleSave} disabled={saving || !dirty}>
-            {saving ? 'Saving…' : 'Save changes'}
+            {saving
+              ? intl.formatMessage({
+                  id: 'admin.settings.security.idp.saving',
+                  defaultMessage: 'Saving…',
+                })
+              : intl.formatMessage({
+                  id: 'admin.settings.security.idp.saveChanges',
+                  defaultMessage: 'Save changes',
+                })}
           </Button>
         </div>
       </SettingsCard>

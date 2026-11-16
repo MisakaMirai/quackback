@@ -22,6 +22,7 @@ import { toast } from 'sonner'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { SettingsPage } from '@/components/admin/settings/settings-page'
 import { SettingsCard } from '@/components/admin/settings/settings-card'
 import { setProviderCredentialsFn, upsertIdentityProviderFn } from '@/lib/server/functions/sso'
@@ -51,6 +52,7 @@ export function ProviderCreatePage({
 }) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const intl = useOptionalIntl()
   const upsert = useServerFn(upsertIdentityProviderFn)
   const setCreds = useServerFn(setProviderCredentialsFn)
   const baseUrl = useBaseUrl()
@@ -81,7 +83,13 @@ export function ProviderCreatePage({
         },
       })
     } catch (err) {
-      toastError(err, 'Could not create the identity provider.')
+      toastError(
+        err,
+        intl.formatMessage({
+          id: 'admin.settings.security.idp.create.createFailed',
+          defaultMessage: 'Could not create the identity provider.',
+        })
+      )
       setSaving(false)
       return
     }
@@ -93,11 +101,22 @@ export function ProviderCreatePage({
         await setCreds({ data: { id: saved.id, clientSecret: draft.secret.trim() } })
         credentialsSaved = true
       } catch (err) {
-        toastError(err, 'Could not save the client secret.')
+        toastError(
+          err,
+          intl.formatMessage({
+            id: 'admin.settings.security.idp.secretSaveFailed',
+            defaultMessage: 'Could not save the client secret.',
+          })
+        )
       }
     }
     await queryClient.invalidateQueries({ queryKey: IDENTITY_PROVIDERS_KEY })
-    toast.success('Connection saved.')
+    toast.success(
+      intl.formatMessage({
+        id: 'admin.settings.security.idp.connectionSaved',
+        defaultMessage: 'Connection saved.',
+      })
+    )
     await navigate({
       to: '/admin/settings/security/sso/$providerId',
       params: { providerId: saved.id },
@@ -107,8 +126,14 @@ export function ProviderCreatePage({
 
   return (
     <SettingsPage
-      title="Connect single sign-on"
-      description="Connect an OpenID Connect provider, test it, then enable sign-in."
+      title={intl.formatMessage({
+        id: 'admin.settings.security.idp.create.title',
+        defaultMessage: 'Connect single sign-on',
+      })}
+      description={intl.formatMessage({
+        id: 'admin.settings.security.idp.create.description',
+        defaultMessage: 'Connect an OpenID Connect provider, test it, then enable sign-in.',
+      })}
       crumbs={SSO_CRUMBS}
     >
       <SettingsCard contentClassName="space-y-6">
@@ -122,7 +147,12 @@ export function ProviderCreatePage({
           existing={false}
           optionsChildren={
             <div className="space-y-2">
-              <Label htmlFor="idp-label">Display name</Label>
+              <Label htmlFor="idp-label">
+                {intl.formatMessage({
+                  id: 'admin.settings.security.idp.displayName',
+                  defaultMessage: 'Display name',
+                })}
+              </Label>
               <Input
                 id="idp-label"
                 value={label}
@@ -131,7 +161,13 @@ export function ProviderCreatePage({
                 disabled={saving}
               />
               <p className="text-sm text-muted-foreground">
-                The sign-in button reads &ldquo;Sign in with {label.trim() || defaultLabel}&rdquo;.
+                {intl.formatMessage(
+                  {
+                    id: 'admin.settings.security.idp.create.buttonPreview',
+                    defaultMessage: 'The sign-in button reads “Sign in with {provider}”.',
+                  },
+                  { provider: label.trim() || defaultLabel }
+                )}
               </p>
             </div>
           }
@@ -139,10 +175,20 @@ export function ProviderCreatePage({
 
         <div className="flex items-center justify-end gap-2 border-t border-border/40 pt-5">
           <Button type="button" variant="outline" size="sm" asChild disabled={saving}>
-            <Link {...SIGN_IN_TAB}>Cancel</Link>
+            <Link {...SIGN_IN_TAB}>
+              {intl.formatMessage({ id: 'common.cancel', defaultMessage: 'Cancel' })}
+            </Link>
           </Button>
           <Button type="button" size="sm" onClick={handleSaveAndTest} disabled={saving}>
-            {saving ? 'Saving…' : 'Save and test'}
+            {saving
+              ? intl.formatMessage({
+                  id: 'admin.settings.security.idp.saving',
+                  defaultMessage: 'Saving…',
+                })
+              : intl.formatMessage({
+                  id: 'admin.settings.security.idp.saveAndTest',
+                  defaultMessage: 'Save and test',
+                })}
           </Button>
         </div>
       </SettingsCard>
