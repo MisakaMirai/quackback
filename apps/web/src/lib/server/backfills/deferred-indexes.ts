@@ -33,10 +33,10 @@ import {
   ensureConcurrentIndexes,
   type ConcurrentIndexSpec,
 } from '@/lib/server/db'
+import { config } from '@/lib/server/config'
 import { logger } from '@/lib/server/logger'
 import { kvGet, kvSet } from '@/lib/server/kv/pg-kv'
 import { enqueueJob, findJobByDedupeKey } from '@/lib/server/jobs/job-queue'
-import { directConnection } from '@/lib/server/workspaces/pool-cache'
 import { WorkspaceKeyedCache } from '@/lib/server/workspaces/workspace-keyed'
 import { DURABLE_KV_TTL_SECONDS, maxAttemptsOf } from './batched'
 
@@ -210,8 +210,11 @@ export async function deferredIndexBuildDue(): Promise<boolean> {
  */
 export async function buildDeferredIndex(spec: ConcurrentIndexSpec): Promise<void> {
   // One connection of its own, closed after the build.
-  const { url, password } = await directConnection()
-  const direct = postgres(url, { max: 1, connect_timeout: 15, password, onnotice: () => {} })
+  const direct = postgres(config.databaseUrl, {
+    max: 1,
+    connect_timeout: 15,
+    onnotice: () => {},
+  })
   try {
     await ensureConcurrentIndexes(direct, [spec], (event) => {
       if (event.phase === 'start') {

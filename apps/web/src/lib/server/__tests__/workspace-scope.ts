@@ -9,12 +9,12 @@
  */
 import { createHash } from 'node:crypto'
 import { fromUuid, type WorkspaceId } from '@quackback/ids'
-import type { WorkspaceDescriptor } from '@/lib/server/workspaces/registry'
 import {
   createWorkspaceScope,
   runWithWorkspaceScope,
+  type ResolvedWorkspaceSecrets,
+  type WorkspaceDescriptor,
 } from '@/lib/server/workspaces/workspace-context'
-import type { ResolvedWorkspaceSecrets } from '@/lib/server/workspaces/vendor/workspace-secret-resolution'
 
 type StorageOverrides = Partial<WorkspaceDescriptor['storage']>
 

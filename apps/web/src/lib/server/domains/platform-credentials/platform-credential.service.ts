@@ -5,17 +5,13 @@
  * enable integrations at the platform level. These are separate from per-instance
  * tokens stored in the integrations table.
  *
- * Pooled Cloud reads the environment snapshot populated from CP at container startup.
- * Other integration and auth credentials retain their workspace source.
  * Single-tenancy reads use config.platformCredentialsSource:
  * - 'db'  (self-host, default): the integration_platform_credentials table + admin UI.
- * - 'env' (managed cloud): shared app creds from INTEGRATION_<PROVIDER>_<FIELD> env
- *   (projected from OpenBao via ESO). In 'env' mode writes are refused — the
- *   credentials are platform-managed, not editable per-workspace.
+ * - 'env' (deployment-managed): shared app creds from INTEGRATION_<PROVIDER>_<FIELD>
+ *   env vars. In 'env' mode writes are refused — the credentials are managed by
+ *   the deployment, not editable per-workspace.
  */
 
-import { CloudCredentialSource } from './cloud-source'
-import { CLOUD_INTEGRATION_FIELDS } from '@/lib/shared/integration-credentials'
 import { generateId, type PrincipalId } from '@quackback/ids'
 import { db, integrationPlatformCredentials, eq } from '@/lib/server/db'
 import { cacheGet, cacheSet, cacheDel, CACHE_KEYS } from '@/lib/server/cache'
@@ -45,7 +41,6 @@ export class PlatformCredentialsManagedError extends Error {
 }
 
 let _dbSource: DbCredentialSource | undefined
-const _controlPlaneSource = new CloudCredentialSource()
 let _envSource: EnvCredentialSource | undefined
 
 function dbSource(): DbCredentialSource {
@@ -54,7 +49,6 @@ function dbSource(): DbCredentialSource {
 
 /** The active source for *integration* credentials, per config.platformCredentialsSource. */
 function activeSource(): CredentialSource {
-  if (config.platformCredentialsSource === 'control-plane') return _controlPlaneSource
   if (config.platformCredentialsSource === 'env') {
     return (_envSource ??= new EnvCredentialSource())
   }
@@ -62,9 +56,9 @@ function activeSource(): CredentialSource {
 }
 
 // Social-login / SSO credentials (auth_*) share this table but are a separate
-// concern: they are per-workspace, DB-managed (the control plane seeds auth_sso), and
-// the env source has no knowledge of them. They are ALWAYS DB-backed regardless of
-// PLATFORM_CREDENTIALS_SOURCE — the env switch governs only the 24 integrations.
+// concern: they are per-workspace and DB-managed. They are ALWAYS DB-backed
+// regardless of PLATFORM_CREDENTIALS_SOURCE — the env switch governs only the
+// integrations.
 function isAuthCredentialType(integrationType: string): boolean {
   return integrationType.startsWith(AUTH_CREDENTIAL_PREFIX)
 }
@@ -82,8 +76,6 @@ async function sourceForType(
 
 /** Only complete provider-specific environment credentials lock the settings UI. */
 export async function arePlatformCredentialsManaged(integrationType?: string): Promise<boolean> {
-  if (integrationType && config.platformCredentialsSource === 'control-plane')
-    return Object.hasOwn(CLOUD_INTEGRATION_FIELDS, integrationType)
   if (
     !integrationType ||
     isAuthCredentialType(integrationType) ||
@@ -202,23 +194,13 @@ async function computeConfiguredIntegrationTypes(): Promise<Set<string>> {
   // list from before a provider was added, or a removed one). The cost is an env scan
   // plus one auth_* DB lookup — cheap, and already gated by the getWorkspaceSettings
   // cache upstream.
-  if (
-    config.platformCredentialsSource === 'env' ||
-    config.platformCredentialsSource === 'control-plane'
-  ) {
+  if (config.platformCredentialsSource === 'env') {
     const types = await activeSource().listConfigured()
     // auth_* credentials are always DB-backed (the env source can't enumerate them);
     // union them in so SSO / social-login registration still resolves.
     const dbTypes = await dbSource().listConfigured()
     for (const t of dbTypes) {
-      if (
-        !types.includes(t) &&
-        !(
-          config.platformCredentialsSource === 'control-plane' &&
-          Object.hasOwn(CLOUD_INTEGRATION_FIELDS, t)
-        )
-      )
-        types.push(t)
+      if (!types.includes(t)) types.push(t)
     }
     return new Set(types)
   }

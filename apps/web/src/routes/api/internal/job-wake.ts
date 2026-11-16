@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { authorizeFleetInternal } from '@/lib/server/fleet/internal-auth'
+import { authorizeFleetInternal } from '@/lib/server/jobs/internal-auth'
 import {
   handleJobWake,
   isJobWorkerRunning,

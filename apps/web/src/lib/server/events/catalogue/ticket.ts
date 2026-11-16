@@ -1,4 +1,4 @@
-/** Ticket-family event declarations (WO-2). created/status_changed are workflow triggers. */
+/** Ticket-family event declarations (WO-2). */
 import { decl } from './helpers'
 
 const S = 'support'
@@ -6,13 +6,13 @@ const S = 'support'
 export const ticketCreated = decl(
   'ticket.created',
   'ticket',
-  { webhook: true, workflow: true, notification: 'ticket_created' },
+  { webhook: true, notification: 'ticket_created' },
   S
 )
 export const ticketStatusChanged = decl(
   'ticket.status_changed',
   'ticket',
-  { webhook: true, workflow: true, notification: 'ticket_status_changed' },
+  { webhook: true, notification: 'ticket_status_changed' },
   S
 )
 export const ticketAssigned = decl(

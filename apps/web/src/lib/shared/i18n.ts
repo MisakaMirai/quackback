@@ -434,8 +434,7 @@ export async function loadLaunchMessages(locale: SupportedLocale): Promise<Recor
 
 /**
  * Key prefixes formatted on the server and never rendered by a page: email copy,
- * and the page a hostname that is not serving answers with
- * (`lib/server/workspaces/unavailable-page.ts`). No page seeds them.
+ * and the copy for a host that is not serving this install. No page seeds them.
  */
 export const SERVER_ONLY_MESSAGE_PREFIXES = ['email.', 'workspaceUnavailable.'] as const
 

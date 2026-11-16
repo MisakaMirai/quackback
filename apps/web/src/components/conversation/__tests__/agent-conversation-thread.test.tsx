@@ -265,7 +265,6 @@ vi.mock('@/components/shared/empty-state', () => ({
 }))
 vi.mock('@/components/ui/avatar', () => ({ Avatar: () => null }))
 
-vi.mock('@/lib/client/hooks/use-copilot-insert', () => ({ useCopilotInsert: () => vi.fn() }))
 vi.mock('@/lib/client/hooks/use-file-upload', () => ({
   useAgentFileUpload: () => ({ upload: vi.fn() }),
 }))

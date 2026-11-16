@@ -46,9 +46,7 @@ describe('enforceEmailBudget', () => {
 
   it('says email sending for the month is used up, and to upgrade for more', async () => {
     state.sent = 10_000
-    expect((await refusalOf()).message).toBe(
-      'Email sending for this month is used up. Upgrade your plan for more.'
-    )
+    expect((await refusalOf()).message).toBe('Email sending for this month is used up.')
   })
 
   it('quotes no counts or prices in the refusal', async () => {
@@ -66,9 +64,7 @@ describe('enforceEmailBudget', () => {
 
   it('says email is not included when the plan has no email allowance at all', async () => {
     state.emailsPerMonth = 0
-    expect((await refusalOf()).message).toBe(
-      'Outbound email is not included on your plan. Upgrade to enable it.'
-    )
+    expect((await refusalOf()).message).toBe('Outbound email is disabled for this workspace.')
   })
 })
 

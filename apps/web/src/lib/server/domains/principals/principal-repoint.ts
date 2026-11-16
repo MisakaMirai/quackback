@@ -52,8 +52,6 @@ import {
   tickets,
   ticketActivity,
   ticketSubscriptions,
-  workflowRuns,
-  workflowRunEvents,
   changelogSubscriptions,
   statusSubscriptions,
   principal,
@@ -304,18 +302,6 @@ export const REPOINT_STEPS: RepointStep[] = [
     ['conversation_id'],
     'Added customers on a group thread (§4.8). An anonymous lead an agent added by email keeps receiving replies after identifying; unique (conversation_id, principal_id), so a collision (the identified principal is already a participant) drops the anon row and the identified participation wins. ON DELETE CASCADE: a missed re-point would silently drop the row at teardown.'
   ),
-  simpleRepoint(
-    'workflow_runs',
-    workflowRuns,
-    'subject_principal_id',
-    'The person a workflow run acted on — usually the conversation visitor, so it follows them on merge like their conversations do (ON DELETE SET NULL would otherwise strand the run).'
-  ),
-  simpleRepoint(
-    'workflow_run_events',
-    workflowRunEvents,
-    'subject_principal_id',
-    'Freq-cap ledger subject: re-pointing keeps a once-per-person workflow capped after the visitor identifies (else the merge nulls the history and the cap resets).'
-  ),
   collisionRepoint(
     'post_subscriptions',
     postSubscriptions,
@@ -480,8 +466,6 @@ export const REPOINT_EXEMPTIONS: Record<string, string> = {
     'incidents/maintenance windows are authored by team members with status_page.publish; the merge source is always anonymous',
   'status_incident_updates.created_by':
     'incident updates are posted by team members with status_page.publish (same reasoning as status_incidents.created_by)',
-  'workflow_versions.created_by':
-    'workflow versions are saved by authenticated team members; anonymous principals cannot author them',
   'principal_role_assignments.principal_id':
     'role assignments are team-only; anonymous principals hold none',
   'principal_role_assignments.granted_by_principal_id': 'grant actor is a team member',
@@ -512,7 +496,6 @@ export const REPOINT_EXEMPTIONS: Record<string, string> = {
   'conversation_view_pins.principal_id':
     'view pins belong to team members; the merge source is always anonymous',
   'macros.created_by_principal_id': 'macro authors are team members, never anonymous',
-  'workflows.created_by': 'workflow authors are team members, never anonymous',
   'import_runs.initiated_by_principal_id':
     'import runs are launched by admins (route requires the admin role); the merge source is always anonymous',
   'export_runs.initiated_by_principal_id':

@@ -66,8 +66,6 @@ export const PERMISSIONS = {
   STATUS_MANAGE: 'status.manage',
   TAG_VIEW: 'tag.view',
   TAG_MANAGE: 'tag.manage',
-  SUGGESTION_VIEW: 'suggestion.view',
-  SUGGESTION_MANAGE: 'suggestion.manage',
   PRIORITIZATION_MANAGE: 'prioritization.manage',
 
   // changelog
@@ -114,7 +112,6 @@ export const PERMISSIONS = {
   OFFICE_HOURS_MANAGE: 'office_hours.manage',
   ROUTING_MANAGE: 'routing.manage',
   TEAM_MANAGE: 'team.manage',
-  WORKFLOW_MANAGE: 'workflow.manage',
   CHANNEL_ACCOUNT_MANAGE: 'channel_account.manage',
 
   // status_page
@@ -178,14 +175,12 @@ export const WORKSPACE_ADMIN_PERMISSIONS: readonly PermissionKey[] = [
   PERMISSIONS.OFFICE_HOURS_MANAGE,
   PERMISSIONS.ROUTING_MANAGE,
   PERMISSIONS.TEAM_MANAGE,
-  PERMISSIONS.WORKFLOW_MANAGE,
   PERMISSIONS.CHANNEL_ACCOUNT_MANAGE,
   PERMISSIONS.STATUS_PAGE_MANAGE,
 ]
 
 export const SUPPORT_LEAD_EXTRA_PERMISSIONS: readonly PermissionKey[] = [
   PERMISSIONS.ROUTING_MANAGE,
-  PERMISSIONS.WORKFLOW_MANAGE,
   PERMISSIONS.SLA_MANAGE,
   PERMISSIONS.OFFICE_HOURS_MANAGE,
   PERMISSIONS.CHANNEL_ACCOUNT_MANAGE,
@@ -225,8 +220,6 @@ export const SYSTEM_ROLE_PERMISSIONS: Record<SystemRoleKey, PermissionKey[]> = {
     PERMISSIONS.ANALYTICS_VIEW,
     PERMISSIONS.STATUS_VIEW,
     PERMISSIONS.TAG_VIEW,
-    PERMISSIONS.SUGGESTION_VIEW,
-    PERMISSIONS.SUGGESTION_MANAGE,
     PERMISSIONS.STATUS_PAGE_PUBLISH,
   ],
 }
@@ -293,8 +286,6 @@ export const PERMISSION_CATALOGUE: ReadonlyArray<{
   { key: PERMISSIONS.STATUS_MANAGE, category: 'feedback' },
   { key: PERMISSIONS.TAG_VIEW, category: 'feedback' },
   { key: PERMISSIONS.TAG_MANAGE, category: 'feedback' },
-  { key: PERMISSIONS.SUGGESTION_VIEW, category: 'feedback' },
-  { key: PERMISSIONS.SUGGESTION_MANAGE, category: 'feedback' },
   { key: PERMISSIONS.PRIORITIZATION_MANAGE, category: 'feedback' },
   { key: PERMISSIONS.CHANGELOG_VIEW_DRAFT, category: 'changelog' },
   { key: PERMISSIONS.CHANGELOG_MANAGE, category: 'changelog' },
@@ -327,7 +318,6 @@ export const PERMISSION_CATALOGUE: ReadonlyArray<{
   { key: PERMISSIONS.OFFICE_HOURS_MANAGE, category: 'support' },
   { key: PERMISSIONS.ROUTING_MANAGE, category: 'support' },
   { key: PERMISSIONS.TEAM_MANAGE, category: 'support' },
-  { key: PERMISSIONS.WORKFLOW_MANAGE, category: 'support' },
   { key: PERMISSIONS.CHANNEL_ACCOUNT_MANAGE, category: 'support' },
   { key: PERMISSIONS.STATUS_PAGE_MANAGE, category: 'status_page' },
   { key: PERMISSIONS.STATUS_PAGE_PUBLISH, category: 'status_page' },

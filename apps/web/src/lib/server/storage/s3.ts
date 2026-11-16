@@ -207,24 +207,14 @@ export class StorageUnavailableError extends Error {
 }
 
 /**
- * The active workspace's storage keys, or the process-wide ones when unscoped.
+ * Storage credentials for the active install.
  *
- * Under a workspace scope these were resolved on pool checkout from the record's
- * `storage.credentialRef` (`workspaces/workspace-secrets.ts`) and carried on the
- * scope, which is what lets this stay synchronous — `buildPublicUrl` and every
- * gate below are called from hundreds of places that cannot await.
+ * Production is single-workspace: one bucket and one credential pair from the
+ * environment. A test fixture may open a scope carrying its own credential to
+ * exercise per-install isolation; when it does, that credential wins.
  *
- * Read through `getWorkspaceStorageCredential()`, which yields the credential
- * and nothing else. The scope no longer exposes a `secrets` field at all, so
- * this module holds the storage keys and never the workspace `SECRET_KEY`, and
- * the bucket still arrives separately from {@link getStoragePlacement}. Nothing
- * here receives both halves in one call.
- *
- * When a workspace's credentials did not resolve this throws
- * {@link StorageUnavailableError}, and it never falls back to the fleet-wide
- * environment keys. That fallback is the specific thing this must not do: it
- * would hand one workspace a client pointed at another workspace's bucket, holding
- * credentials that might well open it.
+ * When a scope's credential did not resolve this throws
+ * {@link StorageUnavailableError} rather than falling back to another pair.
  */
 function resolveStorageCredentials(): StorageCredentials {
   const resolved = getWorkspaceStorageCredential()

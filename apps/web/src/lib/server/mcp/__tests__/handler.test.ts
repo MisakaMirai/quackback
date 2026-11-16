@@ -192,12 +192,6 @@ vi.mock('@/lib/server/domains/activity/activity.service', () => ({
   createActivity: vi.fn(),
 }))
 
-vi.mock('@/lib/server/domains/merge-suggestions/merge-suggestion.service', () => ({
-  acceptMergeSuggestion: vi.fn().mockResolvedValue(undefined),
-  dismissMergeSuggestion: vi.fn().mockResolvedValue(undefined),
-  restoreMergeSuggestion: vi.fn().mockResolvedValue(undefined),
-}))
-
 vi.mock('@/lib/server/domains/posts/post.user-actions', () => ({
   softDeletePost: vi.fn().mockResolvedValue(undefined),
   restorePost: vi.fn().mockResolvedValue({

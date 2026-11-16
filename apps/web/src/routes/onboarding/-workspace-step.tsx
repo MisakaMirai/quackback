@@ -22,7 +22,6 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { saveWorkspaceAndGoalFn } from '@/lib/server/functions/onboarding'
 import { isPathManagedFromBootstrap, MANAGED_PATHS } from '@/lib/client/config-file'
-import { track } from '@/lib/client/analytics'
 import { ReadyStep } from './-ready-step'
 import { SignOutButton } from './-sign-out-button'
 import { errorText } from '@/lib/client/error-text'
@@ -176,7 +175,6 @@ function WorkspaceNameStep({
         await navigate({ to: '/admin' })
         return
       }
-      void track('onboarding_workspace_saved', { enabledModules: result.enabledModules })
       localStorage.removeItem(DRAFT_KEY)
       setReady({ name: result.name ?? workspaceName.trim(), goals })
     } catch (err) {

@@ -43,8 +43,6 @@ import { streamLimiter } from '@/lib/server/realtime/stream-connection-limit'
 import { startStreamHeartbeat } from '@/lib/server/realtime/stream-heartbeat'
 import { getClientIp } from '@/lib/server/domains/api/rate-limit'
 import { getWorkspaceScope, runWithWorkspaceScope } from '@/lib/server/workspaces/workspace-context'
-import { withWorkspaceScopeById } from '@/lib/server/workspaces/fleet'
-import { isPooledTenancy } from '@/lib/server/workspaces/mode'
 import { logger } from '@/lib/server/logger'
 
 const log = logger.child({ component: 'chat-stream' })
@@ -260,29 +258,18 @@ export const Route = createFileRoute('/api/chat/stream')({
         let unsubscribe: (() => Promise<void>) | null = null
 
         // The abort listener and the stream's cancel hook are invoked by the
-        // runtime, outside the request's AsyncLocalStorage context, so under
-        // pooled tenancy `clearPresence` (and the requeue behind it) would run
-        // with no workspace scope and throw. Capture the scope now and re-enter
-        // it for teardown — the same pattern the auth stash sweeps use.
+        // runtime, outside the request's AsyncLocalStorage context, so teardown
+        // re-enters the scope captured at request time.
         const workspaceScope = getWorkspaceScope()
-        // The captured scope's pool does not live as long as the stream: under
-        // pooled tenancy the pool cache ends a pool that has gone unused, or that
-        // its LRU cap pushes out, and a stream checks out only once. So presence
-        // writes after start re-acquire the workspace by key, which replaces an
-        // evicted pool. A single-workspace install runs them as they are.
-        const pooledWorkspaceKey =
-          workspaceScope && isPooledTenancy() ? workspaceScope.workspace.workspaceKey : null
+
         const withLivePool = async (body: () => Promise<void>): Promise<void> => {
-          if (!pooledWorkspaceKey) return body()
           try {
-            await withWorkspaceScopeById(pooledWorkspaceKey, 'request', body)
+            await body()
           } catch (err) {
-            log.warn(
-              { err, stream_id: streamId, workspace_key: pooledWorkspaceKey },
-              'chat stream presence update failed'
-            )
+            log.warn({ err, stream_id: streamId }, 'chat stream presence update failed')
           }
         }
+
         const teardown = async () => {
           if (cleanedUp) return
           cleanedUp = true

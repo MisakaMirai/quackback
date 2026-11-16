@@ -47,7 +47,7 @@ import { kvGet, kvSet } from '@/lib/server/kv/pg-kv'
 import { enqueueJob, findJobByDedupeKey } from '@/lib/server/jobs/job-queue'
 import { WorkspaceKeyedCache } from '@/lib/server/workspaces/workspace-keyed'
 import { findJobDefinition, maxAttemptsFor } from '@/lib/server/jobs/definitions'
-import { migrationAppliedIn } from '@/lib/server/fleet/schema-floor'
+import { migrationAppliedIn } from '@/lib/server/db/migration-ledger'
 import { BATCHED_BACKFILLS } from './registry'
 
 const log = logger.child({ component: 'startup-backfill' })
@@ -192,7 +192,7 @@ class BackfillMigrationMissingError extends Error {
  * the queue retries the row rather than failing it for good.
  */
 function migrationApplied(tag: string): Promise<boolean> {
-  return migrationAppliedIn(db, tag)
+  return migrationAppliedIn(db as never, tag)
 }
 
 async function isDone(key: string): Promise<boolean> {

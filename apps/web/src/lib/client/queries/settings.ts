@@ -11,8 +11,6 @@ import {
   fetchCustomCssFn,
   fetchDeveloperConfig,
   fetchMessengerConfig,
-  fetchWorkflowAbandonedAutoCloseFn,
-  fetchWorkflowCloseSpamFn,
   fetchDefaultSlaPolicyFn,
   getSpamFilterConfigFn,
 } from '@/lib/server/functions/settings'
@@ -195,20 +193,6 @@ export const settingsQueries = {
     queryOptions({
       queryKey: ['settings', 'helpCenterRedirectRules'],
       queryFn: () => listRedirectRulesFn({ data: {} }),
-      staleTime: STALE_TIME_MEDIUM,
-    }),
-
-  workflowAbandonedAutoClose: () =>
-    queryOptions({
-      queryKey: ['settings', 'workflowAbandonedAutoClose'],
-      queryFn: fetchWorkflowAbandonedAutoCloseFn,
-      staleTime: STALE_TIME_MEDIUM,
-    }),
-
-  workflowCloseSpam: () =>
-    queryOptions({
-      queryKey: ['settings', 'workflowCloseSpam'],
-      queryFn: fetchWorkflowCloseSpamFn,
       staleTime: STALE_TIME_MEDIUM,
     }),
 

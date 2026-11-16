@@ -18,7 +18,7 @@
  */
 import { createHash } from 'node:crypto'
 import { sesReturnPathDomain } from '@quackback/email/ses-identity'
-import { SINGLE_WORKSPACE_KEY } from '@/lib/server/workspaces/after-commit'
+import { SINGLE_WORKSPACE_KEY } from '@/lib/server/jobs/after-commit'
 import { isPooledTenancy } from '@/lib/server/workspaces/mode'
 import { getCurrentWorkspace } from '@/lib/server/workspaces/workspace-context'
 

@@ -28,9 +28,6 @@ import { sql } from 'drizzle-orm'
 import { db } from '@/lib/server/db'
 import { getExecuteRows } from '@/lib/server/utils/execute-rows'
 import { logger } from '@/lib/server/logger'
-import { runFleetPass } from '@/lib/server/workspaces/fleet'
-import { isPooledTenancy } from '@/lib/server/workspaces/mode'
-import { getWorkspaceScope } from '@/lib/server/workspaces/workspace-context'
 import { WorkspaceKeyedCache } from '@/lib/server/workspaces/workspace-keyed'
 
 const log = logger.child({ component: 'sweep-lock' })
@@ -52,20 +49,8 @@ export async function withSweepLock(
   fn: () => Promise<void>,
   opts?: { keepUntilExpiry?: boolean }
 ): Promise<void> {
-  // Under pooled tenancy a sweeper tick has no workspace, and `db` refuses to
-  // resolve without one. Fan the tick out across the fleet here rather than at
-  // each of the ten call sites: every scheduled sweeper in `startup.ts` and the
-  // telemetry claim already funnel through this function, so one seam scopes
-  // all of them, and no caller changes.
-  //
-  // The lock itself needs no workspace segment. `sweep_lock` lives in the workspace's
-  // OWN database, so once `db` is scoped the lock is already per-workspace — which
-  // is exactly the semantics wanted: two workspaces must sweep independently, and
-  // two replicas must not sweep the same workspace concurrently.
-  if (isPooledTenancy() && !getWorkspaceScope()) {
-    await runFleetPass('sweep', () => acquireAndRun(name, ttlMs, fn, opts))
-    return
-  }
+  // The lock lives in this install's only database, so two replicas cannot
+  // sweep concurrently and there is nothing to fan out.
   await acquireAndRun(name, ttlMs, fn, opts)
 }
 
@@ -126,12 +111,12 @@ async function acquireAndRun(
  * That guard used to be a module-scope `let _sweepInProgress`, which is
  * correct only while a process serves one workspace. Under pooling, `runFleetPass`
  * walks the fleet through the same function: with a shared boolean the first
- * workspace to start the sweep suppresses it for **every other workspace** for as
+ * workspace to start the sweep suppresses it for every other workspace for as
  * long as it runs, and the suppression is invisible — the sweep simply returns,
  * nothing is logged, and the only symptom is that some workspaces' summaries
  * silently stop refreshing.
  *
- * Keyed per workspace and per sweep name, so two sweeps never share a latch either.
+ * Keyed by sweep name, so two sweeps never share a latch.
  */
 const inFlightSweeps = new WorkspaceKeyedCache<true>(4_096)
 

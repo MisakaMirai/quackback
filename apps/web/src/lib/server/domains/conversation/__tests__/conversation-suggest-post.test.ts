@@ -33,10 +33,6 @@ vi.mock('../conversation.webhooks', () => ({
   emitConversationCsatCommentAdded: vi.fn(),
 }))
 
-vi.mock('@/lib/server/domains/embeddings/embedding.service', () => ({
-  findSimilarPostsByText: vi.fn(async () => []),
-}))
-
 vi.mock('../conversation.convert', () => ({
   createPostFromConversation: vi.fn(),
 }))

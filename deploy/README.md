@@ -42,19 +42,12 @@ See the [Self-Hosted Guide](./self-hosted/README.md) for complete documentation.
 
 ---
 
-## Quackback Cloud
-
-Quackback Cloud runs the same open-source image as self-hosted installs. Its hosting configuration is not part of this repository.
-
----
-
 ## Directory Structure
 
 ```
 deploy/
 ├── README.md              # This file
 ├── railway-template.yml   # One-click Railway template
-├── edge/                  # Cloudflare edge-retry worker (not deployed)
 └── self-hosted/           # Self-hosting documentation
     └── README.md          # Self-hosted deployment guide
 ```
@@ -63,7 +56,7 @@ deploy/
 
 ## Building from source
 
-`bun run build` builds the app. There is one edition: the same build runs self-hosted and on Cloud.
+`bun run build` builds the app. There is one edition; every self-hosted install gets the same build.
 
 ---
 

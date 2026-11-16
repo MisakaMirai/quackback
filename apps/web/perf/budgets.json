@@ -320,11 +320,11 @@
       "componentRenders": 434
     },
     "sweep:doc:admin:/admin/settings/boards": {
-      "dbQueries": 8,
+      "dbQueries": 9,
       "htmlKB": 74.5
     },
     "sweep:ui:admin:/admin/settings/boards": {
-      "dbQueries": 8,
+      "dbQueries": 9,
       "serverRequests": 1,
       "requests": 122,
       "jsRequests": 117,
@@ -333,11 +333,11 @@
       "componentRenders": 426
     },
     "sweep:doc:admin:/admin/settings/changelog": {
-      "dbQueries": 8,
+      "dbQueries": 9,
       "htmlKB": 77.2
     },
     "sweep:ui:admin:/admin/settings/changelog": {
-      "dbQueries": 8,
+      "dbQueries": 9,
       "serverRequests": 1,
       "requests": 124,
       "jsRequests": 119,
@@ -359,11 +359,11 @@
       "componentRenders": 414
     },
     "sweep:doc:admin:/admin/settings/channels/email": {
-      "dbQueries": 12,
+      "dbQueries": 13,
       "htmlKB": 90.5
     },
     "sweep:ui:admin:/admin/settings/channels/email": {
-      "dbQueries": 12,
+      "dbQueries": 13,
       "serverRequests": 1,
       "requests": 128,
       "jsRequests": 124,

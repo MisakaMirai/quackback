@@ -49,8 +49,6 @@ export interface NotificationConfig {
   // assignee; any other recipient in the target is a team member.
   ticketId?: string
   assignedPrincipalId?: string | null
-  // assistant.handed_off (WO-3 slice 1)
-  reason?: string
   // conversation.note_mentioned (WO-3 slice 3)
   conversationMessageId?: string
   authorName?: string

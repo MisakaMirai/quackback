@@ -15,7 +15,6 @@ import { oauthCorsMiddleware } from '@/lib/server/middleware/oauth-cors'
 import { requestContextMiddleware } from '@/lib/server/middleware/request-context'
 import { userContentHostMiddleware } from '@/lib/server/middleware/user-content-host'
 import { serverFnLogMiddleware } from '@/lib/server/middleware/server-fn-log'
-import { workspaceContextMiddleware } from '@/lib/server/middleware/workspace-context'
 import { auditAttributionMiddleware } from '@/lib/server/middleware/audit-attribution'
 import { expireRouteContextOnWrite } from '@/lib/client/route-context-middleware'
 import { serverFnFetch } from '@/lib/client/server-fn-fetch'
@@ -51,7 +50,6 @@ export const startInstance = createStart(() => {
       requestContextMiddleware,
       userContentHostMiddleware,
       oauthCorsMiddleware,
-      workspaceContextMiddleware,
       csrfMiddleware,
       auditAttributionMiddleware,
     ],

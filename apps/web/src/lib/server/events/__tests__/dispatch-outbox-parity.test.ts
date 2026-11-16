@@ -339,32 +339,6 @@ const cases: Array<{ type: string; run: () => Promise<void> }> = [
       ),
   },
   {
-    type: 'conversation.customer_unresponsive',
-    run: () => {
-      const c = convRef()
-      return d.dispatchConversationCustomerUnresponsive(`cu:${createId('conversation')}`, {
-        conversationId: c.id,
-        conversation: c,
-        workflowId: createId('workflow'),
-        silenceMinutes: 30,
-        sinceAt: new Date('2026-01-01').toISOString(),
-      })
-    },
-  },
-  {
-    type: 'conversation.teammate_unresponsive',
-    run: () => {
-      const c = convRef()
-      return d.dispatchConversationTeammateUnresponsive(`tu:${createId('conversation')}`, {
-        conversationId: c.id,
-        conversation: c,
-        workflowId: createId('workflow'),
-        silenceMinutes: 30,
-        sinceAt: new Date('2026-01-01').toISOString(),
-      })
-    },
-  },
-  {
     type: 'sla.approaching_breach',
     run: () => {
       const c = convRef()

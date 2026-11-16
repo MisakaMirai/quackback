@@ -54,7 +54,7 @@ const workspaceSchema = z
 const tierLimitNumberSchema = z.number().int().nonnegative().nullable()
 
 // Optional operator-set admin banner. Delivered alongside tier limits;
-// see PlanNotice in domains/settings/tier-limits.types.ts.
+// see OperatorNotice in domains/settings/tier-limits.types.ts.
 const planNoticeSchema = z
   .object({
     label: z.string().min(1),
@@ -80,14 +80,13 @@ const tierFeatureFlagsSchema = z
   })
   .strict()
   .optional()
-const tierLimitsSchema = z
+const tierLimitsObjectSchema = z
   .object({
     maxBoards: tierLimitNumberSchema.optional(),
     maxPosts: tierLimitNumberSchema.optional(),
     maxTeamSeats: tierLimitNumberSchema.optional(),
     maxStatusComponents: tierLimitNumberSchema.optional(),
     maxSendingDomains: tierLimitNumberSchema.optional(),
-    aiTokensPerMonth: tierLimitNumberSchema.optional(),
     emailsPerMonth: tierLimitNumberSchema.optional(),
     maxInboundEmailAddresses: tierLimitNumberSchema.optional(),
     maxHelpCenterLocales: tierLimitNumberSchema.optional(),
@@ -98,6 +97,16 @@ const tierLimitsSchema = z
     notice: planNoticeSchema.optional(),
   })
   .strict()
+
+// Retired keys are accepted (and dropped) so a config file written before
+// their feature was removed keeps reconciling instead of failing validation.
+// `aiTokensPerMonth` was the Quackback AI token budget.
+const tierLimitsSchema = z.preprocess((value) => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return value
+  const copy = { ...(value as Record<string, unknown>) }
+  delete copy.aiTokensPerMonth
+  return copy
+}, tierLimitsObjectSchema)
 
 // Deprecated compatibility keys. `auth` and top-level `features` were managed
 // by older config files, but are now in-app only. Keep accepting them for one

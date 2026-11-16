@@ -21,7 +21,6 @@ import { MinimalDocument } from '@/components/shared/minimal-document'
 import { DefaultErrorPage } from '@/components/shared/error-page'
 import { DocumentHead, DocumentScripts } from '@/components/shared/document-head'
 import { VisitorBeacon } from '@/components/shared/visitor-beacon'
-import { ProductAnalytics } from '@/components/shared/product-analytics'
 import { documentLocale, htmlLangDir } from '@/lib/shared/document-locale'
 import { DocumentLocaleContext } from '@/components/shared/document-locale-context'
 import { DEFAULT_LOCALE, type SupportedLocale } from '@/lib/shared/i18n'
@@ -46,7 +45,6 @@ export interface RouterContext {
   registeredAuthProviders?: string[]
   acceptLanguageLocale?: SupportedLocale
   updateBannerDismissedVersion?: BootstrapData['updateBannerDismissedVersion']
-  productAnalytics?: BootstrapData['productAnalytics']
 }
 
 // Paths that are allowed before onboarding is complete
@@ -153,7 +151,6 @@ function RootComponent() {
   return (
     <RootDocument>
       <VisitorBeacon />
-      <ProductAnalytics />
       <Outlet />
     </RootDocument>
   )

@@ -127,8 +127,6 @@ describe('settings autosave hooks', () => {
     'useUpdateMessengerConfig',
     'useUpdateHelpCenterConfig',
     'useUpdateHelpCenterSeo',
-    'useUpdateWorkflowAbandonedAutoClose',
-    'useUpdateWorkflowCloseSpam',
     'useUpdateDefaultSlaPolicy',
   ])('%s is tagged as an autosave', (hook) => {
     expect(body(hook)).toContain('meta: AUTOSAVE')

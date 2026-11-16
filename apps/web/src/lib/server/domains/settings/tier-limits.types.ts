@@ -22,7 +22,7 @@ export interface TierFeatureFlags {
   customColors: boolean
   customCss: boolean
   /** Connecting external tools (GitHub, Slack, Linear, Jira, etc.).
-   *  All paid tiers on cloud; always on for self-hosters. */
+   *  Always on unless an operator turns it off. */
   integrations: boolean
   /** Host-page pageview counting and the widget's durable device id. Gates
    *  both ingest and the widget config served to embeds. */
@@ -36,11 +36,9 @@ export interface TierFeatureFlags {
  * for license or maintenance notices; absent (the default) renders
  * nothing.
  */
-export interface PlanNotice {
-  /** Short badge text, e.g. "Free trial". */
+export interface OperatorNotice {
+  /** Short badge text, e.g. "Maintenance". */
   label: string
-  /** A running trial's plan name, so the trial line can be worded per language. */
-  trialPlan?: string
   /** Optional supporting copy. */
   message?: string
   /** ISO timestamp; when set the banner renders a countdown. */
@@ -48,20 +46,12 @@ export interface PlanNotice {
   /** When set the banner renders an action button linking here. */
   actionUrl?: string
   actionLabel?: string
-  /** Expired-trial strip: persistent red, no countdown. */
-  ended?: boolean
-  /** Reserved for an operator notice strip; no cloud plan UI writes it any more. */
-  choiceDueAt?: string
 }
 
 export interface TierLimits {
   maxBoards: TierLimit<number>
   maxPosts: TierLimit<number>
-  /**
-   * Cloud bills per seat rather than capping seats, so this is null on
-   * all paid cloud tiers. The seam remains for operators and the
-   * config-file channel.
-   */
+  /** Operator cap on team seats. Null = unlimited, the OSS default. */
   maxTeamSeats: TierLimit<number>
   /** Active (non-deleted) status page components. */
   maxStatusComponents: TierLimit<number>
@@ -79,13 +69,6 @@ export interface TierLimits {
    */
   maxSendingDomains: TierLimit<number>
 
-  /**
-   * Monthly LLM token budget (input + output combined). All AI features
-   * (summaries, merge suggestions, sentiment, future ones) draw from
-   * this single budget. 0 blocks AI entirely; null = unlimited.
-   * Embeddings are excluded (they're tracked but not billed).
-   */
-  aiTokensPerMonth: TierLimit<number>
   emailsPerMonth: TierLimit<number>
 
   /**
@@ -110,8 +93,8 @@ export interface TierLimits {
   apiRequestsPerMinute: TierLimit<number>
 
   features: TierFeatureFlags
-  /** See PlanNotice. Absent on OSS defaults. */
-  notice?: PlanNotice
+  /** See OperatorNotice. Absent on OSS defaults. */
+  notice?: OperatorNotice
 }
 
 export const OSS_TIER_LIMITS: TierLimits = {
@@ -122,7 +105,6 @@ export const OSS_TIER_LIMITS: TierLimits = {
   maxCustomRoles: null,
   maxSendingDomains: null,
 
-  aiTokensPerMonth: null,
   emailsPerMonth: null,
 
   maxInboundEmailAddresses: null,

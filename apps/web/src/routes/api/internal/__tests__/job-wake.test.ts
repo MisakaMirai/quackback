@@ -6,7 +6,7 @@ const mocks = vi.hoisted(() => ({
   running: vi.fn(),
 }))
 
-vi.mock('@/lib/server/fleet/internal-auth', () => ({
+vi.mock('@/lib/server/jobs/internal-auth', () => ({
   authorizeFleetInternal: mocks.authorize,
 }))
 vi.mock('@/lib/server/jobs/worker', () => ({

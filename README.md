@@ -2,14 +2,14 @@
   <a href="https://quackback.io">
     <picture>
       <source media="(prefers-color-scheme: dark)" srcset=".github/readme/hero-dark.svg" />
-      <img src=".github/readme/hero-light.svg" width="100%" alt="Quackback: hear what customers want. Ship it. Tell them. Feedback boards, roadmap, changelog, support inbox, help center, status page and Quackback AI, shown with the feedback inbox." />
+      <img src=".github/readme/hero-light.svg" width="100%" alt="Quackback: hear what customers want. Ship it. Tell them. Feedback boards, roadmap, changelog, support inbox, help center and status page, shown with the feedback inbox." />
     </picture>
   </a>
 </p>
 
 <p align="center">
   <strong>Open-source customer feedback and support.</strong><br />
-  Feedback boards, a public roadmap and changelog, a support inbox, a help center, a status page and Quackback AI, in one product you can host yourself.
+  Feedback boards, a public roadmap and changelog, a support inbox, a help center and a status page, in one product you can host yourself.
 </p>
 
 <p align="center">
@@ -31,20 +31,18 @@
 - **One loop, from request to release.** Customers post and vote, you plan on a public roadmap, and when it ships, everyone who asked hears about it.
 - **Support that knows what customers asked for.** Live chat, email and tickets share an inbox with your feedback, so a conversation can become a vote on a request.
 - **Yours to run.** AGPL-licensed, with every feature when you self-host.
-- **Ready for AI.** An agent answers customers, Copilot works beside your team, and an MCP server lets your own AI tools work on feedback and tickets.
 
 ## What's inside
 
-| Product             | What it does                                                                                                                                                                                                                                                                                                                      |
-| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Feedback boards** | Customers post ideas, vote and comment. Similar ideas appear as they type, and duplicates merge with their votes. Statuses, tags, segments, moderation and private boards.                                                                                                                                                        |
-| **Roadmap**         | Show what's planned, in progress and complete. Link requests to Linear, GitHub, Jira and other trackers. Linear and GitHub move the request as the issue moves; other trackers send each change for your approval.                                                                                                                |
-| **Changelog**       | Publish updates and link the requests they ship, so every voter hears about it. Schedule entries, and reach subscribers by email and RSS.                                                                                                                                                                                         |
-| **Support inbox**   | Live chat, email and tickets in one shared inbox, with assignment, snoozing, macros, SLAs, office hours and workflows.                                                                                                                                                                                                            |
-| **Help center**     | A searchable knowledge base on your own domain.                                                                                                                                                                                                                                                                                   |
-| **Status page**     | Components, incidents and maintenance windows, with email updates for subscribers.                                                                                                                                                                                                                                                |
-| **Quackback AI**    | An agent that answers customers from your help center, changelog and status page, and hands off to your team when a person should step in. Copilot answers your team's questions and drafts replies; on Home (in Labs) it can propose settings changes you review and apply. Also duplicate detection, summaries and translation. |
-| **Developers**      | A REST API with an OpenAPI spec, signed webhooks, and an [MCP server](#connect-your-ai-tools) for AI agents.                                                                                                                                                                                                                      |
+| Product             | What it does                                                                                                                                                                                                       |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Feedback boards** | Customers post ideas, vote and comment. Similar ideas appear as they type, and duplicates merge with their votes. Statuses, tags, segments, moderation and private boards.                                         |
+| **Roadmap**         | Show what's planned, in progress and complete. Link requests to Linear, GitHub, Jira and other trackers. Linear and GitHub move the request as the issue moves; other trackers send each change for your approval. |
+| **Changelog**       | Publish updates and link the requests they ship, so every voter hears about it. Schedule entries, and reach subscribers by email and RSS.                                                                          |
+| **Support inbox**   | Live chat, email and tickets in one shared inbox, with assignment, snoozing, macros, SLAs and office hours.                                                                                                        |
+| **Help center**     | A searchable knowledge base on your own domain.                                                                                                                                                                    |
+| **Status page**     | Components, incidents and maintenance windows, with email updates for subscribers.                                                                                                                                 |
+| **Developers**      | A REST API with an OpenAPI spec, signed webhooks, and an [MCP server](#connect-your-ai-tools) for your own tools.                                                                                                  |
 
 The portal speaks English, Simplified Chinese and Traditional Chinese, and follows each visitor's browser language.
 
@@ -52,7 +50,7 @@ The portal speaks English, Simplified Chinese and Traditional Chinese, and follo
 
 ### Self-host
 
-Every feature, unlimited seats, no license key. You run the servers, backups and upgrades, and bring your own email and AI providers.
+Every feature, unlimited seats, no license key. You run the servers, backups and upgrades, and bring your own email provider.
 
 [![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/quackback?referralCode=ez8Slg&utm_source=github&utm_medium=readme&utm_campaign=deploy-button)
 

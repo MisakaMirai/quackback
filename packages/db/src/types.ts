@@ -25,7 +25,6 @@ import type { tickets, ticketStatuses, ticketConversations, ticketLinks } from '
 import type { ticketTypes } from './schema/ticket-types'
 import type { ticketActivity } from './schema/ticket-activity'
 import type { principal } from './schema/auth'
-import type { workspaceExperiments } from './schema/labs'
 
 export type {
   IdentitySource,
@@ -1215,10 +1214,6 @@ export type NewChangelogEntryPost = InferInsertModel<typeof changelogEntryPosts>
 // Principal types
 export type Principal = InferSelectModel<typeof principal>
 export type NewPrincipal = InferInsertModel<typeof principal>
-
-// Labs experiments (one row per workspace + registered experiment id)
-export type WorkspaceExperiment = InferSelectModel<typeof workspaceExperiments>
-export type NewWorkspaceExperiment = InferInsertModel<typeof workspaceExperiments>
 
 // Extended types for queries with relations
 export type CommentWithReplies = Comment & {

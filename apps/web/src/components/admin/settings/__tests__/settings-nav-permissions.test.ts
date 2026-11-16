@@ -157,7 +157,7 @@ describe('firstSettingsPath', () => {
 
   it('opens Notifications for a viewer with no settings permission', () => {
     expect(first(new Set())).toBe('/admin/settings/notifications')
-    expect(first(new Set([PERMISSIONS.WORKFLOW_MANAGE]), buildNavSections({}))).toBe(
+    expect(first(new Set([PERMISSIONS.TICKET_VIEW]), buildNavSections({}))).toBe(
       '/admin/settings/notifications'
     )
   })

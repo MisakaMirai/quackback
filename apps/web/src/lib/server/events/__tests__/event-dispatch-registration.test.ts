@@ -21,7 +21,7 @@ vi.mock('@/lib/server/jobs/job-queue', () => ({ enqueueJob: vi.fn() }))
 vi.mock('@/lib/server/logger', () => ({
   logger: { child: () => ({ error: vi.fn(), info: vi.fn(), warn: vi.fn() }) },
 }))
-vi.mock('@/lib/server/workspaces/after-commit', () => ({ SINGLE_WORKSPACE_KEY: 'single' }))
+vi.mock('@/lib/server/jobs/after-commit', () => ({ SINGLE_WORKSPACE_KEY: 'single' }))
 vi.mock('@/lib/server/workspaces/workspace-context', () => ({
   getCurrentWorkspace: () => null,
 }))

@@ -75,16 +75,16 @@ function wireGracefulShutdown(): void {
  * sweeping nothing, which is the one failure mode a cron service really has.
  */
 async function runCronJobAndExit(name: string): Promise<never> {
-  const { isFleetCronJobName, runFleetCronJob, FLEET_CRON_JOBS } =
-    await import('@/lib/server/cron/fleet-jobs')
-  if (!isFleetCronJobName(name)) {
+  const { isScheduledCronJobName, runScheduledCronJob, SCHEDULED_CRON_JOBS } =
+    await import('@/lib/server/cron/scheduled-jobs')
+  if (!isScheduledCronJobName(name)) {
     log.error(
-      { job: name, known: Object.keys(FLEET_CRON_JOBS) },
+      { job: name, known: Object.keys(SCHEDULED_CRON_JOBS) },
       'QUACKBACK_CRON_JOB names no known job'
     )
     process.exit(1)
   }
-  const ok = await runFleetCronJob(name)
+  const ok = await runScheduledCronJob(name)
   process.exit(ok ? 0 : 1)
 }
 
@@ -152,20 +152,9 @@ export function logStartupBanner(): void {
   // This one was found by the `db` proxy's own scope tripwire rather than by the
   // sweep that preceded it: it is a boot-time configuration warning, which is
   // not where anyone looks for a database query.
-  if (config.isPooledTenancy && !shouldRunWorkers()) {
-    log.info(
-      'pooled tenancy on a web replica — integration config validation runs on the worker tier'
-    )
-  } else {
-    Promise.all([
-      import('@/integrations/segment/server/user-sync'),
-      import('@/lib/server/workspaces/fleet'),
-    ])
-      .then(([{ warnIfSegmentInboundIsInsecure }, { runFleetPass }]) =>
-        runFleetPass('sweep', () => warnIfSegmentInboundIsInsecure())
-      )
-      .catch((err) => log.error({ err }, 'failed to validate Segment inbound configuration'))
-  }
+  import('@/integrations/segment/server/user-sync')
+    .then(({ warnIfSegmentInboundIsInsecure }) => warnIfSegmentInboundIsInsecure())
+    .catch((err) => log.error({ err }, 'failed to validate Segment inbound configuration'))
 
   // Wire SIGTERM/SIGINT once — the rest of this function spawns
   // long-lived workers + sweepers, so register the drain handler before
@@ -176,31 +165,17 @@ export function logStartupBanner(): void {
   // custom-oidc → identity_provider migration that needs SECRET_KEY to decrypt
   // its credential and so can't live in the SQL migration bundle.
   //
-  // Per-database work, so under pooled tenancy it runs once per workspace — but
-  // only on a replica that already runs background work. A fleet-wide backfill
-  // on every web boot would open a connection to every workspace database from
-  // the HTTP tier; one-shot per-database work belongs with the worker. The
-  // backfill is idempotent and advisory-locked, which is what makes fanning it
-  // out safe rather than merely convenient.
-  if (config.isPooledTenancy && !shouldRunWorkers()) {
-    log.info('pooled tenancy on a web replica — startup backfills are left to the worker tier')
-  } else {
-    // Backfills over hot tables and background indexes are jobs. Startup only
-    // enqueues them, after the one-time backfills above have committed, and
-    // each job's schedule pass enqueues for a workspace that slept through it.
-    Promise.all([
-      import('@/lib/server/auth/backfill-custom-oidc-provider'),
-      import('@/lib/server/backfills/upgrade-done'),
-      import('@/lib/server/workspaces/fleet'),
-    ])
-      .then(([{ runStartupBackfills }, { enqueueUpgradeWork }, { runFleetPass }]) =>
-        runFleetPass('sweep', async () => {
-          await runStartupBackfills()
-          await enqueueUpgradeWork()
-        })
-      )
-      .catch((err) => log.error({ err }, 'failed to run startup backfills'))
-  }
+  // Backfills over hot tables and background indexes are jobs. Startup only
+  // enqueues them, after the one-time backfills above have committed, and
+  // each job's schedule pass enqueues for a database that slept through it.
+  Promise.all([
+    import('@/lib/server/auth/backfill-custom-oidc-provider'),
+    import('@/lib/server/backfills/upgrade-done'),
+  ])
+    .then(([{ runStartupBackfills }, { enqueueUpgradeWork }]) =>
+      runStartupBackfills().then(() => enqueueUpgradeWork())
+    )
+    .catch((err) => log.error({ err }, 'failed to run startup backfills'))
 
   // First-run setup token: on an install that still has no admin, either note
   // that SETUP_TOKEN is live or print a generated one once. Self-hosted only:
@@ -276,13 +251,8 @@ function startBackgroundProcessing(): void {
   // waiting for the 02:30 slot because beacons are dropped while a day has no
   // partition, and an instance that was down long enough to exhaust its
   // week-ahead window would otherwise lose a day of them.
-  Promise.all([
-    import('./domains/analytics/partition-maintenance-queue'),
-    import('@/lib/server/workspaces/fleet'),
-  ])
-    .then(([{ ensurePageViewPartitionsAtBoot }, { runFleetPass }]) =>
-      runFleetPass('sweep', () => ensurePageViewPartitionsAtBoot())
-    )
+  import('./domains/analytics/partition-maintenance-queue')
+    .then(({ ensurePageViewPartitionsAtBoot }) => ensurePageViewPartitionsAtBoot())
     .catch((err) => log.error({ err }, 'boot-time partition ensure failed'))
 
   // One-time copy of files stored before the workspace storage layout into it
@@ -295,9 +265,9 @@ function startBackgroundProcessing(): void {
       .catch((err) => log.error({ err }, 'failed to arm the storage relocation'))
   }
 
-  // The scheduled sweeps. Bodies live in `cron/fleet-jobs.ts` so a one-shot
+  // The scheduled sweeps. Bodies live in `cron/scheduled-jobs.ts` so a one-shot
   // `QUACKBACK_CRON_JOB` run and this timer schedule execute the same code.
-  import('@/lib/server/cron/fleet-jobs')
+  import('@/lib/server/cron/scheduled-jobs')
     .then((jobs) => {
       // Space reclamation for the tables that replaced Redis (kv_store,
       // rate_bucket, kv_set_member, presence_stream, realtime_overflow).

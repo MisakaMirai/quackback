@@ -97,7 +97,6 @@ describe('RBAC permission catalogue', () => {
     expect([...lead].filter((p) => !manager.has(p)).sort()).toEqual(
       [
         PERMISSIONS.ROUTING_MANAGE,
-        PERMISSIONS.WORKFLOW_MANAGE,
         PERMISSIONS.SLA_MANAGE,
         PERMISSIONS.OFFICE_HOURS_MANAGE,
         PERMISSIONS.CHANNEL_ACCOUNT_MANAGE,
@@ -200,7 +199,7 @@ describe('RBAC permission catalogue', () => {
       PERMISSIONS.OFFICE_HOURS_MANAGE,
       PERMISSIONS.ROUTING_MANAGE,
       PERMISSIONS.TEAM_MANAGE,
-      PERMISSIONS.WORKFLOW_MANAGE,
+      PERMISSIONS.SLA_MANAGE,
       PERMISSIONS.CHANNEL_ACCOUNT_MANAGE,
     ]) {
       expect(WORKSPACE_ADMIN_PERMISSIONS).toContain(key)

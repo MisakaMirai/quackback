@@ -201,20 +201,6 @@ export const P = {
     submittedAt: z.string(),
   }),
   'conversation.note_mentioned': z.looseObject({ conversationId: id }).loose(),
-  'conversation.customer_unresponsive': z.looseObject({
-    conversationId: id,
-    conversation: conversationRef,
-    workflowId: id,
-    silenceMinutes: z.number(),
-    sinceAt: z.string(),
-  }),
-  'conversation.teammate_unresponsive': z.looseObject({
-    conversationId: id,
-    conversation: conversationRef,
-    workflowId: id,
-    silenceMinutes: z.number(),
-    sinceAt: z.string(),
-  }),
   // message
   'message.created': z.looseObject({ message: messageData, conversation: conversationRef }),
   'message.note_created': z.looseObject({ message: messageData, conversation: conversationRef }),

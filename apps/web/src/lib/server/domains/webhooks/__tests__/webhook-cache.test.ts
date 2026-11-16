@@ -68,7 +68,6 @@ vi.mock('@/lib/server/domains/settings/tier-limits.service', () => ({
     maxBoards: null,
     maxPosts: null,
     maxTeamSeats: null,
-    aiTokensPerMonth: null,
     apiRequestsPerMonth: null,
     apiRequestsPerMinute: null,
     features: {

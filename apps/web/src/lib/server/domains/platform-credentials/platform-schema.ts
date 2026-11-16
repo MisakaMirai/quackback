@@ -1,20 +1,17 @@
 /**
  * Derives `src/lib/shared/platform-schema.generated.json`: a machine-readable
- * description of the two families of configuration that reach a deployment as
- * environment variables rather than through the admin UI.
+ * description of the integration platform-credential fields that reach a
+ * deployment as environment variables rather than through the admin UI.
  *
- * 1. Integration platform credentials. Every integration declares the OAuth-app
- *    fields it needs in `platformCredentials`. When `PLATFORM_CREDENTIALS_SOURCE`
- *    is `env`, `EnvCredentialSource` reads those fields from
- *    `INTEGRATION_<TYPE>_<FIELD>` variables instead of the database, so whatever
- *    populates that environment needs the field list and the exact variable
- *    names, and needs them without importing this code. Required fields must
- *    all be present: `EnvCredentialSource` reports a provider as configured
- *    only when they are, so a partial population reads as unconfigured and
- *    the provider disappears from the catalog rather than half working.
- *    Optional fields (`required: false`) may be absent.
- * 2. AI configuration keys, taken from the explicit env mapping in
- *    `src/lib/server/config.ts`.
+ * Every integration declares the OAuth-app fields it needs in
+ * `platformCredentials`. When `PLATFORM_CREDENTIALS_SOURCE` is `env`,
+ * `EnvCredentialSource` reads those fields from `INTEGRATION_<TYPE>_<FIELD>`
+ * variables instead of the database, so whatever populates that environment
+ * needs the field list and the exact variable names, and needs them without
+ * importing this code. Required fields must all be present: `EnvCredentialSource`
+ * reports a provider as configured only when they are, so a partial population
+ * reads as unconfigured and the provider disappears from the catalog rather
+ * than half working. Optional fields (`required: false`) may be absent.
  *
  * This module owns the forward transform (field key to variable name); the
  * inverse is `fieldFromEnvKey` in `credential-source.ts` beside it. A generated
