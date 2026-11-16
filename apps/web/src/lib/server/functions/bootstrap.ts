@@ -8,7 +8,7 @@ import {
   type Theme,
 } from '@/lib/shared/theme'
 import { getUpdateBannerDismissedVersionCookie } from '@/lib/shared/update-banner-cookie'
-import { resolveLocale, type SupportedLocale } from '@/lib/shared/i18n'
+import { localeFromCookieHeader, resolveLocale, type SupportedLocale } from '@/lib/shared/i18n'
 import { redactSettingsForClient } from '@/lib/shared/redact-portal-config'
 import {
   getSetupState,
@@ -165,7 +165,8 @@ const getBootstrapDataInternal = createServerOnlyFn(async (): Promise<BootstrapD
   const updateBannerDismissedVersion = getUpdateBannerDismissedVersionCookie(
     headers.get('cookie') ?? null
   )
-  const acceptLanguageLocale = resolveLocale(headers.get('accept-language'))
+  const acceptLanguageLocale =
+    localeFromCookieHeader(headers.get('cookie')) ?? resolveLocale(headers.get('accept-language'))
 
   // Ask for the prefers-color-scheme client hint, so Chromium sends the OS
   // preference with later requests and a `system` theme is rendered here. A
