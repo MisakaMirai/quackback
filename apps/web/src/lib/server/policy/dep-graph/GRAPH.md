@@ -58,7 +58,7 @@ Edges (27):
 ## 3. Server domains (lib/server/domains)
 
 Nodes (46): activity, admin-overview, analytics, api, api-keys, attribute-definitions, boards, changelog, channel-accounts, channels, comments, conversation, conversation-attributes, conversation-views, domain-proof, export, files, help-center, import, inbox, macros, moderation, notifications, office-hours, onboarding, platform-credentials, post-tags, post-views, posts, principals, push-devices, roadmaps, roles, search, segments, settings, settings-registry, sla, status, statuses, subscriptions, teams, tickets, user-attributes, users, webhooks
-Edges (85):
+Edges (88):
 
 - activity -> principals
 - admin-overview -> changelog
@@ -73,10 +73,10 @@ Edges (85):
 - boards -> settings
 - changelog -> settings
 - channel-accounts -> conversation
+- channel-accounts -> domain-proof
 - channel-accounts -> notifications
 - channel-accounts -> settings
 - channel-accounts -> subscriptions
-- channels -> channel-accounts
 - channels -> conversation
 - comments -> activity
 - comments -> posts
@@ -96,9 +96,11 @@ Edges (85):
 - conversation-attributes -> conversation
 - conversation-attributes -> settings
 - domain-proof -> channel-accounts
+- domain-proof -> settings
 - export -> conversation
 - export -> users
 - files -> principals
+- help-center -> domain-proof
 - help-center -> principals
 - help-center -> settings
 - import -> principals
@@ -125,6 +127,7 @@ Edges (85):
 - roles -> settings
 - search -> help-center
 - search -> posts
+- settings -> domain-proof
 - settings -> platform-credentials
 - settings -> sla
 - settings-registry -> api
@@ -150,6 +153,4 @@ Edges (85):
 
 Strongly connected components with more than one domain. A new entry here is a new cycle and needs an explicit decision.
 
-- channel-accounts <-> channels <-> conversation <-> tickets
-- posts <-> subscriptions
-- settings <-> sla
+- activity <-> changelog <-> channel-accounts <-> channels <-> comments <-> conversation <-> domain-proof <-> files <-> posts <-> principals <-> roles <-> settings <-> sla <-> status <-> subscriptions <-> tickets

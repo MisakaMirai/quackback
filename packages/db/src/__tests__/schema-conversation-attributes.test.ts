@@ -63,7 +63,7 @@ describe('Conversation attribute definitions schema', () => {
     expect(seeded).toContain('ON CONFLICT (key) DO NOTHING')
 
     const dropped = readFileSync(
-      join(__dirname, '../../drizzle/0312_drop_quackback_ai.sql'),
+      join(__dirname, '../../drizzle/0316_drop_quackback_ai.sql'),
       'utf8'
     )
     expect(dropped).toMatch(

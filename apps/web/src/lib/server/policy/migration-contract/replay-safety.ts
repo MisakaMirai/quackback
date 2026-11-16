@@ -222,8 +222,8 @@ export const REPLAY_RETIRED: ReadonlySet<string> = new Set([
   '0275_slack_thread_sessions',
   '0294_workspace_copilot',
   '0296_validate_workspace_copilot_checks',
-  '0312_drop_quackback_ai',
-  // Retired by 0314_drop_widget: it drops the widget_config column, the widget
+  '0316_drop_quackback_ai',
+  // Retired by 0318_drop_widget: it drops the widget_config column, the widget
   // session tables and the widget scope these files replay against.
   '0269_messenger_ai_default_on',
   '0271_widget_installed_sdk_version',
@@ -236,19 +236,19 @@ export const REPLAY_OVERRIDES: readonly ReplayOverride[] = [
   {
     tag: '0051_ai_usage_log_month_index',
     verdict: 'errors',
-    why: '0312_drop_quackback_ai drops ai_usage_log, so the index statement has no relation to target on a replay of the migrated database.',
+    why: '0316_drop_quackback_ai drops ai_usage_log, so the index statement has no relation to target on a replay of the migrated database.',
     stillFailsWith: /ai_usage_log/,
   },
   {
     tag: '0274_slack_agent_gateway',
     verdict: 'errors',
-    why: '0312_drop_quackback_ai drops assistant_pending_actions, so the Slack agent gateway replay has no relation to alter.',
+    why: '0316_drop_quackback_ai drops assistant_pending_actions, so the Slack agent gateway replay has no relation to alter.',
     stillFailsWith: /assistant_pending_actions/,
   },
   {
     tag: '0302_approvals_foundation',
     verdict: 'errors',
-    why: '0312_drop_quackback_ai drops assistant_pending_actions, so the approvals-foundation replay has no relation to alter.',
+    why: '0316_drop_quackback_ai drops assistant_pending_actions, so the approvals-foundation replay has no relation to alter.',
     stillFailsWith: /assistant_pending_actions/,
   },
   {

@@ -383,9 +383,13 @@ describe('replayGateVerdict', () => {
       '0309_api_key_kinds',
       '0310_sending_domain_ownership_grace',
       '0311_sending_domain_ownership_warning_sent',
-      '0312_drop_quackback_ai',
-      '0313_drop_companies',
-      '0314_drop_widget',
+      '0312_conversation_thread_sender',
+      '0313_email_senders',
+      '0314_domains',
+      '0315_domains_ownership_warning',
+      '0316_drop_quackback_ai',
+      '0317_drop_companies',
+      '0318_drop_widget',
     ])
     const verdict = replayGateVerdict(before, verdictsFor(replaySetFor(before)), false)
     expect(verdict.ok).toBe(false)

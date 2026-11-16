@@ -2008,21 +2008,49 @@
       "idx": 289,
       "version": "7",
       "when": 1791001700000,
-      "tag": "0312_drop_quackback_ai",
+      "tag": "0312_conversation_thread_sender",
       "breakpoints": true
     },
     {
       "idx": 290,
       "version": "7",
       "when": 1791001800000,
-      "tag": "0313_drop_companies",
+      "tag": "0313_email_senders",
       "breakpoints": true
     },
     {
       "idx": 291,
       "version": "7",
       "when": 1791001900000,
-      "tag": "0314_drop_widget",
+      "tag": "0314_domains",
+      "breakpoints": true
+    },
+    {
+      "idx": 292,
+      "version": "7",
+      "when": 1791002000000,
+      "tag": "0315_domains_ownership_warning",
+      "breakpoints": true
+    },
+    {
+      "idx": 293,
+      "version": "7",
+      "when": 1791002100000,
+      "tag": "0316_drop_quackback_ai",
+      "breakpoints": true
+    },
+    {
+      "idx": 294,
+      "version": "7",
+      "when": 1791002200000,
+      "tag": "0317_drop_companies",
+      "breakpoints": true
+    },
+    {
+      "idx": 295,
+      "version": "7",
+      "when": 1791002300000,
+      "tag": "0318_drop_widget",
       "breakpoints": true
     }
   ]

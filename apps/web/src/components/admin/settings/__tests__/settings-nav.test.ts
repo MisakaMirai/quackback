@@ -167,6 +167,7 @@ describe('buildNavSections', () => {
     expect(itemLabels(sections, 'Workspace')).toEqual([
       'General',
       'Domains',
+      'Email',
       'Notifications',
       'Portal',
       'Members & Teams',

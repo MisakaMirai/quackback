@@ -25,7 +25,7 @@ const dsn = ADMIN_URL.replace(/\/[^/]+$/, `/${DB}`)
 const PACKAGE_DIR = path.resolve(__dirname, '../..')
 
 /** The destructive migration this branch adds; it locks `conversation_messages` first. */
-const AI_DROP_WHEN = BUNDLED_MIGRATIONS.find((m) => m.tag === '0312_drop_quackback_ai')!.when
+const AI_DROP_WHEN = BUNDLED_MIGRATIONS.find((m) => m.tag === '0316_drop_quackback_ai')!.when
 
 let admin: postgres.Sql
 

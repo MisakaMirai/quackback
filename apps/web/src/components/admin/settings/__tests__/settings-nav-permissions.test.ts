@@ -36,6 +36,8 @@ describe('navSectionsFor', () => {
 
     expect(labels(only(PERMISSIONS.SETTINGS_MANAGE), 'Workspace')).toEqual([
       'General',
+      'Domains',
+      'Email',
       'Notifications',
     ])
     expect(labels(only(PERMISSIONS.SETTINGS_MANAGE), 'Data')).toEqual(['Imports & exports'])

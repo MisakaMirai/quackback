@@ -2,7 +2,7 @@
 
 > 生产数据禁止丢弃。本文档描述如何在**不重建数据库、不清空业务表**的前提下，应用本分支的 Quackback AI 移除迁移，并用分支代码重启服务。
 >
-> `0312_drop_quackback_ai.sql` 只删除 AI 专用的表、列和权限，不会删除反馈、收件箱、帮助中心、Changelog、状态页等业务数据。
+> `0316_drop_quackback_ai.sql` 只删除 AI 专用的表、列和权限，不会删除反馈、收件箱、帮助中心、Changelog、状态页等业务数据。
 
 ## 1. 变更范围
 
@@ -89,7 +89,7 @@ bun run db:check-drift
 No drift: migrations and TS schema are in sync.
 ```
 
-并确认 `0312_drop_quackback_ai` 已记录在迁移账本中：
+并确认 `0316_drop_quackback_ai` 已记录在迁移账本中：
 
 ```sql
 SELECT count(*) FROM drizzle.__drizzle_migrations;

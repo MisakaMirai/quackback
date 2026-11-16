@@ -1,5 +1,6 @@
 import { PERMISSIONS, type PermissionKey } from '@/lib/shared/permissions'
 import { DOMAINS_PAGE_PERMISSIONS } from '@/lib/shared/domains-permissions'
+import { EMAIL_SENDING_PERMISSION } from '@/lib/shared/email-sending-permissions'
 import { isProductEnabled, type FeatureFlags } from '@/lib/shared/types'
 import { SETTINGS_PAGES, type SettingsPagePath } from './settings-pages'
 
@@ -215,6 +216,7 @@ export function buildNavSections(flags?: Partial<FeatureFlags>): NavSection[] {
           anyOf: DOMAINS_PAGE_PERMISSIONS,
           overview: { owner: PERMISSIONS.SETTINGS_CUSTOM_DOMAIN },
         },
+        { ...navPage('/admin/settings/email'), permission: EMAIL_SENDING_PERMISSION },
         { ...navPage('/admin/settings/notifications') },
         {
           ...navPage('/admin/settings/portal'),

@@ -34,9 +34,9 @@ import {
   conversationMessages,
 } from '@/lib/server/db'
 import {
-  formatNamedSendingAddress,
-  resolveConversationFrom,
-} from '@/lib/server/domains/channel-accounts/channel-account.service'
+  senderFrom,
+  resolveConversationSender,
+} from '@/lib/server/domains/channel-accounts/sender-resolver'
 import { randomUUID } from 'node:crypto'
 import { agentReplyDisplayName, assembleOutboundThreading } from '@quackback/email'
 import { withEmailIdempotencyKey } from '@quackback/email/idempotency'
@@ -457,18 +457,15 @@ export async function sendVisitorConversationEmail(opts: {
   const quotedPrevious = correspondence
     ? ((await loadQuotedPreviousMessage(opts.conversationId)) ?? undefined)
     : undefined
-  // Reply from the address the customer wrote to when this workspace has proved
-  // it may send as that domain, else the assigned team's sending address, else
-  // the branded workspace default (EMAIL_FROM). A thread that arrived at the
-  // customer's own support address should not change identity on the way back.
-  const resolvedFrom = (await resolveConversationFrom(opts.conversationId)) ?? undefined
-  const fromDisplayName = correspondence
-    ? agentReplyDisplayName(opts.senderName, opts.ctx.workspaceName)
-    : undefined
-  const from =
-    resolvedFrom && fromDisplayName
-      ? formatNamedSendingAddress(resolvedFrom, fromDisplayName)
-      : resolvedFrom
+  // Reply from the thread's sender, else the address chosen for support in
+  // settings (resolveSender has the order), else the platform default. A
+  // thread keeps one sender, so it does not change identity on the way back.
+  // Named after the agent and the address's sender name (else the workspace) on
+  // every channel: a widget or messenger reply that reaches the customer's inbox
+  // is still a person answering them, and an unnamed address reads as a robot.
+  const resolved = await resolveConversationSender(opts.conversationId)
+  const asAgent = (sendsAs: string) => agentReplyDisplayName(opts.senderName, sendsAs)
+  const from = senderFrom(resolved, opts.ctx.workspaceName, asAgent)
   const { sendConversationMessageEmail } = await import('@quackback/email')
   const resolvedBody = await resolvedMessageBody(opts.content, opts.contentJson, opts.attachments)
   // One key for every attempt of this send, opened outside the retry loop for
@@ -491,7 +488,8 @@ export async function sendVisitorConversationEmail(opts: {
         logoUrl: opts.ctx.logoUrl ?? undefined,
         replyTo,
         from,
-        fromDisplayName: from ? undefined : fromDisplayName,
+        // No resolved sender: the platform default, under the agent and workspace.
+        fromDisplayName: from ? undefined : asAgent(opts.ctx.workspaceName),
         channel,
         conversationSubject: mailCtx.subject,
         correspondence,
@@ -759,6 +757,7 @@ export async function notifyCsatRequestEmail(
       .select({
         channel: conversations.channel,
         visitorPrincipalId: conversations.visitorPrincipalId,
+        subject: conversations.subject,
       })
       .from(conversations)
       .where(eq(conversations.id, conversationId))
@@ -803,6 +802,7 @@ export async function notifyCsatRequestEmail(
       ratingUrls,
       workspaceName: ctx.workspaceName,
       logoUrl: ctx.logoUrl,
+      conversationSubject: conv.subject ?? null,
     })
   } catch (err) {
     log.warn({ err, conversationId }, 'csat request email failed')
