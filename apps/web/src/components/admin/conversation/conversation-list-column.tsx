@@ -37,7 +37,8 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { TimeAgo } from '@/components/ui/time-ago'
 import { cn } from '@/lib/shared/utils'
 import { useActivationAction } from '@/lib/client/hooks/use-activation-action'
-import { FormattedMessage, useIntl } from 'react-intl'
+import { FormattedMessage, type IntlShape } from 'react-intl'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 
 /** Ignore scroll-by hovers; only warm a thread the pointer actually rests on. */
 const PREFETCH_DELAY_MS = 120
@@ -48,11 +49,7 @@ function itemId(item: InboxItemDTO): string {
 }
 
 /** The empty-list message for the active scope. */
-function emptyStateMessage(
-  nav: InboxNavItem,
-  scopeLabel: string,
-  intl: ReturnType<typeof useIntl>
-): string {
+function emptyStateMessage(nav: InboxNavItem, scopeLabel: string, intl: IntlShape): string {
   const text = (id: string, defaultMessage: string, values?: Record<string, string>) =>
     intl.formatMessage({ id, defaultMessage }, values)
   if (nav.kind === 'tag')
@@ -328,7 +325,7 @@ const ConversationListHeader = memo(function ConversationListHeader({
   sort,
   onSort,
 }: ConversationListHeaderProps) {
-  const intl = useIntl()
+  const intl = useOptionalIntl()
   const [composeOpen, setComposeOpen] = useState(false)
   const searching = searchInput.trim().length > 0
   return (
@@ -403,7 +400,7 @@ function EmptyList({
   ConversationListColumnProps,
   'nav' | 'facet' | 'scopeLabel' | 'searchInput' | 'priorityFilter' | 'channelFilter'
 >) {
-  const intl = useIntl()
+  const intl = useOptionalIntl()
   const activationAction = useActivationAction('conversation_empty')
 
   const isMainConversationQueue =
@@ -528,7 +525,7 @@ function RowShell({ selected, children }: { selected: boolean; children: ReactNo
  *  thread renders an explicit "Unassigned" label in the same slot — the
  *  column is always present, never collapsing with row content. Kept tiny
  *  and muted so it scans as metadata, never as a second row identity. */
-function assigneeColumn(c: ConversationDTO, intl: ReturnType<typeof useIntl>) {
+function assigneeColumn(c: ConversationDTO, intl: IntlShape) {
   if (!c.assignedAgent) {
     return (
       <span className="flex w-24 shrink-0 items-center text-xs text-muted-foreground/70">
@@ -576,7 +573,7 @@ export const ConversationRow = memo(function ConversationRow({
   onPrefetch?: (id: string) => void
   onPrefetchCancel?: () => void
 }) {
-  const intl = useIntl()
+  const intl = useOptionalIntl()
   const c = item.conversation
   return (
     <RowShell selected={selected}>
