@@ -1,7 +1,7 @@
 'use client'
 
 import { Fragment, Suspense, lazy, useState } from 'react'
-import { useIntl } from 'react-intl'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { useNavigate, useRouteContext } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import { ChevronDownIcon } from '@heroicons/react/24/solid'
@@ -75,7 +75,7 @@ const ACTION_MESSAGES: Record<HomeActionId, { id: string; defaultMessage: string
 }
 
 export function HomeActions({ flags }: { flags: Partial<FeatureFlags> | undefined }) {
-  const intl = useIntl()
+  const intl = useOptionalIntl()
   const groups = homeActionGroups(flags)
   const [action, setAction] = useState<HomeActionId | null>(null)
   const close = () => setAction(null)
