@@ -3,6 +3,7 @@ import { ArrowPathIcon, CheckCircleIcon, ExclamationCircleIcon } from '@heroicon
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { saveStripeKeyFn } from '@/integrations/stripe/server/functions'
 import { useDeleteIntegration } from '@/lib/client/mutations'
@@ -19,6 +20,7 @@ export function StripeConnectionActions({
   isConnected,
   apiKey,
 }: StripeConnectionActionsProps) {
+  const intl = useOptionalIntl()
   const deleteMutation = useDeleteIntegration()
   const [key, setKey] = useState(apiKey || '')
   const [saving, setSaving] = useState(false)
@@ -38,7 +40,15 @@ export function StripeConnectionActions({
       const timer = setTimeout(() => setShowSuccess(false), 3000)
       return () => clearTimeout(timer)
     } catch (err) {
-      setError(errorText(err, 'Failed to save API key'))
+      setError(
+        errorText(
+          err,
+          intl.formatMessage({
+            id: 'admin.integrations.stripe.saveFailed',
+            defaultMessage: 'Failed to save API key',
+          })
+        )
+      )
     } finally {
       setSaving(false)
     }
@@ -63,18 +73,37 @@ export function StripeConnectionActions({
           {disconnecting ? (
             <>
               <ArrowPathIcon className="mr-2 h-4 w-4 animate-spin" />
-              Disconnecting...
+              {intl.formatMessage({
+                id: 'admin.integrations.connection.disconnecting',
+                defaultMessage: 'Disconnecting...',
+              })}
             </>
           ) : (
-            'Disconnect'
+            intl.formatMessage({
+              id: 'admin.integrations.connection.disconnect',
+              defaultMessage: 'Disconnect',
+            })
           )}
         </Button>
         <ConfirmDialog
           open={disconnectDialogOpen}
           onOpenChange={setDisconnectDialogOpen}
-          title="Disconnect Stripe?"
-          description="This will remove the Stripe integration and stop customer lookups. You can reconnect at any time."
-          confirmLabel="Disconnect"
+          title={intl.formatMessage(
+            {
+              id: 'admin.integrations.connection.disconnectTitle',
+              defaultMessage: 'Disconnect {name}?',
+            },
+            { name: 'Stripe' }
+          )}
+          description={intl.formatMessage({
+            id: 'admin.integrations.stripe.disconnectDescription',
+            defaultMessage:
+              'This will remove the Stripe integration and stop customer lookups. You can reconnect at any time.',
+          })}
+          confirmLabel={intl.formatMessage({
+            id: 'admin.integrations.connection.disconnect',
+            defaultMessage: 'Disconnect',
+          })}
           isPending={disconnecting}
           onConfirm={handleDisconnect}
         />
@@ -87,7 +116,12 @@ export function StripeConnectionActions({
       {showSuccess && (
         <div className="flex items-center gap-2 rounded-lg border border-green-500/30 bg-green-500/10 px-3 py-2 text-sm text-green-600 dark:text-green-400">
           <CheckCircleIcon className="h-4 w-4" />
-          <span>API key saved and verified!</span>
+          <span>
+            {intl.formatMessage({
+              id: 'admin.integrations.stripe.saved',
+              defaultMessage: 'API key saved and verified!',
+            })}
+          </span>
         </div>
       )}
 
@@ -100,7 +134,10 @@ export function StripeConnectionActions({
 
       <div className="flex flex-col gap-2">
         <Label htmlFor="api-key" className="text-sm">
-          Stripe API Key
+          {intl.formatMessage({
+            id: 'admin.integrations.stripe.apiKeyLabel',
+            defaultMessage: 'Stripe API Key',
+          })}
         </Label>
         <div className="flex gap-2">
           <Input
@@ -116,15 +153,25 @@ export function StripeConnectionActions({
             {saving ? (
               <>
                 <ArrowPathIcon className="mr-2 h-4 w-4 animate-spin" />
-                Saving...
+                {intl.formatMessage({
+                  id: 'admin.integrations.config.saving',
+                  defaultMessage: 'Saving...',
+                })}
               </>
             ) : (
-              'Save'
+              intl.formatMessage({
+                id: 'admin.integrations.connection.save',
+                defaultMessage: 'Save',
+              })
             )}
           </Button>
         </div>
         <p className="text-xs text-muted-foreground">
-          Use a restricted API key with read-only access to customer and payment data.
+          {intl.formatMessage({
+            id: 'admin.integrations.stripe.apiKeyHint',
+            defaultMessage:
+              'Use a restricted API key with read-only access to customer and payment data.',
+          })}
         </p>
       </div>
     </>
