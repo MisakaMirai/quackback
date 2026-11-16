@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useRef, type ReactNode } from 're
 import { Link } from '@tanstack/react-router'
 import { BackLink } from '@/components/ui/back-link'
 import { PageHeader, type PageCrumb } from '@/components/shared/page-header'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { cn } from '@/lib/shared/utils'
 import { SaveStatus } from './save-status'
 import { moduleOfPage, type NavModule, type NavSection } from './settings-nav-sections'
@@ -61,6 +62,7 @@ export function SettingsPage({
   backLink = true,
   children,
 }: SettingsPageProps) {
+  const intl = useOptionalIntl()
   const module = useSettingsModule(page)
   if ((page === undefined) === (title === undefined)) {
     throw new Error('SettingsPage takes exactly one of `page` or `title`')
@@ -75,7 +77,9 @@ export function SettingsPage({
     <div data-settings-page-body="" className={cn('space-y-6', WIDTH_CLASS[width])}>
       {backLink && !hasBackCrumb && (
         <div className="lg:hidden">
-          <BackLink to="/admin/settings">Settings</BackLink>
+          <BackLink to="/admin/settings">
+            {intl.formatMessage({ id: 'admin.nav.settings', defaultMessage: 'Settings' })}
+          </BackLink>
         </div>
       )}
       <PageHeader

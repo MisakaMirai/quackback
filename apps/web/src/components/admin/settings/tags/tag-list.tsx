@@ -24,6 +24,7 @@ import { SettingsPage } from '@/components/admin/settings/settings-page'
 import { RowDot, SettingsList, SettingsListRow } from '@/components/admin/settings/settings-list'
 import { EmptyState } from '@/components/shared/empty-state'
 import { NewButton } from '@/components/shared/new-button'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { Badge } from '@/components/ui/badge'
 import { AUTOSAVE } from '@/lib/client/autosave'
 import { cn } from '@/lib/shared/utils'
@@ -63,6 +64,7 @@ interface TagDialogProps {
 }
 
 function TagDialog({ open, onOpenChange, tag, onSaved }: TagDialogProps) {
+  const intl = useOptionalIntl()
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [color, setColor] = useState('#6b7280')
@@ -92,15 +94,30 @@ function TagDialog({ open, onOpenChange, tag, onSaved }: TagDialogProps) {
   async function handleSave() {
     const trimmedName = name.trim()
     if (!trimmedName) {
-      setError('Name is required')
+      setError(
+        intl.formatMessage({
+          id: 'admin.settings.tags.nameRequired',
+          defaultMessage: 'Name is required',
+        })
+      )
       return
     }
     if (trimmedName.length > 50) {
-      setError('Name must be 50 characters or less')
+      setError(
+        intl.formatMessage({
+          id: 'admin.settings.tags.nameTooLong',
+          defaultMessage: 'Name must be 50 characters or less',
+        })
+      )
       return
     }
     if (!/^#[0-9A-Fa-f]{6}$/.test(color)) {
-      setError('Invalid color format')
+      setError(
+        intl.formatMessage({
+          id: 'admin.settings.tags.invalidColor',
+          defaultMessage: 'Invalid color format',
+        })
+      )
       return
     }
 
@@ -132,7 +149,13 @@ function TagDialog({ open, onOpenChange, tag, onSaved }: TagDialogProps) {
       onSaved(saved)
       onOpenChange(false)
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to save tag'
+      const message =
+        err instanceof Error
+          ? err.message
+          : intl.formatMessage({
+              id: 'admin.settings.tags.saveFailed',
+              defaultMessage: 'Failed to save tag',
+            })
       setError(message)
     } finally {
       setIsSaving(false)
@@ -149,15 +172,30 @@ function TagDialog({ open, onOpenChange, tag, onSaved }: TagDialogProps) {
           }}
         >
           <DialogHeader>
-            <DialogTitle>{isEdit ? 'Edit tag' : 'New tag'}</DialogTitle>
+            <DialogTitle>
+              {intl.formatMessage(
+                isEdit
+                  ? { id: 'admin.settings.tags.editTitle', defaultMessage: 'Edit tag' }
+                  : { id: 'admin.settings.tags.newTitle', defaultMessage: 'New tag' }
+              )}
+            </DialogTitle>
             <DialogDescription id="tag-dialog-desc">
-              Label posts for filtering. Visible on the portal unless marked internal.
+              {intl.formatMessage({
+                id: 'admin.settings.tags.dialogDescription',
+                defaultMessage:
+                  'Label posts for filtering. Visible on the portal unless marked internal.',
+              })}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="tag-name">Name</Label>
+              <Label htmlFor="tag-name">
+                {intl.formatMessage({
+                  id: 'admin.settings.tags.nameLabel',
+                  defaultMessage: 'Name',
+                })}
+              </Label>
               <div className="flex items-center gap-2">
                 <ColorPickerPopover
                   color={color}
@@ -167,8 +205,14 @@ function TagDialog({ open, onOpenChange, tag, onSaved }: TagDialogProps) {
                       type="button"
                       className="h-9 w-9 rounded-full border border-border shrink-0 hover:ring-2 hover:ring-offset-1 hover:ring-muted-foreground/50 focus-visible:ring-2 focus-visible:ring-ring"
                       style={{ backgroundColor: color }}
-                      aria-label="Color"
-                      title="Change color"
+                      aria-label={intl.formatMessage({
+                        id: 'admin.settings.tags.colorLabel',
+                        defaultMessage: 'Color',
+                      })}
+                      title={intl.formatMessage({
+                        id: 'admin.settings.tags.changeColor',
+                        defaultMessage: 'Change color',
+                      })}
                     />
                   }
                 />
@@ -176,7 +220,10 @@ function TagDialog({ open, onOpenChange, tag, onSaved }: TagDialogProps) {
                   id="tag-name"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g. bug, enhancement, design"
+                  placeholder={intl.formatMessage({
+                    id: 'admin.settings.tags.namePlaceholder',
+                    defaultMessage: 'e.g. bug, enhancement, design',
+                  })}
                   maxLength={50}
                   autoFocus
                   className="flex-1 min-w-0"
@@ -185,7 +232,12 @@ function TagDialog({ open, onOpenChange, tag, onSaved }: TagDialogProps) {
             </div>
 
             <div className="space-y-2">
-              <Label id="tag-visibility-label">Visibility</Label>
+              <Label id="tag-visibility-label">
+                {intl.formatMessage({
+                  id: 'admin.settings.tags.visibilityLabel',
+                  defaultMessage: 'Visibility',
+                })}
+              </Label>
               <RadioGroup
                 value={isPublic ? 'portal' : 'internal'}
                 onValueChange={(value) => setIsPublic(value === 'portal')}
@@ -194,14 +246,26 @@ function TagDialog({ open, onOpenChange, tag, onSaved }: TagDialogProps) {
               >
                 <VisibilityCard
                   value="portal"
-                  label="Portal"
-                  description="Shown on the public portal"
+                  label={intl.formatMessage({
+                    id: 'admin.settings.tags.visibility.portal',
+                    defaultMessage: 'Portal',
+                  })}
+                  description={intl.formatMessage({
+                    id: 'admin.settings.tags.visibility.portalDescription',
+                    defaultMessage: 'Shown on the public portal',
+                  })}
                   icon={<GlobeAltIcon className="h-3.5 w-3.5" />}
                 />
                 <VisibilityCard
                   value="internal"
-                  label="Internal"
-                  description="Hidden from the portal"
+                  label={intl.formatMessage({
+                    id: 'admin.settings.tags.visibility.internal',
+                    defaultMessage: 'Internal',
+                  })}
+                  description={intl.formatMessage({
+                    id: 'admin.settings.tags.visibility.internalDescription',
+                    defaultMessage: 'Hidden from the portal',
+                  })}
                   icon={<EyeSlashIcon className="h-3.5 w-3.5" />}
                 />
               </RadioGroup>
@@ -209,13 +273,25 @@ function TagDialog({ open, onOpenChange, tag, onSaved }: TagDialogProps) {
 
             <div className="space-y-2">
               <Label htmlFor="tag-desc">
-                Description <span className="text-muted-foreground font-normal">(optional)</span>
+                {intl.formatMessage({
+                  id: 'admin.settings.tags.descriptionLabel',
+                  defaultMessage: 'Description',
+                })}{' '}
+                <span className="text-muted-foreground font-normal">
+                  {intl.formatMessage({
+                    id: 'admin.settings.tags.optional',
+                    defaultMessage: '(optional)',
+                  })}
+                </span>
               </Label>
               <Textarea
                 id="tag-desc"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="When to use this tag"
+                placeholder={intl.formatMessage({
+                  id: 'admin.settings.tags.descriptionPlaceholder',
+                  defaultMessage: 'When to use this tag',
+                })}
                 rows={2}
                 maxLength={200}
               />
@@ -231,10 +307,16 @@ function TagDialog({ open, onOpenChange, tag, onSaved }: TagDialogProps) {
               onClick={() => onOpenChange(false)}
               disabled={isSaving}
             >
-              Cancel
+              {intl.formatMessage({ id: 'common.cancel', defaultMessage: 'Cancel' })}
             </Button>
             <Button type="submit" disabled={isSaving || !name.trim()}>
-              {isSaving ? 'Saving...' : isEdit ? 'Save changes' : 'Create tag'}
+              {intl.formatMessage(
+                isSaving
+                  ? { id: 'admin.settings.tags.saving', defaultMessage: 'Saving...' }
+                  : isEdit
+                    ? { id: 'admin.settings.tags.saveChanges', defaultMessage: 'Save changes' }
+                    : { id: 'admin.settings.tags.createSubmit', defaultMessage: 'Create tag' }
+              )}
             </Button>
           </DialogFooter>
         </form>
@@ -284,6 +366,7 @@ interface TagsSettingsPageProps {
 }
 
 export function TagsSettingsPage({ initialTags, boards: _boards }: TagsSettingsPageProps) {
+  const intl = useOptionalIntl()
   const router = useRouter()
   const [, startTransition] = useTransition()
   const [tags, setTags] = useState(initialTags)
@@ -335,7 +418,13 @@ export function TagsSettingsPage({ initialTags, boards: _boards }: TagsSettingsP
       setTags((prev) => prev.filter((t) => t.id !== deletingTag.id))
       startTransition(() => router.invalidate())
     } catch (error) {
-      toastError(error, 'Failed to delete tag')
+      toastError(
+        error,
+        intl.formatMessage({
+          id: 'admin.settings.tags.deleteFailed',
+          defaultMessage: 'Failed to delete tag',
+        })
+      )
     } finally {
       setDeletingTag(null)
     }
@@ -351,8 +440,14 @@ export function TagsSettingsPage({ initialTags, boards: _boards }: TagsSettingsP
           <EmptyState
             size="compact"
             icon={TagIcon}
-            title="No tags yet"
-            description="Tags label posts for filtering."
+            title={intl.formatMessage({
+              id: 'admin.settings.tags.emptyTitle',
+              defaultMessage: 'No tags yet',
+            })}
+            description={intl.formatMessage({
+              id: 'admin.settings.tags.emptyDescription',
+              defaultMessage: 'Tags label posts for filtering.',
+            })}
             action={<NewButton noun="tag" onClick={openCreate} />}
           />
         ) : (
@@ -367,7 +462,13 @@ export function TagsSettingsPage({ initialTags, boards: _boards }: TagsSettingsP
                     trigger={
                       <button
                         type="button"
-                        aria-label={`Change colour of ${tag.name}`}
+                        aria-label={intl.formatMessage(
+                          {
+                            id: 'admin.settings.tags.changeColourAria',
+                            defaultMessage: 'Change colour of {name}',
+                          },
+                          { name: tag.name }
+                        )}
                         className="flex cursor-pointer rounded-full hover:ring-2 hover:ring-muted-foreground/40 hover:ring-offset-1"
                       >
                         <RowDot color={tag.color} />
@@ -379,14 +480,27 @@ export function TagsSettingsPage({ initialTags, boards: _boards }: TagsSettingsP
                 badges={
                   !tag.isPublic ? (
                     <Badge size="sm" variant="secondary">
-                      Internal
+                      {intl.formatMessage({
+                        id: 'admin.settings.tags.internalBadge',
+                        defaultMessage: 'Internal',
+                      })}
                     </Badge>
                   ) : undefined
                 }
                 meta={tag.description || undefined}
                 actions={[
-                  { label: 'Edit', onSelect: () => openEdit(tag) },
-                  { label: 'Delete', onSelect: () => setDeletingTag(tag), destructive: true },
+                  {
+                    label: intl.formatMessage({
+                      id: 'admin.settings.tags.edit',
+                      defaultMessage: 'Edit',
+                    }),
+                    onSelect: () => openEdit(tag),
+                  },
+                  {
+                    label: intl.formatMessage({ id: 'common.delete', defaultMessage: 'Delete' }),
+                    onSelect: () => setDeletingTag(tag),
+                    destructive: true,
+                  },
                 ]}
               />
             ))}
@@ -406,9 +520,21 @@ export function TagsSettingsPage({ initialTags, boards: _boards }: TagsSettingsP
       <ConfirmDialog
         open={!!deletingTag}
         onOpenChange={() => setDeletingTag(null)}
-        title="Delete tag?"
-        description={`"${deletingTag?.name}" will be removed from all posts. This cannot be undone.`}
-        confirmLabel="Delete tag"
+        title={intl.formatMessage({
+          id: 'admin.settings.tags.deleteTitle',
+          defaultMessage: 'Delete tag?',
+        })}
+        description={intl.formatMessage(
+          {
+            id: 'admin.settings.tags.deleteDescription',
+            defaultMessage: '"{name}" will be removed from all posts. This cannot be undone.',
+          },
+          { name: deletingTag?.name ?? '' }
+        )}
+        confirmLabel={intl.formatMessage({
+          id: 'admin.settings.tags.deleteConfirm',
+          defaultMessage: 'Delete tag',
+        })}
         variant="destructive"
         onConfirm={handleDelete}
       />

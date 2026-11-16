@@ -7,6 +7,7 @@ import {
 } from '@heroicons/react/24/solid'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { importChangelogSubscribersFn } from '@/lib/server/functions/changelog-subscriptions'
 import type { ChangelogCsvImportResult } from '@/lib/server/domains/changelog/changelog-subscription.types'
 import { errorText } from '@/lib/client/error-text'
@@ -32,6 +33,7 @@ export function parseEmailsFromCsv(text: string): string[] {
 }
 
 export function CsvImportSection() {
+  const intl = useOptionalIntl()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [fileName, setFileName] = useState<string | null>(null)
   const [emails, setEmails] = useState<string[]>([])
@@ -50,7 +52,12 @@ export function CsvImportSection() {
       const parsed = parseEmailsFromCsv(text)
       setEmails(parsed)
       if (parsed.length === 0) {
-        setError('No emails found. Make sure the file has an "Email" column.')
+        setError(
+          intl.formatMessage({
+            id: 'admin.settings.changelog.csvImport.noEmails',
+            defaultMessage: 'No emails found. Make sure the file has an "Email" column.',
+          })
+        )
       }
     }
     reader.readAsText(file)
@@ -64,7 +71,15 @@ export function CsvImportSection() {
       const imported = await importChangelogSubscribersFn({ data: { emails } })
       setResult(imported)
     } catch (err) {
-      setError(errorText(err, 'Import failed'))
+      setError(
+        errorText(
+          err,
+          intl.formatMessage({
+            id: 'admin.settings.imports.csv.importFailed',
+            defaultMessage: 'Import failed',
+          })
+        )
+      )
     } finally {
       setIsImporting(false)
     }
@@ -82,22 +97,54 @@ export function CsvImportSection() {
   return (
     <div className="space-y-3">
       <div>
-        <p className="text-sm font-medium">Import subscribers</p>
-        <p className="mt-0.5 text-xs text-muted-foreground">Upload a CSV with an Email column</p>
+        <p className="text-sm font-medium">
+          {intl.formatMessage({
+            id: 'admin.settings.changelog.csvImport.title',
+            defaultMessage: 'Import subscribers',
+          })}
+        </p>
+        <p className="mt-0.5 text-xs text-muted-foreground">
+          {intl.formatMessage({
+            id: 'admin.settings.changelog.csvImport.subtitle',
+            defaultMessage: 'Upload a CSV with an Email column',
+          })}
+        </p>
       </div>
 
       {result ? (
         <div className="space-y-3">
           <div className="flex items-center gap-2 text-primary">
             <CheckCircleIcon className="h-4 w-4" />
-            <span className="text-sm font-medium">Import complete</span>
+            <span className="text-sm font-medium">
+              {intl.formatMessage({
+                id: 'admin.settings.imports.csv.importComplete',
+                defaultMessage: 'Import complete',
+              })}
+            </span>
           </div>
           <p className="text-xs text-muted-foreground">
-            {result.imported} of {result.total} email{result.total === 1 ? '' : 's'} subscribed.
-            {result.skipped > 0 && ` ${result.skipped} had no matching account.`}
+            {intl.formatMessage(
+              {
+                id: 'admin.settings.changelog.csvImport.summary',
+                defaultMessage:
+                  '{imported} of {total, plural, one {# email} other {# emails}} subscribed.',
+              },
+              { imported: result.imported, total: result.total }
+            )}
+            {result.skipped > 0 &&
+              ` ${intl.formatMessage(
+                {
+                  id: 'admin.settings.changelog.csvImport.skipped',
+                  defaultMessage: '{count} had no matching account.',
+                },
+                { count: result.skipped }
+              )}`}
           </p>
           <Button variant="outline" size="sm" onClick={reset}>
-            Import another file
+            {intl.formatMessage({
+              id: 'admin.settings.imports.csv.importAnotherFile',
+              defaultMessage: 'Import another file',
+            })}
           </Button>
         </div>
       ) : (
@@ -117,12 +164,24 @@ export function CsvImportSection() {
               <div className="flex items-center justify-center gap-2 text-sm">
                 <DocumentTextIcon className="h-4 w-4 text-primary" />
                 <span className="font-medium">{fileName}</span>
-                <span className="text-muted-foreground">({emails.length} emails found)</span>
+                <span className="text-muted-foreground">
+                  {intl.formatMessage(
+                    {
+                      id: 'admin.settings.changelog.csvImport.emailsFound',
+                      defaultMessage:
+                        '({count, plural, one {# email found} other {# emails found}})',
+                    },
+                    { count: emails.length }
+                  )}
+                </span>
               </div>
             ) : (
               <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
                 <ArrowUpTrayIcon className="h-4 w-4" />
-                Click to choose a CSV file
+                {intl.formatMessage({
+                  id: 'admin.settings.changelog.csvImport.chooseFile',
+                  defaultMessage: 'Click to choose a CSV file',
+                })}
               </div>
             )}
           </div>
@@ -144,13 +203,27 @@ export function CsvImportSection() {
                   data-in-label
                 />
                 <span>
-                  I confirm every person on this list has agreed to receive email from us, and I am
-                  not importing a purchased or scraped list.
+                  {intl.formatMessage({
+                    id: 'admin.settings.changelog.csvImport.consent',
+                    defaultMessage:
+                      'I confirm every person on this list has agreed to receive email from us, and I am not importing a purchased or scraped list.',
+                  })}
                 </span>
               </label>
 
               <Button size="sm" onClick={handleImport} disabled={!consentChecked || isImporting}>
-                {isImporting ? 'Importing...' : `Subscribe ${emails.length} emails`}
+                {intl.formatMessage(
+                  isImporting
+                    ? {
+                        id: 'admin.settings.changelog.csvImport.importing',
+                        defaultMessage: 'Importing...',
+                      }
+                    : {
+                        id: 'admin.settings.changelog.csvImport.subscribe',
+                        defaultMessage: 'Subscribe {count, plural, one {# email} other {# emails}}',
+                      },
+                  { count: emails.length }
+                )}
               </Button>
             </>
           )}

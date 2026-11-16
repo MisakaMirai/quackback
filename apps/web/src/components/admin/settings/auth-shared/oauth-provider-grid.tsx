@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { Cog6ToothIcon, LockClosedIcon, MagnifyingGlassIcon } from '@heroicons/react/24/solid'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { StateBadge } from '@/components/shared/state-badge'
 import { AUTH_PROVIDER_ICON_MAP } from '@/components/icons/social-provider-icons'
@@ -35,6 +36,7 @@ export function OAuthProviderGrid({
   onToggle,
   onConfigure,
 }: OAuthProviderGridProps) {
+  const intl = useOptionalIntl()
   const [search, setSearch] = useState('')
 
   // Sort providers: configured first, then alphabetical; filter by search.
@@ -56,7 +58,10 @@ export function OAuthProviderGrid({
       <div className="relative mb-3 ml-auto w-48">
         <MagnifyingGlassIcon className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
         <Input
-          placeholder="Filter providers..."
+          placeholder={intl.formatMessage({
+            id: 'admin.settings.auth.oauthGrid.filterPlaceholder',
+            defaultMessage: 'Filter providers...',
+          })}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="h-8 pl-8 text-sm"
@@ -89,7 +94,13 @@ export function OAuthProviderGrid({
               <button
                 key={provider.id}
                 type="button"
-                aria-label={`Configure ${provider.name}`}
+                aria-label={intl.formatMessage(
+                  {
+                    id: 'admin.settings.auth.oauthGrid.configureAria',
+                    defaultMessage: 'Configure {name}',
+                  },
+                  { name: provider.name }
+                )}
                 onClick={() => onConfigure(provider)}
                 className="group flex items-center gap-3 rounded-lg border border-border/50 bg-card p-3 text-left transition-colors hover:bg-muted/40"
               >
@@ -117,7 +128,12 @@ export function OAuthProviderGrid({
                           <LockClosedIcon className="h-3.5 w-3.5 text-muted-foreground" />
                         </TooltipTrigger>
                         <TooltipContent>
-                          <p>At least one sign-in method must stay enabled.</p>
+                          <p>
+                            {intl.formatMessage({
+                              id: 'admin.settings.auth.oauthGrid.lastMethodTooltip',
+                              defaultMessage: 'At least one sign-in method must stay enabled.',
+                            })}
+                          </p>
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
@@ -128,7 +144,10 @@ export function OAuthProviderGrid({
                   onClick={() => onConfigure(provider)}
                   className={`${INLINE_LINK} text-xs disabled:cursor-not-allowed`}
                 >
-                  Update credentials
+                  {intl.formatMessage({
+                    id: 'admin.settings.auth.oauthGrid.updateCredentials',
+                    defaultMessage: 'Update credentials',
+                  })}
                 </button>
               </div>
               <Switch
@@ -144,7 +163,13 @@ export function OAuthProviderGrid({
       </div>
       {filteredProviders.length === 0 && search.trim() && (
         <p className="text-sm text-muted-foreground text-center py-8">
-          No providers matching &ldquo;{search}&rdquo;
+          {intl.formatMessage(
+            {
+              id: 'admin.settings.auth.oauthGrid.noMatches',
+              defaultMessage: 'No providers matching "{query}"',
+            },
+            { query: search }
+          )}
         </p>
       )}
     </div>

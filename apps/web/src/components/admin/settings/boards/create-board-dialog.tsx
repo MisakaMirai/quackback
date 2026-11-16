@@ -24,6 +24,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { GlobeAltIcon, LockClosedIcon } from '@heroicons/react/24/solid'
 import {
   Form,
@@ -50,6 +51,7 @@ export function CreateBoardDialog({
   redirectOnCreate = true,
   onCreated,
 }: CreateBoardDialogProps = {}) {
+  const intl = useOptionalIntl()
   const [internalOpen, setInternalOpen] = useState(false)
   const isControlled = controlledOpen !== undefined
   const isOpen = controlledOpen ?? internalOpen
@@ -111,15 +113,31 @@ export function CreateBoardDialog({
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)}>
             <DialogHeader>
-              <DialogTitle>New board</DialogTitle>
+              <DialogTitle>
+                {intl.formatMessage({
+                  id: 'admin.settings.boards.create.title',
+                  defaultMessage: 'New board',
+                })}
+              </DialogTitle>
               <DialogDescription>
-                Create a new feedback board to collect ideas from your users.
+                {intl.formatMessage({
+                  id: 'admin.settings.boards.create.description',
+                  defaultMessage: 'Create a new feedback board to collect ideas from your users.',
+                })}
               </DialogDescription>
             </DialogHeader>
 
             <div className="space-y-4 py-4">
               {mutation.isError && (
-                <FormError message={mutation.error?.message ?? 'An error occurred'} />
+                <FormError
+                  message={
+                    mutation.error?.message ??
+                    intl.formatMessage({
+                      id: 'admin.settings.boards.create.errorFallback',
+                      defaultMessage: 'An error occurred',
+                    })
+                  }
+                />
               )}
 
               <FormField
@@ -127,9 +145,20 @@ export function CreateBoardDialog({
                 name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Board name</FormLabel>
+                    <FormLabel>
+                      {intl.formatMessage({
+                        id: 'admin.settings.boards.create.nameLabel',
+                        defaultMessage: 'Board name',
+                      })}
+                    </FormLabel>
                     <FormControl>
-                      <Input placeholder="Feature Requests" {...field} />
+                      <Input
+                        placeholder={intl.formatMessage({
+                          id: 'admin.settings.boards.create.namePlaceholder',
+                          defaultMessage: 'Feature Requests',
+                        })}
+                        {...field}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -141,10 +170,18 @@ export function CreateBoardDialog({
                 name="description"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Description</FormLabel>
+                    <FormLabel>
+                      {intl.formatMessage({
+                        id: 'admin.settings.boards.create.descriptionLabel',
+                        defaultMessage: 'Description',
+                      })}
+                    </FormLabel>
                     <FormControl>
                       <Textarea
-                        placeholder="Share your ideas and vote on features"
+                        placeholder={intl.formatMessage({
+                          id: 'admin.settings.boards.create.descriptionPlaceholder',
+                          defaultMessage: 'Share your ideas and vote on features',
+                        })}
                         rows={3}
                         {...field}
                       />
@@ -159,19 +196,36 @@ export function CreateBoardDialog({
                 name="preset"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Access</FormLabel>
+                    <FormLabel>
+                      {intl.formatMessage({
+                        id: 'admin.settings.boards.tabAccess',
+                        defaultMessage: 'Access',
+                      })}
+                    </FormLabel>
                     <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                       <PresetTile
                         active={field.value === 'public'}
-                        label="Everyone"
-                        description="Anyone can view. Sign-in for vote, comment, submit."
+                        label={intl.formatMessage({
+                          id: 'admin.settings.boards.access.tier.everyone',
+                          defaultMessage: 'Everyone',
+                        })}
+                        description={intl.formatMessage({
+                          id: 'admin.settings.boards.create.presetPublicDescription',
+                          defaultMessage: 'Anyone can view. Sign-in for vote, comment, submit.',
+                        })}
                         icon={<GlobeAltIcon className="h-3.5 w-3.5" />}
                         onClick={() => field.onChange('public')}
                       />
                       <PresetTile
                         active={field.value === 'private'}
-                        label="Team only"
-                        description="Workspace members only. Hidden from the portal."
+                        label={intl.formatMessage({
+                          id: 'admin.settings.boards.access.tier.team',
+                          defaultMessage: 'Team only',
+                        })}
+                        description={intl.formatMessage({
+                          id: 'admin.settings.boards.create.presetTeamDescription',
+                          defaultMessage: 'Workspace members only. Hidden from the portal.',
+                        })}
                         icon={<LockClosedIcon className="h-3.5 w-3.5" />}
                         onClick={() => field.onChange('private')}
                       />
@@ -186,24 +240,45 @@ export function CreateBoardDialog({
                   id="customize-access"
                   checked={customize}
                   onCheckedChange={(v) => setCustomize(v === true)}
-                  aria-label="Customize access after create"
+                  aria-label={intl.formatMessage({
+                    id: 'admin.settings.boards.create.customizeAria',
+                    defaultMessage: 'Customize access after create',
+                  })}
                 />
                 <Label
                   htmlFor="customize-access"
                   className="cursor-pointer text-xs font-normal text-muted-foreground"
                 >
-                  Customize access after create
-                  <span className="ml-1">open the Access tab to fine-tune.</span>
+                  {intl.formatMessage({
+                    id: 'admin.settings.boards.create.customizeLabel',
+                    defaultMessage: 'Customize access after create',
+                  })}
+                  <span className="ml-1">
+                    {intl.formatMessage({
+                      id: 'admin.settings.boards.create.customizeHint',
+                      defaultMessage: 'open the Access tab to fine-tune.',
+                    })}
+                  </span>
                 </Label>
               </div>
             </div>
 
             <DialogFooter>
               <Button type="button" size="sm" variant="ghost" onClick={() => setIsOpen(false)}>
-                Cancel
+                {intl.formatMessage({ id: 'common.cancel', defaultMessage: 'Cancel' })}
               </Button>
               <Button type="submit" size="sm" disabled={mutation.isPending}>
-                {mutation.isPending ? 'Creating...' : 'Create board'}
+                {intl.formatMessage(
+                  mutation.isPending
+                    ? {
+                        id: 'admin.settings.boards.create.creating',
+                        defaultMessage: 'Creating...',
+                      }
+                    : {
+                        id: 'admin.settings.boards.create.submit',
+                        defaultMessage: 'Create board',
+                      }
+                )}
               </Button>
             </DialogFooter>
           </form>

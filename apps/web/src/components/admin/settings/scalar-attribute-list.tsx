@@ -18,14 +18,15 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { AttributeList, type AttributeListItem } from './attribute-list'
 
 const ATTRIBUTE_TYPES = [
-  { value: 'string', label: 'Text' },
-  { value: 'number', label: 'Number' },
-  { value: 'boolean', label: 'Boolean' },
-  { value: 'date', label: 'Date' },
-  { value: 'currency', label: 'Currency' },
+  { value: 'string', labelId: 'admin.settings.ticketFields.type.text', label: 'Text' },
+  { value: 'number', labelId: 'admin.settings.ticketFields.type.number', label: 'Number' },
+  { value: 'boolean', labelId: 'admin.settings.attributes.boolean', label: 'Boolean' },
+  { value: 'date', labelId: 'admin.settings.ticketFields.type.date', label: 'Date' },
+  { value: 'currency', labelId: 'admin.settings.attributes.currency', label: 'Currency' },
 ] as const
 
 export type ScalarAttributeType = (typeof ATTRIBUTE_TYPES)[number]['value']
@@ -101,8 +102,13 @@ interface ScalarAttributeListProps<T extends ScalarAttribute> {
   isDeleting?: boolean
 }
 
-function typeLabel(type: string, currencyCode?: string | null): string {
-  const base = ATTRIBUTE_TYPES.find((t) => t.value === type)?.label ?? type
+function typeLabel(
+  intl: ReturnType<typeof useOptionalIntl>,
+  type: string,
+  currencyCode?: string | null
+): string {
+  const entry = ATTRIBUTE_TYPES.find((t) => t.value === type)
+  const base = entry ? intl.formatMessage({ id: entry.labelId, defaultMessage: entry.label }) : type
   return type === 'currency' && currencyCode ? `${base} · ${currencyCode}` : base
 }
 
@@ -125,6 +131,7 @@ function AttributeFormDialog({
   onSubmit,
   isPending,
 }: AttributeFormDialogProps) {
+  const intl = useOptionalIntl()
   const [key, setKey] = useState(initialValues?.key ?? '')
   const [label, setLabel] = useState(initialValues?.label ?? '')
   const [description, setDescription] = useState(initialValues?.description ?? '')
@@ -155,13 +162,23 @@ function AttributeFormDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>{isEditing ? 'Edit attribute' : copy.createTitle}</DialogTitle>
+          <DialogTitle>
+            {isEditing
+              ? intl.formatMessage({
+                  id: 'admin.settings.attributes.editTitle',
+                  defaultMessage: 'Edit attribute',
+                })
+              : copy.createTitle}
+          </DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
             <Label htmlFor="attr-key">
-              Key{' '}
+              {intl.formatMessage({
+                id: 'admin.settings.attributes.key',
+                defaultMessage: 'Key',
+              })}{' '}
               <span className="text-muted-foreground font-normal text-xs">({copy.keyHint})</span>
             </Label>
             <Input
@@ -175,13 +192,22 @@ function AttributeFormDialog({
             />
             {!isEditing && (
               <p className="text-[11px] text-muted-foreground">
-                Lowercase letters, numbers, underscores only. Cannot be changed after creation.
+                {intl.formatMessage({
+                  id: 'admin.settings.attributes.keyRules',
+                  defaultMessage:
+                    'Lowercase letters, numbers, underscores only. Cannot be changed after creation.',
+                })}
               </p>
             )}
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="attr-label">Display label</Label>
+            <Label htmlFor="attr-label">
+              {intl.formatMessage({
+                id: 'admin.settings.attributes.displayLabel',
+                defaultMessage: 'Display label',
+              })}
+            </Label>
             <Input
               id="attr-label"
               value={label}
@@ -192,7 +218,12 @@ function AttributeFormDialog({
           </div>
 
           <div className="space-y-1.5">
-            <Label>Type</Label>
+            <Label>
+              {intl.formatMessage({
+                id: 'admin.settings.ticketFields.typeLabel',
+                defaultMessage: 'Type',
+              })}
+            </Label>
             <Select value={type} onValueChange={(v) => setType(v as ScalarAttributeType)}>
               <SelectTrigger>
                 <SelectValue />
@@ -200,7 +231,7 @@ function AttributeFormDialog({
               <SelectContent>
                 {ATTRIBUTE_TYPES.map((t) => (
                   <SelectItem key={t.value} value={t.value}>
-                    {t.label}
+                    {intl.formatMessage({ id: t.labelId, defaultMessage: t.label })}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -209,7 +240,12 @@ function AttributeFormDialog({
 
           {type === 'currency' && (
             <div className="space-y-1.5">
-              <Label>Currency</Label>
+              <Label>
+                {intl.formatMessage({
+                  id: 'admin.settings.attributes.currency',
+                  defaultMessage: 'Currency',
+                })}
+              </Label>
               <Select value={currencyCode} onValueChange={setCurrencyCode}>
                 <SelectTrigger className="w-[120px]">
                   <SelectValue />
@@ -227,7 +263,16 @@ function AttributeFormDialog({
 
           <div className="space-y-1.5">
             <Label htmlFor="attr-desc">
-              Description <span className="text-muted-foreground font-normal">(optional)</span>
+              {intl.formatMessage({
+                id: 'admin.settings.attributes.description',
+                defaultMessage: 'Description',
+              })}{' '}
+              <span className="text-muted-foreground font-normal">
+                {intl.formatMessage({
+                  id: 'admin.settings.attributes.optional',
+                  defaultMessage: '(optional)',
+                })}
+              </span>
             </Label>
             <Textarea
               id="attr-desc"
@@ -241,8 +286,19 @@ function AttributeFormDialog({
 
           <div className="space-y-1.5">
             <Label htmlFor="attr-external-key">
-              {copy.externalSystem} attribute name{' '}
-              <span className="text-muted-foreground font-normal text-xs">(optional)</span>
+              {intl.formatMessage(
+                {
+                  id: 'admin.settings.attributes.externalName',
+                  defaultMessage: '{system} attribute name',
+                },
+                { system: copy.externalSystem }
+              )}{' '}
+              <span className="text-muted-foreground font-normal text-xs">
+                {intl.formatMessage({
+                  id: 'admin.settings.attributes.optional',
+                  defaultMessage: '(optional)',
+                })}
+              </span>
             </Label>
             <Input
               id="attr-external-key"
@@ -260,10 +316,23 @@ function AttributeFormDialog({
               onClick={() => onOpenChange(false)}
               disabled={isPending}
             >
-              Cancel
+              {intl.formatMessage({ id: 'common.cancel', defaultMessage: 'Cancel' })}
             </Button>
             <Button type="submit" disabled={!canSubmit || isPending}>
-              {isPending ? 'Saving...' : isEditing ? 'Save changes' : 'Create attribute'}
+              {isPending
+                ? intl.formatMessage({
+                    id: 'admin.settings.attributes.saving',
+                    defaultMessage: 'Saving...',
+                  })
+                : isEditing
+                  ? intl.formatMessage({
+                      id: 'admin.settings.attributes.saveChanges',
+                      defaultMessage: 'Save changes',
+                    })
+                  : intl.formatMessage({
+                      id: 'admin.settings.attributes.create',
+                      defaultMessage: 'Create attribute',
+                    })}
             </Button>
           </DialogFooter>
         </form>
@@ -291,6 +360,7 @@ export function ScalarAttributeList<T extends ScalarAttribute>({
   isUpdating,
   isDeleting,
 }: ScalarAttributeListProps<T>) {
+  const intl = useOptionalIntl()
   const [attributes, setAttributes] = useState(initialAttributes)
   const [createOpen, setCreateOpen] = useState(false)
   const [editTarget, setEditTarget] = useState<T | null>(null)
@@ -321,7 +391,7 @@ export function ScalarAttributeList<T extends ScalarAttribute>({
       id: `builtin:${f.key}`,
       label: f.label,
       attrKey: f.key,
-      typeLabel: typeLabel(f.type),
+      typeLabel: typeLabel(intl, f.type),
       description: f.description,
       builtin: true,
     })),
@@ -329,11 +399,21 @@ export function ScalarAttributeList<T extends ScalarAttribute>({
       id: a.id,
       label: a.label,
       attrKey: a.key,
-      typeLabel: typeLabel(a.type, a.currencyCode),
+      typeLabel: typeLabel(intl, a.type, a.currencyCode),
       description: a.description,
       actions: [
-        { label: 'Edit', onSelect: () => setEditTarget(a) },
-        { label: 'Delete', onSelect: () => setDeleteTarget(a), destructive: true },
+        {
+          label: intl.formatMessage({
+            id: 'admin.settings.attributes.edit',
+            defaultMessage: 'Edit',
+          }),
+          onSelect: () => setEditTarget(a),
+        },
+        {
+          label: intl.formatMessage({ id: 'common.delete', defaultMessage: 'Delete' }),
+          onSelect: () => setDeleteTarget(a),
+          destructive: true,
+        },
       ],
     })),
   ]
@@ -376,9 +456,21 @@ export function ScalarAttributeList<T extends ScalarAttribute>({
       <ConfirmDialog
         open={!!deleteTarget}
         onOpenChange={(open) => !open && setDeleteTarget(null)}
-        title="Delete attribute?"
-        description={`"${deleteTarget?.label}": ${copy.deleteDescription}`}
-        confirmLabel="Delete attribute"
+        title={intl.formatMessage({
+          id: 'admin.settings.attributes.deleteTitle',
+          defaultMessage: 'Delete attribute?',
+        })}
+        description={intl.formatMessage(
+          {
+            id: 'admin.settings.attributes.deleteDescription',
+            defaultMessage: '"{label}": {description}',
+          },
+          { label: deleteTarget?.label ?? '', description: copy.deleteDescription }
+        )}
+        confirmLabel={intl.formatMessage({
+          id: 'admin.settings.attributes.deleteConfirm',
+          defaultMessage: 'Delete attribute',
+        })}
         variant="destructive"
         isPending={isDeleting}
         onConfirm={handleDelete}

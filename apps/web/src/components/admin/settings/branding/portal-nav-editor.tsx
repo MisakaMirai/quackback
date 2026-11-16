@@ -32,6 +32,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/shared/utils'
 import {
@@ -73,6 +74,7 @@ export const PortalNavEditor = memo(function PortalNavEditor({
   gatedTypes,
   onReset,
 }: PortalNavEditorProps) {
+  const intl = useOptionalIntl()
   const dndId = useId()
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
@@ -128,10 +130,16 @@ export const PortalNavEditor = memo(function PortalNavEditor({
       <div className="mt-3 flex items-center gap-2">
         <Button variant="outline" size="sm" onClick={addLink}>
           <PlusIcon className="size-3.5 me-1.5" />
-          Add link
+          {intl.formatMessage({
+            id: 'admin.settings.branding.portalNav.addLink',
+            defaultMessage: 'Add link',
+          })}
         </Button>
         <Button variant="ghost" size="sm" className="text-muted-foreground" onClick={onReset}>
-          Reset to defaults
+          {intl.formatMessage({
+            id: 'admin.settings.branding.portalNav.resetToDefaults',
+            defaultMessage: 'Reset to defaults',
+          })}
         </Button>
       </div>
     </TooltipProvider>
@@ -149,13 +157,23 @@ function NavRow({
   onPatch: (patch: Partial<PortalNavItemConfig>) => void
   onRemove: () => void
 }) {
+  const intl = useOptionalIntl()
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: item.id,
   })
   const isLink = item.type === 'link'
   const defaultLabel = isLink
-    ? 'Link'
-    : builtInNavDefinition(item.type as PortalBuiltInNavType).defaultMessage
+    ? intl.formatMessage({
+        id: 'admin.settings.branding.portalNav.linkDefaultLabel',
+        defaultMessage: 'Link',
+      })
+    : (() => {
+        const definition = builtInNavDefinition(item.type as PortalBuiltInNavType)
+        return intl.formatMessage({
+          id: definition.messageId,
+          defaultMessage: definition.defaultMessage,
+        })
+      })()
   // Only flag once something was typed: a fresh empty row isn't an error yet.
   const urlInvalid = isLink && !!item.url && !isValidNavLinkUrl(item.url)
 
@@ -171,7 +189,13 @@ function NavRow({
       <button
         type="button"
         className="cursor-grab touch-none p-1 text-muted-foreground/60 hover:text-muted-foreground"
-        aria-label={`Reorder ${item.label || defaultLabel}`}
+        aria-label={intl.formatMessage(
+          {
+            id: 'admin.settings.branding.portalNav.reorderAria',
+            defaultMessage: 'Reorder {label}',
+          },
+          { label: item.label || defaultLabel }
+        )}
         {...attributes}
         {...listeners}
       >
@@ -194,7 +218,13 @@ function NavRow({
         value={item.label ?? ''}
         placeholder={defaultLabel}
         maxLength={30}
-        aria-label={`Label for ${defaultLabel}`}
+        aria-label={intl.formatMessage(
+          {
+            id: 'admin.settings.branding.portalNav.labelForAria',
+            defaultMessage: 'Label for {label}',
+          },
+          { label: defaultLabel }
+        )}
         onChange={(e) => {
           const value = e.target.value
           // Empty override = keep the (localized) default label.
@@ -211,7 +241,10 @@ function NavRow({
         <Input
           value={item.url ?? ''}
           placeholder="https://…"
-          aria-label="Link URL"
+          aria-label={intl.formatMessage({
+            id: 'admin.settings.branding.portalNav.linkUrlAria',
+            defaultMessage: 'Link URL',
+          })}
           onChange={(e) => onPatch({ url: e.target.value })}
           className={cn('h-7 w-40 px-1.5 text-[13px]', urlInvalid && 'border-destructive/60')}
         />
@@ -222,13 +255,19 @@ function NavRow({
           <TooltipTrigger asChild>
             <span>
               <Badge size="sm" variant="outline" className="text-muted-foreground">
-                Product off
+                {intl.formatMessage({
+                  id: 'admin.settings.branding.portalNav.productOff',
+                  defaultMessage: 'Product off',
+                })}
               </Badge>
             </span>
           </TooltipTrigger>
           <TooltipContent side="top">
-            This tab shows once its product is enabled (Settings → General). Your order and label
-            are kept.
+            {intl.formatMessage({
+              id: 'admin.settings.branding.portalNav.gatedTooltip',
+              defaultMessage:
+                'This tab shows once its product is enabled (Settings → General). Your order and label are kept.',
+            })}
           </TooltipContent>
         </Tooltip>
       )}
@@ -237,7 +276,10 @@ function NavRow({
         <Button
           variant="ghost"
           size="icon-sm"
-          aria-label="Remove link"
+          aria-label={intl.formatMessage({
+            id: 'admin.settings.branding.portalNav.removeLinkAria',
+            defaultMessage: 'Remove link',
+          })}
           className="text-muted-foreground hover:text-destructive"
           onClick={onRemove}
         >
@@ -246,13 +288,24 @@ function NavRow({
       )}
 
       {item.type === 'feedback' ? (
-        <Badge variant="secondary">Always on</Badge>
+        <Badge variant="secondary">
+          {intl.formatMessage({
+            id: 'admin.settings.branding.portalNav.alwaysOn',
+            defaultMessage: 'Always on',
+          })}
+        </Badge>
       ) : (
         <Switch
           checked={item.enabled !== false}
           disabled={gated}
           onCheckedChange={(checked) => onPatch({ enabled: checked ? undefined : false })}
-          aria-label={`Show ${item.label || defaultLabel} tab`}
+          aria-label={intl.formatMessage(
+            {
+              id: 'admin.settings.branding.portalNav.showTabAria',
+              defaultMessage: 'Show {label} tab',
+            },
+            { label: item.label || defaultLabel }
+          )}
         />
       )}
     </div>
