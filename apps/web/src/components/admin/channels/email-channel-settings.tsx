@@ -685,7 +685,7 @@ function SendingAddressesSection({
                     domain && rows.filter((r) => r.domain?.id === domain.id).length === 1
                       ? domain.domain
                       : null,
-                  note: removalNote(a.id, senders, platformFrom, platformName),
+                  note: removalNote(intl, a.id, senders, platformFrom, platformName),
                 }),
             },
           ]

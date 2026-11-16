@@ -213,7 +213,9 @@ export function AnalyticsPage() {
                     )}
                   >
                     <Icon className={cn(MENU_ICON, active && 'text-primary')} />
-                    <span className="min-w-0 flex-1 truncate text-left">{label}</span>
+                    <span className="min-w-0 flex-1 truncate text-left">
+                      {intl.formatMessage(label)}
+                    </span>
                   </button>
                 )
               })}

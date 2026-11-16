@@ -5,6 +5,7 @@ import {
   type ChartConfig,
 } from '@/components/ui/chart'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid } from 'recharts'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { cn } from '@/lib/shared/utils'
 import { CHART_HEIGHT_CLASS, formatResponseTime, formatBucketDay } from './analytics-constants'
 import type { TimeToCloseDay } from '@/lib/server/domains/analytics/time-to-close'
@@ -20,14 +21,21 @@ function formatAxisMinutes(minutes: number): string {
   return `${Math.round(minutes / 1440)}d`
 }
 
-const chartConfig: ChartConfig = {
-  medianMinutes: { label: 'Median time to close', color: 'var(--chart-2)' },
-}
-
 /** Median time-to-close per day, bucketed on the close day. Days with no closed
  *  conversation are null, so the line gaps instead of dipping to zero — a gap
  *  day means "nothing closed", not "instant resolution". */
 export function AnalyticsTimeToCloseChart({ days }: AnalyticsTimeToCloseChartProps) {
+  const intl = useOptionalIntl()
+  const chartConfig: ChartConfig = {
+    medianMinutes: {
+      label: intl.formatMessage({
+        id: 'admin.analytics.stat.medianTimeToClose',
+        defaultMessage: 'Median time to close',
+      }),
+      color: 'var(--chart-2)',
+    },
+  }
+
   if (days.every((d) => d.medianMinutes == null)) {
     return (
       <div

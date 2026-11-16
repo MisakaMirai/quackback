@@ -1,12 +1,30 @@
+import type { MessageDescriptor } from 'react-intl'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { AnalyticsMetricStrip } from './analytics-metric-strip'
 
 export type MetricKey = 'posts' | 'votes' | 'postComments' | 'users'
 
-export const METRICS: Array<{ key: MetricKey; label: string; color: string }> = [
-  { key: 'posts', label: 'Posts', color: 'var(--metric-posts)' },
-  { key: 'votes', label: 'Votes', color: 'var(--metric-votes)' },
-  { key: 'postComments', label: 'Comments', color: 'var(--metric-comments)' },
-  { key: 'users', label: 'Users', color: 'var(--metric-users)' },
+export const METRICS: Array<{ key: MetricKey; label: MessageDescriptor; color: string }> = [
+  {
+    key: 'posts',
+    label: { id: 'admin.analytics.stat.posts', defaultMessage: 'Posts' },
+    color: 'var(--metric-posts)',
+  },
+  {
+    key: 'votes',
+    label: { id: 'common.userStats.votes', defaultMessage: 'Votes' },
+    color: 'var(--metric-votes)',
+  },
+  {
+    key: 'postComments',
+    label: { id: 'common.userStats.comments', defaultMessage: 'Comments' },
+    color: 'var(--metric-comments)',
+  },
+  {
+    key: 'users',
+    label: { id: 'admin.nav.users', defaultMessage: 'Users' },
+    color: 'var(--metric-users)',
+  },
 ]
 
 interface MetricBarProps {
@@ -21,11 +39,12 @@ interface MetricBarProps {
 }
 
 export function AnalyticsSummaryCards({ summary, activeMetric, onMetricChange }: MetricBarProps) {
+  const intl = useOptionalIntl()
   return (
     <AnalyticsMetricStrip
       items={METRICS.map(({ key, label, color }) => ({
         key,
-        label,
+        label: intl.formatMessage(label),
         color,
         value: summary[key].total,
         delta: summary[key].delta,

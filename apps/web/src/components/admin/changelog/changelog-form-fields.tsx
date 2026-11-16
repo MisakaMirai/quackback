@@ -3,6 +3,7 @@ import { RichTextEditor, type EditorDocument } from '@/components/ui/rich-text-e
 import { FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form'
 import { TitleInput } from '@/components/shared/title-input'
 import { FormError } from '@/components/shared/form-error'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { useImageUpload } from '@/lib/client/hooks/use-image-upload'
 import type { JSONContent } from '@tiptap/react'
 
@@ -20,13 +21,21 @@ export function ChangelogFormFields({
   onContentChange,
   error,
 }: ChangelogFormFieldsProps) {
+  const intl = useOptionalIntl()
   const { upload: uploadImage } = useImageUpload({ prefix: 'changelog' })
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-4 px-4 py-4 sm:px-6">
       {error && <FormError message={error} className="px-3 py-2" />}
 
-      <TitleInput control={form.control} placeholder="What's new?" autoFocus />
+      <TitleInput
+        control={form.control}
+        placeholder={intl.formatMessage({
+          id: 'admin.changelog.form.titlePlaceholder',
+          defaultMessage: "What's new?",
+        })}
+        autoFocus
+      />
 
       {/* Content - rich text editor with images and code blocks */}
       <FormField
@@ -38,7 +47,10 @@ export function ChangelogFormFields({
               <RichTextEditor
                 value={contentJson || ''}
                 onDocumentChange={onContentChange}
-                placeholder="Share the details of your update..."
+                placeholder={intl.formatMessage({
+                  id: 'admin.changelog.form.contentPlaceholder',
+                  defaultMessage: 'Share the details of your update...',
+                })}
                 minHeight="100%"
                 fill
                 className="min-h-0 flex-1"

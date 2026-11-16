@@ -1,7 +1,9 @@
 import { useState } from 'react'
+import type { MessageDescriptor } from 'react-intl'
 import { FolderIcon, TagIcon, TrashIcon } from '@heroicons/react/24/outline'
 import { cn } from '@/lib/shared/utils'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { FilterAddButton, FilterChip } from '@/components/shared/filter-chip'
 import type { HelpCenterStatusFilter } from './use-help-center-filters'
 
@@ -25,9 +27,12 @@ interface HelpCenterActiveFiltersBarProps {
   onSetCategory: (categoryId: string) => void
 }
 
-const STATUS_OPTIONS: { id: 'draft' | 'published'; label: string }[] = [
-  { id: 'draft', label: 'Draft' },
-  { id: 'published', label: 'Published' },
+const STATUS_OPTIONS: { id: 'draft' | 'published'; label: MessageDescriptor }[] = [
+  { id: 'draft', label: { id: 'admin.helpCenter.status.draft', defaultMessage: 'Draft' } },
+  {
+    id: 'published',
+    label: { id: 'admin.helpCenter.status.published', defaultMessage: 'Published' },
+  },
 ]
 
 const MENU_ITEM_CLASS = cn(
@@ -48,8 +53,14 @@ export function HelpCenterActiveFiltersBar({
   onSetStatus,
   onSetCategory,
 }: HelpCenterActiveFiltersBarProps) {
+  const intl = useOptionalIntl()
   const categoryName = category
-    ? (categoryLabel ?? categories.find((c) => c.id === category)?.name ?? 'Category')
+    ? (categoryLabel ??
+      categories.find((c) => c.id === category)?.name ??
+      intl.formatMessage({
+        id: 'admin.helpCenter.performance.columnCategory',
+        defaultMessage: 'Category',
+      }))
     : null
 
   const hasStatusFilter = status !== 'all'
@@ -65,19 +76,30 @@ export function HelpCenterActiveFiltersBar({
       {hasStatusFilter && (
         <FilterChip
           icon={TagIcon}
-          label="Status"
-          value={status === 'draft' ? 'Draft' : 'Published'}
+          label={intl.formatMessage({
+            id: 'admin.helpCenter.filter.status',
+            defaultMessage: 'Status',
+          })}
+          value={intl.formatMessage(
+            status === 'draft' ? STATUS_OPTIONS[0].label : STATUS_OPTIONS[1].label
+          )}
           valueId={status}
           onRemove={onClearStatus}
           onChange={(id) => onSetStatus(id as 'draft' | 'published')}
-          options={STATUS_OPTIONS}
+          options={STATUS_OPTIONS.map(({ id, label }) => ({
+            id,
+            label: intl.formatMessage(label),
+          }))}
         />
       )}
 
       {hasCategoryFilter && (
         <FilterChip
           icon={FolderIcon}
-          label="Category"
+          label={intl.formatMessage({
+            id: 'admin.helpCenter.performance.columnCategory',
+            defaultMessage: 'Category',
+          })}
           value={categoryName!}
           valueId={category!}
           onRemove={onClearCategory}
@@ -89,8 +111,14 @@ export function HelpCenterActiveFiltersBar({
       {showDeleted && (
         <FilterChip
           icon={TrashIcon}
-          label="Showing"
-          value="deleted"
+          label={intl.formatMessage({
+            id: 'admin.helpCenter.filter.showing',
+            defaultMessage: 'Showing',
+          })}
+          value={intl.formatMessage({
+            id: 'admin.helpCenter.deleted.deleted',
+            defaultMessage: 'Deleted',
+          })}
           valueId="deleted"
           onRemove={onClearShowDeleted}
         />
@@ -129,6 +157,7 @@ export function HelpCenterFilterButton({
   onSetStatus,
   onSetCategory,
 }: HelpCenterFilterButtonProps) {
+  const intl = useOptionalIntl()
   const [open, setOpen] = useState(false)
   const [activeMenu, setActiveMenu] = useState<null | 'status' | 'category'>(null)
 
@@ -183,7 +212,7 @@ export function HelpCenterFilterButton({
                   setOpen(false)
                 }}
               >
-                {opt.label}
+                {intl.formatMessage(opt.label)}
               </button>
             ))}
 

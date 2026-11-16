@@ -3,6 +3,7 @@ import { useNavigate } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { InboxLayout } from '@/components/admin/feedback/inbox-layout'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { HelpCenterFiltersPanel } from './help-center-filters'
 import { HelpCenterFinder } from './help-center-finder'
 import { CategoryFormDialog } from './category-form-dialog'
@@ -19,6 +20,7 @@ type CategoryDialogState =
   { mode: 'new'; parentId: KbCategoryId | null } | { mode: 'edit'; category: TreeCategory } | null
 
 export function HelpCenterList() {
+  const intl = useOptionalIntl()
   const navigate = useNavigate({ from: Route.fullPath })
   const { filters, setFilters, hasActiveFilters } = useHelpCenterFilters()
 
@@ -115,19 +117,48 @@ export function HelpCenterList() {
     const parts: string[] = []
     if (cascadeImpact.descendantCount > 0) {
       parts.push(
-        `${cascadeImpact.descendantCount} sub-categor${cascadeImpact.descendantCount === 1 ? 'y' : 'ies'}`
+        intl.formatMessage(
+          {
+            id: 'admin.helpCenter.category.subcategoryCount',
+            defaultMessage: '{count, plural, one {# sub-category} other {# sub-categories}}',
+          },
+          { count: cascadeImpact.descendantCount }
+        )
       )
     }
     if (cascadeImpact.articleCount > 0) {
       parts.push(
-        `${cascadeImpact.articleCount} article${cascadeImpact.articleCount === 1 ? '' : 's'}`
+        intl.formatMessage(
+          {
+            id: 'admin.helpCenter.articleCount',
+            defaultMessage: '{count, plural, one {# article} other {# articles}}',
+          },
+          { count: cascadeImpact.articleCount }
+        )
       )
     }
     if (parts.length === 0) {
-      return `This will permanently delete "${deleteCategoryTarget.name}". This cannot be undone from the UI.`
+      return intl.formatMessage(
+        {
+          id: 'admin.helpCenter.category.deleteImpactEmpty',
+          defaultMessage:
+            'This will permanently delete "{name}". This cannot be undone from the UI.',
+        },
+        { name: deleteCategoryTarget.name }
+      )
     }
-    return `This will delete "${deleteCategoryTarget.name}" along with ${parts.join(' and ')}. Everything can be restored from the database, but the UI provides no restore flow.`
-  }, [deleteCategoryTarget, cascadeImpact])
+    return intl.formatMessage(
+      {
+        id: 'admin.helpCenter.category.deleteImpact',
+        defaultMessage:
+          'This will delete "{name}" along with {items}. Everything can be restored from the database, but the UI provides no restore flow.',
+      },
+      {
+        name: deleteCategoryTarget.name,
+        items: intl.formatList(parts, { type: 'conjunction' }),
+      }
+    )
+  }, [deleteCategoryTarget, cascadeImpact, intl])
 
   async function handleConfirmDeleteCategory() {
     if (!deleteCategoryTarget) return
@@ -144,7 +175,10 @@ export function HelpCenterList() {
   return (
     <>
       <InboxLayout
-        headerTitle="Help center"
+        headerTitle={intl.formatMessage({
+          id: 'admin.pageTitle.helpCenter',
+          defaultMessage: 'Help center',
+        })}
         filters={
           <HelpCenterFiltersPanel
             status={filters.status}
@@ -174,9 +208,15 @@ export function HelpCenterList() {
       <ConfirmDialog
         open={deleteArticleDialogOpen}
         onOpenChange={setDeleteArticleDialogOpen}
-        title="Delete help article?"
-        description="This action cannot be undone. The article will be permanently deleted."
-        confirmLabel="Delete"
+        title={intl.formatMessage({
+          id: 'admin.helpCenter.list.deleteArticleTitle',
+          defaultMessage: 'Delete help article?',
+        })}
+        description={intl.formatMessage({
+          id: 'admin.helpCenter.list.deleteArticleDescription',
+          defaultMessage: 'This action cannot be undone. The article will be permanently deleted.',
+        })}
+        confirmLabel={intl.formatMessage({ id: 'common.delete', defaultMessage: 'Delete' })}
         variant="destructive"
         isPending={deleteArticleMutation.isPending}
         onConfirm={confirmDeleteArticle}
@@ -210,9 +250,15 @@ export function HelpCenterList() {
         onOpenChange={(open) => {
           if (!open) setDeleteCategoryTarget(null)
         }}
-        title={`Delete "${deleteCategoryTarget?.name ?? ''}"?`}
+        title={intl.formatMessage(
+          {
+            id: 'admin.helpCenter.category.deleteConfirmTitle',
+            defaultMessage: 'Delete "{name}"?',
+          },
+          { name: deleteCategoryTarget?.name ?? '' }
+        )}
         description={deleteDescription}
-        confirmLabel="Delete"
+        confirmLabel={intl.formatMessage({ id: 'common.delete', defaultMessage: 'Delete' })}
         variant="destructive"
         isPending={deleteCategoryMutation.isPending}
         onConfirm={handleConfirmDeleteCategory}

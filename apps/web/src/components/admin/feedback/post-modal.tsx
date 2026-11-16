@@ -9,6 +9,7 @@ import type { JSONContent } from '@tiptap/react'
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/solid'
 import { toast } from 'sonner'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { ModalHeader } from '@/components/shared/modal-header'
 import { Button } from '@/components/ui/button'
 import { RichTextEditor, type EditorDocument } from '@/components/ui/rich-text-editor'
@@ -90,6 +91,7 @@ export const PostModalContent = memo(function PostModalContent({
   onNavigateToPost,
   onClose,
 }: PostModalContentProps) {
+  const intl = useOptionalIntl()
   const queryClient = useQueryClient()
 
   // Queries
@@ -168,11 +170,25 @@ export const PostModalContent = memo(function PostModalContent({
   const unpinComment = useUnpinComment({ postId: post.id as PostId })
   const deleteCommentMutation = useDeleteComment({
     postId: post.id as PostId,
-    onError: (error) => toastError(error, 'Failed to delete comment'),
+    onError: (error) =>
+      toastError(
+        error,
+        intl.formatMessage({
+          id: 'admin.feedback.postModal.deleteCommentFailed',
+          defaultMessage: 'Failed to delete comment',
+        })
+      ),
   })
   const restoreCommentMutation = useRestoreComment({
     postId: post.id as PostId,
-    onError: (error) => toastError(error, 'Failed to restore comment'),
+    onError: (error) =>
+      toastError(
+        error,
+        intl.formatMessage({
+          id: 'admin.feedback.postModal.restoreCommentFailed',
+          defaultMessage: 'Failed to restore comment',
+        })
+      ),
   })
   const toggleCommentsLock = useToggleCommentsLock()
   const deletePost = useDeletePost()
@@ -185,13 +201,29 @@ export const PostModalContent = memo(function PostModalContent({
     onSuccess: (result) => {
       toast.success(
         result.needsAttention
-          ? 'Some syncs need review. Open Sync history in integration settings.'
+          ? intl.formatMessage({
+              id: 'admin.feedback.postModal.syncNeedsReview',
+              defaultMessage: 'Some syncs need review. Open Sync history in integration settings.',
+            })
           : result.queued
-            ? 'Integration sync queued'
-            : 'No new sync work to queue'
+            ? intl.formatMessage({
+                id: 'admin.feedback.postModal.syncQueued',
+                defaultMessage: 'Integration sync queued',
+              })
+            : intl.formatMessage({
+                id: 'admin.feedback.postModal.syncNothingToQueue',
+                defaultMessage: 'No new sync work to queue',
+              })
       )
     },
-    onError: (error) => toastError(error, 'Failed to retry integrations'),
+    onError: (error) =>
+      toastError(
+        error,
+        intl.formatMessage({
+          id: 'admin.feedback.postModal.retryIntegrationsFailed',
+          defaultMessage: 'Failed to retry integrations',
+        })
+      ),
   })
 
   // External links for cascade delete
@@ -239,9 +271,20 @@ export const PostModalContent = memo(function PostModalContent({
     setIsUpdating(true)
     try {
       await changePostBoard.mutateAsync({ postId: post.id as PostId, boardId })
-      toast.success('Board updated')
+      toast.success(
+        intl.formatMessage({
+          id: 'portal.postDetail.team.boardUpdated',
+          defaultMessage: 'Board updated',
+        })
+      )
     } catch (err) {
-      toastError(err, 'Failed to update board')
+      toastError(
+        err,
+        intl.formatMessage({
+          id: 'admin.feedback.postModal.updateBoardFailed',
+          defaultMessage: 'Failed to update board',
+        })
+      )
     } finally {
       setIsUpdating(false)
     }
@@ -252,9 +295,25 @@ export const PostModalContent = memo(function PostModalContent({
       // The mutation applies the change optimistically and invalidates the
       // inbox detail/list caches, matching the other sidebar callbacks here.
       await updateOwner.mutateAsync({ postId: post.id as PostId, ownerId })
-      toast.success(ownerId ? 'Owner assigned' : 'Owner unassigned')
+      toast.success(
+        ownerId
+          ? intl.formatMessage({
+              id: 'portal.postDetail.team.ownerAssigned',
+              defaultMessage: 'Owner assigned',
+            })
+          : intl.formatMessage({
+              id: 'portal.postDetail.team.ownerUnassigned',
+              defaultMessage: 'Owner unassigned',
+            })
+      )
     } catch (err) {
-      toastError(err, 'Failed to update owner')
+      toastError(
+        err,
+        intl.formatMessage({
+          id: 'admin.feedback.postModal.updateOwnerFailed',
+          defaultMessage: 'Failed to update owner',
+        })
+      )
     }
   }
 
@@ -263,9 +322,25 @@ export const PostModalContent = memo(function PostModalContent({
     try {
       await setPostEtaFn({ data: { id: post.id, eta } })
       queryClient.invalidateQueries({ queryKey: inboxKeys.detail(post.id as PostId) })
-      toast.success(eta ? 'ETA updated' : 'ETA cleared')
+      toast.success(
+        eta
+          ? intl.formatMessage({
+              id: 'portal.postDetail.team.etaUpdated',
+              defaultMessage: 'ETA updated',
+            })
+          : intl.formatMessage({
+              id: 'portal.postDetail.team.etaCleared',
+              defaultMessage: 'ETA cleared',
+            })
+      )
     } catch (err) {
-      toastError(err, 'Failed to update ETA')
+      toastError(
+        err,
+        intl.formatMessage({
+          id: 'admin.feedback.postModal.updateEtaFailed',
+          defaultMessage: 'Failed to update ETA',
+        })
+      )
     } finally {
       setIsUpdating(false)
     }
@@ -278,7 +353,12 @@ export const PostModalContent = memo(function PostModalContent({
 
   const handleSubmit = async () => {
     if (!title.trim()) {
-      toast.error('Title is required')
+      toast.error(
+        intl.formatMessage({
+          id: 'admin.feedback.postModal.titleRequired',
+          defaultMessage: 'Title is required',
+        })
+      )
       return
     }
 
@@ -289,10 +369,21 @@ export const PostModalContent = memo(function PostModalContent({
         content: contentMarkdown,
         contentJson: contentJson ?? null,
       })
-      toast.success('Post updated')
+      toast.success(
+        intl.formatMessage({
+          id: 'portal.postDetail.team.postUpdated',
+          defaultMessage: 'Post updated',
+        })
+      )
       onClose()
     } catch (err) {
-      toastError(err, 'Failed to update post')
+      toastError(
+        err,
+        intl.formatMessage({
+          id: 'admin.feedback.postModal.updatePostFailed',
+          defaultMessage: 'Failed to update post',
+        })
+      )
     }
   }
 
@@ -328,10 +419,21 @@ export const PostModalContent = memo(function PostModalContent({
     onRestore: async () => {
       try {
         await restorePostMutation.mutateAsync(post.id as PostId)
-        toast.success('Post restored')
+        toast.success(
+          intl.formatMessage({
+            id: 'portal.postDetail.team.postRestored',
+            defaultMessage: 'Post restored',
+          })
+        )
         onClose()
       } catch (err) {
-        toastError(err, 'Failed to restore post')
+        toastError(
+          err,
+          intl.formatMessage({
+            id: 'admin.feedback.postModal.restorePostFailed',
+            defaultMessage: 'Failed to restore post',
+          })
+        )
       }
     },
     isDeleted: !!post.deletedAt,
@@ -343,7 +445,7 @@ export const PostModalContent = memo(function PostModalContent({
     <div className="flex flex-col h-full">
       {/* Header */}
       <ModalHeader
-        section="Feedback"
+        section={intl.formatMessage({ id: 'admin.nav.feedback', defaultMessage: 'Feedback' })}
         title={post.title}
         onClose={onClose}
         viewUrl={`/b/${post.board.slug}/posts/${post.id}`}
@@ -418,7 +520,10 @@ export const PostModalContent = memo(function PostModalContent({
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="What's the feedback about?"
+                placeholder={intl.formatMessage({
+                  id: 'admin.feedback.createPost.titlePlaceholder',
+                  defaultMessage: "What's the feedback about?",
+                })}
                 maxLength={200}
                 autoFocus
                 disabled={updatePost.isPending}
@@ -429,7 +534,10 @@ export const PostModalContent = memo(function PostModalContent({
               <RichTextEditor
                 value={contentJson || ''}
                 onDocumentChange={handleContentChange}
-                placeholder="Add more details... Type / for commands"
+                placeholder={intl.formatMessage({
+                  id: 'portal.postDetail.edit.detailsPlaceholder',
+                  defaultMessage: 'Add more details... Type / for commands',
+                })}
                 minHeight="200px"
                 disabled={updatePost.isPending}
                 borderless
@@ -485,7 +593,15 @@ export const PostModalContent = memo(function PostModalContent({
                         : 'text-muted-foreground hover:text-foreground'
                     }`}
                   >
-                    {tab === 'comments' ? 'Comments' : 'Activity'}
+                    {tab === 'comments'
+                      ? intl.formatMessage({
+                          id: 'admin.feedback.postModal.tabComments',
+                          defaultMessage: 'Comments',
+                        })
+                      : intl.formatMessage({
+                          id: 'admin.feedback.postModal.tabActivity',
+                          defaultMessage: 'Activity',
+                        })}
                   </button>
                 ))}
               </div>
@@ -578,7 +694,17 @@ export const PostModalContent = memo(function PostModalContent({
       {/* Footer */}
       <ModalFooter
         onCancel={onClose}
-        submitLabel={updatePost.isPending ? 'Saving...' : 'Save changes'}
+        submitLabel={
+          updatePost.isPending
+            ? intl.formatMessage({
+                id: 'portal.postDetail.edit.saving',
+                defaultMessage: 'Saving...',
+              })
+            : intl.formatMessage({
+                id: 'admin.feedback.postModal.save',
+                defaultMessage: 'Save changes',
+              })
+        }
         isPending={updatePost.isPending}
         submitType="button"
         onSubmit={handleSubmit}
@@ -594,35 +720,65 @@ export const PostModalContent = memo(function PostModalContent({
         externalLinks={externalLinksQuery.data}
         isLoadingLinks={externalLinksQuery.isLoading}
         isErrorLinks={externalLinksQuery.isError}
-        description={
-          <>
-            This will delete &ldquo;{post.title}&rdquo; from the portal. You can restore it within
-            30 days, after which it will be permanently deleted.
-          </>
-        }
+        description={intl.formatMessage(
+          {
+            id: 'admin.feedback.postModal.deleteDescription',
+            defaultMessage:
+              'This will delete “{title}” from the portal. You can restore it within 30 days, after which it will be permanently deleted.',
+          },
+          { title: post.title }
+        )}
         onConfirm={async (cascadeChoices: CascadeChoice[]) => {
           try {
             const result = await deletePost.mutateAsync({
               postId: post.id as PostId,
               cascadeChoices,
             })
-            toast.success('Post deleted')
+            toast.success(
+              intl.formatMessage({
+                id: 'portal.postDetail.team.postDeleted',
+                defaultMessage: 'Post deleted',
+              })
+            )
             // Show warnings for failed cascade operations
             if (result.cascadeResults) {
               if (result.cascadeResults.some((r) => r.success))
-                toast.message('Archive requests saved', {
-                  description: 'Review and finish them in each integration’s Sync history.',
-                })
+                toast.message(
+                  intl.formatMessage({
+                    id: 'admin.feedback.postModal.archiveSaved',
+                    defaultMessage: 'Archive requests saved',
+                  }),
+                  {
+                    description: intl.formatMessage({
+                      id: 'admin.feedback.postModal.archiveSavedDescription',
+                      defaultMessage: 'Review and finish them in each integration’s Sync history.',
+                    }),
+                  }
+                )
               for (const r of result.cascadeResults) {
                 if (!r.success) {
-                  toast.warning(`Failed to close ${r.integrationType} issue: ${r.error}`)
+                  toast.warning(
+                    intl.formatMessage(
+                      {
+                        id: 'admin.feedback.postModal.closeIssueFailed',
+                        defaultMessage: 'Failed to close {integration} issue: {error}',
+                      },
+                      { integration: r.integrationType, error: r.error }
+                    )
+                  )
                 }
               }
             }
             setShowDeleteDialog(false)
             onClose()
           } catch (err) {
-            toastError(err, 'Failed to delete post')
+            toastError(
+              err,
+              intl.formatMessage({
+                id: 'admin.feedback.postModal.deletePostFailed',
+                defaultMessage: 'Failed to delete post',
+              })
+            )
           }
         }}
       />

@@ -34,7 +34,7 @@ import {
 } from '@heroicons/react/16/solid'
 import { IconGitMerge } from '@tabler/icons-react'
 import type { IntlShape } from 'react-intl'
-import { SOURCE_TYPE_LABELS } from '@/components/admin/feedback/source-type-icon'
+import { sourceTypeLabel } from '@/components/admin/feedback/source-type-icon'
 import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { getLatestMergeStateByDuplicateId } from './post-activity-timeline.utils'
 import { toastError } from '@/lib/client/error-notice'
@@ -143,7 +143,7 @@ const ACTIVITY_CONFIG: Partial<Record<ActivityType, ActivityDisplayConfig>> = {
         <span className="text-xs text-muted-foreground">
           {intl.formatMessage(
             { id: 'admin.feedback.activity.viaSource', defaultMessage: 'via {source}' },
-            { source: SOURCE_TYPE_LABELS[st] ?? st }
+            { source: sourceTypeLabel(intl, st) }
           )}
         </span>
       ) : null

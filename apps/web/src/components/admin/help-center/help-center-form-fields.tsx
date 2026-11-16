@@ -3,6 +3,7 @@ import { RichTextEditor, type EditorDocument } from '@/components/ui/rich-text-e
 import { FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form'
 import { TitleInput } from '@/components/shared/title-input'
 import { FormError } from '@/components/shared/form-error'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { useImageUpload } from '@/lib/client/hooks/use-image-upload'
 import type { JSONContent } from '@tiptap/react'
 
@@ -22,13 +23,21 @@ export function HelpCenterFormFields({
   error,
   showDescription,
 }: HelpCenterFormFieldsProps) {
+  const intl = useOptionalIntl()
   const { upload: uploadImage } = useImageUpload({ prefix: 'help-center' })
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-4 px-4 py-4 sm:px-6">
       {error && <FormError message={error} className="px-3 py-2" />}
 
-      <TitleInput control={form.control} placeholder="Article title" autoFocus />
+      <TitleInput
+        control={form.control}
+        placeholder={intl.formatMessage({
+          id: 'admin.helpCenter.form.titlePlaceholder',
+          defaultMessage: 'Article title',
+        })}
+        autoFocus
+      />
 
       {showDescription ? (
         <FormField
@@ -39,8 +48,14 @@ export function HelpCenterFormFields({
               <FormControl>
                 <input
                   type="text"
-                  aria-label="Page description"
-                  placeholder="Page description (optional)"
+                  aria-label={intl.formatMessage({
+                    id: 'admin.helpCenter.form.descriptionAria',
+                    defaultMessage: 'Page description',
+                  })}
+                  placeholder={intl.formatMessage({
+                    id: 'admin.helpCenter.form.descriptionPlaceholder',
+                    defaultMessage: 'Page description (optional)',
+                  })}
                   className="w-full bg-transparent border-0 outline-none text-sm text-muted-foreground placeholder:text-muted-foreground/50"
                   {...field}
                   value={field.value ?? ''}
@@ -61,7 +76,10 @@ export function HelpCenterFormFields({
               <RichTextEditor
                 value={contentJson || ''}
                 onDocumentChange={onContentChange}
-                placeholder="Write your help article..."
+                placeholder={intl.formatMessage({
+                  id: 'admin.helpCenter.form.contentPlaceholder',
+                  defaultMessage: 'Write your help article...',
+                })}
                 minHeight="100%"
                 fill
                 className="min-h-0 flex-1"

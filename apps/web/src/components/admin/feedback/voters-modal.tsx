@@ -15,7 +15,7 @@ import {
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
 } from '@/components/ui/dropdown-menu'
-import { SOURCE_TYPE_LABELS, SourceTypeIcon } from '@/components/admin/feedback/source-type-icon'
+import { sourceTypeLabel, SourceTypeIcon } from '@/components/admin/feedback/source-type-icon'
 import { adminQueries } from '@/lib/client/queries/admin'
 import type { VotersQuerySource } from '@/components/admin/feedback/voters-avatar-stack'
 import { fetchPostVotersFn } from '@/lib/server/functions/posts'
@@ -323,7 +323,7 @@ function VoterSourceLine({
 
   // Integration votes with link: "{time} · via Slack ↗"
   if (voter.sourceType && voter.sourceExternalUrl) {
-    const platformName = SOURCE_TYPE_LABELS[voter.sourceType] ?? capitalize(voter.sourceType)
+    const platformName = sourceTypeLabel(intl, voter.sourceType)
     return (
       <p className="text-xs text-muted-foreground">
         {time}
@@ -349,7 +349,7 @@ function VoterSourceLine({
 
   // Integration votes without link: "{time} · via Zendesk"
   if (voter.sourceType) {
-    const platformName = SOURCE_TYPE_LABELS[voter.sourceType] ?? capitalize(voter.sourceType)
+    const platformName = sourceTypeLabel(intl, voter.sourceType)
     return (
       <p className="inline-flex items-center gap-1 text-xs text-muted-foreground">
         {time}
@@ -367,8 +367,4 @@ function VoterSourceLine({
 
   // Direct votes: just "{time}"
   return <TimeAgo date={voter.createdAt} className="text-xs text-muted-foreground" />
-}
-
-function capitalize(s: string): string {
-  return s.charAt(0).toUpperCase() + s.slice(1)
 }

@@ -5,8 +5,10 @@
  * same way without loading Settings → Email.
  */
 import { useQuery } from '@tanstack/react-query'
+import type { IntlShape } from 'react-intl'
 import { namedAddress } from '@quackback/email/named-address'
 import { emailChannelConfigQuery } from '@/lib/client/queries/channel-accounts'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import type {
   EmailChannelConfigDTO,
   EmailSendersDTO,
@@ -30,8 +32,16 @@ const NO_SENDERS: EmailSendersDTO = {
  * What the address email sends from with nothing chosen is called: one
  * workspace on its own server falls back to that server's own address.
  */
-export const platformAddressName = (mode: AddressMode | undefined): string =>
-  mode === 'any' ? 'Server default' : 'Quackback address'
+export const platformAddressName = (intl: IntlShape, mode: AddressMode | undefined): string =>
+  mode === 'any'
+    ? intl.formatMessage({
+        id: 'admin.channels.email.platform.serverDefault',
+        defaultMessage: 'Server default',
+      })
+    : intl.formatMessage({
+        id: 'admin.channels.email.platform.workspaceAddress',
+        defaultMessage: 'Quackback address',
+      })
 
 /** "Sender name <address>", the sender name being the workspace's when unset. */
 export const senderLabel = (a: SendingAddress, workspaceName: string): string =>
@@ -50,6 +60,7 @@ export function inboundTarget(
 }
 
 export function useEmailConfigView() {
+  const intl = useOptionalIntl()
   const { data } = useQuery(emailChannelConfigQuery())
   const workspaceName = data?.workspaceName ?? ''
   const addresses = data?.sendingAddresses ?? []
@@ -57,7 +68,7 @@ export function useEmailConfigView() {
   const senders = data?.senders ?? NO_SENDERS
   // Named by the server, the way the send itself names it.
   const platformFrom = data?.defaultFrom ?? null
-  const platformName = platformAddressName(data?.addressMode)
+  const platformName = platformAddressName(intl, data?.addressMode)
   // Whether an address can send is the send guard's answer, from the server.
   const now = new Date()
   const identities: SenderIdentity[] = oldestFirst(addresses).map((a) => {

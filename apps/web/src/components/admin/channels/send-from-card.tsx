@@ -51,7 +51,7 @@ export const SENDER_SURFACE_NAMES: Record<SenderSurfaceKey, string> = {
 }
 
 /** The translated label for each kind of email, for this card's own copy. */
-const SURFACE_LABEL: Record<SenderSurfaceKey, { id: string; defaultMessage: string }> = {
+export const SURFACE_LABEL: Record<SenderSurfaceKey, { id: string; defaultMessage: string }> = {
   support: { id: 'admin.channels.sendFrom.surfaceSupport', defaultMessage: 'Support' },
   feedback: { id: 'admin.channels.sendFrom.surfaceFeedback', defaultMessage: 'Feedback board' },
   changelog: { id: 'admin.channels.sendFrom.surfaceChangelog', defaultMessage: 'Changelog' },

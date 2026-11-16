@@ -3,13 +3,15 @@
  * and what it does, in one place for every page that offers it (Settings →
  * Email and a domain's own page).
  */
+import type { IntlShape } from 'react-intl'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import {
   useDeleteChannelAccount,
   useDeleteSendingDomain,
 } from '@/lib/client/mutations/channel-accounts'
 import type { EmailSendersDTO, SendingDomainDTO } from '@/lib/server/functions/channel-accounts'
-import { SENDER_SURFACE_NAMES, SENDER_SURFACES } from './send-from-card'
+import { SENDER_SURFACES, SURFACE_LABEL } from './send-from-card'
 
 export type SendingAddress = {
   id: string
@@ -22,12 +24,6 @@ export type SendingAddress = {
   /** Whether email can leave from it right now (the send guard's answer). */
   sendable: boolean
 }
-
-/** "Feedback board and Changelog", "Support, Feedback board and Changelog". */
-const listOf = (items: string[]): string =>
-  items.length <= 1
-    ? (items[0] ?? '')
-    : `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`
 
 /**
  * The domain row an address sends through: the one it is linked to, else the
@@ -53,13 +49,29 @@ export function domainOf(
  * Support counts as using the address behind its inbox.
  */
 export function removalNote(
+  intl: IntlShape,
   id: string,
   senders: EmailSendersDTO,
   platformFrom: string | null,
   platformName: string
 ): string | null {
   if (senders.default?.mode === 'address' && senders.default.id === id) {
-    return `It's your default address, so email will come from ${platformFrom ?? `the ${platformName.toLowerCase()}`} instead.`
+    return platformFrom
+      ? intl.formatMessage(
+          {
+            id: 'admin.channels.email.remove.noteDefaultFrom',
+            defaultMessage: "It's your default address, so email will come from {address} instead.",
+          },
+          { address: platformFrom }
+        )
+      : intl.formatMessage(
+          {
+            id: 'admin.channels.email.remove.noteDefaultName',
+            defaultMessage:
+              "It's your default address, so email will come from the {name} instead.",
+          },
+          { name: platformName.toLowerCase() }
+        )
   }
   const using = SENDER_SURFACES.filter((s) => {
     const choice = senders[s]
@@ -69,7 +81,17 @@ export function removalNote(
     )
   })
   if (using.length === 0) return null
-  return `${listOf(using.map((s) => SENDER_SURFACE_NAMES[s]))} email will come from your default address instead.`
+  const surfaces = intl.formatList(
+    using.map((s) => intl.formatMessage(SURFACE_LABEL[s])),
+    { type: 'conjunction' }
+  )
+  return intl.formatMessage(
+    {
+      id: 'admin.channels.email.remove.noteSurfaces',
+      defaultMessage: '{surfaces} email will come from your default address instead.',
+    },
+    { surfaces }
+  )
 }
 
 export interface AddressRemoval {
@@ -105,20 +127,53 @@ export function RemoveAddressDialog({
   onError,
   onRemoved,
 }: RemovalDialogProps<AddressRemoval>) {
+  const intl = useOptionalIntl()
   const del = useDeleteChannelAccount()
   const removeDomain = useDeleteSendingDomain()
+  const domainFailed = intl.formatMessage({
+    id: 'admin.channels.email.remove.domainFailed',
+    defaultMessage: "Couldn't remove the domain.",
+  })
   return (
     <ConfirmDialog
       open={target !== null}
       onOpenChange={(open) => !open && onClose()}
-      title={target?.address ? `Remove ${target.address}?` : 'Remove address?'}
+      title={
+        target?.address
+          ? intl.formatMessage(
+              {
+                id: 'admin.channels.email.remove.title',
+                defaultMessage: 'Remove {address}?',
+              },
+              { address: target.address }
+            )
+          : intl.formatMessage({
+              id: 'admin.channels.email.remove.titleNoAddress',
+              defaultMessage: 'Remove address?',
+            })
+      }
       description={[
-        target?.note ?? 'Email can no longer be sent from this address.',
-        target?.alsoDomain ? `${target.alsoDomain} stops sending email too.` : null,
+        target?.note ??
+          intl.formatMessage({
+            id: 'admin.channels.email.remove.description',
+            defaultMessage: 'Email can no longer be sent from this address.',
+          }),
+        target?.alsoDomain
+          ? intl.formatMessage(
+              {
+                id: 'admin.channels.email.remove.alsoDomain',
+                defaultMessage: '{domain} stops sending email too.',
+              },
+              { domain: target.alsoDomain }
+            )
+          : null,
       ]
         .filter(Boolean)
         .join(' ')}
-      confirmLabel="Remove address"
+      confirmLabel={intl.formatMessage({
+        id: 'admin.channels.email.remove.confirm',
+        defaultMessage: 'Remove address',
+      })}
       variant="destructive"
       isPending={del.isPending}
       onConfirm={() => {
@@ -131,14 +186,19 @@ export function RemoveAddressDialog({
             onSuccess: ({ lastOnDomain }) => {
               if (alsoDomain && lastOnDomain?.domain === alsoDomain) {
                 removeDomain.mutate(lastOnDomain.id, {
-                  onError: onError("Couldn't remove the domain."),
+                  onError: onError(domainFailed),
                   onSettled: onRemoved,
                 })
               } else {
                 onRemoved?.()
               }
             },
-            onError: onError("Couldn't remove the address."),
+            onError: onError(
+              intl.formatMessage({
+                id: 'admin.channels.email.remove.addressFailed',
+                defaultMessage: "Couldn't remove the address.",
+              })
+            ),
           })
         }
         onClose()
@@ -158,21 +218,46 @@ export function RemoveDomainDialog({
   onError,
   onRemoved,
 }: RemovalDialogProps<DomainRemoval>) {
+  const intl = useOptionalIntl()
   const removeDomain = useDeleteSendingDomain()
   return (
     <ConfirmDialog
       open={target !== null}
       onOpenChange={(open) => !open && onClose()}
-      title={target ? `Stop sending email from ${target.domain}?` : 'Stop sending email?'}
-      description="Its email DNS records can be deleted afterwards."
-      confirmLabel="Stop sending email"
+      title={
+        target
+          ? intl.formatMessage(
+              {
+                id: 'admin.channels.email.remove.domainTitle',
+                defaultMessage: 'Stop sending email from {domain}?',
+              },
+              { domain: target.domain }
+            )
+          : intl.formatMessage({
+              id: 'admin.channels.email.remove.domainTitleNoDomain',
+              defaultMessage: 'Stop sending email?',
+            })
+      }
+      description={intl.formatMessage({
+        id: 'admin.channels.email.remove.domainDescription',
+        defaultMessage: 'Its email DNS records can be deleted afterwards.',
+      })}
+      confirmLabel={intl.formatMessage({
+        id: 'admin.channels.email.remove.domainConfirm',
+        defaultMessage: 'Stop sending email',
+      })}
       variant="destructive"
       isPending={removeDomain.isPending}
       onConfirm={() => {
         if (target) {
           onStart?.()
           removeDomain.mutate(target.id, {
-            onError: onError("Couldn't remove the domain."),
+            onError: onError(
+              intl.formatMessage({
+                id: 'admin.channels.email.remove.domainFailed',
+                defaultMessage: "Couldn't remove the domain.",
+              })
+            ),
             onSuccess: onRemoved,
           })
         }
