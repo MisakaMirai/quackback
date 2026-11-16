@@ -5,6 +5,7 @@ import { PlusIcon, XMarkIcon } from '@heroicons/react/24/solid'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import {
   Dialog,
   DialogContent,
@@ -56,6 +57,52 @@ export interface CustomAttrDef {
   type: 'string' | 'number' | 'boolean' | 'date' | 'currency'
   currencyCode?: string | null
   description?: string | null
+}
+
+/** The picker's field groups, in display order. */
+const FIELD_GROUP_LABELS = [
+  {
+    group: 'attribute',
+    id: 'admin.segments.rule.groupBuiltin',
+    defaultMessage: 'Built-in fields',
+  },
+  { group: 'account', id: 'admin.segments.rule.groupAccount', defaultMessage: 'Account' },
+  { group: 'activity', id: 'admin.segments.rule.groupActivity', defaultMessage: 'Activity' },
+] as const
+
+/**
+ * Message ids for the operator labels. The built-in registry ships English
+ * labels, so they are routed through these ids at render time.
+ */
+const OPERATOR_MESSAGE_IDS: Record<string, string> = {
+  equals: 'admin.segments.operator.equals',
+  'not equals': 'admin.segments.operator.notEquals',
+  contains: 'admin.segments.operator.contains',
+  'starts with': 'admin.segments.operator.startsWith',
+  'ends with': 'admin.segments.operator.endsWith',
+  'is set': 'admin.segments.operator.isSet',
+  'is not set': 'admin.segments.operator.isNotSet',
+  'greater than': 'admin.segments.operator.greaterThan',
+  'at least': 'admin.segments.operator.atLeast',
+  'less than': 'admin.segments.operator.lessThan',
+  'at most': 'admin.segments.operator.atMost',
+  is: 'admin.segments.operator.is',
+  'before (days ago)': 'admin.segments.operator.beforeDaysAgo',
+  'after (days ago)': 'admin.segments.operator.afterDaysAgo',
+  'at least (days ago)': 'admin.segments.operator.atLeastDaysAgo',
+  'at most (days ago)': 'admin.segments.operator.atMostDaysAgo',
+  'more than (days ago)': 'admin.segments.operator.moreThanDaysAgo',
+  'less than (days ago)': 'admin.segments.operator.lessThanDaysAgo',
+  'has any': 'admin.segments.operator.hasAny',
+  'has none': 'admin.segments.operator.hasNone',
+  'has ever signed in': 'admin.segments.operator.everSignedIn',
+  'has never signed in': 'admin.segments.operator.neverSignedIn',
+}
+
+/** Word an operator label from the registry in the reader's language. */
+function operatorLabel(intl: ReturnType<typeof useOptionalIntl>, label: string): string {
+  const id = OPERATOR_MESSAGE_IDS[label]
+  return id ? intl.formatMessage({ id, defaultMessage: label }) : label
 }
 
 /** Operators for custom attributes and the metadata_key escape hatch */
@@ -128,6 +175,7 @@ function RuleConditionRow({
   onRemove: () => void
   customAttributes?: CustomAttrDef[]
 }) {
+  const intl = useOptionalIntl()
   const customAttrKey = getCustomAttrKey(condition.attribute)
   const customAttrDef = customAttrKey
     ? (customAttributes?.find((a) => a.key === customAttrKey) ?? null)
@@ -183,20 +231,14 @@ function RuleConditionRow({
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
-          {(
-            [
-              { group: 'attribute', label: 'Built-in fields' },
-              { group: 'account', label: 'Account' },
-              { group: 'activity', label: 'Activity' },
-            ] as const
-          ).map(({ group, label }, i) => {
+          {FIELD_GROUP_LABELS.map(({ group, ...label }, i) => {
             const fields = BUILTIN_FIELDS.filter((f) => f.group === group)
             return (
               <React.Fragment key={group}>
                 {i > 0 && <SelectSeparator />}
                 <SelectGroup>
                   <SelectLabel className="uppercase tracking-wider px-2 py-1.5">
-                    {label}
+                    {intl.formatMessage(label)}
                   </SelectLabel>
                   {fields.map((field) => (
                     <SelectItem key={field.key} value={field.key}>
@@ -204,7 +246,12 @@ function RuleConditionRow({
                     </SelectItem>
                   ))}
                   {group === 'attribute' && (
-                    <SelectItem value="metadata_key">Custom metadata key</SelectItem>
+                    <SelectItem value="metadata_key">
+                      {intl.formatMessage({
+                        id: 'admin.segments.rule.metadataKey',
+                        defaultMessage: 'Custom metadata key',
+                      })}
+                    </SelectItem>
                   )}
                 </SelectGroup>
               </React.Fragment>
@@ -215,7 +262,10 @@ function RuleConditionRow({
               <SelectSeparator />
               <SelectGroup>
                 <SelectLabel className="uppercase tracking-wider px-2 py-1.5">
-                  Custom attributes
+                  {intl.formatMessage({
+                    id: 'admin.segments.rule.customAttributes',
+                    defaultMessage: 'Custom attributes',
+                  })}
                 </SelectLabel>
                 {customAttributes.map((attr) => (
                   <SelectItem
@@ -242,7 +292,7 @@ function RuleConditionRow({
         <SelectContent>
           {operators.map((opt) => (
             <SelectItem key={opt.value} value={opt.value}>
-              {opt.label}
+              {operatorLabel(intl, opt.label)}
             </SelectItem>
           ))}
         </SelectContent>
@@ -251,7 +301,10 @@ function RuleConditionRow({
       {condition.attribute === 'metadata_key' && (
         <Input
           className="h-8 text-xs w-[100px] shrink-0"
-          placeholder="key"
+          placeholder={intl.formatMessage({
+            id: 'admin.segments.rule.metadataKeyPlaceholder',
+            defaultMessage: 'key',
+          })}
           value={condition.metadataKey ?? ''}
           onChange={(e) => onChange({ ...condition, metadataKey: e.target.value })}
         />
@@ -283,8 +336,12 @@ function RuleConditionRow({
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="true">True</SelectItem>
-            <SelectItem value="false">False</SelectItem>
+            <SelectItem value="true">
+              {intl.formatMessage({ id: 'admin.segments.rule.true', defaultMessage: 'True' })}
+            </SelectItem>
+            <SelectItem value="false">
+              {intl.formatMessage({ id: 'admin.segments.rule.false', defaultMessage: 'False' })}
+            </SelectItem>
           </SelectContent>
         </Select>
       )}
@@ -293,7 +350,10 @@ function RuleConditionRow({
           className="flex-1"
           value={condition.value}
           onChange={(v) => onChange({ ...condition, value: v })}
-          placeholder="Type to search"
+          placeholder={intl.formatMessage({
+            id: 'admin.segments.rule.typeToSearch',
+            defaultMessage: 'Type to search',
+          })}
           fetchOptions={async (query) => {
             const res = await fetchSegmentAttributeValuesFn({
               data: {
@@ -305,7 +365,13 @@ function RuleConditionRow({
             })
             return res.values.map((v) => ({
               value: v.value,
-              meta: `${v.count} ${v.count === 1 ? 'person' : 'people'}`,
+              meta: intl.formatMessage(
+                {
+                  id: 'admin.segments.rule.personCount',
+                  defaultMessage: '{count, plural, one {# person} other {# people}}',
+                },
+                { count: v.count }
+              ),
             }))
           }}
         />
@@ -314,7 +380,14 @@ function RuleConditionRow({
         <Input
           className="h-8 text-xs flex-1"
           type={isNumeric ? 'number' : 'text'}
-          placeholder={isNumeric ? '0' : 'value'}
+          placeholder={
+            isNumeric
+              ? '0'
+              : intl.formatMessage({
+                  id: 'admin.segments.rule.valuePlaceholder',
+                  defaultMessage: 'value',
+                })
+          }
           value={condition.value}
           onChange={(e) => onChange({ ...condition, value: e.target.value })}
         />
@@ -348,6 +421,8 @@ function RuleBuilder({
   onConditionsChange: (v: RuleCondition[]) => void
   customAttributes?: CustomAttrDef[]
 }) {
+  const intl = useOptionalIntl()
+
   const handleAdd = () => {
     const firstField = BUILTIN_FIELDS[0]
     const firstOp = (getFieldOperators(firstField)[0]?.value ?? 'eq') as RuleOperator
@@ -368,17 +443,31 @@ function RuleBuilder({
     <div className="space-y-3">
       {/* Match type */}
       <div className="flex items-center gap-2 text-xs text-muted-foreground">
-        <span>Users must match</span>
+        <span>
+          {intl.formatMessage({
+            id: 'admin.segments.rule.matchPrefix',
+            defaultMessage: 'Users must match',
+          })}
+        </span>
         <Select value={match} onValueChange={(v) => onMatchChange(v as 'all' | 'any')}>
           <SelectTrigger size="sm" className="w-20">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">ALL</SelectItem>
-            <SelectItem value="any">ANY</SelectItem>
+            <SelectItem value="all">
+              {intl.formatMessage({ id: 'admin.segments.rule.matchAll', defaultMessage: 'ALL' })}
+            </SelectItem>
+            <SelectItem value="any">
+              {intl.formatMessage({ id: 'admin.segments.rule.matchAny', defaultMessage: 'ANY' })}
+            </SelectItem>
           </SelectContent>
         </Select>
-        <span>of these conditions:</span>
+        <span>
+          {intl.formatMessage({
+            id: 'admin.segments.rule.matchSuffix',
+            defaultMessage: 'of these conditions:',
+          })}
+        </span>
       </div>
 
       {/* Conditions */}
@@ -396,7 +485,10 @@ function RuleBuilder({
 
       <Button type="button" variant="outline" size="sm" className="h-7 text-xs" onClick={handleAdd}>
         <PlusIcon className="h-3.5 w-3.5 mr-1" />
-        Add condition
+        {intl.formatMessage({
+          id: 'admin.segments.rule.addCondition',
+          defaultMessage: 'Add condition',
+        })}
       </Button>
     </div>
   )
@@ -429,6 +521,7 @@ export function SegmentFormDialog({
   isPending,
   customAttributes,
 }: SegmentFormDialogProps) {
+  const intl = useOptionalIntl()
   const isEditing = !!initialValues?.id
 
   const [name, setName] = useState(initialValues?.name ?? '')
@@ -469,44 +562,76 @@ export function SegmentFormDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>{isEditing ? 'Edit segment' : 'Create segment'}</DialogTitle>
+          <DialogTitle>
+            {isEditing
+              ? intl.formatMessage({
+                  id: 'admin.segments.form.editSegment',
+                  defaultMessage: 'Edit segment',
+                })
+              : intl.formatMessage({
+                  id: 'admin.segments.form.createSegment',
+                  defaultMessage: 'Create segment',
+                })}
+          </DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-5">
           {/* Type selector - only when creating */}
           {!isEditing && (
             <div className="flex gap-3">
-              {(['manual', 'dynamic'] as const).map((t) => (
-                <button
-                  key={t}
-                  type="button"
-                  onClick={() => setType(t)}
-                  className={cn(
-                    'flex-1 px-4 py-3 rounded-lg border-2 text-left transition-colors',
-                    type === t
-                      ? 'border-primary bg-primary/5'
-                      : 'border-border hover:border-border/80'
-                  )}
-                >
-                  <div className="font-medium text-sm capitalize">{t}</div>
-                  <div className="text-xs text-muted-foreground mt-0.5">
-                    {t === 'manual'
-                      ? 'Manually assign users to this segment'
-                      : 'Auto-populate based on rules'}
-                  </div>
-                </button>
-              ))}
+              {(['manual', 'dynamic'] as const).map((t) => {
+                const manual = t === 'manual'
+                return (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setType(t)}
+                    className={cn(
+                      'flex-1 px-4 py-3 rounded-lg border-2 text-left transition-colors',
+                      type === t
+                        ? 'border-primary bg-primary/5'
+                        : 'border-border hover:border-border/80'
+                    )}
+                  >
+                    <div className="font-medium text-sm capitalize">
+                      {intl.formatMessage(
+                        manual
+                          ? { id: 'admin.segments.form.typeManual', defaultMessage: 'Manual' }
+                          : { id: 'admin.segments.form.typeDynamic', defaultMessage: 'Dynamic' }
+                      )}
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-0.5">
+                      {intl.formatMessage(
+                        manual
+                          ? {
+                              id: 'admin.segments.form.typeManualDescription',
+                              defaultMessage: 'Manually assign users to this segment',
+                            }
+                          : {
+                              id: 'admin.segments.form.typeDynamicDescription',
+                              defaultMessage: 'Auto-populate based on rules',
+                            }
+                      )}
+                    </div>
+                  </button>
+                )
+              })}
             </div>
           )}
 
           {/* Name */}
           <div className="space-y-1.5">
-            <Label htmlFor="seg-name">Name</Label>
+            <Label htmlFor="seg-name">
+              {intl.formatMessage({ id: 'admin.segments.form.name', defaultMessage: 'Name' })}
+            </Label>
             <Input
               id="seg-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Enterprise customers"
+              placeholder={intl.formatMessage({
+                id: 'admin.segments.form.namePlaceholder',
+                defaultMessage: 'Enterprise customers',
+              })}
               required
             />
           </div>
@@ -514,27 +639,47 @@ export function SegmentFormDialog({
           {/* Description */}
           <div className="space-y-1.5">
             <Label htmlFor="seg-desc">
-              Description <span className="text-muted-foreground font-normal">(optional)</span>
+              {intl.formatMessage({
+                id: 'admin.segments.form.description',
+                defaultMessage: 'Description',
+              })}{' '}
+              <span className="text-muted-foreground font-normal">
+                {intl.formatMessage({
+                  id: 'admin.segments.form.optional',
+                  defaultMessage: '(optional)',
+                })}
+              </span>
             </Label>
             <Input
               id="seg-desc"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="High-activity users with 10+ posts"
+              placeholder={intl.formatMessage({
+                id: 'admin.segments.form.descriptionPlaceholder',
+                defaultMessage: 'High-activity users with 10+ posts',
+              })}
             />
           </div>
 
           {/* Rules (dynamic only) */}
           {type === 'dynamic' && (
             <div className="space-y-2 border border-border/50 rounded-lg p-4 bg-muted/20">
-              <Label className="text-sm font-medium">Rules</Label>
+              <Label className="text-sm font-medium">
+                {intl.formatMessage({ id: 'admin.segments.form.rules', defaultMessage: 'Rules' })}
+              </Label>
               <p className="text-xs text-muted-foreground">
-                Define conditions to automatically match users. Membership is refreshed when you
-                trigger evaluation.
+                {intl.formatMessage({
+                  id: 'admin.segments.form.rulesDescription',
+                  defaultMessage:
+                    'Define conditions to automatically match users. Membership is refreshed when you trigger evaluation.',
+                })}
               </p>
               <p className="text-xs text-muted-foreground">
-                Heads up: segments only include users in your audience. Your team and admins won't
-                show up here, even if they match the rules.
+                {intl.formatMessage({
+                  id: 'admin.segments.form.audienceNote',
+                  defaultMessage:
+                    "Heads up: segments only include users in your audience. Your team and admins won't show up here, even if they match the rules.",
+                })}
               </p>
               <RuleBuilder
                 match={ruleMatch}
@@ -553,10 +698,23 @@ export function SegmentFormDialog({
               onClick={() => onOpenChange(false)}
               disabled={isPending}
             >
-              Cancel
+              {intl.formatMessage({ id: 'common.cancel', defaultMessage: 'Cancel' })}
             </Button>
             <Button type="submit" disabled={!canSubmit || isPending}>
-              {isPending ? 'Saving...' : isEditing ? 'Save changes' : 'Create segment'}
+              {isPending
+                ? intl.formatMessage({
+                    id: 'admin.segments.form.saving',
+                    defaultMessage: 'Saving...',
+                  })
+                : isEditing
+                  ? intl.formatMessage({
+                      id: 'admin.segments.form.saveChanges',
+                      defaultMessage: 'Save changes',
+                    })
+                  : intl.formatMessage({
+                      id: 'admin.segments.form.createSegment',
+                      defaultMessage: 'Create segment',
+                    })}
             </Button>
           </DialogFooter>
         </form>
