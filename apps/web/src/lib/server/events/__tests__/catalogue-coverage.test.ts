@@ -42,7 +42,6 @@ describe('event catalogue coverage', () => {
       expect(['always', 'never']).toContain(def.emits)
       expect(def.exposure).toMatchObject({
         webhook: expect.any(Boolean),
-        workflow: expect.any(Boolean),
         audit: expect.any(Boolean),
       })
     }
@@ -82,14 +81,10 @@ describe('event catalogue coverage', () => {
     'note_added',
     'published',
     'replied',
-    'handed_off',
-    'resolved',
     'csat_submitted',
     'csat_comment_added',
     'voted',
     'external_status_changed',
-    'customer_unresponsive',
-    'teammate_unresponsive',
     'approaching_breach',
     'breached',
     // status-page legacy compound verbs (entity is status_incident/status_component)

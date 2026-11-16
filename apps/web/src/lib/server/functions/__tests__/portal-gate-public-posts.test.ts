@@ -179,10 +179,6 @@ vi.mock('@/lib/server/db', async (importOriginal) => ({
   ),
 }))
 
-vi.mock('@/lib/server/domains/embeddings/embedding.service', () => ({
-  generateEmbedding: vi.fn().mockResolvedValue(null),
-}))
-
 // Partial mock: stub the assert chokepoints but keep the real
 // loadBoardAccessForPost, whose query chain resolves through the db mock's
 // .innerJoin().where().limit() (mockBoardRowLimit) like the inlined query did.

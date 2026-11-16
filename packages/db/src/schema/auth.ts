@@ -368,14 +368,6 @@ export const settings = pgTable('settings', {
    */
   managedFieldPaths: jsonb('managed_field_paths').$type<string[]>().notNull().default([]),
   /**
-   * Workspace state. INERT: app-level suspension enforcement was removed —
-   * dormant workspaces are now scaled to 0 by the control plane and a
-   * gateway catch-all serves their hostnames, so the OSS pod no longer
-   * reads or acts on this column. Retained (no DROP migration) for
-   * back-compat; safe to remove in a future migration.
-   */
-  state: text('state').$type<'active' | 'suspended' | 'deleting'>().notNull().default('active'),
-  /**
    * Monotonic version bumped on every auth-instance-affecting write
    * (authConfig, ssoOidc, oauth toggles, platform credentials, tier
    * limits, config-file reconciler). Pods compare their cached auth

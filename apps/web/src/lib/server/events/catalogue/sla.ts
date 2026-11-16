@@ -1,18 +1,18 @@
-/** SLA event declarations (WO-2). All are workflow triggers. */
+/** SLA event declarations (WO-2). */
 import { decl } from './helpers'
 
 const S = 'conversation'
-const wf = { webhook: true, workflow: true } as const
+const wh = { webhook: true } as const
 
 export const slaApproachingBreach = decl(
   'sla.approaching_breach',
   'conversation',
-  { ...wf, notification: 'sla_warning' },
+  { ...wh, notification: 'sla_warning' },
   S
 )
 export const slaBreached = decl(
   'sla.breached',
   'conversation',
-  { ...wf, notification: 'sla_breach' },
+  { ...wh, notification: 'sla_breach' },
   S
 )

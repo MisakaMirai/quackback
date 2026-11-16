@@ -547,9 +547,8 @@ export interface TicketMessagePage {
  *
  * `all: true` returns the ENTIRE ordered thread (oldest-first, no page window,
  * no cursor), for callers that need the thread head as well as its tail — the
- * copilot grounding loader (`loadTicketGroundingContext`), which must never drop
- * the original request on a long thread the way the default newest-page window
- * silently would.
+ * transcript export, which must never drop the original request on a long
+ * thread the way the default newest-page window silently would.
  */
 export async function listTicketMessages(
   ticketId: TicketId,

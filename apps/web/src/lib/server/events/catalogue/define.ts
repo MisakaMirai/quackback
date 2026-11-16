@@ -21,8 +21,6 @@ import type { ApiKeyScope } from '@/lib/shared/api-key-scopes'
 export interface EventExposure {
   /** Appears in app/webhook subscription pickers + OpenAPI webhook schemas. */
   webhook: boolean
-  /** Becomes a workflow trigger. */
-  workflow: boolean
   /** Key into the notification matrix (null = not a notification). */
   notification: string | null
   /** Documents the paired activity silo (post_activity, ...); does NOT automate it. */
@@ -88,11 +86,6 @@ export function allEventDefinitions(): ReadonlyArray<EventDefinition<unknown>> {
 /** Event types exposed to the customer webhook surface (picker + OpenAPI). WO-9. */
 export function webhookEventTypes(): string[] {
   return [...registry.values()].filter((d) => d.exposure.webhook).map((d) => d.type)
-}
-
-/** Event types that are workflow triggers. WO-10. */
-export function workflowEventTypes(): string[] {
-  return [...registry.values()].filter((d) => d.exposure.workflow).map((d) => d.type)
 }
 
 /** Test-only: clear the registry between suites that re-import catalogue files. */

@@ -2052,6 +2052,13 @@
       "when": 1791002300000,
       "tag": "0318_drop_widget",
       "breakpoints": true
+    },
+    {
+      "idx": 296,
+      "version": "7",
+      "when": 1791002400000,
+      "tag": "0319_drop_retired_tables",
+      "breakpoints": true
     }
   ]
 }

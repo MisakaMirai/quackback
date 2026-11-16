@@ -715,8 +715,8 @@ export async function updateDeveloperConfig(
 ): Promise<DeveloperConfig> {
   log.info('update developer config')
   try {
-    // Plan first (names the plan), then the operator-cap overlay. Disabling MCP
-    // stays open so a downgraded workspace can turn the endpoint off.
+    // The operator limit gates enabling MCP. Disabling stays open so a
+    // restricted workspace can always turn the endpoint off.
     if (input.mcpEnabled === true) {
       const { assertTierFeature } = await import('@/lib/server/domains/settings/tier-enforce')
       await assertTierFeature('mcpServer', 'MCP server')
@@ -854,14 +854,14 @@ export async function enableHelpCenterLocale(input: {
     }
     const alreadyEnabled = existing.locales.additional.includes(input.locale)
     if (!alreadyEnabled && limit !== null) {
-      // The default language counts toward the plan's language cap.
+      // The default language counts toward the workspace's language cap.
       const enabled = 1 + existing.locales.additional.length
       if (enabled >= limit) {
         throw new TierLimitError({
           limit: 'maxHelpCenterLocales',
           current: enabled,
           max: limit,
-          message: `You've reached your plan's help center languages limit (${limit}). Upgrade to add more.`,
+          message: `You've reached your workspace's help center languages limit (${limit}). Raise the limit to add more.`,
         })
       }
     }

@@ -14,9 +14,8 @@ describe('admin-plane catalogue events (WO-6a)', () => {
       const def = getEventDefinition(type)
       expect(def, type).toBeDefined()
       expect(def!.exposure.audit, `${type} should be audited`).toBe(true)
-      // Admin events are internal — never webhook/workflow surfaced.
+      // Admin events are internal — never webhook surfaced.
       expect(def!.exposure.webhook).toBe(false)
-      expect(def!.exposure.workflow).toBe(false)
     }
   })
 

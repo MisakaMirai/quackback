@@ -52,7 +52,7 @@ function PermissionsProbe() {
 
 function HasPermissionProbe() {
   renders.hasPermission++
-  seen.hasPermission = useHasPermission(PERMISSIONS.WORKFLOW_MANAGE)
+  seen.hasPermission = useHasPermission(PERMISSIONS.SLA_MANAGE)
   return null
 }
 
@@ -112,7 +112,7 @@ describe('route context hooks', () => {
     rootAnswer = { settings: { featureFlags: { helpCenter: true } } }
     adminAnswer = {
       principal: { role: 'member' },
-      permissions: [PERMISSIONS.SETTINGS_MANAGE, PERMISSIONS.WORKFLOW_MANAGE],
+      permissions: [PERMISSIONS.SETTINGS_MANAGE, PERMISSIONS.SLA_MANAGE],
     }
     const router = await mount()
     const settled = { ...renders }
@@ -125,7 +125,7 @@ describe('route context hooks', () => {
     expect(renders).toEqual(settled)
     expect(seen).toEqual({
       permission: true,
-      permissions: [PERMISSIONS.SETTINGS_MANAGE, PERMISSIONS.WORKFLOW_MANAGE],
+      permissions: [PERMISSIONS.SETTINGS_MANAGE, PERMISSIONS.SLA_MANAGE],
       hasPermission: true,
       flag: true,
     })
@@ -135,7 +135,7 @@ describe('route context hooks', () => {
     rootAnswer = { settings: { featureFlags: { helpCenter: false } } }
     adminAnswer = {
       principal: { role: 'member' },
-      permissions: [PERMISSIONS.SETTINGS_MANAGE, PERMISSIONS.WORKFLOW_MANAGE],
+      permissions: [PERMISSIONS.SETTINGS_MANAGE, PERMISSIONS.SLA_MANAGE],
     }
     const router = await mount()
     expect(seen.permission).toBe(true)

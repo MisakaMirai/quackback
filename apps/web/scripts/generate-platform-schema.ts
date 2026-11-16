@@ -1,7 +1,6 @@
 /**
  * Writes `src/lib/shared/platform-schema.generated.json`, the machine-readable
- * description of the integration platform-credential fields and the AI
- * configuration keys.
+ * description of the integration platform-credential fields.
  *
  * Run: `bun run generate:platform-schema` from `apps/web`.
  *
@@ -24,6 +23,5 @@ const fieldCount = schema.providers.reduce((n, p) => n + p.fields.length, 0)
 const configurable = schema.providers.filter((p) => p.configurable).length
 process.stdout.write(
   `platform schema: ${schema.providers.length} providers ` +
-    `(${configurable} configurable, ${fieldCount} fields), ` +
-    `${schema.ai.keys.length} AI keys\n`
+    `(${configurable} configurable, ${fieldCount} fields)\n`
 )

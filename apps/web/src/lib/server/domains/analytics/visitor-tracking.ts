@@ -1,6 +1,6 @@
 /**
- * Visitor tracking entitlement: whether this workspace's plan includes
- * visitor analytics. Every plan includes it today; a plan that excludes it
+ * Visitor tracking entitlement: whether this workspace's operator limits
+ * include visitor analytics. Enabled by default; an operator that turns it off
  * stores nothing, whatever a beacon sends.
  */
 import { getTierLimits } from '@/lib/server/domains/settings/tier-limits.service'
@@ -9,7 +9,7 @@ import { logger } from '@/lib/server/logger'
 const log = logger.child({ component: 'visitor-tracking' })
 
 /**
- * Whether the workspace's plan includes visitor analytics. Fails closed: if
+ * Whether the workspace's limits include visitor analytics. Fails closed: if
  * the limits cannot be read, nothing is counted.
  */
 export async function isVisitorAnalyticsEntitled(): Promise<boolean> {

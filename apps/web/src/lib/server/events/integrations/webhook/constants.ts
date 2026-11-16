@@ -163,18 +163,6 @@ export const WEBHOOK_EVENT_CONFIG = [
     description: 'When an internal note @-mentions a teammate (private content — opt-in)',
   },
   {
-    id: 'conversation.customer_unresponsive',
-    label: 'Customer Unresponsive',
-    description:
-      'When the customer has been silent for a workflow-configured time after the last teammate or AI reply',
-  },
-  {
-    id: 'conversation.teammate_unresponsive',
-    label: 'Teammate Unresponsive',
-    description:
-      "When no teammate has replied for a workflow-configured time after the customer's last message",
-  },
-  {
     id: 'sla.approaching_breach',
     label: 'SLA Approaching Breach',
     description: 'When an applied SLA clock enters its lead-time warning window',

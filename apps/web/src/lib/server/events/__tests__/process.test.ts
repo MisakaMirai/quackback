@@ -86,7 +86,6 @@ const sentinels = vi.hoisted(() => ({
   notifyChangelogPublished: vi.fn().mockResolvedValue(undefined),
   handleMaintenanceStart: vi.fn().mockResolvedValue(undefined),
   handleMaintenanceComplete: vi.fn().mockResolvedValue(undefined),
-  checkPostForMergeCandidates: vi.fn().mockResolvedValue(undefined),
 }))
 vi.mock('@/lib/server/domains/changelog/changelog.service', () => ({
   notifyChangelogPublished: sentinels.notifyChangelogPublished,
@@ -95,10 +94,6 @@ vi.mock('@/lib/server/domains/status/status.maintenance', () => ({
   handleMaintenanceStart: sentinels.handleMaintenanceStart,
   handleMaintenanceComplete: sentinels.handleMaintenanceComplete,
 }))
-vi.mock('@/lib/server/domains/merge-suggestions/merge-check.service', () => ({
-  checkPostForMergeCandidates: sentinels.checkPostForMergeCandidates,
-}))
-
 // --- Helpers ---
 
 function makeEvent(): PostCreatedEvent {

@@ -3,19 +3,18 @@
  *
  * Enforcement is untouched — `getTierLimits()` and every helper in
  * `tier-enforce.ts` read exactly what they read before. This file only adds a
- * disciplined *write*, for the same reason `cloud.service.ts` has one: the
- * column now has a second writer.
+ * disciplined *write* for the declarative config file and the operator API.
  *
- * Three properties, all of which the previous ad-hoc write path lacked:
+ * Three properties, all of which an ad-hoc write path lacks:
  *
- *  1. **The read, the merge and the write are inside one row lock**, so a
- *     config reconcile and a billing write cannot lose each other's changes.
+ *  1. **The read, the merge and the write are inside one row lock**, so two
+ *     writers cannot lose each other's changes.
  *  2. **The config file's whole-block lock is honoured.** `tierLimits` is a
  *     whole-block managed path, so an operator who pins limits in
- *     `/etc/quackback/config.yaml` keeps them: the billing writer is refused
+ *     `/etc/quackback/config.yaml` keeps them: another writer is refused
  *     rather than silently overriding the operator.
- *  3. **It is idempotent.** An unchanged plan does not rewrite the row or bust
- *     the caches, which matters because a provider redelivers webhooks.
+ *  3. **It is idempotent.** Unchanged limits do not rewrite the row or bust
+ *     the caches.
  */
 
 import { db, eq, settings } from '@/lib/server/db'
@@ -38,10 +37,10 @@ export interface TierLimitsWriteResult {
 /**
  * Replace the stored tier limits with `next`.
  *
- * Replacement, not merge — unlike `settings.cloud`, this column has always
+ * Replacement, not merge — this column has always
  * been written whole (`mergeTierLimits()` layers the stored value over the
- * OSS defaults at *read* time), and a per-field merge would make a plan
- * downgrade unable to remove a limit the previous plan had raised.
+ * OSS defaults at *read* time), and a per-field merge would make lowering a
+ * limit unable to remove one raised earlier.
  *
  * `null` clears the operator baseline back to the unlimited OSS default.
  */

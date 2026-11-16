@@ -20,8 +20,6 @@ import {
   updateMessengerConfigFn,
   updateThemeFn,
   updateCustomCssFn,
-  updateWorkflowAbandonedAutoCloseFn,
-  updateWorkflowCloseSpamFn,
   updateDefaultSlaPolicyFn,
   updateSpamFilterConfigFn,
 } from '@/lib/server/functions/settings'
@@ -375,30 +373,6 @@ export function useDeleteHelpCenterRedirectRule() {
       queryClient.invalidateQueries({
         queryKey: settingsQueries.helpCenterRedirectRules().queryKey,
       }),
-  })
-}
-
-export function useUpdateWorkflowAbandonedAutoClose() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    meta: AUTOSAVE,
-    mutationFn: (data: Parameters<typeof updateWorkflowAbandonedAutoCloseFn>[0]['data']) =>
-      updateWorkflowAbandonedAutoCloseFn({ data }),
-    onSuccess: (saved) =>
-      queryClient.setQueryData(settingsQueries.workflowAbandonedAutoClose().queryKey, saved),
-  })
-}
-
-export function useUpdateWorkflowCloseSpam() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    meta: AUTOSAVE,
-    mutationFn: (data: Parameters<typeof updateWorkflowCloseSpamFn>[0]['data']) =>
-      updateWorkflowCloseSpamFn({ data }),
-    onSuccess: (saved) =>
-      queryClient.setQueryData(settingsQueries.workflowCloseSpam().queryKey, saved),
   })
 }
 

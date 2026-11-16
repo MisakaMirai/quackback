@@ -32,7 +32,7 @@ export async function enforceCountLimit(args: EnforceCountLimitArgs): Promise<vo
     limit: args.name,
     current,
     max: args.limit,
-    message: `You've reached your plan's ${args.friendly} limit (${args.limit}). Upgrade to add more.`,
+    message: `You've reached your workspace's ${args.friendly} limit (${args.limit}). Raise the limit to add more.`,
   })
 }
 
@@ -46,7 +46,7 @@ export function enforceFeatureGate(args: EnforceFeatureGateArgs): void {
   if (args.enabled) return
   throw new TierLimitError({
     limit: `features.${args.feature}`,
-    message: `${args.friendly} is not available on your plan. Upgrade to enable it.`,
+    message: `${args.friendly} is not enabled for this workspace.`,
   })
 }
 
@@ -65,7 +65,7 @@ export async function assertTierFeature(
 
 /**
  * Refuses to create another status component once the active (non-deleted)
- * count would meet the plan's `maxStatusComponents` limit. Unlimited by
+ * count would meet the operator's `maxStatusComponents` limit. Unlimited by
  * default (no tier-limits row, or an explicit null) — matches every other
  * count limit's OSS default. Call this from every status-component create
  * path: the public REST API's `POST /api/v1/status/components` handler, and
@@ -88,14 +88,14 @@ export async function enforceStatusComponentLimit(): Promise<void> {
 }
 
 /**
- * Refuses to add another sending domain once the plan's `maxSendingDomains`
- * limit is reached.
+ * Refuses to add another sending domain once the `maxSendingDomains` limit is
+ * reached.
  *
  * The only count limit here that guards something outside this workspace.
  * Adding a sending domain creates an identity on the mail provider account
  * every workspace shares, and that account has an identity quota — so the
- * failure mode of no ceiling is not one workspace overspending its plan, it is
- * one workspace exhausting a resource the rest depend on.
+ * failure mode of no ceiling is not one workspace overspending its own quota,
+ * it is one workspace exhausting a resource the rest depend on.
  *
  * ## The count runs on the caller's executor, on purpose
  *
@@ -111,13 +111,9 @@ export async function enforceStatusComponentLimit(): Promise<void> {
  *
  * A self-hoster runs the whole provider account and every identity on it is
  * theirs; a ceiling there would be a number invented to constrain someone with
- * nobody to take the resource from. On a fleet the ceiling is not optional and
- * it is not a default: the control plane writes a `maxSendingDomains` into every
- * tenant's tier limits, and a tenant whose limits were never written can add
- * domains without one. That is the same posture as every other limit in this
- * file — the mechanism is shared and the values are the deployment's — and it
- * is why the fleet's provisioning path must write the value rather than rely on
- * anything here.
+ * nobody to take the resource from. It is therefore never a default: the
+ * operator sets `maxSendingDomains` explicitly through the config file or the
+ * operator API. The mechanism is shared and the values are the deployment's.
  */
 export async function enforceSendingDomainLimit(
   limit: number | null,
@@ -137,7 +133,7 @@ export async function enforceSendingDomainLimit(
 }
 
 /**
- * Refuses to create another inbound email route once the plan's
+ * Refuses to create another inbound email route once the
  * `maxInboundEmailAddresses` limit is reached. Takes a transaction-scoped lock
  * first, so the count and the insert the caller makes next in the same
  * transaction cannot interleave with a concurrent creation.
@@ -196,7 +192,7 @@ export async function enforceEmailBudget(): Promise<void> {
     max: limits.emailsPerMonth,
     message:
       limits.emailsPerMonth === 0
-        ? 'Outbound email is not included on your plan. Upgrade to enable it.'
-        : 'Email sending for this month is used up. Upgrade your plan for more.',
+        ? 'Outbound email is disabled for this workspace.'
+        : 'Email sending for this month is used up.',
   })
 }

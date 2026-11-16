@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react'
 import { useRouterState } from '@tanstack/react-router'
-import { browserOptedOutOfTracking } from '@/lib/client/analytics'
+import { browserOptedOutOfTracking } from '@/lib/client/tracking-privacy'
 
 /**
  * Fires an anonymous pageview beacon on portal route changes (visitor

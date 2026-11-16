@@ -284,14 +284,6 @@ const configSchema = z
      * Single-workspace installs only; see the getter.
      */
     userContentUrl: z.string().optional(),
-
-    // Product analytics for the admin app (optional, off unless a key is set)
-    posthogKey: z.preprocess(emptyToUndefined, z.string().optional()),
-    posthogHost: z.preprocess(emptyToUndefined, z.string().url().optional()),
-    posthogUiHost: z.preprocess(emptyToUndefined, z.string().url().optional()),
-    posthogSessionRecording: envBoolean,
-    posthogSessionRecordingMaskText: envBoolean,
-    posthogSessionRecordingMaskInputs: envBoolean,
   })
   .superRefine((cfg, ctx) => {
     // A wildcard is a routing pattern, never an origin. Refused in every mode:
@@ -443,14 +435,6 @@ function buildConfigFromEnv(): unknown {
     s3PublicUrl: env('S3_PUBLIC_URL'),
     s3Proxy: env('S3_PROXY'),
     userContentUrl: env('USER_CONTENT_URL'),
-
-    // Product analytics
-    posthogKey: env('POSTHOG_KEY'),
-    posthogHost: env('POSTHOG_HOST'),
-    posthogUiHost: env('POSTHOG_UI_HOST'),
-    posthogSessionRecording: env('POSTHOG_SESSION_RECORDING'),
-    posthogSessionRecordingMaskText: env('POSTHOG_SESSION_RECORDING_MASK_TEXT'),
-    posthogSessionRecordingMaskInputs: env('POSTHOG_SESSION_RECORDING_MASK_INPUTS'),
   }
 }
 
@@ -688,56 +672,16 @@ export const config = {
     return parseUserContentOrigin(cfg.userContentUrl) ?? undefined
   },
 
-  /**
-   * Browser product analytics for signed-in team members in the admin app,
-   * or null when `POSTHOG_KEY` is unset. The key is a project API key, which
-   * can only write events, so it is safe to hand to the browser.
-   *
-   * `host` is where the browser sends: PostHog itself, or a reverse proxy on
-   * a domain content blockers do not list. `uiHost` is the PostHog app the
-   * toolbar links to; it follows from a PostHog host and must be given as
-   * `POSTHOG_UI_HOST` behind a proxy.
-   *
-   * `maskText` hides every text node in a replay and `maskInputs` every
-   * input value. Both are on unless `POSTHOG_SESSION_RECORDING_MASK_TEXT` or
-   * `POSTHOG_SESSION_RECORDING_MASK_INPUTS` is `false`, since admin screens
-   * show the workspace's customers. Password fields are masked either way.
-   */
-  get productAnalytics(): {
-    key: string
-    host: string
-    uiHost: string | null
-    sessionRecording: boolean
-    maskText: boolean
-    maskInputs: boolean
-  } | null {
-    const cfg = loadConfig()
-    if (!cfg.posthogKey) return null
-    const host = (cfg.posthogHost ?? 'https://us.i.posthog.com').replace(/\/+$/, '')
-    const region = new URL(host).hostname.match(/^([a-z]+)\.i\.posthog\.com$/)?.[1]
-    return {
-      key: cfg.posthogKey,
-      host,
-      uiHost:
-        cfg.posthogUiHost?.replace(/\/+$/, '') ?? (region ? `https://${region}.posthog.com` : null),
-      sessionRecording: cfg.posthogSessionRecording ?? true,
-      maskText: cfg.posthogSessionRecordingMaskText ?? true,
-      maskInputs: cfg.posthogSessionRecordingMaskInputs ?? true,
-    }
-  },
-
   // Help center
   get helpCenterDev() {
     return process.env.HELP_CENTER_DEV === 'true'
   },
 
   // Platform (OAuth-app) credential source.
-  //   'control-plane' — pooled Cloud: shared app settings managed by CP.
   //   'db'  (default) — self-host: the integration_platform_credentials table + admin UI.
-  //   'env' — optional single-tenancy: app creds from INTEGRATION_<PROVIDER>_<FIELD> env
+  //   'env' — credentials from INTEGRATION_<PROVIDER>_<FIELD> environment variables
   //           supplied by the deployment environment.
-  get platformCredentialsSource(): 'db' | 'env' | 'control-plane' {
-    if (process.env.QUACKBACK_TENANCY === 'pooled') return 'control-plane'
+  get platformCredentialsSource(): 'db' | 'env' {
     return process.env.PLATFORM_CREDENTIALS_SOURCE === 'env' ? 'env' : 'db'
   },
 

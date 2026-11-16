@@ -130,19 +130,6 @@ export const fetchPlatformCredentialsMaskedFn = createServerFn({ method: 'GET' }
       )
     }
 
-    const { config } = await import('@/lib/server/config')
-    if (
-      config.platformCredentialsSource === 'control-plane' &&
-      (await arePlatformCredentialsManaged(data.integrationType))
-    ) {
-      const { hasPlatformCredentials } =
-        await import('@/lib/server/domains/platform-credentials/platform-credential.service')
-      return {
-        configured: await hasPlatformCredentials(data.integrationType),
-        fields: null,
-        managed: true,
-      }
-    }
     const credentials = await getPlatformCredentials(data.integrationType)
 
     if (!credentials) {

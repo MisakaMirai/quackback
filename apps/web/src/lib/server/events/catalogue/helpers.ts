@@ -29,7 +29,6 @@ export function decl(
     payload: payload as z.ZodType<Record<string, unknown>>,
     exposure: {
       webhook: false,
-      workflow: false,
       notification: null,
       activity: null,
       audit: false,

@@ -71,8 +71,6 @@ export const PERMISSIONS = {
   STATUS_MANAGE: 'status.manage', // create / edit / reorder / delete post statuses
   TAG_VIEW: 'tag.view', // read the tag taxonomy (pickers)
   TAG_MANAGE: 'tag.manage', // create / edit / delete tag definitions
-  SUGGESTION_VIEW: 'suggestion.view', // read the AI feedback-suggestions triage queue
-  SUGGESTION_MANAGE: 'suggestion.manage', // accept / dismiss / restore / retry suggestions
   PRIORITIZATION_MANAGE: 'prioritization.manage', // RESERVED: prioritization frameworks
 
   // category 'changelog'
@@ -124,10 +122,7 @@ export const PERMISSIONS = {
   OFFICE_HOURS_MANAGE: 'office_hours.manage', // manage business-hours schedules (workspace-admin)
   ROUTING_MANAGE: 'routing.manage', // manage routing rules (workspace-admin)
   TEAM_MANAGE: 'team.manage', // manage teams + membership (workspace-admin)
-  WORKFLOW_MANAGE: 'workflow.manage', // create / update / delete / status workflows (workspace-admin)
   CHANNEL_ACCOUNT_MANAGE: 'channel_account.manage', // manage connected inbox channels (workspace-admin; was inbox.manage)
-
-  // category 'ai'
 
   // category 'status_page' — the Status page product (Status Product Spec §6).
   // Named status_page.* (not status.*) to avoid colliding with the existing
@@ -369,16 +364,6 @@ export const PERMISSION_CATALOGUE: ReadonlyArray<{
     description: 'Create, edit, and delete tag definitions',
   },
   {
-    key: PERMISSIONS.SUGGESTION_VIEW,
-    category: 'feedback',
-    description: 'Read the AI feedback-suggestions triage queue',
-  },
-  {
-    key: PERMISSIONS.SUGGESTION_MANAGE,
-    category: 'feedback',
-    description: 'Accept, dismiss, restore, and retry feedback suggestions',
-  },
-  {
     key: PERMISSIONS.PRIORITIZATION_MANAGE,
     category: 'feedback',
     description: 'Manage prioritization frameworks (reserved; not yet enforced)',
@@ -534,11 +519,6 @@ export const PERMISSION_CATALOGUE: ReadonlyArray<{
     description: 'Manage teams and membership',
   },
   {
-    key: PERMISSIONS.WORKFLOW_MANAGE,
-    category: 'support',
-    description: 'Manage workflows and automation',
-  },
-  {
     key: PERMISSIONS.CHANNEL_ACCOUNT_MANAGE,
     category: 'support',
     description:
@@ -596,9 +576,7 @@ export const WORKSPACE_ADMIN_PERMISSIONS: readonly PermissionKey[] = [
   PERMISSIONS.OFFICE_HOURS_MANAGE,
   PERMISSIONS.ROUTING_MANAGE,
   PERMISSIONS.TEAM_MANAGE,
-  PERMISSIONS.WORKFLOW_MANAGE,
   PERMISSIONS.CHANNEL_ACCOUNT_MANAGE,
-  // AI infrastructure config (admin-only)
   // Status page structure (components/groups/settings/templates) is
   // admin-only; publishing incidents is a broader operator action (below).
   PERMISSIONS.STATUS_PAGE_MANAGE,
@@ -606,14 +584,12 @@ export const WORKSPACE_ADMIN_PERMISSIONS: readonly PermissionKey[] = [
 
 /**
  * The support-operations permissions a Support lead holds on top of everything
- * Manager has: routing, workflows, SLA policies, office hours, inbox channels,
- * custom fields, and the customer-facing AI. An explicit list so a new
- * workspace-admin permission never reaches the preset by accident. Teams,
- * settings, integrations, and the teammate AI stay admin-only.
+ * Manager has: routing, SLA policies, office hours, inbox channels, custom
+ * fields. An explicit list so a new workspace-admin permission never reaches
+ * the preset by accident. Teams, settings, integrations stay admin-only.
  */
 export const SUPPORT_LEAD_EXTRA_PERMISSIONS: readonly PermissionKey[] = [
   PERMISSIONS.ROUTING_MANAGE,
-  PERMISSIONS.WORKFLOW_MANAGE,
   PERMISSIONS.SLA_MANAGE,
   PERMISSIONS.OFFICE_HOURS_MANAGE,
   PERMISSIONS.CHANNEL_ACCOUNT_MANAGE,
@@ -625,11 +601,18 @@ export const SUPPORT_LEAD_EXTRA_PERMISSIONS: readonly PermissionKey[] = [
  * grants stay in the database so an older app version still running during a
  * rollout keeps working; the reconcile leaves their preset grants alone.
  *
- * `billing.manage` retired with the Quackback Cloud subscription layer: it
- * gated a page and server functions that no longer exist, so no role preset
- * grants it any more.
+ * - `billing.manage` retired with the Quackback Cloud subscription layer.
+ * - `assistant.manage` retired with Quackback AI.
+ * - `suggestion.view` / `suggestion.manage` retired with the AI merge-suggestion
+ *   queue; `workflow.manage` retired with the workflow engine.
  */
-export const RETIRED_PERMISSION_KEYS: readonly string[] = ['assistant.manage', 'billing.manage']
+export const RETIRED_PERMISSION_KEYS: readonly string[] = [
+  'assistant.manage',
+  'billing.manage',
+  'suggestion.view',
+  'suggestion.manage',
+  'workflow.manage',
+]
 
 export const SYSTEM_ROLE_PERMISSIONS: Record<SystemRoleKey, PermissionKey[]> = {
   owner: ALL_PERMISSIONS,
@@ -677,8 +660,6 @@ export const SYSTEM_ROLE_PERMISSIONS: Record<SystemRoleKey, PermissionKey[]> = {
     PERMISSIONS.ANALYTICS_VIEW,
     PERMISSIONS.STATUS_VIEW,
     PERMISSIONS.TAG_VIEW,
-    PERMISSIONS.SUGGESTION_VIEW,
-    PERMISSIONS.SUGGESTION_MANAGE,
     // on-call responders post incident/maintenance updates; only admins
     // reshape the page (status_page.manage, above)
     PERMISSIONS.STATUS_PAGE_PUBLISH,
@@ -709,7 +690,7 @@ export const SYSTEM_ROLE_DEFS: ReadonlyArray<{
     key: SYSTEM_ROLES.SUPPORT_LEAD,
     name: 'Support lead',
     description:
-      'Everything a Manager can do, plus routing, workflows, SLA policies, office hours, inbox channels and the support reply address, custom fields, and the customer-facing AI',
+      'Everything a Manager can do, plus routing, SLA policies, office hours, inbox channels and the support reply address, and custom fields',
   },
   {
     key: SYSTEM_ROLES.CONTRIBUTOR,

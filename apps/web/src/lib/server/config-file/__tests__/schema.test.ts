@@ -22,6 +22,8 @@ describe('parseQuackbackConfig', () => {
       expect(result.data.spec.workspace?.name).toBe('Acme')
       expect(result.data.spec.tierLimits?.maxBoards).toBe(10)
       expect(result.data.spec.tierLimits?.features?.customDomain).toBe(true)
+      // Retired with Quackback AI: accepted from older files, never reconciled.
+      expect(result.data.spec.tierLimits).not.toHaveProperty('aiTokensPerMonth')
     }
   })
 

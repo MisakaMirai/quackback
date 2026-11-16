@@ -42,8 +42,6 @@ import { db, principal, user, invitation, account, eq, and } from '@/lib/server/
 import { PERMISSIONS } from '@/lib/shared/permissions'
 import { officeHoursScheduleSchema } from '@/lib/server/domains/settings/settings.office-hours'
 import { changelogSettingsSchema } from '@/lib/shared/changelog-settings'
-import { workflowAbandonedAutoCloseSchema } from '@/lib/shared/workflows/abandoned-auto-close'
-import { workflowCloseSpamSchema } from '@/lib/shared/workflows/close-spam'
 import { defaultSlaPolicySchema } from '@/lib/shared/sla/default-policy'
 import { MAX_TRUSTED_SENDERS } from '@/lib/shared/trusted-senders'
 import { logger } from '@/lib/server/logger'
@@ -850,53 +848,6 @@ export const updateChangelogSettingsFn = createServerFn({ method: 'POST' })
     const { updateChangelogSettings } =
       await import('@/lib/server/domains/settings/settings.changelog')
     return await updateChangelogSettings(data)
-  })
-
-// ============================================
-// Abandoned-Journey Auto-Close Operations
-// ============================================
-
-// Gated like the rest of the automation page these settings live on
-// (functions/workflows.ts's precedent: read = ROUTING_MANAGE, write =
-// WORKFLOW_MANAGE), NOT settings.manage — a custom role holding only those
-// two (the page's actual read/write split) still needs its route loader's
-// fetch to succeed.
-export const fetchWorkflowAbandonedAutoCloseFn = createServerFn({ method: 'GET' }).handler(
-  async () => {
-    log.debug('fetch workflow abandoned auto-close settings')
-    await requireAuth({ permission: PERMISSIONS.ROUTING_MANAGE })
-    const { getWorkflowAbandonedAutoCloseSettings } =
-      await import('@/lib/server/domains/settings/settings.workflows')
-    return await getWorkflowAbandonedAutoCloseSettings()
-  }
-)
-
-export const updateWorkflowAbandonedAutoCloseFn = createServerFn({ method: 'POST' })
-  .validator(workflowAbandonedAutoCloseSchema)
-  .handler(async ({ data }) => {
-    log.info(data, 'update workflow abandoned auto-close settings')
-    await requireAuth({ permission: PERMISSIONS.WORKFLOW_MANAGE })
-    const { updateWorkflowAbandonedAutoCloseSettings } =
-      await import('@/lib/server/domains/settings/settings.workflows')
-    return await updateWorkflowAbandonedAutoCloseSettings(data)
-  })
-
-export const fetchWorkflowCloseSpamFn = createServerFn({ method: 'GET' }).handler(async () => {
-  log.debug('fetch workflow close-spam settings')
-  await requireAuth({ permission: PERMISSIONS.ROUTING_MANAGE })
-  const { getWorkflowCloseSpamSettings } =
-    await import('@/lib/server/domains/settings/settings.workflows')
-  return await getWorkflowCloseSpamSettings()
-})
-
-export const updateWorkflowCloseSpamFn = createServerFn({ method: 'POST' })
-  .validator(workflowCloseSpamSchema)
-  .handler(async ({ data }) => {
-    log.info(data, 'update workflow close-spam settings')
-    await requireAuth({ permission: PERMISSIONS.WORKFLOW_MANAGE })
-    const { updateWorkflowCloseSpamSettings } =
-      await import('@/lib/server/domains/settings/settings.workflows')
-    return await updateWorkflowCloseSpamSettings(data)
   })
 
 // ============================================

@@ -27,13 +27,6 @@ export function useBaseUrl() {
   return useRouteContext({ from: '__root__', select: (context) => context.baseUrl })
 }
 
-export function useProductAnalyticsConfig() {
-  return useRouteContext({
-    from: '__root__',
-    select: (context) => context.productAnalytics ?? null,
-  })
-}
-
 export function useManagedFieldPaths() {
   return useRouteContext({ from: '__root__', select: (context) => context.managedFieldPaths })
 }

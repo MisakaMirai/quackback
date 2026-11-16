@@ -188,8 +188,6 @@ export {
   sessionRelations,
   settings,
   settingsRelations,
-  workspaceExperiments,
-  workspaceExperimentsRelations,
   identityProvider,
   ssoVerifiedDomain,
   twoFactor,
@@ -262,11 +260,6 @@ export {
   officeHoursSchedules,
   slaPolicies,
   slaEvents,
-  // Schema tables - workflows engine (support platform §4.6)
-  workflows,
-  workflowRuns,
-  workflowRunEvents,
-  workflowVersions,
   // Schema tables - integrations
   integrationEventMappings,
   integrationEventMappingsRelations,
@@ -532,15 +525,6 @@ export type {
   ImportRunErrorEntry,
 } from '@quackback/db'
 export type { ExportRunStatus, ExportRunEntityCounts } from '@quackback/db'
-export type {
-  Workflow,
-  WorkflowRun,
-  WorkflowRunEvent,
-  WorkflowVersion,
-  WorkflowClass,
-  WorkflowStatus,
-  WorkflowRunState,
-} from '@quackback/db'
 
 // Re-export types (for client components that need types without side effects)
 export * from '@quackback/db/types'

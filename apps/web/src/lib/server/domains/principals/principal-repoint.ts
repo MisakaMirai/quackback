@@ -52,8 +52,6 @@ import {
   tickets,
   ticketActivity,
   ticketSubscriptions,
-  workflowRuns,
-  workflowRunEvents,
   changelogSubscriptions,
   statusSubscriptions,
   principal,
@@ -303,18 +301,6 @@ export const REPOINT_STEPS: RepointStep[] = [
     'principal_id',
     ['conversation_id'],
     'Added customers on a group thread (§4.8). An anonymous lead an agent added by email keeps receiving replies after identifying; unique (conversation_id, principal_id), so a collision (the identified principal is already a participant) drops the anon row and the identified participation wins. ON DELETE CASCADE: a missed re-point would silently drop the row at teardown.'
-  ),
-  simpleRepoint(
-    'workflow_runs',
-    workflowRuns,
-    'subject_principal_id',
-    'The person a workflow run acted on — usually the conversation visitor, so it follows them on merge like their conversations do (ON DELETE SET NULL would otherwise strand the run).'
-  ),
-  simpleRepoint(
-    'workflow_run_events',
-    workflowRunEvents,
-    'subject_principal_id',
-    'Freq-cap ledger subject: re-pointing keeps a once-per-person workflow capped after the visitor identifies (else the merge nulls the history and the cap resets).'
   ),
   collisionRepoint(
     'post_subscriptions',
