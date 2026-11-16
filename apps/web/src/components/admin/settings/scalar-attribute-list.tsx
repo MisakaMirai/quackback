@@ -29,6 +29,25 @@ const ATTRIBUTE_TYPES = [
   { value: 'currency', labelId: 'admin.settings.attributes.currency', label: 'Currency' },
 ] as const
 
+const BUILTIN_COPY: Record<string, { labelId: string; descriptionId: string }> = {
+  name: {
+    labelId: 'admin.settings.attributes.builtin.name.label',
+    descriptionId: 'admin.settings.attributes.builtin.name.description',
+  },
+  email: {
+    labelId: 'admin.settings.attributes.builtin.email.label',
+    descriptionId: 'admin.settings.attributes.builtin.email.description',
+  },
+  email_verified: {
+    labelId: 'admin.settings.attributes.builtin.emailVerified.label',
+    descriptionId: 'admin.settings.attributes.builtin.emailVerified.description',
+  },
+  locale: {
+    labelId: 'admin.settings.attributes.builtin.locale.label',
+    descriptionId: 'admin.settings.attributes.builtin.locale.description',
+  },
+}
+
 export type ScalarAttributeType = (typeof ATTRIBUTE_TYPES)[number]['value']
 
 const CURRENCY_CODES = [
@@ -387,14 +406,20 @@ export function ScalarAttributeList<T extends ScalarAttribute>({
   }
 
   const items: AttributeListItem[] = [
-    ...builtinFields.map((f) => ({
-      id: `builtin:${f.key}`,
-      label: f.label,
-      attrKey: f.key,
-      typeLabel: typeLabel(intl, f.type),
-      description: f.description,
-      builtin: true,
-    })),
+    ...builtinFields.map((f) => {
+      const copy = BUILTIN_COPY[f.key]
+      return {
+        id: `builtin:${f.key}`,
+        label: copy ? intl.formatMessage({ id: copy.labelId, defaultMessage: f.label }) : f.label,
+        attrKey: f.key,
+        typeLabel: typeLabel(intl, f.type),
+        description:
+          copy && f.description
+            ? intl.formatMessage({ id: copy.descriptionId, defaultMessage: f.description })
+            : f.description,
+        builtin: true,
+      }
+    }),
     ...attributes.map((a) => ({
       id: a.id,
       label: a.label,

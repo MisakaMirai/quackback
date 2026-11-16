@@ -4,6 +4,7 @@ import { Suspense, useState } from 'react'
 import { useSuspenseQuery, useQuery } from '@tanstack/react-query'
 import { ModalHeader } from '@/components/shared/modal-header'
 import { UrlModalShell } from '@/components/shared/url-modal-shell'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { useUrlModal } from '@/lib/client/hooks/use-url-modal'
 import { adminQueries } from '@/lib/client/queries/admin'
 import { VoteButton } from '@/components/public/vote-button'
@@ -63,6 +64,8 @@ function toPortalPostView(post: PostDetails): PublicPostDetailView {
 }
 
 function RoadmapModalContent({ postId, currentUser, onClose }: RoadmapModalContentProps) {
+  const intl = useOptionalIntl()
+
   // Queries
   const postQuery = useSuspenseQuery(adminQueries.postDetail(postId))
   const { data: tags = [] } = useQuery(adminQueries.tags())
@@ -107,7 +110,7 @@ function RoadmapModalContent({ postId, currentUser, onClose }: RoadmapModalConte
     <div className="flex flex-col h-full bg-background">
       {/* Header */}
       <ModalHeader
-        section="Roadmap"
+        section={intl.formatMessage({ id: 'admin.nav.roadmap', defaultMessage: 'Roadmap' })}
         title={post.title}
         onClose={onClose}
         viewUrl={`/b/${post.board.slug}/posts/${post.id}`}
@@ -157,7 +160,13 @@ function RoadmapModalContent({ postId, currentUser, onClose }: RoadmapModalConte
 
         {/* Pinned comment section */}
         {post.pinnedComment && (
-          <PinnedCommentSection comment={post.pinnedComment} workspaceName="Team" />
+          <PinnedCommentSection
+            comment={post.pinnedComment}
+            workspaceName={intl.formatMessage({
+              id: 'widget.postDetail.teamAuthorFallback',
+              defaultMessage: 'Team',
+            })}
+          />
         )}
 
         {/* Comments section */}
@@ -181,6 +190,7 @@ function RoadmapModalContent({ postId, currentUser, onClose }: RoadmapModalConte
 }
 
 export function RoadmapModal({ postId: urlPostId, currentUser }: RoadmapModalProps) {
+  const intl = useOptionalIntl()
   const { open, validatedId, close } = useUrlModal<PostId>({
     urlId: urlPostId,
     idPrefix: 'post',
@@ -191,7 +201,7 @@ export function RoadmapModal({ postId: urlPostId, currentUser }: RoadmapModalPro
     <UrlModalShell
       open={open}
       onOpenChange={(o) => !o && close()}
-      srTitle="View post"
+      srTitle={intl.formatMessage({ id: 'unsubscribe.viewPost', defaultMessage: 'View post' })}
       hasValidId={!!validatedId}
     >
       {validatedId && (

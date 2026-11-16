@@ -121,7 +121,13 @@ export function VoteButton({
     return (
       <div
         data-testid="vote-button"
-        aria-label={`${displayCount} votes`}
+        aria-label={intl.formatMessage(
+          {
+            id: 'portal.postCard.vote.count',
+            defaultMessage: '{count, plural, one {# vote} other {# votes}}',
+          },
+          { count: voteCount }
+        )}
         className={sharedClassName}
       >
         {chevron}

@@ -49,11 +49,11 @@ interface VotersModalProps {
 const SUBSCRIPTION_LABELS: Record<SubscriptionLevel, { id: string; defaultMessage: string }> = {
   all: { id: 'portal.subscriptionBell.level.all', defaultMessage: 'All activity' },
   status_only: {
-    id: 'admin.feedback.voters.subscriptionStatusOnly',
+    id: 'portal.voters.subscriptionStatusOnly',
     defaultMessage: 'Status only',
   },
   none: {
-    id: 'admin.feedback.voters.subscriptionNone',
+    id: 'portal.voters.subscriptionNone',
     defaultMessage: 'Not subscribed',
   },
 }
@@ -119,7 +119,7 @@ export function VotersModal({
         <DialogHeader>
           <DialogTitle>
             {intl.formatMessage(
-              { id: 'admin.feedback.voters.title', defaultMessage: 'Voters ({count})' },
+              { id: 'portal.voters.title', defaultMessage: 'Voters ({count})' },
               { count: voteCount }
             )}
           </DialogTitle>
@@ -173,7 +173,7 @@ export function VotersModal({
                               removeVote.isPending && removeVote.variables === voter.principalId
                             }
                             aria-label={intl.formatMessage({
-                              id: 'admin.feedback.voters.removeVote',
+                              id: 'portal.voters.removeVote',
                               defaultMessage: 'Remove vote',
                             })}
                           >
@@ -205,7 +205,7 @@ export function VotersModal({
           ) : (
             <p className="text-sm text-muted-foreground text-center py-4">
               {intl.formatMessage({
-                id: 'admin.feedback.voters.none',
+                id: 'portal.voters.none',
                 defaultMessage: 'No voters yet',
               })}
             </p>
@@ -215,7 +215,7 @@ export function VotersModal({
           <div className="border-t pt-3 -mx-6 px-6 text-xs text-muted-foreground">
             {intl.formatMessage(
               {
-                id: 'admin.feedback.voters.summary',
+                id: 'portal.voters.summary',
                 defaultMessage:
                   '{statusCount} of {total} voters notified on status change · {commentCount} on comments',
               },
@@ -305,11 +305,11 @@ function VoterSourceLine({
   if (voter.sourceType === 'proxy') {
     const label = voter.addedByName
       ? intl.formatMessage(
-          { id: 'admin.feedback.voters.addedBy', defaultMessage: 'Added by {name}' },
+          { id: 'portal.voters.addedBy', defaultMessage: 'Added by {name}' },
           { name: voter.addedByName }
         )
       : intl.formatMessage({
-          id: 'admin.feedback.voters.addedManually',
+          id: 'portal.voters.addedManually',
           defaultMessage: 'Added manually',
         })
     return (
@@ -337,7 +337,7 @@ function VoterSourceLine({
           <SourceTypeIcon sourceType={voter.sourceType} size="xs" />
           <span>
             {intl.formatMessage(
-              { id: 'admin.feedback.voters.via', defaultMessage: 'via {platform}' },
+              { id: 'portal.voters.via', defaultMessage: 'via {platform}' },
               { platform: platformName }
             )}
           </span>
@@ -357,7 +357,7 @@ function VoterSourceLine({
         <SourceTypeIcon sourceType={voter.sourceType} size="xs" />
         <span>
           {intl.formatMessage(
-            { id: 'admin.feedback.voters.via', defaultMessage: 'via {platform}' },
+            { id: 'portal.voters.via', defaultMessage: 'via {platform}' },
             { platform: platformName }
           )}
         </span>

@@ -3,6 +3,7 @@
 import { SettingRow } from '@/components/admin/settings/setting-row'
 import { Switch } from '@/components/ui/switch'
 import { useUpdateIntegration } from '@/lib/client/mutations'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import {
   getIntegrationActionVerb,
   getIntegrationDisplayName,
@@ -21,6 +22,7 @@ export function OnDeleteConfig({
   config,
   enabled,
 }: OnDeleteConfigProps) {
+  const intl = useOptionalIntl()
   const updateMutation = useUpdateIntegration()
   const onDeleteAction = (config.onDeleteAction as string) ?? 'nothing'
   const isChecked = onDeleteAction === 'archive'
@@ -39,9 +41,15 @@ export function OnDeleteConfig({
   return (
     <div className="space-y-2 border-t border-border/50 pt-6">
       <SettingRow
-        label="On post delete"
+        label={intl.formatMessage({
+          id: 'admin.integrations.onDelete.label',
+          defaultMessage: 'On post delete',
+        })}
         htmlFor="on-delete-toggle"
-        description="Review linked issues when a post is deleted"
+        description={intl.formatMessage({
+          id: 'admin.integrations.onDelete.description',
+          defaultMessage: 'Review linked issues when a post is deleted',
+        })}
         control={
           <Switch
             id="on-delete-toggle"
@@ -52,8 +60,14 @@ export function OnDeleteConfig({
         }
       />
       <p className="text-xs text-muted-foreground">
-        When enabled, the delete dialog selects linked {name} issues for review in Sync history.
-        Open each issue on {name} to {action.toLowerCase()} it.
+        {intl.formatMessage(
+          {
+            id: 'admin.integrations.onDelete.body',
+            defaultMessage:
+              'When enabled, the delete dialog selects linked {name} issues for review in Sync history. Open each issue on {name} to {action} it.',
+          },
+          { name, action: action.toLowerCase() }
+        )}
       </p>
     </div>
   )

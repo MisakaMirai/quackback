@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { Squares2X2Icon, TagIcon, UserGroupIcon, ChevronRightIcon } from '@heroicons/react/24/solid'
 import { cn } from '@/lib/shared/utils'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { AdminListHeader } from '@/components/admin/admin-list-header'
 import { useDebouncedSearch } from '@/lib/client/hooks/use-debounced-search'
 import { FilterAddButton, FilterChip, type FilterOption } from '@/components/shared/filter-chip'
@@ -40,10 +41,10 @@ type RoadmapFilterType = 'board' | 'tags' | 'segment'
 // Constants
 // ---------------------------------------------------------------------------
 
-const SORT_OPTIONS = [
-  { value: 'votes', label: 'Votes' },
-  { value: 'newest', label: 'Newest' },
-  { value: 'oldest', label: 'Oldest' },
+const SORT_OPTIONS: ReadonlyArray<{ value: string; id: string; defaultMessage: string }> = [
+  { value: 'votes', id: 'common.userStats.votes', defaultMessage: 'Votes' },
+  { value: 'newest', id: 'admin.changelog.sort.newest', defaultMessage: 'Newest' },
+  { value: 'oldest', id: 'admin.changelog.sort.oldest', defaultMessage: 'Oldest' },
 ]
 
 const FILTER_ICON_MAP: Record<RoadmapFilterType, IconComponent> = {
@@ -52,10 +53,25 @@ const FILTER_ICON_MAP: Record<RoadmapFilterType, IconComponent> = {
   segment: UserGroupIcon,
 }
 
-const FILTER_CATEGORIES: { key: FilterCategory; label: string; icon: IconComponent }[] = [
-  { key: 'board', label: 'Board', icon: Squares2X2Icon },
-  { key: 'tags', label: 'Tag', icon: TagIcon },
-  { key: 'segment', label: 'Segment', icon: UserGroupIcon },
+const FILTER_CATEGORIES: {
+  key: FilterCategory
+  id: string
+  defaultMessage: string
+  icon: IconComponent
+}[] = [
+  {
+    key: 'board',
+    id: 'portal.roadmap.filter.category.board',
+    defaultMessage: 'Board',
+    icon: Squares2X2Icon,
+  },
+  { key: 'tags', id: 'portal.roadmap.filter.category.tag', defaultMessage: 'Tag', icon: TagIcon },
+  {
+    key: 'segment',
+    id: 'portal.roadmap.filter.category.segment',
+    defaultMessage: 'Segment',
+    icon: UserGroupIcon,
+  },
 ]
 
 const MENU_BUTTON_STYLES =
@@ -90,6 +106,7 @@ interface ActiveFilter {
 }
 
 function computeActiveFilters(
+  intl: ReturnType<typeof useOptionalIntl>,
   filters: RoadmapFilters,
   boards: FilterBarBoard[],
   tags: PostTag[],
@@ -106,7 +123,10 @@ function computeActiveFilters(
       result.push({
         key: `board-${id}`,
         type: 'board',
-        label: 'Board:',
+        label: intl.formatMessage({
+          id: 'portal.roadmap.filter.chip.board',
+          defaultMessage: 'Board:',
+        }),
         value: board.name,
         valueId: id,
         options: boardOptions,
@@ -130,7 +150,10 @@ function computeActiveFilters(
       result.push({
         key: `tag-${id}`,
         type: 'tags',
-        label: 'Tag:',
+        label: intl.formatMessage({
+          id: 'portal.roadmap.filter.chip.tag',
+          defaultMessage: 'Tag:',
+        }),
         value: tag.name,
         valueId: id,
         options: tagOptions,
@@ -158,7 +181,10 @@ function computeActiveFilters(
       result.push({
         key: `segment-${id}`,
         type: 'segment',
-        label: 'Segment:',
+        label: intl.formatMessage({
+          id: 'portal.roadmap.filter.chip.segment',
+          defaultMessage: 'Segment:',
+        }),
         value: segment.name,
         valueId: id,
         color: segment.color,
@@ -200,6 +226,7 @@ function AddFilterButton({
 }) {
   const [open, setOpen] = useState(false)
   const [activeCategory, setActiveCategory] = useState<FilterCategory | null>(null)
+  const intl = useOptionalIntl()
 
   const closePopover = () => {
     setOpen(false)
@@ -207,12 +234,22 @@ function AddFilterButton({
   }
 
   // Build the visible categories: hide segment when unavailable
-  const visibleCategories = FILTER_CATEGORIES.filter((cat) => {
-    if (cat.key === 'segment') {
-      return onToggleSegment && segments && segments.length > 0
-    }
-    return true
-  })
+  const visibleCategories = useMemo(
+    () =>
+      FILTER_CATEGORIES.filter((cat) => {
+        if (cat.key === 'segment') {
+          return onToggleSegment && segments && segments.length > 0
+        }
+        return true
+      }).map((category) => ({
+        ...category,
+        label: intl.formatMessage({
+          id: category.id,
+          defaultMessage: category.defaultMessage,
+        }),
+      })),
+    [intl, onToggleSegment, segments]
+  )
 
   return (
     <Popover
@@ -223,7 +260,12 @@ function AddFilterButton({
       }}
     >
       <PopoverTrigger asChild>
-        <FilterAddButton />
+        <FilterAddButton>
+          {intl.formatMessage({
+            id: 'portal.feedback.toolbar.filter',
+            defaultMessage: 'Filter',
+          })}
+        </FilterAddButton>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-48 p-0">
         {activeCategory === null ? (
@@ -258,7 +300,7 @@ function AddFilterButton({
               className="w-full flex items-center gap-1.5 px-2.5 py-1.5 text-[13px] text-muted-foreground hover:text-foreground border-b border-border/50"
             >
               <ChevronRightIcon className="h-2.5 w-2.5 rotate-180" />
-              Back
+              {intl.formatMessage({ id: 'portal.feedback.filter.back', defaultMessage: 'Back' })}
             </button>
             <div className="max-h-[250px] overflow-y-auto py-1">
               {activeCategory === 'board' &&
@@ -330,18 +372,34 @@ export function RoadmapFiltersBar({
     externalValue: filters.search,
     onChange: (next) => onFiltersChange({ search: next }),
   })
+  const intl = useOptionalIntl()
+
+  const sortOptions = useMemo(
+    () =>
+      SORT_OPTIONS.map((option) => ({
+        value: option.value,
+        label: intl.formatMessage({
+          id: option.id,
+          defaultMessage: option.defaultMessage,
+        }),
+      })),
+    [intl]
+  )
 
   const activeFilters = useMemo(
-    () => computeActiveFilters(filters, boards, tags, segments, onFiltersChange),
-    [filters, boards, tags, segments, onFiltersChange]
+    () => computeActiveFilters(intl, filters, boards, tags, segments, onFiltersChange),
+    [intl, filters, boards, tags, segments, onFiltersChange]
   )
 
   return (
     <AdminListHeader
       searchValue={searchValue}
       onSearchChange={setSearchValue}
-      searchPlaceholder="Search posts..."
-      sortOptions={SORT_OPTIONS}
+      searchPlaceholder={intl.formatMessage({
+        id: 'portal.feedback.toolbar.searchPlaceholder',
+        defaultMessage: 'Search posts...',
+      })}
+      sortOptions={sortOptions}
       activeSort={filters.sort ?? 'votes'}
       onSortChange={(sort) => onFiltersChange({ sort: sort as RoadmapFilters['sort'] })}
       filters={
@@ -372,7 +430,10 @@ export function RoadmapFiltersBar({
                 'transition-colors'
               )}
             >
-              Clear all
+              {intl.formatMessage({
+                id: 'portal.feedback.filter.clearAll',
+                defaultMessage: 'Clear all',
+              })}
             </button>
           )}
         </div>

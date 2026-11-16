@@ -114,7 +114,7 @@ export function VotersAvatarStack({
     if (voters?.some((v) => v.principalId === principalId)) {
       toast.info(
         intl.formatMessage({
-          id: 'admin.feedback.voters.alreadyVoted',
+          id: 'portal.voters.alreadyVoted',
           defaultMessage: 'This user has already voted',
         })
       )
@@ -126,7 +126,7 @@ export function VotersAvatarStack({
         if (!data.voted) {
           toast.info(
             intl.formatMessage({
-              id: 'admin.feedback.voters.alreadyVoted',
+              id: 'portal.voters.alreadyVoted',
               defaultMessage: 'This user has already voted',
             })
           )
@@ -197,7 +197,7 @@ export function VotersAvatarStack({
       ) : (
         <span className="text-xs text-muted-foreground/50 italic">
           {intl.formatMessage({
-            id: 'admin.feedback.voters.none',
+            id: 'portal.voters.none',
             defaultMessage: 'No voters yet',
           })}
         </span>
@@ -228,7 +228,7 @@ export function VotersAvatarStack({
               <PlusIcon className="h-3 w-3" />
               <span>
                 {intl.formatMessage({
-                  id: 'admin.feedback.voters.add',
+                  id: 'portal.voters.add',
                   defaultMessage: 'Add voter',
                 })}
               </span>
@@ -385,7 +385,7 @@ export function VotersAvatarStack({
                         defaultMessage: 'Creating...',
                       })
                     : intl.formatMessage({
-                        id: 'admin.feedback.voters.createAndVote',
+                        id: 'portal.voters.createAndVote',
                         defaultMessage: 'Create & add vote',
                       })}
                 </button>

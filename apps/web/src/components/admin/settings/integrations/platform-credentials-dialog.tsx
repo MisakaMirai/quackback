@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import { PlatformCredentialsForm } from './platform-credentials-form'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import type { PlatformCredentialField } from '@/lib/shared/integration-types'
 
 interface PlatformCredentialsDialogProps {
@@ -43,13 +44,28 @@ export function PlatformCredentialsDialog({
   open,
   onOpenChange,
 }: PlatformCredentialsDialogProps) {
+  const intl = useOptionalIntl()
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Configure {integrationName}</DialogTitle>
+          <DialogTitle>
+            {intl.formatMessage(
+              {
+                id: 'admin.integrations.credentials.title',
+                defaultMessage: 'Configure {name}',
+              },
+              { name: integrationName }
+            )}
+          </DialogTitle>
           <DialogDescription>
-            Enter your {integrationName} app credentials to enable the integration.
+            {intl.formatMessage(
+              {
+                id: 'admin.integrations.credentials.description',
+                defaultMessage: 'Enter your {name} app credentials to enable the integration.',
+              },
+              { name: integrationName }
+            )}
           </DialogDescription>
         </DialogHeader>
         <Suspense fallback={<FormSkeleton fieldCount={fields.length || 2} />}>
