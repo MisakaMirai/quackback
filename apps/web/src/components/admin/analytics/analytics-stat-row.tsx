@@ -1,4 +1,5 @@
 import { cn } from '@/lib/shared/utils'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { TrendDelta } from './analytics-trend'
 
 export interface AnalyticsStatProps {
@@ -24,6 +25,7 @@ export interface AnalyticsStatProps {
  *  (sentence-case label, large tabular number) but static: these report, they
  *  don't drive a chart, so there's no hover/active affordance. */
 function AnalyticsStat({ label, value, suffix, delta, caption, muted }: AnalyticsStatProps) {
+  const intl = useOptionalIntl()
   return (
     <div className="px-5 py-4">
       <p className="mb-2 text-[13px] text-muted-foreground">{label}</p>
@@ -42,7 +44,14 @@ function AnalyticsStat({ label, value, suffix, delta, caption, muted }: Analytic
       {/* The delta line is always present (a delta, a scope caption, or an empty
           spacer) so every stat tile in a row is the same height. */}
       {delta !== undefined ? (
-        <TrendDelta value={delta} suffix="vs prev" className="mt-1.5" />
+        <TrendDelta
+          value={delta}
+          suffix={intl.formatMessage({
+            id: 'admin.analytics.trend.previous',
+            defaultMessage: 'vs prev',
+          })}
+          className="mt-1.5"
+        />
       ) : caption ? (
         <p className="mt-1.5 flex h-4 items-center text-xs leading-none text-muted-foreground">
           {caption}

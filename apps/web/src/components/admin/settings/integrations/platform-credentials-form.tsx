@@ -8,6 +8,7 @@ import { Button, NewTabHint } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { CopyButton } from '@/components/shared/copy-button'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import type { PlatformCredentialField } from '@/lib/shared/integration-types'
 import { INLINE_LINK } from '@/components/admin/settings/inline-link'
 
@@ -22,6 +23,7 @@ export function PlatformCredentialsForm({
   fields,
   onSaved,
 }: PlatformCredentialsFormProps) {
+  const intl = useOptionalIntl()
   const credentialsQuery = useSuspenseQuery(adminQueries.platformCredentials(integrationType))
   const isConfigured = credentialsQuery.data.configured
   const maskedFields = credentialsQuery.data.fields
@@ -79,7 +81,10 @@ export function PlatformCredentialsForm({
   const redirectCallout = (
     <div className="rounded-lg border border-border/50 bg-muted/20 p-3 space-y-1.5">
       <Label className="text-xs font-medium text-muted-foreground">
-        Redirect URI to register in your OAuth application
+        {intl.formatMessage({
+          id: 'admin.integrations.credentials.redirectUriLabel',
+          defaultMessage: 'Redirect URI to register in your OAuth application',
+        })}
       </Label>
       <div className="flex items-center gap-2">
         <code className="flex-1 rounded bg-muted px-3 py-2 text-xs font-mono break-all">
@@ -100,14 +105,22 @@ export function PlatformCredentialsForm({
               <div key={field.key}>
                 <Label className="text-sm font-medium text-muted-foreground">{field.label}</Label>
                 <div className="mt-1 rounded-md border border-border/50 bg-muted/30 px-3 py-2 text-sm font-mono text-muted-foreground">
-                  {maskedFields?.[field.key] ?? 'Not set'}
+                  {maskedFields?.[field.key] ??
+                    intl.formatMessage({
+                      id: 'admin.integrations.credentials.notSet',
+                      defaultMessage: 'Not set',
+                    })}
                 </div>
               </div>
             ))}
           </div>
         )}
         <p className="text-sm text-muted-foreground">
-          These credentials are managed by the platform and can’t be edited here.
+          {intl.formatMessage({
+            id: 'admin.integrations.credentials.managed',
+            defaultMessage:
+              'These credentials are managed by the platform and can’t be edited here.',
+          })}
         </p>
       </div>
     )
@@ -130,7 +143,10 @@ export function PlatformCredentialsForm({
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={handleStartEdit}>
-            Update
+            {intl.formatMessage({
+              id: 'admin.integrations.credentials.update',
+              defaultMessage: 'Update',
+            })}
           </Button>
           <Button
             variant="outline"
@@ -139,7 +155,12 @@ export function PlatformCredentialsForm({
             disabled={deleteMutation.isPending}
             className="text-destructive hover:text-destructive"
           >
-            {deleteMutation.isPending ? 'Removing...' : 'Remove'}
+            {deleteMutation.isPending
+              ? intl.formatMessage({
+                  id: 'admin.integrations.routing.removing',
+                  defaultMessage: 'Removing...',
+                })
+              : intl.formatMessage({ id: 'common.remove', defaultMessage: 'Remove' })}
           </Button>
         </div>
       </div>
@@ -156,7 +177,12 @@ export function PlatformCredentialsForm({
             <Label htmlFor={`cred-${field.key}`} className="text-sm font-medium">
               {field.label}
               {field.required === false ? (
-                <span className="ml-1 font-normal text-muted-foreground">(optional)</span>
+                <span className="ml-1 font-normal text-muted-foreground">
+                  {intl.formatMessage({
+                    id: 'admin.integrations.ntfy.optional',
+                    defaultMessage: '(optional)',
+                  })}
+                </span>
               ) : null}
             </Label>
             <Input
@@ -177,7 +203,10 @@ export function PlatformCredentialsForm({
                 rel="noopener noreferrer"
                 className={`${INLINE_LINK} mt-1 inline-block text-xs`}
               >
-                Get credentials from provider
+                {intl.formatMessage({
+                  id: 'admin.integrations.credentials.getCredentials',
+                  defaultMessage: 'Get credentials from provider',
+                })}
                 <NewTabHint />
               </a>
             )}
@@ -186,17 +215,29 @@ export function PlatformCredentialsForm({
       </div>
       <div className="flex gap-2">
         <Button size="sm" onClick={handleSave} disabled={!requiredFilled || saveMutation.isPending}>
-          {saveMutation.isPending ? 'Saving...' : 'Save'}
+          {saveMutation.isPending
+            ? intl.formatMessage({
+                id: 'admin.integrations.config.saving',
+                defaultMessage: 'Saving...',
+              })
+            : intl.formatMessage({
+                id: 'admin.integrations.connection.save',
+                defaultMessage: 'Save',
+              })}
         </Button>
         {isEditing && (
           <Button variant="outline" size="sm" onClick={handleCancel}>
-            Cancel
+            {intl.formatMessage({ id: 'common.cancel', defaultMessage: 'Cancel' })}
           </Button>
         )}
       </div>
       {saveMutation.isError && (
         <p className="text-sm text-destructive">
-          {saveMutation.error?.message ?? 'Failed to save credentials'}
+          {saveMutation.error?.message ??
+            intl.formatMessage({
+              id: 'admin.integrations.freshdesk.saveFailed',
+              defaultMessage: 'Failed to save credentials',
+            })}
         </p>
       )}
     </div>

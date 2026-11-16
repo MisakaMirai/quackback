@@ -4,6 +4,7 @@ import { SettingsCard } from '@/components/admin/settings/settings-card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { helpCenterHeaderLinkUrl } from '@/lib/shared/schemas/help-center'
 import { useUpdateHelpCenterConfig } from '@/lib/client/mutations/settings'
 import { useDebouncedSave } from '@/lib/client/hooks/use-debounced-save'
@@ -25,6 +26,7 @@ function urlError(url: string): boolean {
 }
 
 export function HeaderLinksCard({ links: initialLinks }: { links: HelpCenterHeaderLink[] }) {
+  const intl = useOptionalIntl()
   const [links, setLinks] = useState<HelpCenterHeaderLink[]>(initialLinks)
   const { mutate } = useUpdateHelpCenterConfig()
   const [removing, setRemoving] = useState<number | null>(null)
@@ -66,10 +68,24 @@ export function HeaderLinksCard({ links: initialLinks }: { links: HelpCenterHead
   }
 
   return (
-    <SettingsCard title="Header links" description="Up to 3 links beside the navigation.">
+    <SettingsCard
+      title={intl.formatMessage({
+        id: 'admin.settings.helpCenter.headerLinks.title',
+        defaultMessage: 'Header links',
+      })}
+      description={intl.formatMessage({
+        id: 'admin.settings.helpCenter.headerLinks.description',
+        defaultMessage: 'Up to 3 links beside the navigation.',
+      })}
+    >
       <div className="space-y-3">
         {links.length === 0 && (
-          <p className="text-[13px] text-muted-foreground">No header links yet.</p>
+          <p className="text-[13px] text-muted-foreground">
+            {intl.formatMessage({
+              id: 'admin.settings.helpCenter.headerLinks.empty',
+              defaultMessage: 'No header links yet.',
+            })}
+          </p>
         )}
         {links.map((link, index) => {
           const invalid = touched.has(index) && urlError(link.url)
@@ -80,8 +96,17 @@ export function HeaderLinksCard({ links: initialLinks }: { links: HelpCenterHead
                   value={link.label}
                   onChange={(e) => edit(index, { label: e.target.value })}
                   onBlur={flush}
-                  placeholder="Label"
-                  aria-label={`Link ${index + 1} label`}
+                  placeholder={intl.formatMessage({
+                    id: 'admin.settings.helpCenter.headerLinks.labelPlaceholder',
+                    defaultMessage: 'Label',
+                  })}
+                  aria-label={intl.formatMessage(
+                    {
+                      id: 'admin.settings.helpCenter.headerLinks.labelAria',
+                      defaultMessage: 'Link {index} label',
+                    },
+                    { index: index + 1 }
+                  )}
                   className="max-w-48"
                 />
                 <Input
@@ -91,8 +116,17 @@ export function HeaderLinksCard({ links: initialLinks }: { links: HelpCenterHead
                     setTouched((prev) => new Set(prev).add(index))
                     flush()
                   }}
-                  placeholder="https://example.com or /path"
-                  aria-label={`Link ${index + 1} URL`}
+                  placeholder={intl.formatMessage({
+                    id: 'admin.settings.helpCenter.headerLinks.urlPlaceholder',
+                    defaultMessage: 'https://example.com or /path',
+                  })}
+                  aria-label={intl.formatMessage(
+                    {
+                      id: 'admin.settings.helpCenter.headerLinks.urlAria',
+                      defaultMessage: 'Link {index} URL',
+                    },
+                    { index: index + 1 }
+                  )}
                   aria-invalid={invalid || undefined}
                   className="flex-1"
                 />
@@ -100,14 +134,23 @@ export function HeaderLinksCard({ links: initialLinks }: { links: HelpCenterHead
                   variant="ghost"
                   size="sm"
                   onClick={() => askRemove(index)}
-                  aria-label={`Remove link ${index + 1}`}
+                  aria-label={intl.formatMessage(
+                    {
+                      id: 'admin.settings.helpCenter.headerLinks.removeAria',
+                      defaultMessage: 'Remove link {index}',
+                    },
+                    { index: index + 1 }
+                  )}
                 >
                   <TrashIcon className="h-4 w-4" />
                 </Button>
               </div>
               {invalid && (
                 <p role="alert" className="text-xs text-destructive">
-                  Use a full http(s) address or a path starting with /.
+                  {intl.formatMessage({
+                    id: 'admin.settings.helpCenter.headerLinks.invalidUrl',
+                    defaultMessage: 'Use a full http(s) address or a path starting with /.',
+                  })}
                 </p>
               )}
             </div>
@@ -120,15 +163,27 @@ export function HeaderLinksCard({ links: initialLinks }: { links: HelpCenterHead
           disabled={links.length >= HEADER_LINKS_MAX}
         >
           <PlusIcon className="me-2 h-4 w-4" />
-          Add link
+          {intl.formatMessage({
+            id: 'admin.settings.helpCenter.headerLinks.addLink',
+            defaultMessage: 'Add link',
+          })}
         </Button>
       </div>
       <ConfirmDialog
         open={removing !== null}
         onOpenChange={(open) => !open && setRemoving(null)}
-        title="Delete link?"
-        description="This link is removed from the help center header."
-        confirmLabel="Delete link"
+        title={intl.formatMessage({
+          id: 'admin.settings.helpCenter.headerLinks.deleteTitle',
+          defaultMessage: 'Delete link?',
+        })}
+        description={intl.formatMessage({
+          id: 'admin.settings.helpCenter.headerLinks.deleteDescription',
+          defaultMessage: 'This link is removed from the help center header.',
+        })}
+        confirmLabel={intl.formatMessage({
+          id: 'admin.settings.helpCenter.headerLinks.deleteConfirm',
+          defaultMessage: 'Delete link',
+        })}
         variant="destructive"
         onConfirm={() => {
           if (removing !== null) remove(removing)

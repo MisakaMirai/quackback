@@ -27,6 +27,7 @@ import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { EmptyState } from '@/components/shared/empty-state'
 import { NewButton } from '@/components/shared/new-button'
 import { AdminListHeader } from '@/components/admin/admin-list-header'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import {
   statusComponentQueries,
   statusTemplateQueries,
@@ -38,7 +39,8 @@ import {
   useDeleteStatusIncidentTemplate,
   useUpdateStatusIncidentTemplate,
 } from '@/lib/client/mutations/status'
-import { IMPACT_LABELS, type StatusIncidentImpact } from './status-admin-colors'
+import { IMPACT_LABEL } from '@/components/portal/status/status-colors'
+import { type StatusIncidentImpact } from './status-admin-colors'
 import { useStatusAccess } from './status-access'
 import { toastError } from '@/lib/client/error-notice'
 
@@ -52,6 +54,7 @@ function flattenComponents(data: StatusComponentsAdmin | undefined) {
 }
 
 export function StatusTemplatesView() {
+  const intl = useOptionalIntl()
   const { data: templates, isLoading } = useQuery(statusTemplateQueries.list())
   // Publishers read templates (the composers insert them); only
   // status_page.manage adds, edits or deletes them.
@@ -71,7 +74,13 @@ export function StatusTemplatesView() {
     try {
       await deleteMutation.mutateAsync(deleteTarget.id)
     } catch (error) {
-      toastError(error, 'Failed to delete template')
+      toastError(
+        error,
+        intl.formatMessage({
+          id: 'admin.status.templates.toastDeleteFailed',
+          defaultMessage: 'Failed to delete template',
+        })
+      )
     } finally {
       setDeleteTarget(null)
     }
@@ -82,7 +91,10 @@ export function StatusTemplatesView() {
       <AdminListHeader
         searchValue={search}
         onSearchChange={setSearch}
-        searchPlaceholder="Search templates..."
+        searchPlaceholder={intl.formatMessage({
+          id: 'admin.status.templates.searchPlaceholder',
+          defaultMessage: 'Search templates...',
+        })}
         action={
           canManage ? <NewButton noun="template" onClick={() => setCreating(true)} /> : undefined
         }
@@ -108,8 +120,15 @@ export function StatusTemplatesView() {
         <div className="p-3">
           <EmptyState
             icon={DocumentDuplicateIcon}
-            title="No templates yet"
-            description="Templates prefill an incident's title, body, impact, and affected components."
+            title={intl.formatMessage({
+              id: 'admin.status.templates.emptyTitle',
+              defaultMessage: 'No templates yet',
+            })}
+            description={intl.formatMessage({
+              id: 'admin.status.templates.emptyDescription',
+              defaultMessage:
+                "Templates prefill an incident's title, body, impact, and affected components.",
+            })}
             action={
               canManage ? (
                 <NewButton noun="template" onClick={() => setCreating(true)} />
@@ -127,13 +146,34 @@ export function StatusTemplatesView() {
                   <div className="text-sm font-medium">{t.name}</div>
                   <div className="text-xs text-muted-foreground truncate">{t.title}</div>
                 </div>
-                <span className="text-xs text-muted-foreground">{IMPACT_LABELS[t.impact]}</span>
+                <span className="text-xs text-muted-foreground">
+                  {intl.formatMessage({
+                    id: IMPACT_LABEL[t.impact].id,
+                    defaultMessage: IMPACT_LABEL[t.impact].defaultMessage,
+                  })}
+                </span>
                 {t.usageCount > 0 ? (
                   <Badge variant="outline" size="sm">
-                    {t.usageCount === 1 ? 'Used once' : `Used ${t.usageCount} times`}
+                    {t.usageCount === 1
+                      ? intl.formatMessage({
+                          id: 'admin.status.templates.usedOnce',
+                          defaultMessage: 'Used once',
+                        })
+                      : intl.formatMessage(
+                          {
+                            id: 'admin.status.templates.usedTimes',
+                            defaultMessage: 'Used {count} times',
+                          },
+                          { count: t.usageCount }
+                        )}
                   </Badge>
                 ) : (
-                  <span className="text-xs text-muted-foreground">Unused</span>
+                  <span className="text-xs text-muted-foreground">
+                    {intl.formatMessage({
+                      id: 'admin.status.templates.unused',
+                      defaultMessage: 'Unused',
+                    })}
+                  </span>
                 )}
                 {canManage && (
                   <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100">
@@ -159,8 +199,11 @@ export function StatusTemplatesView() {
             ))}
           </div>
           <p className="text-xs text-muted-foreground px-1">
-            Templates pre-fill the incident report and can be inserted into any update from the
-            composer.
+            {intl.formatMessage({
+              id: 'admin.status.templates.footerHint',
+              defaultMessage:
+                'Templates pre-fill the incident report and can be inserted into any update from the composer.',
+            })}
           </p>
         </div>
       )}
@@ -179,9 +222,18 @@ export function StatusTemplatesView() {
           <ConfirmDialog
             open={!!deleteTarget}
             onOpenChange={(o) => !o && setDeleteTarget(null)}
-            title="Delete template?"
-            description={`Are you sure you want to delete "${deleteTarget?.name}"? This cannot be undone.`}
-            confirmLabel="Delete"
+            title={intl.formatMessage({
+              id: 'admin.status.templates.deleteTitle',
+              defaultMessage: 'Delete template?',
+            })}
+            description={intl.formatMessage(
+              {
+                id: 'admin.status.confirm.deleteDescription',
+                defaultMessage: 'Are you sure you want to delete "{name}"? This cannot be undone.',
+              },
+              { name: deleteTarget?.name }
+            )}
+            confirmLabel={intl.formatMessage({ id: 'common.delete', defaultMessage: 'Delete' })}
             variant="destructive"
             isPending={deleteMutation.isPending}
             onConfirm={confirmDelete}
@@ -220,6 +272,7 @@ function TemplateFormDialog({
   template?: StatusIncidentTemplate | null
 }) {
   const [values, setValues] = useState<TemplateFormValues>(EMPTY_TEMPLATE)
+  const intl = useOptionalIntl()
   const { data: componentsData } = useQuery(statusComponentQueries.list())
   const components = useMemo(() => flattenComponents(componentsData), [componentsData])
   const createMutation = useCreateStatusIncidentTemplate()
@@ -274,7 +327,13 @@ function TemplateFormDialog({
       }
       onOpenChange(false)
     } catch (error) {
-      toastError(error, 'Failed to save template')
+      toastError(
+        error,
+        intl.formatMessage({
+          id: 'admin.status.templates.toastSaveFailed',
+          defaultMessage: 'Failed to save template',
+        })
+      )
     }
   }
 
@@ -282,22 +341,45 @@ function TemplateFormDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>{mode === 'edit' ? 'Edit template' : 'New template'}</DialogTitle>
+          <DialogTitle>
+            {mode === 'edit'
+              ? intl.formatMessage({
+                  id: 'admin.status.templates.editTitle',
+                  defaultMessage: 'Edit template',
+                })
+              : intl.formatMessage({
+                  id: 'admin.status.templates.newTitle',
+                  defaultMessage: 'New template',
+                })}
+          </DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="template-name">Template name</Label>
+            <Label htmlFor="template-name">
+              {intl.formatMessage({
+                id: 'admin.status.templates.nameLabel',
+                defaultMessage: 'Template name',
+              })}
+            </Label>
             <Input
               id="template-name"
               value={values.name}
               onChange={(e) => setValues((v) => ({ ...v, name: e.target.value }))}
-              placeholder="e.g., API degradation"
+              placeholder={intl.formatMessage({
+                id: 'admin.status.templates.namePlaceholder',
+                defaultMessage: 'e.g., API degradation',
+              })}
               required
               autoFocus
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="template-title">Incident title</Label>
+            <Label htmlFor="template-title">
+              {intl.formatMessage({
+                id: 'admin.status.templates.titleLabel',
+                defaultMessage: 'Incident title',
+              })}
+            </Label>
             <Input
               id="template-title"
               value={values.title}
@@ -306,7 +388,9 @@ function TemplateFormDialog({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="template-body">Body</Label>
+            <Label htmlFor="template-body">
+              {intl.formatMessage({ id: 'admin.status.field.body', defaultMessage: 'Body' })}
+            </Label>
             <Textarea
               id="template-body"
               value={values.body}
@@ -316,7 +400,9 @@ function TemplateFormDialog({
             />
           </div>
           <div className="space-y-2">
-            <Label>Impact</Label>
+            <Label>
+              {intl.formatMessage({ id: 'admin.status.field.impact', defaultMessage: 'Impact' })}
+            </Label>
             <Select
               value={values.impact}
               onValueChange={(v) =>
@@ -327,14 +413,34 @@ function TemplateFormDialog({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="minor">{IMPACT_LABELS.minor}</SelectItem>
-                <SelectItem value="major">{IMPACT_LABELS.major}</SelectItem>
-                <SelectItem value="critical">{IMPACT_LABELS.critical}</SelectItem>
+                <SelectItem value="minor">
+                  {intl.formatMessage({
+                    id: IMPACT_LABEL.minor.id,
+                    defaultMessage: IMPACT_LABEL.minor.defaultMessage,
+                  })}
+                </SelectItem>
+                <SelectItem value="major">
+                  {intl.formatMessage({
+                    id: IMPACT_LABEL.major.id,
+                    defaultMessage: IMPACT_LABEL.major.defaultMessage,
+                  })}
+                </SelectItem>
+                <SelectItem value="critical">
+                  {intl.formatMessage({
+                    id: IMPACT_LABEL.critical.id,
+                    defaultMessage: IMPACT_LABEL.critical.defaultMessage,
+                  })}
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
           <div className="space-y-2">
-            <Label>Default affected components</Label>
+            <Label>
+              {intl.formatMessage({
+                id: 'admin.status.templates.defaultComponents',
+                defaultMessage: 'Default affected components',
+              })}
+            </Label>
             <div className="max-h-40 overflow-y-auto rounded-lg border border-border/50">
               {components.map((c) => (
                 <label
@@ -353,7 +459,7 @@ function TemplateFormDialog({
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
+              {intl.formatMessage({ id: 'common.cancel', defaultMessage: 'Cancel' })}
             </Button>
             <Button
               type="submit"
@@ -361,7 +467,20 @@ function TemplateFormDialog({
                 !values.name.trim() || !values.title.trim() || !values.body.trim() || isPending
               }
             >
-              {isPending ? 'Saving…' : mode === 'edit' ? 'Save changes' : 'Create template'}
+              {isPending
+                ? intl.formatMessage({
+                    id: 'admin.status.action.saving',
+                    defaultMessage: 'Saving…',
+                  })
+                : mode === 'edit'
+                  ? intl.formatMessage({
+                      id: 'admin.status.action.saveChanges',
+                      defaultMessage: 'Save changes',
+                    })
+                  : intl.formatMessage({
+                      id: 'admin.status.templates.create',
+                      defaultMessage: 'Create template',
+                    })}
             </Button>
           </DialogFooter>
         </form>

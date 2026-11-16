@@ -9,6 +9,7 @@ import { useMemo, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { ArrowPathIcon, ChevronUpDownIcon, MagnifyingGlassIcon } from '@heroicons/react/24/solid'
 import { Button } from '@/components/ui/button'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import {
   fetchIntegrationDestinationsFn,
@@ -37,8 +38,12 @@ export function DestinationPicker({
   onSelect,
   parentId,
   disabled,
-  placeholder = 'Select…',
+  placeholder,
 }: DestinationPickerProps) {
+  const intl = useOptionalIntl()
+  const shownPlaceholder =
+    placeholder ??
+    intl.formatMessage({ id: 'admin.integrations.destination.select', defaultMessage: 'Select…' })
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
@@ -73,14 +78,17 @@ export function DestinationPicker({
           {loading ? (
             <span className="flex items-center gap-2 text-muted-foreground">
               <ArrowPathIcon className="h-4 w-4 animate-spin" />
-              Loading…
+              {intl.formatMessage({
+                id: 'admin.integrations.destination.loading',
+                defaultMessage: 'Loading…',
+              })}
             </span>
           ) : selected ? (
             <span className="truncate">{selected.name}</span>
           ) : value ? (
             <span className="truncate">{value}</span>
           ) : (
-            <span className="text-muted-foreground">{placeholder}</span>
+            <span className="text-muted-foreground">{shownPlaceholder}</span>
           )}
           <ChevronUpDownIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
         </Button>
@@ -92,14 +100,30 @@ export function DestinationPicker({
             ref={inputRef}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search…"
+            placeholder={intl.formatMessage({
+              id: 'admin.integrations.destination.search',
+              defaultMessage: 'Search…',
+            })}
             className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
           />
         </div>
         <div className="max-h-[200px] overflow-y-auto p-1">
           {filtered.length === 0 ? (
             <div className="px-2 py-4 text-center text-sm text-muted-foreground">
-              {loading ? 'Loading…' : search ? 'No matches.' : 'Nothing available.'}
+              {loading
+                ? intl.formatMessage({
+                    id: 'admin.integrations.destination.loading',
+                    defaultMessage: 'Loading…',
+                  })
+                : search
+                  ? intl.formatMessage({
+                      id: 'admin.integrations.destination.noMatches',
+                      defaultMessage: 'No matches.',
+                    })
+                  : intl.formatMessage({
+                      id: 'admin.integrations.destination.nothingAvailable',
+                      defaultMessage: 'Nothing available.',
+                    })}
             </div>
           ) : (
             filtered.map((item) => (

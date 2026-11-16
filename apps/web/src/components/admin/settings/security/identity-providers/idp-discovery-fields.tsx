@@ -11,6 +11,7 @@
 import { useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { getIdpShortcut, type IdpKind } from '../idp-shortcuts'
 
 export function IdpDiscoveryFields({
@@ -25,12 +26,18 @@ export function IdpDiscoveryFields({
   onChange: (url: string) => void
 }) {
   const def = getIdpShortcut(kind)
+  const intl = useOptionalIntl()
   const [draft, setDraft] = useState<Record<string, string>>({})
 
   if (kind === 'other') {
     return (
       <div className="space-y-2">
-        <Label htmlFor="idp-discovery">Discovery URL</Label>
+        <Label htmlFor="idp-discovery">
+          {intl.formatMessage({
+            id: 'admin.settings.security.idp.discoveryUrl',
+            defaultMessage: 'Discovery URL',
+          })}
+        </Label>
         <Input
           id="idp-discovery"
           value={discoveryUrl}
@@ -90,18 +97,40 @@ export const EMPTY_MANUAL_ENDPOINTS: ManualEndpoints = {
   issuer: '',
 }
 
-const MANUAL_FIELDS: { key: keyof ManualEndpoints; label: string; placeholder: string }[] = [
+const MANUAL_FIELDS: {
+  key: keyof ManualEndpoints
+  labelId: string
+  labelDefault: string
+  placeholder: string
+}[] = [
   {
     key: 'authorizationUrl',
-    label: 'Authorization URL',
+    labelId: 'admin.settings.security.idp.manual.authorizationUrl',
+    labelDefault: 'Authorization URL',
     placeholder: 'https://your-idp/authorize',
   },
-  { key: 'tokenUrl', label: 'Token URL', placeholder: 'https://your-idp/token' },
-  { key: 'jwksUri', label: 'JWKS URI', placeholder: 'https://your-idp/.well-known/jwks.json' },
-  { key: 'issuer', label: 'Issuer', placeholder: 'https://your-idp/' },
+  {
+    key: 'tokenUrl',
+    labelId: 'admin.settings.security.idp.manual.tokenUrl',
+    labelDefault: 'Token URL',
+    placeholder: 'https://your-idp/token',
+  },
+  {
+    key: 'jwksUri',
+    labelId: 'admin.settings.security.idp.manual.jwksUri',
+    labelDefault: 'JWKS URI',
+    placeholder: 'https://your-idp/.well-known/jwks.json',
+  },
+  {
+    key: 'issuer',
+    labelId: 'admin.settings.security.idp.manual.issuer',
+    labelDefault: 'Issuer',
+    placeholder: 'https://your-idp/',
+  },
   {
     key: 'userInfoUrl',
-    label: 'User info URL (optional)',
+    labelId: 'admin.settings.security.idp.manual.userInfoUrl',
+    labelDefault: 'User info URL (optional)',
     placeholder: 'https://your-idp/userinfo',
   },
 ]
@@ -121,12 +150,13 @@ export function ManualEndpointsFields({
   disabled: boolean
   onChange: (patch: Partial<ManualEndpoints>) => void
 }) {
+  const intl = useOptionalIntl()
   return (
     <div className="space-y-3">
       {MANUAL_FIELDS.map((f) => (
         <div key={f.key} className="space-y-1.5">
           <Label htmlFor={`idp-manual-${f.key}`} className="text-xs">
-            {f.label}
+            {intl.formatMessage({ id: f.labelId, defaultMessage: f.labelDefault })}
           </Label>
           <Input
             id={`idp-manual-${f.key}`}

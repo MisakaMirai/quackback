@@ -55,3 +55,13 @@ export function settingsPageLabel(path: SettingsPagePath): string {
   if (!page) throw new Error(`No settings page registered for ${path}`)
   return page.label
 }
+
+/** The catalog id for a settings page's label, derived from its path. */
+export function settingsPageLabelId(path: string): string {
+  return `admin.settings.nav.page.${path.replace('/admin/settings/', '').replace(/\//g, '-')}`
+}
+
+/** The catalog id for a settings nav section heading. */
+export function settingsSectionLabelId(label: string): string {
+  return `admin.settings.nav.section.${label.toLowerCase()}`
+}

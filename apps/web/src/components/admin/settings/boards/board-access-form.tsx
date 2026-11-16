@@ -30,6 +30,7 @@ import {
 } from '@heroicons/react/24/solid'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Switch } from '@/components/ui/switch'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { SettingRow } from '@/components/admin/settings/setting-row'
 import { useDebouncedSave } from '@/lib/client/hooks/use-debounced-save'
 import { useUpdateBoardAccess } from '@/lib/client/mutations'
@@ -72,10 +73,15 @@ import { INLINE_LINK } from '@/components/admin/settings/inline-link'
 
 // ─── Static config ────────────────────────────────────────────────────
 
+interface MessageRef {
+  id: string
+  defaultMessage: string
+}
+
 interface TierMeta {
   id: AccessTier
-  label: string
-  blurb: string
+  label: MessageRef
+  blurb: MessageRef
   icon: React.ComponentType<{ className?: string }>
 }
 
@@ -83,42 +89,92 @@ interface TierMeta {
 const TIERS: readonly TierMeta[] = [
   {
     id: 'anonymous',
-    label: 'Everyone',
-    blurb: 'No sign-in needed',
+    label: { id: 'admin.settings.boards.access.tier.everyone', defaultMessage: 'Everyone' },
+    blurb: {
+      id: 'admin.settings.boards.access.tier.everyoneHint',
+      defaultMessage: 'No sign-in needed',
+    },
     icon: GlobeAltIcon,
   },
   {
     id: 'authenticated',
-    label: 'Signed-in users',
-    blurb: 'Any signed-in user',
+    label: {
+      id: 'admin.settings.boards.access.tier.signedIn',
+      defaultMessage: 'Signed-in users',
+    },
+    blurb: {
+      id: 'admin.settings.boards.access.tier.signedInHint',
+      defaultMessage: 'Any signed-in user',
+    },
     icon: UsersIcon,
   },
   {
     id: 'segments',
-    label: 'Specific segments',
-    blurb: 'Specific audiences',
+    label: {
+      id: 'admin.settings.boards.access.tier.segments',
+      defaultMessage: 'Specific segments',
+    },
+    blurb: {
+      id: 'admin.settings.boards.access.tier.segmentsHint',
+      defaultMessage: 'Specific audiences',
+    },
     icon: TagIcon,
   },
   {
     id: 'team',
-    label: 'Team only',
-    blurb: 'Workspace members',
+    label: { id: 'admin.settings.boards.access.tier.team', defaultMessage: 'Team only' },
+    blurb: {
+      id: 'admin.settings.boards.access.tier.teamHint',
+      defaultMessage: 'Workspace members',
+    },
     icon: LockClosedIcon,
   },
 ] as const
 
 interface ActionMeta {
   id: 'view' | 'vote' | 'comment' | 'submit'
-  label: string
-  sub: string
+  label: MessageRef
+  sub: MessageRef
   icon: React.ComponentType<{ className?: string }>
 }
 
 const ACTIONS: readonly ActionMeta[] = [
-  { id: 'view', label: 'View', sub: 'See posts and discussion', icon: EyeIcon },
-  { id: 'vote', label: 'Vote', sub: 'Upvote posts to signal interest', icon: HandThumbUpIcon },
-  { id: 'comment', label: 'Comment', sub: 'Reply on existing posts', icon: ChatBubbleLeftIcon },
-  { id: 'submit', label: 'Submit posts', sub: 'Create new feedback', icon: PaperAirplaneIcon },
+  {
+    id: 'view',
+    label: { id: 'admin.settings.boards.access.action.view', defaultMessage: 'View' },
+    sub: {
+      id: 'admin.settings.boards.access.action.viewDescription',
+      defaultMessage: 'See posts and discussion',
+    },
+    icon: EyeIcon,
+  },
+  {
+    id: 'vote',
+    label: { id: 'admin.settings.boards.access.action.vote', defaultMessage: 'Vote' },
+    sub: {
+      id: 'admin.settings.boards.access.action.voteDescription',
+      defaultMessage: 'Upvote posts to signal interest',
+    },
+    icon: HandThumbUpIcon,
+  },
+  {
+    id: 'comment',
+    label: { id: 'admin.settings.boards.access.action.comment', defaultMessage: 'Comment' },
+    sub: {
+      id: 'admin.settings.boards.access.action.commentDescription',
+      defaultMessage: 'Reply on existing posts',
+    },
+    icon: ChatBubbleLeftIcon,
+  },
+  {
+    id: 'submit',
+    label: { id: 'admin.settings.boards.access.action.submit', defaultMessage: 'Submit posts' },
+    sub: {
+      id: 'admin.settings.boards.access.action.submitDescription',
+      defaultMessage: 'Create new feedback',
+    },
+    icon: PaperAirplaneIcon,
+  },
 ] as const
 
 type ActionId = (typeof ACTIONS)[number]['id']
@@ -126,8 +182,8 @@ type PresetName = 'public' | 'private' | 'custom'
 
 interface PresetMeta {
   id: Exclude<PresetName, 'custom'>
-  label: string
-  description: string
+  label: MessageRef
+  description: MessageRef
   icon: React.ComponentType<{ className?: string }>
   tiers: Record<ActionId, AccessTier>
 }
@@ -147,15 +203,21 @@ function tiersForPreset(id: Exclude<PresetName, 'custom'>): Record<ActionId, Acc
 export const PRESET_META: readonly PresetMeta[] = [
   {
     id: 'public',
-    label: 'Everyone',
-    description: 'Anyone can view. Sign-in is required to vote, comment, or submit.',
+    label: { id: 'admin.settings.boards.access.tier.everyone', defaultMessage: 'Everyone' },
+    description: {
+      id: 'admin.settings.boards.access.preset.publicDescription',
+      defaultMessage: 'Anyone can view. Sign-in is required to vote, comment, or submit.',
+    },
     icon: GlobeAltIcon,
     tiers: tiersForPreset('public'),
   },
   {
     id: 'private',
-    label: 'Team only',
-    description: 'Only workspace members can access this board. Hidden from the portal.',
+    label: { id: 'admin.settings.boards.access.tier.team', defaultMessage: 'Team only' },
+    description: {
+      id: 'admin.settings.boards.access.preset.privateDescription',
+      defaultMessage: 'Only workspace members can access this board. Hidden from the portal.',
+    },
     icon: LockClosedIcon,
     tiers: tiersForPreset('private'),
   },
@@ -212,11 +274,15 @@ const AUTOSAVE_DELAY_MS = 400
  * not a tier: the Comment row still decides who may comment at all, and this
  * narrows that set per post.
  */
-const REPLY_POLICY_LABEL = 'Only the post author and team members can reply'
+const REPLY_POLICY_MESSAGE: MessageRef = {
+  id: 'admin.settings.boards.access.replyPolicy',
+  defaultMessage: 'Only the post author and team members can reply',
+}
 
 // ─── Main form ────────────────────────────────────────────────────────
 
 export function BoardAccessForm({ board }: BoardAccessFormProps) {
+  const intl = useOptionalIntl()
   const mutation = useUpdateBoardAccess()
   const segmentsQuery = useSegments()
   const segments: SegmentItem[] = useMemo(
@@ -406,14 +472,22 @@ export function BoardAccessForm({ board }: BoardAccessFormProps) {
     <form onSubmit={(e) => e.preventDefault()} className="space-y-6">
       <div className="space-y-4">
         <p className="text-[13px] text-muted-foreground">
-          Pick a preset, or change any cell to fine-tune.
+          {intl.formatMessage({
+            id: 'admin.settings.boards.access.intro',
+            defaultMessage: 'Pick a preset, or change any cell to fine-tune.',
+          })}
         </p>
 
         <PresetGrid active={activePreset} onSelect={handlePresetClick} />
       </div>
 
       <div className="space-y-4">
-        <span className="block text-sm font-semibold">Per-action permissions</span>
+        <span className="block text-sm font-semibold">
+          {intl.formatMessage({
+            id: 'admin.settings.boards.access.perActionHeading',
+            defaultMessage: 'Per-action permissions',
+          })}
+        </span>
 
         <Matrix
           values={values}
@@ -431,26 +505,36 @@ export function BoardAccessForm({ board }: BoardAccessFormProps) {
           <div className="flex items-center gap-2 rounded-lg border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
             <GlobeAltIcon className="h-3 w-3 shrink-0" />
             <span>
-              Workspace policy disables the <span className="text-foreground">Everyone</span> tier
-              for:{' '}
-              <span className="text-foreground">
-                {wsBlockedActions.map((a) => a.label).join(', ')}
-              </span>
-              .
+              {intl.formatMessage(
+                {
+                  id: 'admin.settings.boards.access.workspacePolicyBanner',
+                  defaultMessage:
+                    'Workspace policy disables the <tier>{tierName}</tier> tier for: <actions>{actionNames}</actions>.',
+                },
+                {
+                  tierName: intl.formatMessage(TIERS[0]!.label),
+                  actionNames: wsBlockedActions.map((a) => intl.formatMessage(a.label)).join(', '),
+                  tier: (chunks) => <span className="text-foreground">{chunks}</span>,
+                  actions: (chunks) => <span className="text-foreground">{chunks}</span>,
+                }
+              )}
             </span>
             <Link
               to="/admin/settings/security/authentication"
               search={{ tab: 'portal-access' }}
               className={`${INLINE_LINK} ml-auto whitespace-nowrap`}
             >
-              Workspace access →
+              {intl.formatMessage({
+                id: 'admin.settings.boards.access.workspaceAccessLink',
+                defaultMessage: 'Workspace access →',
+              })}
             </Link>
           </div>
         )}
       </div>
 
       <SettingRow
-        label={REPLY_POLICY_LABEL}
+        label={intl.formatMessage(REPLY_POLICY_MESSAGE)}
         htmlFor="board-reply-policy"
         control={
           <Switch
@@ -463,12 +547,19 @@ export function BoardAccessForm({ board }: BoardAccessFormProps) {
 
       <p className="flex items-center gap-2 text-xs text-muted-foreground">
         <ShieldCheckIcon className="h-3 w-3" />
-        Team members and admins always have full access. They bypass these rules.
+        {intl.formatMessage({
+          id: 'admin.settings.boards.access.teamBypassNote',
+          defaultMessage:
+            'Team members and admins always have full access. They bypass these rules.',
+        })}
       </p>
 
       {segsError && (
         <p role="alert" className="text-xs text-destructive">
-          Some rules use Segments but no segments are selected.
+          {intl.formatMessage({
+            id: 'admin.settings.boards.access.segmentsRequired',
+            defaultMessage: 'Some rules use Segments but no segments are selected.',
+          })}
         </p>
       )}
     </form>
@@ -483,14 +574,15 @@ interface PresetGridProps {
 }
 
 function PresetGrid({ active, onSelect }: PresetGridProps) {
+  const intl = useOptionalIntl()
   return (
     <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
       {PRESET_META.map((p) => (
         <PresetCard
           key={p.id}
           active={active === p.id}
-          label={p.label}
-          description={p.description}
+          label={intl.formatMessage(p.label)}
+          description={intl.formatMessage(p.description)}
           icon={<p.icon className="h-3 w-3" />}
           onClick={() => onSelect(p.id)}
         />
@@ -538,12 +630,20 @@ interface CustomStatusCardProps {
 }
 
 function CustomStatusCard({ active }: CustomStatusCardProps) {
+  const intl = useOptionalIntl()
+  const label = intl.formatMessage({
+    id: 'admin.settings.boards.access.custom',
+    defaultMessage: 'Custom',
+  })
   return (
     <div
       role="status"
-      aria-label="Custom"
+      aria-label={label}
       aria-pressed={active}
-      title="Tweak any cell below to enter Custom."
+      title={intl.formatMessage({
+        id: 'admin.settings.boards.access.customHint',
+        defaultMessage: 'Tweak any cell below to enter Custom.',
+      })}
       className={cn(
         'flex cursor-default flex-col items-stretch gap-1 rounded-lg border border-dashed px-3 py-2.5 text-left transition-colors',
         active ? 'border-primary bg-primary/10' : 'border-border bg-transparent opacity-60'
@@ -553,11 +653,14 @@ function CustomStatusCard({ active }: CustomStatusCardProps) {
         <span className={active ? 'text-primary' : 'text-muted-foreground'}>
           <PencilSquareIcon className="h-3 w-3" />
         </span>
-        <span className={cn('text-xs font-semibold', active && 'text-primary')}>Custom</span>
+        <span className={cn('text-xs font-semibold', active && 'text-primary')}>{label}</span>
         {active && <CheckIcon className="ml-auto h-3 w-3 text-primary" />}
       </div>
       <span className="text-xs leading-snug text-muted-foreground">
-        Set when any cell deviates from a preset.
+        {intl.formatMessage({
+          id: 'admin.settings.boards.access.customDescription',
+          defaultMessage: 'Set when any cell deviates from a preset.',
+        })}
       </span>
     </div>
   )
@@ -588,6 +691,7 @@ function Matrix({
   onClosePicker,
   onSegsChange,
 }: MatrixProps) {
+  const intl = useOptionalIntl()
   return (
     // Mobile: the fixed 5-col grid can't crush below ~560px, so let it scroll
     // horizontally instead. The negative margin lets the scroll area bleed to
@@ -596,13 +700,21 @@ function Matrix({
       <div
         className="min-w-[560px] overflow-hidden rounded-lg border bg-muted/20"
         role="grid"
-        aria-label="Permissions matrix"
+        aria-label={intl.formatMessage({
+          id: 'admin.settings.boards.access.matrixAria',
+          defaultMessage: 'Permissions matrix',
+        })}
       >
         <div
           className="grid min-w-[560px] bg-muted/40 border-b text-xs text-muted-foreground"
           style={{ gridTemplateColumns: '1.5fr repeat(4, 1fr)' }}
         >
-          <div className="px-4 py-2.5 font-medium">Action</div>
+          <div className="px-4 py-2.5 font-medium">
+            {intl.formatMessage({
+              id: 'admin.settings.boards.access.actionColumn',
+              defaultMessage: 'Action',
+            })}
+          </div>
           {TIERS.map((t) => (
             <div
               key={t.id}
@@ -612,9 +724,11 @@ function Matrix({
                 <span className="text-muted-foreground">
                   <t.icon className="h-3 w-3" />
                 </span>
-                {t.label}
+                {intl.formatMessage(t.label)}
               </div>
-              <div className="text-xs text-muted-foreground tracking-normal">{t.blurb}</div>
+              <div className="text-xs text-muted-foreground tracking-normal">
+                {intl.formatMessage(t.blurb)}
+              </div>
             </div>
           ))}
         </div>
@@ -667,6 +781,7 @@ function MatrixRow({
   onClosePicker,
   onSegsChange,
 }: MatrixRowProps) {
+  const intl = useOptionalIntl()
   const segCellRef = useRef<HTMLButtonElement | null>(null)
   const selectedTier = values[action.id]
   const segIds = values.segments[action.id]
@@ -676,6 +791,7 @@ function MatrixRow({
   )
   const isEmptySegments = selectedTier === 'segments' && segIds.length === 0
   const minRank = action.id === 'view' ? 0 : ACCESS_TIER_RANK[values.view]
+  const actionLabel = intl.formatMessage(action.label)
 
   return (
     <div
@@ -688,8 +804,8 @@ function MatrixRow({
           <action.icon className="h-3.5 w-3.5" />
         </span>
         <div className="min-w-0">
-          <div className="text-sm font-medium">{action.label}</div>
-          <div className="text-xs text-muted-foreground">{action.sub}</div>
+          <div className="text-sm font-medium">{actionLabel}</div>
+          <div className="text-xs text-muted-foreground">{intl.formatMessage(action.sub)}</div>
         </div>
       </div>
 
@@ -705,9 +821,24 @@ function MatrixRow({
         const isSegmentsCell = tier.id === 'segments'
 
         const tooltip = wsBlocked
-          ? 'Anonymous interaction is disabled workspace-wide. Manage in Access & Security → Portal access.'
+          ? intl.formatMessage({
+              id: 'admin.settings.boards.access.workspaceBlockedTooltip',
+              defaultMessage:
+                'Anonymous interaction is disabled workspace-wide. Manage in Access & Security → Portal access.',
+            })
           : hierarchyBlocked
-            ? `Can't be more open than View (${TIERS.find((x) => ACCESS_TIER_RANK[x.id] === minRank)?.label}).`
+            ? intl.formatMessage(
+                {
+                  id: 'admin.settings.boards.access.hierarchyTooltip',
+                  defaultMessage: "Can't be more open than View ({tier}).",
+                },
+                {
+                  tier: (() => {
+                    const minTier = TIERS.find((x) => ACCESS_TIER_RANK[x.id] === minRank)
+                    return minTier ? intl.formatMessage(minTier.label) : ''
+                  })(),
+                }
+              )
             : undefined
 
         const disabledStyle: CSSProperties = disabled
@@ -734,7 +865,13 @@ function MatrixRow({
               }
             }}
             disabled={disabled}
-            aria-label={`${action.label}: ${tier.label}`}
+            aria-label={intl.formatMessage(
+              {
+                id: 'admin.settings.boards.access.cellAria',
+                defaultMessage: '{action}: {tier}',
+              },
+              { action: actionLabel, tier: intl.formatMessage(tier.label) }
+            )}
             aria-pressed={isSelected}
             data-disabled-reason={
               wsBlocked ? 'workspace' : hierarchyBlocked ? 'hierarchy' : undefined
@@ -797,11 +934,15 @@ interface SegmentCellPreviewProps {
 }
 
 function SegmentCellPreview({ empty, selected, reach }: SegmentCellPreviewProps) {
+  const intl = useOptionalIntl()
   if (empty) {
     return (
       <span className="flex flex-col items-center gap-0.5 text-xs font-medium text-destructive">
         <InformationCircleIcon className="h-3 w-3" />
-        Pick segments
+        {intl.formatMessage({
+          id: 'admin.settings.boards.access.pickSegments',
+          defaultMessage: 'Pick segments',
+        })}
       </span>
     )
   }
@@ -845,6 +986,7 @@ function SegmentPicker({
   onChange,
   onClose,
 }: SegmentPickerProps) {
+  const intl = useOptionalIntl()
   const [search, setSearch] = useState('')
   const [pos, setPos] = useState<{ top: number; left: number; width: number } | null>(null)
   const popRef = useRef<HTMLDivElement | null>(null)
@@ -897,7 +1039,10 @@ function SegmentPicker({
     <div
       ref={popRef}
       role="dialog"
-      aria-label="Pick segments"
+      aria-label={intl.formatMessage({
+        id: 'admin.settings.boards.access.pickSegments',
+        defaultMessage: 'Pick segments',
+      })}
       style={{
         position: 'fixed',
         top: pos.top,
@@ -914,8 +1059,14 @@ function SegmentPicker({
           ref={inputRef}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search or create…"
-          aria-label="Search segments"
+          placeholder={intl.formatMessage({
+            id: 'admin.settings.boards.access.searchOrCreate',
+            defaultMessage: 'Search or create…',
+          })}
+          aria-label={intl.formatMessage({
+            id: 'admin.settings.boards.access.searchSegments',
+            defaultMessage: 'Search segments',
+          })}
           className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
         />
         {selected.length > 0 && (
@@ -924,14 +1075,19 @@ function SegmentPicker({
             onClick={() => onChange([])}
             className="text-xs text-muted-foreground hover:text-foreground"
           >
-            Clear
+            {intl.formatMessage({ id: 'ui.select.clear', defaultMessage: 'Clear' })}
           </button>
         )}
       </div>
 
       <div className="max-h-[280px] overflow-y-auto p-1">
         {loading && (
-          <div className="px-3 py-4 text-xs text-muted-foreground">Loading segments…</div>
+          <div className="px-3 py-4 text-xs text-muted-foreground">
+            {intl.formatMessage({
+              id: 'admin.settings.security.portalAccess.segments.loading',
+              defaultMessage: 'Loading segments…',
+            })}
+          </div>
         )}
         {!loading &&
           filtered.map((s) => {
@@ -967,8 +1123,21 @@ function SegmentPicker({
           >
             <PlusIcon className="h-3 w-3" />
             <span>
-              Create segment{' '}
-              <span className="font-medium text-primary">&quot;{search || 'new'}&quot;</span>
+              {intl.formatMessage(
+                {
+                  id: 'admin.settings.boards.access.createSegment',
+                  defaultMessage: 'Create segment <name>"{query}"</name>',
+                },
+                {
+                  query:
+                    search ||
+                    intl.formatMessage({
+                      id: 'admin.settings.boards.access.newSegmentName',
+                      defaultMessage: 'new',
+                    }),
+                  name: (chunks) => <span className="font-medium text-primary">{chunks}</span>,
+                }
+              )}
             </span>
           </Link>
         )}
@@ -977,15 +1146,29 @@ function SegmentPicker({
       <div className="flex items-center justify-between border-t bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
         <span className="flex items-center gap-1.5">
           <UsersIcon className="h-2.5 w-2.5" />
-          <span>Reach:</span>
+          <span>
+            {intl.formatMessage({
+              id: 'admin.settings.boards.access.reach',
+              defaultMessage: 'Reach:',
+            })}
+          </span>
           <span className="font-mono font-medium text-foreground">≈ {totalReach}</span>
           <span className="opacity-50">·</span>
           <span>
-            {selected.length}/{allSegments.length} selected
+            {intl.formatMessage(
+              {
+                id: 'admin.settings.boards.access.selectedCount',
+                defaultMessage: '{selected}/{total} selected',
+              },
+              { selected: selected.length, total: allSegments.length }
+            )}
           </span>
         </span>
         <Link to="/admin/users" className={INLINE_LINK}>
-          Manage →
+          {intl.formatMessage({
+            id: 'admin.settings.boards.access.manageLink',
+            defaultMessage: 'Manage →',
+          })}
         </Link>
       </div>
     </div>,

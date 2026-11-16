@@ -2,19 +2,10 @@ import type { ComponentProps, ReactNode } from 'react'
 import { Squares2X2Icon } from '@heroicons/react/24/outline'
 import { EmptyState } from '@/components/shared/empty-state'
 import { NewButton } from '@/components/shared/new-button'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { cn } from '@/lib/shared/utils'
 import { SettingsCard } from './settings-card'
 import { RowActions, SettingsList, SettingsListRow } from './settings-list'
-
-const BUILTIN_ACTIONS: ComponentProps<typeof RowActions>['items'] = [
-  {
-    label: 'Delete',
-    destructive: true,
-    disabled: true,
-    hint: 'Built-in attributes cannot be deleted',
-    onSelect: () => {},
-  },
-]
 
 /** One row of an attribute list: a built-in field or a custom attribute. */
 export interface AttributeListItem {
@@ -49,15 +40,46 @@ interface AttributeListProps {
  * entity lists own their dialogs, built-in field sets and mutations.
  */
 export function AttributeList({ items, onNew, emptyDescription, children }: AttributeListProps) {
+  const intl = useOptionalIntl()
+  const builtinActions: ComponentProps<typeof RowActions>['items'] = [
+    {
+      label: intl.formatMessage({ id: 'common.delete', defaultMessage: 'Delete' }),
+      destructive: true,
+      disabled: true,
+      hint: intl.formatMessage({
+        id: 'admin.settings.attributes.builtinDeleteHint',
+        defaultMessage: 'Built-in attributes cannot be deleted',
+      }),
+      onSelect: () => {},
+    },
+  ]
+  const newButton = (
+    <NewButton noun="attribute" onClick={onNew}>
+      {intl.formatMessage({
+        id: 'admin.settings.attributes.new',
+        defaultMessage: 'New attribute',
+      })}
+    </NewButton>
+  )
   return (
-    <SettingsCard title="Attributes" flush action={<NewButton noun="attribute" onClick={onNew} />}>
+    <SettingsCard
+      title={intl.formatMessage({
+        id: 'admin.settings.attributes.title',
+        defaultMessage: 'Attributes',
+      })}
+      flush
+      action={newButton}
+    >
       {items.length === 0 ? (
         <EmptyState
           size="compact"
           icon={Squares2X2Icon}
-          title="No attributes yet"
+          title={intl.formatMessage({
+            id: 'admin.settings.attributes.emptyTitle',
+            defaultMessage: 'No attributes yet',
+          })}
           description={emptyDescription}
-          action={<NewButton noun="attribute" onClick={onNew} />}
+          action={newButton}
         />
       ) : (
         <SettingsList>
@@ -77,7 +99,7 @@ export function AttributeList({ items, onNew, emptyDescription, children }: Attr
                   </>
                 }
                 meta={item.description || undefined}
-                actions={item.builtin ? BUILTIN_ACTIONS : item.actions}
+                actions={item.builtin ? builtinActions : item.actions}
               />
             </div>
           ))}

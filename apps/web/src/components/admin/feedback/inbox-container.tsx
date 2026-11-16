@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { InboxLayout } from '@/components/admin/feedback/inbox-layout'
 import { InboxFiltersPanel } from '@/components/admin/feedback/inbox-filters'
 import { FeedbackTableView } from '@/components/admin/feedback/table'
@@ -30,6 +31,7 @@ export function InboxContainer({
   currentUser,
 }: InboxContainerProps) {
   const queryClient = useQueryClient()
+  const intl = useOptionalIntl()
 
   // URL-based filter state
   const {
@@ -106,7 +108,7 @@ export function InboxContainer({
   return (
     <InboxLayout
       hasActiveFilters={hasActiveFilters}
-      headerTitle="Feedback"
+      headerTitle={intl.formatMessage({ id: 'admin.nav.feedback', defaultMessage: 'Feedback' })}
       filters={
         <InboxFiltersPanel
           filters={filters}

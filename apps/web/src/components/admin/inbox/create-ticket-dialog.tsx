@@ -239,7 +239,15 @@ export const CreateTicketDialog = memo(function CreateTicketDialog({
     if (!canCreate) return
     const description = descriptionMarkdown.trim()
     if (description.length > DESCRIPTION_MAX_LENGTH) {
-      toast.error(`Description is too long (max ${DESCRIPTION_MAX_LENGTH} characters).`)
+      toast.error(
+        intl.formatMessage(
+          {
+            id: 'admin.inbox.createTicket.descriptionTooLong',
+            defaultMessage: 'Description is too long (max {max} characters).',
+          },
+          { max: DESCRIPTION_MAX_LENGTH }
+        )
+      )
       return
     }
 
@@ -278,7 +286,12 @@ export const CreateTicketDialog = memo(function CreateTicketDialog({
             setLinking(true)
             try {
               await linkTicketToConversationFn({ data: { ticketId: ticket.id, conversationId } })
-              toast.success('Ticket created')
+              toast.success(
+                intl.formatMessage({
+                  id: 'admin.inbox.createTicket.created',
+                  defaultMessage: 'Ticket created',
+                })
+              )
             } catch (error) {
               // The ticket itself was created successfully — a link failure
               // (e.g. this conversation already has one) is a secondary,
@@ -294,20 +307,41 @@ export const CreateTicketDialog = memo(function CreateTicketDialog({
                       defaultMessage: 'Test and real conversations need separate tickets.',
                     })
                   : error instanceof Error
-                    ? `Ticket created, but couldn't link it: ${error.message}`
-                    : "Ticket created, but couldn't link it to this conversation"
+                    ? intl.formatMessage(
+                        {
+                          id: 'admin.inbox.createTicket.linkFailedWithError',
+                          defaultMessage: "Ticket created, but couldn't link it: {error}",
+                        },
+                        { error: error.message }
+                      )
+                    : intl.formatMessage({
+                        id: 'admin.inbox.createTicket.linkFailed',
+                        defaultMessage: "Ticket created, but couldn't link it to this conversation",
+                      })
               )
             } finally {
               setLinking(false)
             }
           } else {
-            toast.success('Ticket created')
+            toast.success(
+              intl.formatMessage({
+                id: 'admin.inbox.createTicket.created',
+                defaultMessage: 'Ticket created',
+              })
+            )
           }
           onOpenChange(false)
           onCreated(ticket.id)
           onChanged?.()
         },
-        onError: (error) => toastError(error, 'Failed to create ticket'),
+        onError: (error) =>
+          toastError(
+            error,
+            intl.formatMessage({
+              id: 'admin.inbox.createTicket.failed',
+              defaultMessage: 'Failed to create ticket',
+            })
+          ),
       }
     )
   }
@@ -316,11 +350,27 @@ export const CreateTicketDialog = memo(function CreateTicketDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{fromConversation ? 'Create ticket' : 'New ticket'}</DialogTitle>
+          <DialogTitle>
+            {fromConversation
+              ? intl.formatMessage({
+                  id: 'admin.inbox.createTicket.create',
+                  defaultMessage: 'Create ticket',
+                })
+              : intl.formatMessage({
+                  id: 'admin.inbox.createTicket.new',
+                  defaultMessage: 'New ticket',
+                })}
+          </DialogTitle>
           <DialogDescription>
             {fromConversation
-              ? 'Open a trackable ticket for this conversation.'
-              : 'Open a trackable request and set who it is for.'}
+              ? intl.formatMessage({
+                  id: 'admin.inbox.createTicket.descriptionConversation',
+                  defaultMessage: 'Open a trackable ticket for this conversation.',
+                })
+              : intl.formatMessage({
+                  id: 'admin.inbox.createTicket.descriptionStandalone',
+                  defaultMessage: 'Open a trackable request and set who it is for.',
+                })}
           </DialogDescription>
         </DialogHeader>
 
@@ -331,11 +381,18 @@ export const CreateTicketDialog = memo(function CreateTicketDialog({
           {candidates.length > 0 ? (
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <label className="text-xs font-medium text-muted-foreground">Type</label>
+                <label className="text-xs font-medium text-muted-foreground">
+                  {intl.formatMessage({ id: 'admin.inbox.toolbar.type', defaultMessage: 'Type' })}
+                </label>
               </div>
               <Select value={selectedTypeId ?? ''} onValueChange={selectType}>
                 <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select a type…" />
+                  <SelectValue
+                    placeholder={intl.formatMessage({
+                      id: 'admin.inbox.createTicket.typePlaceholder',
+                      defaultMessage: 'Select a type…',
+                    })}
+                  />
                 </SelectTrigger>
                 <SelectContent>
                   {candidates.map((t) => (
@@ -354,7 +411,9 @@ export const CreateTicketDialog = memo(function CreateTicketDialog({
             </div>
           ) : (
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground">Type</label>
+              <label className="text-xs font-medium text-muted-foreground">
+                {intl.formatMessage({ id: 'admin.inbox.toolbar.type', defaultMessage: 'Type' })}
+              </label>
               <Select value={type} onValueChange={(v) => setType(v as TicketType)}>
                 <SelectTrigger className="w-full">
                   <SelectValue />
@@ -371,18 +430,28 @@ export const CreateTicketDialog = memo(function CreateTicketDialog({
           )}
 
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-muted-foreground">Title</label>
+            <label className="text-xs font-medium text-muted-foreground">
+              {intl.formatMessage({ id: 'inbox.convert.titleLabel', defaultMessage: 'Title' })}
+            </label>
             <Input
               autoFocus
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               maxLength={300}
-              placeholder="Summarize the request…"
+              placeholder={intl.formatMessage({
+                id: 'admin.inbox.createTicket.titlePlaceholder',
+                defaultMessage: 'Summarize the request…',
+              })}
             />
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-muted-foreground">Description</label>
+            <label className="text-xs font-medium text-muted-foreground">
+              {intl.formatMessage({
+                id: 'admin.inbox.createTicket.descriptionLabel',
+                defaultMessage: 'Description',
+              })}
+            </label>
             <div onPaste={handleComposerPaste} onDrop={handleComposerDrop}>
               <RichTextEditor
                 value={descriptionJson ?? ''}
@@ -392,7 +461,10 @@ export const CreateTicketDialog = memo(function CreateTicketDialog({
                 }}
                 features={CONVERSATION_EDITOR_FEATURES}
                 minHeight="120px"
-                placeholder="Add details (optional). This opens the ticket thread."
+                placeholder={intl.formatMessage({
+                  id: 'admin.inbox.createTicket.descriptionPlaceholder',
+                  defaultMessage: 'Add details (optional). This opens the ticket thread.',
+                })}
               />
               <ComposerAttachmentTray
                 items={items}
@@ -414,7 +486,10 @@ export const CreateTicketDialog = memo(function CreateTicketDialog({
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 className="mt-1 flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted disabled:opacity-40 transition-colors"
-                aria-label="Attach files"
+                aria-label={intl.formatMessage({
+                  id: 'admin.inbox.createTicket.attachFiles',
+                  defaultMessage: 'Attach files',
+                })}
               >
                 <PaperClipIcon className="h-4 w-4" />
               </button>
@@ -433,21 +508,43 @@ export const CreateTicketDialog = memo(function CreateTicketDialog({
 
           <div className="space-y-1.5">
             <label className="text-xs font-medium text-muted-foreground">
-              {fromConversation ? 'Requester' : 'Requester (optional)'}
+              {fromConversation
+                ? intl.formatMessage({
+                    id: 'admin.inbox.contact.requester',
+                    defaultMessage: 'Requester',
+                  })
+                : intl.formatMessage({
+                    id: 'admin.inbox.createTicket.requesterOptional',
+                    defaultMessage: 'Requester (optional)',
+                  })}
             </label>
             {requester ? (
               <div className="flex items-center gap-2.5 rounded-md border border-border/60 bg-muted/20 px-3 py-2">
                 <Avatar
                   src={requester.image}
-                  name={requester.name ?? 'User'}
+                  name={
+                    requester.name ??
+                    intl.formatMessage({
+                      id: 'admin.inbox.createTicket.userFallback',
+                      defaultMessage: 'User',
+                    })
+                  }
                   className="size-7 text-xs"
                 />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm text-foreground">
-                    {requester.name || 'Unnamed user'}
+                    {requester.name ||
+                      intl.formatMessage({
+                        id: 'common.userPicker.unnamed',
+                        defaultMessage: 'Unnamed user',
+                      })}
                   </span>
                   <span className="block truncate text-xs text-muted-foreground">
-                    {realEmail(requester.email) ?? 'No email'}
+                    {realEmail(requester.email) ??
+                      intl.formatMessage({
+                        id: 'common.userPicker.noEmail',
+                        defaultMessage: 'No email',
+                      })}
                   </span>
                 </span>
                 {/* The conversation's visitor is fixed — only the standalone
@@ -456,7 +553,10 @@ export const CreateTicketDialog = memo(function CreateTicketDialog({
                   <button
                     type="button"
                     onClick={() => setRequester(null)}
-                    aria-label="Clear requester"
+                    aria-label={intl.formatMessage({
+                      id: 'admin.inbox.createTicket.clearRequester',
+                      defaultMessage: 'Clear requester',
+                    })}
                     className="text-muted-foreground transition-colors hover:text-foreground"
                   >
                     <XMarkIcon className="size-4" />
@@ -465,7 +565,10 @@ export const CreateTicketDialog = memo(function CreateTicketDialog({
               </div>
             ) : fromConversation ? (
               <p className="rounded-md border border-dashed border-border/60 px-3 py-2 text-xs text-muted-foreground">
-                Anonymous visitor, no portal account on file.
+                {intl.formatMessage({
+                  id: 'admin.inbox.createTicket.anonymousVisitor',
+                  defaultMessage: 'Anonymous visitor, no portal account on file.',
+                })}
               </p>
             ) : (
               <PortalUserPicker
@@ -480,10 +583,18 @@ export const CreateTicketDialog = memo(function CreateTicketDialog({
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
+            {intl.formatMessage({ id: 'common.cancel', defaultMessage: 'Cancel' })}
           </Button>
           <Button onClick={submit} disabled={!canCreate}>
-            {create.isPending || linking ? 'Creating…' : 'Create ticket'}
+            {create.isPending || linking
+              ? intl.formatMessage({
+                  id: 'admin.inbox.createTicket.creating',
+                  defaultMessage: 'Creating…',
+                })
+              : intl.formatMessage({
+                  id: 'admin.inbox.createTicket.create',
+                  defaultMessage: 'Create ticket',
+                })}
           </Button>
         </DialogFooter>
       </DialogContent>

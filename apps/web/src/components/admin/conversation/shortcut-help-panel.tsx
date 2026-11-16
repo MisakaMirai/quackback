@@ -13,6 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 
 function ShortcutRow({ keys, label }: { keys: string; label: string }) {
   return (
@@ -43,15 +44,31 @@ export const ShortcutHelpPanel = memo(function ShortcutHelpPanel({
   open: boolean
   onOpenChange: (open: boolean) => void
 }) {
+  const intl = useOptionalIntl()
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Keyboard shortcuts</DialogTitle>
-          <DialogDescription>Work the inbox without leaving the keyboard.</DialogDescription>
+          <DialogTitle>
+            {intl.formatMessage({
+              id: 'admin.inbox.shortcuts.title',
+              defaultMessage: 'Keyboard shortcuts',
+            })}
+          </DialogTitle>
+          <DialogDescription>
+            {intl.formatMessage({
+              id: 'admin.inbox.shortcuts.description',
+              defaultMessage: 'Work the inbox without leaving the keyboard.',
+            })}
+          </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
-          <Section title="General">
+          <Section
+            title={intl.formatMessage({
+              id: 'admin.inbox.shortcuts.general',
+              defaultMessage: 'General',
+            })}
+          >
             {INBOX_GLOBAL_SHORTCUTS.map((s) => (
               <ShortcutRow key={s.keys} keys={s.keys} label={s.label} />
             ))}

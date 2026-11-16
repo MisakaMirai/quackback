@@ -1,16 +1,22 @@
 import { useState } from 'react'
+import { defineMessages } from 'react-intl'
 import { FunnelIcon } from '@heroicons/react/24/solid'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/lib/shared/utils'
 import { PageHeader } from '@/components/shared/page-header'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 
 /**
  * Pages inside the layout bring their own 12px edge padding. This adds the rest of the page
  * inset: 16px in total on a phone and 24px once the filter pane is showing.
  */
 const PAGE_INSET = 'px-1 lg:px-3'
+
+const messages = defineMessages({
+  filters: { id: 'admin.filterLayout.title', defaultMessage: 'Filters' },
+})
 
 interface AdminFilterLayoutProps {
   filters: React.ReactNode
@@ -30,6 +36,7 @@ export function AdminFilterLayout({
   scrollContent = true,
   headerTitle,
 }: AdminFilterLayoutProps) {
+  const intl = useOptionalIntl()
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
 
   return (
@@ -64,7 +71,7 @@ export function AdminFilterLayout({
           <SheetTrigger asChild>
             <Button size="lg">
               <FunnelIcon className="h-4 w-4 mr-2" />
-              Filters
+              {intl.formatMessage(messages.filters)}
               {hasActiveFilters && (
                 <span className="ml-2 h-2 w-2 rounded-full bg-primary-foreground" />
               )}
@@ -72,7 +79,7 @@ export function AdminFilterLayout({
           </SheetTrigger>
           <SheetContent side="left" className="w-80 p-0">
             <SheetHeader className="px-4 py-3 border-b border-border/50">
-              <SheetTitle>Filters</SheetTitle>
+              <SheetTitle>{intl.formatMessage(messages.filters)}</SheetTitle>
             </SheetHeader>
             <ScrollArea className="h-[calc(100vh-60px)]">
               <div className="p-2.5">{filters}</div>

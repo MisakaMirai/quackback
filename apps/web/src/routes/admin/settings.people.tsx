@@ -1,4 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
+import { useIntl } from 'react-intl'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { PERMISSIONS } from '@/lib/shared/permissions'
 import { assertRoutePermission } from '@/lib/shared/route-permission'
@@ -8,7 +9,7 @@ import { UserAttributesList } from '@/components/admin/settings/user-attributes/
 import { adminPageHead } from '@/lib/client/admin-head'
 
 export const Route = createFileRoute('/admin/settings/people')({
-  head: adminPageHead('People settings'),
+  head: adminPageHead('People settings', 'admin.pageTitle.peopleSettings'),
   loader: async ({ context }) => {
     assertRoutePermission(context.permissions, PERMISSIONS.USER_ATTRIBUTE_VIEW)
     const { queryClient } = context
@@ -19,12 +20,16 @@ export const Route = createFileRoute('/admin/settings/people')({
 })
 
 function PeoplePage() {
+  const intl = useIntl()
   const attrsQuery = useSuspenseQuery(adminQueries.userAttributes())
 
   return (
     <SettingsPage
       page="/admin/settings/people"
-      description="Custom attributes on users, used in segments."
+      description={intl.formatMessage({
+        id: 'admin.settings.people.description',
+        defaultMessage: 'Custom attributes on users, used in segments.',
+      })}
     >
       <UserAttributesList initialAttributes={attrsQuery.data} />
     </SettingsPage>

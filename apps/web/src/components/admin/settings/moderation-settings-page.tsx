@@ -1,4 +1,5 @@
 import { useState, useTransition } from 'react'
+import { useIntl } from 'react-intl'
 import { useRouter } from '@tanstack/react-router'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { settingsQueries } from '@/lib/client/queries/settings'
@@ -19,6 +20,7 @@ import {
 type ModerationInput = Parameters<ReturnType<typeof useUpdateModerationDefault>['mutateAsync']>[0]
 
 export function ModerationPage() {
+  const intl = useIntl()
   const router = useRouter()
   const updateModerationDefault = useUpdateModerationDefault()
   const portalConfigQuery = useSuspenseQuery(settingsQueries.portalConfig())
@@ -77,18 +79,30 @@ export function ModerationPage() {
         <Button asChild variant="outline" size="sm">
           <Link to="/admin/feedback/moderation">
             <ArrowTopRightOnSquareIcon className="size-4" />
-            Open queue
+            {intl.formatMessage({
+              id: 'admin.settings.moderation.openQueue',
+              defaultMessage: 'Open queue',
+            })}
           </Link>
         </Button>
       }
     >
       <SettingsCard
-        title="Approval"
-        description="Posts from these groups wait for review before they publish."
+        title={intl.formatMessage({
+          id: 'admin.settings.moderation.approval.title',
+          defaultMessage: 'Approval',
+        })}
+        description={intl.formatMessage({
+          id: 'admin.settings.moderation.approval.description',
+          defaultMessage: 'Posts from these groups wait for review before they publish.',
+        })}
       >
         <SettingRows>
           <SettingRow
-            label="Anonymous posts"
+            label={intl.formatMessage({
+              id: 'admin.settings.moderation.anonymous',
+              defaultMessage: 'Anonymous posts',
+            })}
             htmlFor="moderate-anonymous"
             disabled={disabled}
             control={
@@ -101,7 +115,10 @@ export function ModerationPage() {
             }
           />
           <SettingRow
-            label="Signed-in posts"
+            label={intl.formatMessage({
+              id: 'admin.settings.moderation.signedIn',
+              defaultMessage: 'Signed-in posts',
+            })}
             htmlFor="moderate-authenticated"
             disabled={disabled}
             control={
@@ -117,12 +134,21 @@ export function ModerationPage() {
       </SettingsCard>
 
       <SettingsCard
-        title="Content review"
-        description="Hold posts and comments for review when they contain:"
+        title={intl.formatMessage({
+          id: 'admin.settings.moderation.content.title',
+          defaultMessage: 'Content review',
+        })}
+        description={intl.formatMessage({
+          id: 'admin.settings.moderation.content.description',
+          defaultMessage: 'Hold posts and comments for review when they contain:',
+        })}
       >
         <SettingRows>
           <SettingRow
-            label="Images"
+            label={intl.formatMessage({
+              id: 'admin.settings.moderation.images',
+              defaultMessage: 'Images',
+            })}
             htmlFor="moderate-images"
             disabled={disabled}
             control={
@@ -135,7 +161,10 @@ export function ModerationPage() {
             }
           />
           <SettingRow
-            label="Links"
+            label={intl.formatMessage({
+              id: 'admin.settings.moderation.links',
+              defaultMessage: 'Links',
+            })}
             htmlFor="moderate-links"
             disabled={disabled}
             control={

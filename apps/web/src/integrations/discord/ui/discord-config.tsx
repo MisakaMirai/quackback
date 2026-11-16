@@ -1,7 +1,9 @@
 import { useMemo, useState } from 'react'
 import { ArrowPathIcon, HashtagIcon, LockClosedIcon } from '@heroicons/react/24/solid'
+import type { IntlShape } from 'react-intl'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { useUpdateIntegration } from '@/lib/client/mutations'
 import { adminQueries } from '@/lib/client/queries/admin'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -29,28 +31,57 @@ interface DiscordConfigProps {
   enabled: boolean
 }
 
-const DISCORD_EVENT_CONFIG: EventConfig[] = [
-  {
-    id: 'post.created',
-    label: 'New post submitted',
-    shortLabel: 'New post',
-    description: 'When someone submits a new post',
-  },
-  {
-    id: 'post.status_changed',
-    label: 'Post status changed',
-    shortLabel: 'Status',
-    description: "When a post's status is updated",
-  },
-  {
-    id: 'comment.created',
-    label: 'New comment posted',
-    shortLabel: 'Comment',
-    description: 'When someone comments on a post',
-  },
-]
+function discordEventConfig(intl: IntlShape): EventConfig[] {
+  return [
+    {
+      id: 'post.created',
+      label: intl.formatMessage({
+        id: 'admin.integrations.config.eventNewPost',
+        defaultMessage: 'New post submitted',
+      }),
+      shortLabel: intl.formatMessage({
+        id: 'admin.integrations.config.eventNewPostShort',
+        defaultMessage: 'New post',
+      }),
+      description: intl.formatMessage({
+        id: 'admin.integrations.config.eventNewPostDescription',
+        defaultMessage: 'When someone submits a new post',
+      }),
+    },
+    {
+      id: 'post.status_changed',
+      label: intl.formatMessage({
+        id: 'admin.integrations.config.eventPostStatusChanged',
+        defaultMessage: 'Post status changed',
+      }),
+      shortLabel: intl.formatMessage({
+        id: 'admin.integrations.config.eventPostStatusChangedShort',
+        defaultMessage: 'Status',
+      }),
+      description: intl.formatMessage({
+        id: 'admin.integrations.config.eventPostStatusChangedDescription',
+        defaultMessage: "When a post's status is updated",
+      }),
+    },
+    {
+      id: 'comment.created',
+      label: intl.formatMessage({
+        id: 'admin.integrations.config.eventNewCommentPosted',
+        defaultMessage: 'New comment posted',
+      }),
+      shortLabel: intl.formatMessage({
+        id: 'admin.integrations.config.eventNewCommentPostedShort',
+        defaultMessage: 'Comment',
+      }),
+      description: intl.formatMessage({
+        id: 'admin.integrations.config.eventNewCommentPostedDescription',
+        defaultMessage: 'When someone comments on a post',
+      }),
+    },
+  ]
+}
 
-function useDiscordChannels() {
+function useDiscordChannels(intl: IntlShape) {
   const queryClient = useQueryClient()
   const query = useQuery({
     queryKey: ['discord-channels'],
@@ -66,7 +97,12 @@ function useDiscordChannels() {
   return {
     channels: query.data ?? [],
     loading: query.isLoading || query.isFetching,
-    error: query.isError ? 'Failed to load channels. Please try again.' : null,
+    error: query.isError
+      ? intl.formatMessage({
+          id: 'admin.integrations.config.loadChannelsFailed',
+          defaultMessage: 'Failed to load channels. Please try again.',
+        })
+      : null,
     refresh,
   }
 }
@@ -78,19 +114,21 @@ export function DiscordConfig({
   notificationChannels: initialChannels,
   enabled,
 }: DiscordConfigProps) {
+  const intl = useOptionalIntl()
   const updateMutation = useUpdateIntegration()
   const {
     channels,
     loading: loadingChannels,
     error: channelError,
     refresh: refreshChannels,
-  } = useDiscordChannels()
+  } = useDiscordChannels(intl)
   const boardsQuery = useQuery(adminQueries.boards())
   const boards = useMemo(
     () => (boardsQuery.data ?? []).map((b) => ({ id: b.id, name: b.name })),
     [boardsQuery.data]
   )
   const [integrationEnabled, setIntegrationEnabled] = useState(enabled)
+  const events = useMemo(() => discordEventConfig(intl), [intl])
 
   // Use notificationChannels if provided; otherwise synthesize from legacy
   // single-channel config so the user can keep editing without re-adding.
@@ -100,14 +138,14 @@ export function DiscordConfig({
     return [
       {
         channelId: initialConfig.channelId,
-        events: DISCORD_EVENT_CONFIG.map((e) => ({
+        events: events.map((e) => ({
           eventType: e.id,
           enabled: initialEventMappings.find((m) => m.eventType === e.id)?.enabled ?? false,
         })),
         boardIds: null,
       },
     ]
-  }, [initialChannels, initialConfig.channelId, initialEventMappings])
+  }, [initialChannels, initialConfig.channelId, initialEventMappings, events])
 
   const handleEnabledChange = (checked: boolean) => {
     setIntegrationEnabled(checked)
@@ -121,10 +159,16 @@ export function DiscordConfig({
       <div className="flex items-center justify-between">
         <div>
           <Label htmlFor="enabled-toggle" className="text-base font-medium">
-            Notifications enabled
+            {intl.formatMessage({
+              id: 'admin.integrations.config.notificationsEnabled',
+              defaultMessage: 'Notifications enabled',
+            })}
           </Label>
           <p className="text-xs text-muted-foreground">
-            Turn off to pause all Discord notifications
+            {intl.formatMessage({
+              id: 'admin.integrations.discord.disableHint',
+              defaultMessage: 'Turn off to pause all Discord notifications',
+            })}
           </p>
         </div>
         <Switch
@@ -139,16 +183,24 @@ export function DiscordConfig({
 
       <div className="space-y-3">
         <div>
-          <Label className="text-base font-medium">Notification routing</Label>
+          <Label className="text-base font-medium">
+            {intl.formatMessage({
+              id: 'admin.integrations.config.notificationRouting',
+              defaultMessage: 'Notification routing',
+            })}
+          </Label>
           <p className="text-xs text-muted-foreground">
-            Choose which events reach each Discord channel
+            {intl.formatMessage({
+              id: 'admin.integrations.discord.routingHint',
+              defaultMessage: 'Choose which events reach each Discord channel',
+            })}
           </p>
         </div>
 
         <NotificationChannelRouter<DiscordChannel>
           integrationId={integrationId}
           enabled={integrationEnabled}
-          events={DISCORD_EVENT_CONFIG}
+          events={events}
           channels={channels}
           notificationChannels={notificationChannels}
           boards={boards}
@@ -165,13 +217,22 @@ export function DiscordConfig({
       {saving && (
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <ArrowPathIcon className="h-4 w-4 animate-spin" />
-          <span>Saving...</span>
+          <span>
+            {intl.formatMessage({
+              id: 'admin.integrations.config.saving',
+              defaultMessage: 'Saving...',
+            })}
+          </span>
         </div>
       )}
 
       {updateMutation.isError && (
         <div className="text-sm text-destructive">
-          {updateMutation.error?.message || 'Failed to save changes'}
+          {updateMutation.error?.message ||
+            intl.formatMessage({
+              id: 'admin.integrations.config.saveFailed',
+              defaultMessage: 'Failed to save changes',
+            })}
         </div>
       )}
     </div>

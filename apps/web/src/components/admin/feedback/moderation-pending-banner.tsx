@@ -2,14 +2,22 @@ import { Link } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import { ShieldCheckIcon } from '@heroicons/react/24/solid'
 import { ArrowRightIcon } from '@heroicons/react/24/outline'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { adminQueries } from '@/lib/client/queries/admin'
 
 export function ModerationPendingBanner() {
+  const intl = useOptionalIntl()
   const { data } = useQuery(adminQueries.moderationStatus())
   const pendingCount = data?.pendingCount ?? 0
   if (pendingCount <= 0) return null
 
-  const label = `${pendingCount} ${pendingCount === 1 ? 'item is' : 'items are'} pending moderation`
+  const label = intl.formatMessage(
+    {
+      id: 'admin.feedback.moderation.pending',
+      defaultMessage: '{count, plural, one {# item is} other {# items are}} pending moderation',
+    },
+    { count: pendingCount }
+  )
 
   return (
     <div className="max-w-5xl w-full px-3 pt-3">

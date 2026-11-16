@@ -10,6 +10,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { useUpdateIntegration } from '@/lib/client/mutations'
 import { OnDeleteConfig } from '@/components/admin/settings/integrations/on-delete-config'
 import { fetchMondayBoardsFn, type MondayBoard } from '@/integrations/monday/server/functions'
@@ -30,8 +31,14 @@ interface MondayConfigProps {
 const EVENT_CONFIG = [
   {
     id: 'post.created' as const,
-    label: 'New feedback submitted',
-    description: 'Create Monday.com items when users submit new feedback',
+    label: {
+      id: 'admin.integrations.config.eventNewFeedback',
+      defaultMessage: 'New feedback submitted',
+    },
+    description: {
+      id: 'admin.integrations.monday.eventNewFeedbackDescription',
+      defaultMessage: 'Create Monday.com items when users submit new feedback',
+    },
   },
 ]
 
@@ -41,6 +48,7 @@ export function MondayConfig({
   initialEventMappings,
   enabled,
 }: MondayConfigProps) {
+  const intl = useOptionalIntl()
   const updateMutation = useUpdateIntegration()
   const [boards, setBoards] = useState<MondayBoard[]>([])
   const [loadingBoards, setLoadingBoards] = useState(false)
@@ -63,11 +71,16 @@ export function MondayConfig({
       const result = await fetchMondayBoardsFn()
       setBoards(result)
     } catch {
-      setBoardError('Failed to load boards. Please try again.')
+      setBoardError(
+        intl.formatMessage({
+          id: 'admin.integrations.config.loadBoardsFailed',
+          defaultMessage: 'Failed to load boards. Please try again.',
+        })
+      )
     } finally {
       setLoadingBoards(false)
     }
-  }, [integrationId])
+  }, [intl])
 
   useEffect(() => {
     fetchBoards()
@@ -102,10 +115,16 @@ export function MondayConfig({
       <div className="flex items-center justify-between">
         <div>
           <Label htmlFor="enabled-toggle" className="text-base font-medium">
-            Integration enabled
+            {intl.formatMessage({
+              id: 'admin.integrations.config.enabled',
+              defaultMessage: 'Integration enabled',
+            })}
           </Label>
           <p className="text-xs text-muted-foreground">
-            Turn off to pause all Monday.com synchronization
+            {intl.formatMessage({
+              id: 'admin.integrations.monday.disableHint',
+              defaultMessage: 'Turn off to pause all Monday.com synchronization',
+            })}
           </p>
         </div>
         <Switch
@@ -118,7 +137,12 @@ export function MondayConfig({
 
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <Label htmlFor="board-select">Monday.com Board</Label>
+          <Label htmlFor="board-select">
+            {intl.formatMessage({
+              id: 'admin.integrations.monday.boardLabel',
+              defaultMessage: 'Monday.com Board',
+            })}
+          </Label>
           <Button
             variant="ghost"
             size="sm"
@@ -127,7 +151,10 @@ export function MondayConfig({
             className="h-8 gap-1.5 text-xs"
           >
             <ArrowPathIcon className={`h-3.5 w-3.5 ${loadingBoards ? 'animate-spin' : ''}`} />
-            Refresh
+            {intl.formatMessage({
+              id: 'admin.integrations.config.refresh',
+              defaultMessage: 'Refresh',
+            })}
           </Button>
         </div>
         {boardError ? (
@@ -142,10 +169,20 @@ export function MondayConfig({
               {loadingBoards ? (
                 <div className="flex items-center gap-2">
                   <ArrowPathIcon className="h-4 w-4 animate-spin" />
-                  <span>Loading boards...</span>
+                  <span>
+                    {intl.formatMessage({
+                      id: 'admin.integrations.config.loadingBoards',
+                      defaultMessage: 'Loading boards...',
+                    })}
+                  </span>
                 </div>
               ) : (
-                <SelectValue placeholder="Select a board" />
+                <SelectValue
+                  placeholder={intl.formatMessage({
+                    id: 'admin.integrations.config.selectBoard',
+                    defaultMessage: 'Select a board',
+                  })}
+                />
               )}
             </SelectTrigger>
             <SelectContent>
@@ -158,14 +195,25 @@ export function MondayConfig({
           </Select>
         )}
         <p className="text-xs text-muted-foreground">
-          Items will be created in this board when new feedback is submitted.
+          {intl.formatMessage({
+            id: 'admin.integrations.monday.boardHint',
+            defaultMessage: 'Items will be created in this board when new feedback is submitted.',
+          })}
         </p>
       </div>
 
       <div className="space-y-3">
-        <Label className="text-base font-medium">Events</Label>
+        <Label className="text-base font-medium">
+          {intl.formatMessage({
+            id: 'admin.integrations.config.events',
+            defaultMessage: 'Events',
+          })}
+        </Label>
         <p className="text-xs text-muted-foreground">
-          Choose which events trigger Monday.com actions
+          {intl.formatMessage({
+            id: 'admin.integrations.monday.chooseEvents',
+            defaultMessage: 'Choose which events trigger Monday.com actions',
+          })}
         </p>
         <div className="space-y-3 pt-2">
           {EVENT_CONFIG.map((event) => (
@@ -174,8 +222,10 @@ export function MondayConfig({
               className="flex items-center justify-between rounded-lg border border-border/50 p-3"
             >
               <div>
-                <div className="font-medium text-sm">{event.label}</div>
-                <div className="text-xs text-muted-foreground">{event.description}</div>
+                <div className="font-medium text-sm">{intl.formatMessage(event.label)}</div>
+                <div className="text-xs text-muted-foreground">
+                  {intl.formatMessage(event.description)}
+                </div>
               </div>
               <Switch
                 checked={eventSettings[event.id] ?? false}
@@ -190,13 +240,22 @@ export function MondayConfig({
       {saving && (
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <ArrowPathIcon className="h-4 w-4 animate-spin" />
-          <span>Saving...</span>
+          <span>
+            {intl.formatMessage({
+              id: 'admin.integrations.config.saving',
+              defaultMessage: 'Saving...',
+            })}
+          </span>
         </div>
       )}
 
       {updateMutation.isError && (
         <div className="text-sm text-destructive">
-          {updateMutation.error?.message || 'Failed to save changes'}
+          {updateMutation.error?.message ||
+            intl.formatMessage({
+              id: 'admin.integrations.config.saveFailed',
+              defaultMessage: 'Failed to save changes',
+            })}
         </div>
       )}
 

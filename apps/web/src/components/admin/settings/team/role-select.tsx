@@ -22,13 +22,37 @@ const ADMIN_TIER_KEYS: ReadonlySet<string> = new Set([SYSTEM_ROLES.OWNER, SYSTEM
  * role the person holds now, which the list may not otherwise carry.
  */
 export function useRoleChoice(value: string, held?: RoleChoice): RoleChoice {
+  const intl = useIntl()
   const { data } = useQuery(settingsQueries.roles())
   if (held && value === roleValueOf(held)) return held
-  if (value === 'admin') return { role: 'admin', label: 'Admin' }
-  if (value === 'member') return { role: 'member', label: 'Member' }
+  if (value === 'admin')
+    return {
+      role: 'admin',
+      label: intl.formatMessage({
+        id: 'admin.people.invite.admin',
+        defaultMessage: 'Admin',
+      }),
+    }
+  if (value === 'member')
+    return {
+      role: 'member',
+      label: intl.formatMessage({
+        id: 'admin.people.invite.member',
+        defaultMessage: 'Member',
+      }),
+    }
   const found = (data?.roles ?? []).find((r) => r.id === value)
   const tier = found?.isSystem && ADMIN_TIER_KEYS.has(found.key) ? 'admin' : 'member'
-  return { role: tier, roleId: value, label: found?.name ?? 'Member' }
+  return {
+    role: tier,
+    roleId: value,
+    label:
+      found?.name ??
+      intl.formatMessage({
+        id: 'admin.people.invite.member',
+        defaultMessage: 'Member',
+      }),
+  }
 }
 
 /** The select's value for a role the person holds. */
@@ -82,10 +106,23 @@ export function RoleSelect({
       </SelectTrigger>
       <SelectContent>
         <SelectGroup>
-          <SelectLabel>Presets</SelectLabel>
-          <SelectItem value="member">Member - Can view and create feedback</SelectItem>
+          <SelectLabel>
+            {intl.formatMessage({
+              id: 'admin.settings.security.idp.roles.presets',
+              defaultMessage: 'Presets',
+            })}
+          </SelectLabel>
+          <SelectItem value="member">
+            {intl.formatMessage({
+              id: 'admin.settings.team.roleSelect.member',
+              defaultMessage: 'Member - Can view and create feedback',
+            })}
+          </SelectItem>
           <SelectItem value="admin" disabled={!canGrantAdmin}>
-            Admin - Can manage settings and members
+            {intl.formatMessage({
+              id: 'admin.settings.team.roleSelect.admin',
+              defaultMessage: 'Admin - Can manage settings and members',
+            })}
           </SelectItem>
           {supportLead && (
             <SelectItem value={supportLead.id}>
@@ -100,7 +137,12 @@ export function RoleSelect({
         </SelectGroup>
         {customRoles.length > 0 && (
           <SelectGroup>
-            <SelectLabel>Custom</SelectLabel>
+            <SelectLabel>
+              {intl.formatMessage({
+                id: 'admin.settings.security.idp.table.custom',
+                defaultMessage: 'Custom',
+              })}
+            </SelectLabel>
             {customRoles.map((r) => (
               <SelectItem key={r.id} value={r.id}>
                 {r.name}
@@ -115,15 +157,27 @@ export function RoleSelect({
 
 /** The one-line consequence under the select, and a refused grant from the server. */
 export function RoleNotes({ role, refused }: { role: RoleChoice; refused: boolean }) {
+  const intl = useIntl()
   if (refused) {
     return (
       <p role="alert" className="text-xs text-destructive">
-        You can only give a role with no more access than your own. Choose another role.
+        {intl.formatMessage({
+          id: 'admin.settings.team.roleSelect.ceilingRefused',
+          defaultMessage:
+            'You can only give a role with no more access than your own. Choose another role.',
+        })}
       </p>
     )
   }
   if (role.role === 'admin') {
-    return <p className="text-xs text-warning">Admins can change settings, members and sign-in.</p>
+    return (
+      <p className="text-xs text-warning">
+        {intl.formatMessage({
+          id: 'admin.settings.team.roleSelect.adminNote',
+          defaultMessage: 'Admins can change settings, members and sign-in.',
+        })}
+      </p>
+    )
   }
   return null
 }

@@ -5,6 +5,7 @@
  * (on use, not on send), then inserts the rendered text and toasts what ran.
  */
 import { memo, useState } from 'react'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { ChatBubbleBottomCenterTextIcon } from '@heroicons/react/24/solid'
@@ -38,6 +39,7 @@ export const MacroPicker = memo(function MacroPicker({
   open?: boolean
   onOpenChange?: (open: boolean) => void
 }) {
+  const intl = useOptionalIntl()
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false)
   const open = controlledOpen ?? uncontrolledOpen
   const setOpen = (next: boolean) => {
@@ -81,9 +83,19 @@ export const MacroPicker = memo(function MacroPicker({
       </PopoverTrigger>
       <PopoverContent align="start" className="w-80 p-0">
         <Command>
-          <CommandInput placeholder="Search macros…" />
+          <CommandInput
+            placeholder={intl.formatMessage({
+              id: 'inbox.macros.search',
+              defaultMessage: 'Search macros…',
+            })}
+          />
           <CommandList>
-            <CommandEmpty>No macros found.</CommandEmpty>
+            <CommandEmpty>
+              {intl.formatMessage({
+                id: 'inbox.macros.empty',
+                defaultMessage: 'No macros found.',
+              })}
+            </CommandEmpty>
             {macros.map((m) => (
               <CommandItem
                 key={m.id}

@@ -18,8 +18,10 @@ import {
   type MessengerTranslations,
 } from '@/lib/shared/messenger/translations'
 import { INLINE_LINK } from '@/components/admin/settings/inline-link'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 
 export function MessengerChannelPage() {
+  const intl = useOptionalIntl()
   const router = useRouter()
   const updateMessengerConfig = useUpdateMessengerConfig()
   const updatePortalConfig = useUpdatePortalConfig()
@@ -63,17 +65,42 @@ export function MessengerChannelPage() {
   return (
     <SettingsPage
       page="/admin/settings/channels/messenger"
-      description="Live chat on the portal."
+      description={intl.formatMessage({
+        id: 'admin.settings.messenger.pageDescription',
+        defaultMessage: 'Live chat on the portal.',
+      })}
       crumbs={[
         moduleCrumb('/admin/settings/support'),
-        { label: 'Channels', to: '/admin/settings/channels' },
+        {
+          label: intl.formatMessage({
+            id: 'admin.settings.channels.crumb',
+            defaultMessage: 'Channels',
+          }),
+          to: '/admin/settings/channels',
+        },
       ]}
     >
-      <SettingsCard title="Surfaces" description="Where customers can start conversations.">
+      <SettingsCard
+        title={intl.formatMessage({
+          id: 'admin.settings.messenger.surfacesTitle',
+          defaultMessage: 'Surfaces',
+        })}
+        description={intl.formatMessage({
+          id: 'admin.settings.messenger.surfacesDescription',
+          defaultMessage: 'Where customers can start conversations.',
+        })}
+      >
         <SettingRows>
           <SettingRow
-            label="Portal chats"
-            description="Let signed-in customers start new conversations from the portal's Support tab."
+            label={intl.formatMessage({
+              id: 'admin.settings.messenger.portalChats',
+              defaultMessage: 'Portal chats',
+            })}
+            description={intl.formatMessage({
+              id: 'admin.settings.messenger.portalChatsDescription',
+              defaultMessage:
+                "Let signed-in customers start new conversations from the portal's Support tab.",
+            })}
             htmlFor="portal-support-enabled"
             control={
               <Switch
@@ -98,31 +125,59 @@ export function MessengerChannelPage() {
         </SettingRows>
       </SettingsCard>
 
-      <SettingsCard title="Messaging" description="Greeting and team name shown to visitors.">
+      <SettingsCard
+        title={intl.formatMessage({
+          id: 'admin.settings.messenger.messagingTitle',
+          defaultMessage: 'Messaging',
+        })}
+        description={intl.formatMessage({
+          id: 'admin.settings.messenger.messagingDescription',
+          defaultMessage: 'Greeting and team name shown to visitors.',
+        })}
+      >
         <div className="space-y-5">
           <div className="space-y-1.5">
-            <Label htmlFor="messenger-team-name">Team name</Label>
+            <Label htmlFor="messenger-team-name">
+              {intl.formatMessage({
+                id: 'admin.settings.messenger.teamName',
+                defaultMessage: 'Team name',
+              })}
+            </Label>
             <Input
               id="messenger-team-name"
               value={teamName}
               maxLength={80}
-              placeholder="Support"
+              placeholder={intl.formatMessage({
+                id: 'admin.settings.teams.dialog.namePlaceholder',
+                defaultMessage: 'Support',
+              })}
               onChange={(e) => setTeamName(e.target.value)}
               onBlur={() => persist('teamName', { messenger: { teamName: teamName.trim() } })}
               disabled={isBusy}
             />
             <p className="text-xs text-muted-foreground">
-              Shown in the messenger header. Falls back to the workspace name.
+              {intl.formatMessage({
+                id: 'admin.settings.messenger.teamNameHint',
+                defaultMessage: 'Shown in the messenger header. Falls back to the workspace name.',
+              })}
             </p>
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="messenger-welcome">Welcome message</Label>
+            <Label htmlFor="messenger-welcome">
+              {intl.formatMessage({
+                id: 'admin.settings.messenger.welcomeMessage',
+                defaultMessage: 'Welcome message',
+              })}
+            </Label>
             <Textarea
               id="messenger-welcome"
               value={welcomeMessage}
               maxLength={500}
               rows={2}
-              placeholder="Hi! How can we help you today?"
+              placeholder={intl.formatMessage({
+                id: 'admin.settings.messenger.welcomePlaceholder',
+                defaultMessage: 'Hi! How can we help you today?',
+              })}
               onChange={(e) => setWelcomeMessage(e.target.value)}
               onBlur={() =>
                 persist('welcomeMessage', { messenger: { welcomeMessage: welcomeMessage.trim() } })
@@ -130,19 +185,38 @@ export function MessengerChannelPage() {
               disabled={isBusy}
             />
             <p className="text-xs text-muted-foreground">
-              Greets a customer opening a new conversation.{' '}
-              <code className="rounded bg-muted px-1 py-0.5 text-[11px]">{'{{first_name}}'}</code>{' '}
-              inserts their name.
+              {intl.formatMessage(
+                {
+                  id: 'admin.settings.messenger.welcomeHint',
+                  defaultMessage:
+                    'Greets a customer opening a new conversation. <code>{token}</code> inserts their name.',
+                },
+                {
+                  token: '{{first_name}}',
+                  code: (chunks) => (
+                    <code className="rounded bg-muted px-1 py-0.5 text-[11px]">{chunks}</code>
+                  ),
+                }
+              )}
             </p>
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="messenger-offline">Offline message</Label>
+            <Label htmlFor="messenger-offline">
+              {intl.formatMessage({
+                id: 'admin.settings.messenger.offlineMessage',
+                defaultMessage: 'Offline message',
+              })}
+            </Label>
             <Textarea
               id="messenger-offline"
               value={offlineMessage}
               maxLength={500}
               rows={2}
-              placeholder="We're away right now. Leave a message and we'll get back to you by email."
+              placeholder={intl.formatMessage({
+                id: 'admin.settings.messenger.offlinePlaceholder',
+                defaultMessage:
+                  "We're away right now. Leave a message and we'll get back to you by email.",
+              })}
               onChange={(e) => setOfflineMessage(e.target.value)}
               onBlur={() =>
                 persist('offlineMessage', { messenger: { offlineMessage: offlineMessage.trim() } })
@@ -150,11 +224,20 @@ export function MessengerChannelPage() {
               disabled={isBusy}
             />
             <p className="text-xs text-muted-foreground">
-              Shown outside{' '}
-              <Link to="/admin/settings/office-hours" className={INLINE_LINK}>
-                office hours
-              </Link>{' '}
-              or when nobody is online.
+              {intl.formatMessage(
+                {
+                  id: 'admin.settings.messenger.offlineHint',
+                  defaultMessage:
+                    'Shown outside <link>office hours</link> or when nobody is online.',
+                },
+                {
+                  link: (chunks) => (
+                    <Link to="/admin/settings/office-hours" className={INLINE_LINK}>
+                      {chunks}
+                    </Link>
+                  ),
+                }
+              )}
             </p>
           </div>
           <MessengerTranslations
@@ -171,11 +254,22 @@ export function MessengerChannelPage() {
         </div>
       </SettingsCard>
 
-      <SettingsCard title="Closed conversations">
+      <SettingsCard
+        title={intl.formatMessage({
+          id: 'admin.settings.messenger.closedConversations',
+          defaultMessage: 'Closed conversations',
+        })}
+      >
         <SettingRows>
           <SettingRow
-            label="Reopen when a visitor replies"
-            description="Off starts a new conversation instead. Email replies always reopen."
+            label={intl.formatMessage({
+              id: 'admin.settings.messenger.reopenOnReply',
+              defaultMessage: 'Reopen when a visitor replies',
+            })}
+            description={intl.formatMessage({
+              id: 'admin.settings.messenger.reopenOnReplyDescription',
+              defaultMessage: 'Off starts a new conversation instead. Email replies always reopen.',
+            })}
             htmlFor="reopen-on-reply"
             control={
               <Switch
@@ -212,6 +306,7 @@ function MessengerTranslations({
   disabled: boolean
   onCommit: (next: MessengerTranslations) => void
 }) {
+  const intl = useOptionalIntl()
   const isDefault = selectedLocale === 'en'
   const entry = translations[selectedLocale] ?? {}
 
@@ -230,7 +325,12 @@ function MessengerTranslations({
 
   return (
     <div className="border-t border-border/40 pt-4 space-y-3">
-      <span className="text-sm font-medium">Translations</span>
+      <span className="text-sm font-medium">
+        {intl.formatMessage({
+          id: 'admin.settings.messenger.translations',
+          defaultMessage: 'Translations',
+        })}
+      </span>
       <div className="flex flex-wrap gap-1.5">
         {SUPPORTED_LOCALES.map((locale) => (
           <button
@@ -249,31 +349,53 @@ function MessengerTranslations({
           </button>
         ))}
       </div>
-      <p className="text-xs text-muted-foreground">Welcome and offline messages per locale.</p>
+      <p className="text-xs text-muted-foreground">
+        {intl.formatMessage({
+          id: 'admin.settings.messenger.translationsHint',
+          defaultMessage: 'Welcome and offline messages per locale.',
+        })}
+      </p>
       {!isDefault && (
         <div className="space-y-3">
           <div className="space-y-1.5">
-            <Label htmlFor="messenger-welcome-locale">Welcome message</Label>
+            <Label htmlFor="messenger-welcome-locale">
+              {intl.formatMessage({
+                id: 'admin.settings.messenger.welcomeMessage',
+                defaultMessage: 'Welcome message',
+              })}
+            </Label>
             <Textarea
               id="messenger-welcome-locale"
               defaultValue={entry.welcomeMessage ?? ''}
               key={`${selectedLocale}-welcome`}
               maxLength={500}
               rows={2}
-              placeholder="Hi! How can we help you today?"
+              placeholder={intl.formatMessage({
+                id: 'admin.settings.messenger.welcomePlaceholder',
+                defaultMessage: 'Hi! How can we help you today?',
+              })}
               disabled={disabled}
               onBlur={(e) => commitField('welcomeMessage', e.target.value)}
             />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="messenger-offline-locale">Offline message</Label>
+            <Label htmlFor="messenger-offline-locale">
+              {intl.formatMessage({
+                id: 'admin.settings.messenger.offlineMessage',
+                defaultMessage: 'Offline message',
+              })}
+            </Label>
             <Textarea
               id="messenger-offline-locale"
               defaultValue={entry.offlineMessage ?? ''}
               key={`${selectedLocale}-offline`}
               maxLength={500}
               rows={2}
-              placeholder="We're away right now. Leave a message and we'll get back to you by email."
+              placeholder={intl.formatMessage({
+                id: 'admin.settings.messenger.offlinePlaceholder',
+                defaultMessage:
+                  "We're away right now. Leave a message and we'll get back to you by email.",
+              })}
               disabled={disabled}
               onBlur={(e) => commitField('offlineMessage', e.target.value)}
             />

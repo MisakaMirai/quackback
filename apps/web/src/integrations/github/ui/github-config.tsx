@@ -21,6 +21,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { MENU_LABEL } from '@/components/ui/menu'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { useUpdateIntegration } from '@/lib/client/mutations'
 import {
   fetchGitHubReposFn,
@@ -47,8 +48,14 @@ interface GitHubConfigProps {
 const EVENT_CONFIG = [
   {
     id: 'post.created' as const,
-    label: 'Create issue from new feedback',
-    description: 'Automatically create a GitHub issue when new feedback is submitted.',
+    label: {
+      id: 'admin.integrations.config.eventCreateIssue',
+      defaultMessage: 'Create issue from new feedback',
+    },
+    description: {
+      id: 'admin.integrations.github.eventCreateIssueDescription',
+      defaultMessage: 'Automatically create a GitHub issue when new feedback is submitted.',
+    },
   },
 ]
 
@@ -63,6 +70,7 @@ export function GitHubConfig({
   initialEventMappings,
   enabled,
 }: GitHubConfigProps) {
+  const intl = useOptionalIntl()
   const updateMutation = useUpdateIntegration()
   const [repos, setRepos] = useState<GitHubRepo[]>([])
   const [loadingRepos, setLoadingRepos] = useState(false)
@@ -90,11 +98,16 @@ export function GitHubConfig({
       const result = await fetchGitHubReposFn()
       setRepos(result)
     } catch {
-      setRepoError('Failed to load repositories. Please try again.')
+      setRepoError(
+        intl.formatMessage({
+          id: 'admin.integrations.config.loadRepositoriesFailed',
+          defaultMessage: 'Failed to load repositories. Please try again.',
+        })
+      )
     } finally {
       setLoadingRepos(false)
     }
-  }, [])
+  }, [intl])
 
   useEffect(() => {
     fetchRepos()
@@ -126,27 +139,56 @@ export function GitHubConfig({
   const inbox = inboxQuery.data
   const inboxAttention = !!inbox?.connected && (!!inbox.lastError || inbox.status !== 'active')
   const inboxBadge = !inbox?.connected
-    ? { label: 'Set up', variant: 'secondary' as const }
+    ? {
+        label: intl.formatMessage({
+          id: 'admin.integrations.github.badgeSetUp',
+          defaultMessage: 'Set up',
+        }),
+        variant: 'secondary' as const,
+      }
     : inboxAttention
-      ? { label: 'Attention', variant: 'destructive' as const }
+      ? {
+          label: intl.formatMessage({
+            id: 'admin.integrations.github.badgeAttention',
+            defaultMessage: 'Attention',
+          }),
+          variant: 'destructive' as const,
+        }
       : inbox.inboxEnabled
-        ? { label: 'On', variant: 'default' as const }
-        : { label: 'Off', variant: 'secondary' as const }
+        ? {
+            label: intl.formatMessage({ id: 'common.state.on', defaultMessage: 'On' }),
+            variant: 'default' as const,
+          }
+        : {
+            label: intl.formatMessage({ id: 'common.state.off', defaultMessage: 'Off' }),
+            variant: 'secondary' as const,
+          }
 
   return (
     <div className="space-y-6">
       <section className="rounded-xl border border-border/50 bg-card shadow-sm overflow-hidden">
         <div className="border-b border-border/50 px-6 py-4">
-          <h2 className="text-base font-semibold">Connection</h2>
+          <h2 className="text-base font-semibold">
+            {intl.formatMessage({
+              id: 'admin.integrations.github.connection',
+              defaultMessage: 'Connection',
+            })}
+          </h2>
         </div>
         <div className="space-y-6 p-6">
           <div className="flex items-center justify-between">
             <div>
               <Label htmlFor="enabled-toggle" className="text-base font-medium">
-                Integration enabled
+                {intl.formatMessage({
+                  id: 'admin.integrations.config.enabled',
+                  defaultMessage: 'Integration enabled',
+                })}
               </Label>
               <p className="text-xs text-muted-foreground">
-                Turn off to pause all GitHub issue syncing
+                {intl.formatMessage({
+                  id: 'admin.integrations.github.disableHint',
+                  defaultMessage: 'Turn off to pause all GitHub issue syncing',
+                })}
               </p>
             </div>
             <Switch
@@ -159,7 +201,12 @@ export function GitHubConfig({
 
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label htmlFor="repo-select">Repository</Label>
+              <Label htmlFor="repo-select">
+                {intl.formatMessage({
+                  id: 'admin.integrations.config.repository',
+                  defaultMessage: 'Repository',
+                })}
+              </Label>
               <Button
                 variant="ghost"
                 size="sm"
@@ -168,7 +215,10 @@ export function GitHubConfig({
                 className="h-8 gap-1.5 text-xs"
               >
                 <ArrowPathIcon className={`h-3.5 w-3.5 ${loadingRepos ? 'animate-spin' : ''}`} />
-                Refresh
+                {intl.formatMessage({
+                  id: 'admin.integrations.config.refresh',
+                  defaultMessage: 'Refresh',
+                })}
               </Button>
             </div>
             {repoError ? (
@@ -183,10 +233,20 @@ export function GitHubConfig({
                   {loadingRepos ? (
                     <div className="flex items-center gap-2">
                       <ArrowPathIcon className="h-4 w-4 animate-spin" />
-                      <span>Loading repositories...</span>
+                      <span>
+                        {intl.formatMessage({
+                          id: 'admin.integrations.config.loadingRepositories',
+                          defaultMessage: 'Loading repositories...',
+                        })}
+                      </span>
                     </div>
                   ) : (
-                    <SelectValue placeholder="Select a repository" />
+                    <SelectValue
+                      placeholder={intl.formatMessage({
+                        id: 'admin.integrations.config.selectRepository',
+                        defaultMessage: 'Select a repository',
+                      })}
+                    />
                   )}
                 </SelectTrigger>
                 <SelectContent>
@@ -202,27 +262,44 @@ export function GitHubConfig({
               </Select>
             )}
             <p className="text-xs text-muted-foreground">
-              New feedback issues will be created in this repository.
+              {intl.formatMessage({
+                id: 'admin.integrations.github.repositoryHint',
+                defaultMessage: 'New feedback issues will be created in this repository.',
+              })}
             </p>
           </div>
 
           {saving && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <ArrowPathIcon className="h-4 w-4 animate-spin" />
-              <span>Saving...</span>
+              <span>
+                {intl.formatMessage({
+                  id: 'admin.integrations.config.saving',
+                  defaultMessage: 'Saving...',
+                })}
+              </span>
             </div>
           )}
 
           {updateMutation.isError && (
             <div className="text-sm text-destructive">
-              {updateMutation.error?.message || 'Failed to save changes'}
+              {updateMutation.error?.message ||
+                intl.formatMessage({
+                  id: 'admin.integrations.config.saveFailed',
+                  defaultMessage: 'Failed to save changes',
+                })}
             </div>
           )}
         </div>
       </section>
 
       <div className="space-y-2">
-        <span className={MENU_LABEL}>Feedback</span>
+        <span className={MENU_LABEL}>
+          {intl.formatMessage({
+            id: 'admin.integrations.github.sectionFeedback',
+            defaultMessage: 'Feedback',
+          })}
+        </span>
         <section className="overflow-hidden rounded-xl border border-border/60 bg-card">
           {EVENT_CONFIG.map((event, i) => (
             <div
@@ -232,8 +309,10 @@ export function GitHubConfig({
               }`}
             >
               <div className="pr-4">
-                <p className="text-sm font-medium">{event.label}</p>
-                <p className="mt-0.5 text-xs text-muted-foreground">{event.description}</p>
+                <p className="text-sm font-medium">{intl.formatMessage(event.label)}</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  {intl.formatMessage(event.description)}
+                </p>
               </div>
               <Switch
                 checked={eventSettings[event.id] ?? false}
@@ -261,7 +340,12 @@ export function GitHubConfig({
       </div>
 
       <div className="space-y-2">
-        <span className={MENU_LABEL}>Support</span>
+        <span className={MENU_LABEL}>
+          {intl.formatMessage({
+            id: 'admin.integrations.github.sectionSupport',
+            defaultMessage: 'Support',
+          })}
+        </span>
         <section className="overflow-hidden rounded-xl border border-border/60 bg-card">
           <Link
             to="/admin/settings/channels/github"
@@ -270,9 +354,17 @@ export function GitHubConfig({
             <div className="flex items-center gap-3 min-w-0">
               <ChatBubbleLeftRightIcon className="size-4 shrink-0 text-muted-foreground" />
               <div className="min-w-0">
-                <p className="text-sm font-medium">Inbox channel</p>
+                <p className="text-sm font-medium">
+                  {intl.formatMessage({
+                    id: 'admin.integrations.github.inboxChannel',
+                    defaultMessage: 'Inbox channel',
+                  })}
+                </p>
                 <p className="text-xs text-muted-foreground">
-                  Issues and comments as conversations. Managed in Channels.
+                  {intl.formatMessage({
+                    id: 'admin.integrations.github.inboxChannelDescription',
+                    defaultMessage: 'Issues and comments as conversations. Managed in Channels.',
+                  })}
                 </p>
               </div>
             </div>
@@ -284,9 +376,17 @@ export function GitHubConfig({
             </div>
           </Link>
           <div className="border-t border-border px-4 py-4">
-            <p className="mb-3 text-sm font-medium">Sync ticket statuses</p>
+            <p className="mb-3 text-sm font-medium">
+              {intl.formatMessage({
+                id: 'admin.integrations.github.syncTicketStatuses',
+                defaultMessage: 'Sync ticket statuses',
+              })}
+            </p>
             <p className="mb-3 text-xs text-muted-foreground">
-              Update linked issues when ticket status changes.
+              {intl.formatMessage({
+                id: 'admin.integrations.github.syncTicketStatusesHint',
+                defaultMessage: 'Update linked issues when ticket status changes.',
+              })}
             </p>
             <TicketStatusSyncConfig
               integrationId={integrationId}

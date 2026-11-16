@@ -6,7 +6,7 @@ import { RoleEditor } from '@/components/admin/settings/team/role-editor'
 import { adminPageHead } from '@/lib/client/admin-head'
 
 export const Route = createFileRoute('/admin/settings/members_/roles/new')({
-  head: adminPageHead('New role'),
+  head: adminPageHead('New role', 'admin.pageTitle.newRole'),
   // `?from=<roleId>` preselects a duplicate source (the Duplicate action).
   validateSearch: z.object({ from: z.string().optional() }),
   beforeLoad: ({ context }) => {

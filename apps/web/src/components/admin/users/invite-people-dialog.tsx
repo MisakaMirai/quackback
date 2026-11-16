@@ -1,5 +1,6 @@
 import { ArrowPathIcon } from '@heroicons/react/24/solid'
 import { Button } from '@/components/ui/button'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import {
   Dialog,
   DialogContent,
@@ -45,13 +46,23 @@ export function InvitePeopleDialog({
   onMessageChange,
   onSend,
 }: InvitePeopleDialogProps) {
+  const intl = useOptionalIntl()
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Invite users to the portal</DialogTitle>
+          <DialogTitle>
+            {intl.formatMessage({
+              id: 'admin.people.invites.dialogTitle',
+              defaultMessage: 'Invite users to the portal',
+            })}
+          </DialogTitle>
           <DialogDescription>
-            They&apos;ll get a magic link to sign in and access the portal, no password needed.
+            {intl.formatMessage({
+              id: 'admin.people.invites.dialogDescription',
+              defaultMessage:
+                "They'll get a magic link to sign in and access the portal, no password needed.",
+            })}
           </DialogDescription>
         </DialogHeader>
 
@@ -63,7 +74,12 @@ export function InvitePeopleDialog({
           className="space-y-4"
         >
           <label className="block">
-            <span className="text-sm font-medium">Email addresses</span>
+            <span className="text-sm font-medium">
+              {intl.formatMessage({
+                id: 'admin.people.invites.emailsLabel',
+                defaultMessage: 'Email addresses',
+              })}
+            </span>
             <Textarea
               value={emailsInput}
               onChange={(e) => onEmailsChange(e.target.value)}
@@ -71,26 +87,44 @@ export function InvitePeopleDialog({
               rows={4}
               className="mt-1.5 font-mono text-sm"
               disabled={sendBusy}
-              aria-label="Email addresses to invite"
+              aria-label={intl.formatMessage({
+                id: 'admin.people.invites.emailsAria',
+                defaultMessage: 'Email addresses to invite',
+              })}
               aria-invalid={!!emailError}
               autoFocus
             />
             <span className="text-xs text-muted-foreground mt-1 block">
-              Separate addresses with commas, spaces, or newlines. Up to 50 at a time.
+              {intl.formatMessage({
+                id: 'admin.people.invites.emailsHelp',
+                defaultMessage:
+                  'Separate addresses with commas, spaces, or newlines. Up to 50 at a time.',
+              })}
             </span>
           </label>
 
           <label className="block">
-            <span className="text-sm font-medium">Personal message (optional)</span>
+            <span className="text-sm font-medium">
+              {intl.formatMessage({
+                id: 'admin.people.invites.messageLabel',
+                defaultMessage: 'Personal message (optional)',
+              })}
+            </span>
             <Textarea
               value={messageInput}
               onChange={(e) => onMessageChange(e.target.value)}
-              placeholder="Hi! We'd love your feedback on the new beta."
+              placeholder={intl.formatMessage({
+                id: 'admin.people.invites.messagePlaceholder',
+                defaultMessage: "Hi! We'd love your feedback on the new beta.",
+              })}
               rows={3}
               className="mt-1.5 text-sm"
               maxLength={500}
               disabled={sendBusy}
-              aria-label="Optional personal message"
+              aria-label={intl.formatMessage({
+                id: 'admin.people.invites.messageAria',
+                defaultMessage: 'Optional personal message',
+              })}
             />
           </label>
 
@@ -108,7 +142,13 @@ export function InvitePeopleDialog({
               role="status"
             >
               <p className="font-medium">
-                {batchResults.sent} sent, {batchResults.failed.length} failed.
+                {intl.formatMessage(
+                  {
+                    id: 'admin.people.invites.batchSummary',
+                    defaultMessage: '{sent} sent, {failed} failed.',
+                  },
+                  { sent: batchResults.sent, failed: batchResults.failed.length }
+                )}
               </p>
               <ul className="mt-1 list-disc pl-4 space-y-0.5">
                 {batchResults.failed.map((f) => (
@@ -118,18 +158,25 @@ export function InvitePeopleDialog({
                 ))}
               </ul>
               <p className="mt-1.5">
-                The failed addresses have been kept in the field above. Fix them and try again.
+                {intl.formatMessage({
+                  id: 'admin.people.invites.failedHint',
+                  defaultMessage:
+                    'The failed addresses have been kept in the field above. Fix them and try again.',
+                })}
               </p>
             </div>
           )}
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
+              {intl.formatMessage({ id: 'common.cancel', defaultMessage: 'Cancel' })}
             </Button>
             <Button type="submit" disabled={sendBusy || !emailsInput.trim()}>
               {sendBusy ? <ArrowPathIcon className="mr-2 h-3 w-3 animate-spin" /> : null}
-              Send invites
+              {intl.formatMessage({
+                id: 'admin.people.invites.send',
+                defaultMessage: 'Send invites',
+              })}
             </Button>
           </DialogFooter>
         </form>

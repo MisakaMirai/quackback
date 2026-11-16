@@ -114,10 +114,13 @@ export function HelpCenterHeroSearch({ locale }: HelpCenterHeroSearchProps) {
 // ============================================================================
 
 export function HelpCenterCompactSearch() {
+  const intl = useIntl()
   return (
     <Button variant="outline" size="sm" className="gap-2 text-muted-foreground" disabled>
       <MagnifyingGlassIcon className="h-4 w-4" />
-      <span className="hidden sm:inline">Search...</span>
+      <span className="hidden sm:inline">
+        {intl.formatMessage({ id: 'portal.helpCenter.searchCompact', defaultMessage: 'Search...' })}
+      </span>
     </Button>
   )
 }

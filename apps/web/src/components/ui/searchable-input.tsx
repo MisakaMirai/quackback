@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover'
 import { Command, CommandEmpty, CommandItem, CommandList } from '@/components/ui/command'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { cn } from '@/lib/shared/utils'
 
 export interface SearchableInputOption {
@@ -76,9 +77,16 @@ export function SearchableInput({
   className,
   debounceMs = 250,
   maxHeightClassName = 'max-h-64',
-  emptyMessage = 'No matches',
-  loadingMessage = 'Loading…',
+  emptyMessage,
+  loadingMessage,
 }: SearchableInputProps) {
+  const intl = useOptionalIntl()
+  const resolvedEmptyMessage =
+    emptyMessage ??
+    intl.formatMessage({ id: 'ui.searchableInput.empty', defaultMessage: 'No matches' })
+  const resolvedLoadingMessage =
+    loadingMessage ??
+    intl.formatMessage({ id: 'ui.searchableInput.loading', defaultMessage: 'Loading…' })
   const [open, setOpen] = useState(false)
   const [options, setOptions] = useState<SearchableInputOption[]>([])
   const [loading, setLoading] = useState(false)
@@ -189,9 +197,11 @@ export function SearchableInput({
                 </CommandItem>
               ))
             ) : loading ? (
-              <div className="px-3 py-2 text-xs text-muted-foreground">{loadingMessage}</div>
+              <div className="px-3 py-2 text-xs text-muted-foreground">
+                {resolvedLoadingMessage}
+              </div>
             ) : hasFetched ? (
-              <CommandEmpty className="py-2 text-xs">{emptyMessage}</CommandEmpty>
+              <CommandEmpty className="py-2 text-xs">{resolvedEmptyMessage}</CommandEmpty>
             ) : null}
           </CommandList>
         </Command>

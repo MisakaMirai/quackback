@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/command'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Button } from '@/components/ui/button'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { cn } from '@/lib/shared/utils'
 
 export interface AutocompleteSuggestion {
@@ -53,6 +54,7 @@ export function Autocomplete({
   size = 'default',
   className,
 }: AutocompleteProps) {
+  const intl = useOptionalIntl()
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
 
@@ -86,7 +88,9 @@ export function Autocomplete({
           className={cn('justify-between font-normal', className)}
         >
           <span className={cn('truncate', !value && 'text-muted-foreground')}>
-            {value || placeholder || 'Select…'}
+            {value ||
+              placeholder ||
+              intl.formatMessage({ id: 'ui.combobox.placeholder', defaultMessage: 'Select…' })}
           </span>
           <ChevronUpDownIcon className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
@@ -97,14 +101,31 @@ export function Autocomplete({
             <CommandInput
               value={query}
               onValueChange={setQuery}
-              placeholder={searchPlaceholder ?? 'Search or type…'}
+              placeholder={
+                searchPlaceholder ??
+                intl.formatMessage({
+                  id: 'ui.autocomplete.searchPlaceholder',
+                  defaultMessage: 'Search or type…',
+                })
+              }
             />
             <CommandList>
-              <CommandEmpty>{emptyHint ?? 'No matches.'}</CommandEmpty>
+              <CommandEmpty>
+                {emptyHint ??
+                  intl.formatMessage({
+                    id: 'ui.autocomplete.empty',
+                    defaultMessage: 'No matches.',
+                  })}
+              </CommandEmpty>
               {showCreate && (
                 <CommandGroup>
                   <CommandItem value={trimmed} onSelect={() => commit(trimmed)}>
-                    <span>{`Use "${trimmed}"`}</span>
+                    <span>
+                      {intl.formatMessage(
+                        { id: 'ui.autocomplete.use', defaultMessage: 'Use "{query}"' },
+                        { query: trimmed }
+                      )}
+                    </span>
                   </CommandItem>
                 </CommandGroup>
               )}

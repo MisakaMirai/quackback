@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Badge } from '@/components/ui/badge'
 import { SegmentedControl } from '@/components/shared/segmented-control'
 import { SettingRow, SettingRows } from '@/components/admin/settings/setting-row'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { useDebouncedSave } from '@/lib/client/hooks/use-debounced-save'
 import { useUpdateBoardAccess } from '@/lib/client/mutations'
 import { settingsQueries } from '@/lib/client/queries/settings'
@@ -40,25 +41,43 @@ const AUTOSAVE_DELAY_MS = 400
 
 interface ModerationRuleMeta {
   id: ModerationAxis
-  label: string
-  sub: string
+  label: { id: string; defaultMessage: string }
+  sub: { id: string; defaultMessage: string }
 }
 
 const MOD_RULES: readonly ModerationRuleMeta[] = [
   {
     id: 'anonPosts',
-    label: 'Require approval for anonymous posts',
-    sub: 'Posts from visitors without an account wait for review before they appear.',
+    label: {
+      id: 'admin.settings.boards.moderation.rules.anonPosts.label',
+      defaultMessage: 'Require approval for anonymous posts',
+    },
+    sub: {
+      id: 'admin.settings.boards.moderation.rules.anonPosts.description',
+      defaultMessage: 'Posts from visitors without an account wait for review before they appear.',
+    },
   },
   {
     id: 'signedPosts',
-    label: 'Require approval for signed-in posts',
-    sub: 'Posts from signed-in users wait for review before they appear.',
+    label: {
+      id: 'admin.settings.boards.moderation.rules.signedPosts.label',
+      defaultMessage: 'Require approval for signed-in posts',
+    },
+    sub: {
+      id: 'admin.settings.boards.moderation.rules.signedPosts.description',
+      defaultMessage: 'Posts from signed-in users wait for review before they appear.',
+    },
   },
   {
     id: 'comments',
-    label: 'Require approval for new comments',
-    sub: 'Comments wait for review before they appear under a post.',
+    label: {
+      id: 'admin.settings.boards.moderation.rules.comments.label',
+      defaultMessage: 'Require approval for new comments',
+    },
+    sub: {
+      id: 'admin.settings.boards.moderation.rules.comments.description',
+      defaultMessage: 'Comments wait for review before they appear under a post.',
+    },
   },
 ] as const
 
@@ -76,6 +95,7 @@ interface BoardModerationFormProps {
 type ModerationShape = BoardAccess['moderation']
 
 export function BoardModerationForm({ board }: BoardModerationFormProps) {
+  const intl = useOptionalIntl()
   const mutation = useUpdateBoardAccess()
 
   // Non-suspense so the form keeps rendering when the portalConfig cache
@@ -133,19 +153,32 @@ export function BoardModerationForm({ board }: BoardModerationFormProps) {
       <div className="flex items-center gap-2 rounded-lg border border-border/50 bg-muted/30 px-3 py-2">
         <div className="flex-1 text-[13px] text-foreground/90">
           {anyOverridden ? (
-            <>
-              This board <span className="font-medium text-primary">overrides</span> some workspace
-              defaults.
-            </>
+            intl.formatMessage(
+              {
+                id: 'admin.settings.boards.moderation.overridesBanner',
+                defaultMessage: 'This board <strong>overrides</strong> some workspace defaults.',
+              },
+              {
+                strong: (chunks) => <span className="font-medium text-primary">{chunks}</span>,
+              }
+            )
           ) : (
-            <>Inheriting all workspace defaults.</>
+            <>
+              {intl.formatMessage({
+                id: 'admin.settings.boards.moderation.inheritingBanner',
+                defaultMessage: 'Inheriting all workspace defaults.',
+              })}
+            </>
           )}
         </div>
         <Link
           to="/admin/settings/moderation"
           className={`${INLINE_LINK} text-[13px] whitespace-nowrap`}
         >
-          Workspace moderation →
+          {intl.formatMessage({
+            id: 'admin.settings.boards.moderation.workspaceLink',
+            defaultMessage: 'Workspace moderation →',
+          })}
         </Link>
       </div>
 
@@ -164,11 +197,19 @@ export function BoardModerationForm({ board }: BoardModerationFormProps) {
       </SettingRows>
 
       <p className="pt-2 text-[13px] text-muted-foreground">
-        Held posts and comments appear in the{' '}
-        <Link to="/admin/feedback/moderation" className={INLINE_LINK}>
-          review queue
-        </Link>
-        .
+        {intl.formatMessage(
+          {
+            id: 'admin.settings.boards.moderation.heldNote',
+            defaultMessage: 'Held posts and comments appear in the <link>review queue</link>.',
+          },
+          {
+            link: (chunks) => (
+              <Link to="/admin/feedback/moderation" className={INLINE_LINK}>
+                {chunks}
+              </Link>
+            ),
+          }
+        )}
       </p>
     </form>
   )
@@ -184,24 +225,50 @@ interface ModerationRuleRowProps {
 }
 
 function ModerationRuleRow({ rule, value, workspaceDefault, onChange }: ModerationRuleRowProps) {
+  const intl = useOptionalIntl()
+  const label = intl.formatMessage(rule.label)
   const options: ReadonlyArray<{ value: ModerationRuleValue; label: string }> = [
-    { value: 'inherit', label: `Inherit (${workspaceDefault === 'on' ? 'On' : 'Off'})` },
-    { value: 'on', label: 'On' },
-    { value: 'off', label: 'Off' },
+    {
+      value: 'inherit',
+      label: intl.formatMessage(
+        {
+          id: 'admin.settings.boards.moderation.inheritOption',
+          defaultMessage: 'Inherit ({state})',
+        },
+        {
+          state: intl.formatMessage(
+            workspaceDefault === 'on'
+              ? { id: 'common.state.on', defaultMessage: 'On' }
+              : { id: 'common.state.off', defaultMessage: 'Off' }
+          ),
+        }
+      ),
+    },
+    {
+      value: 'on',
+      label: intl.formatMessage({ id: 'common.state.on', defaultMessage: 'On' }),
+    },
+    {
+      value: 'off',
+      label: intl.formatMessage({ id: 'common.state.off', defaultMessage: 'Off' }),
+    },
   ]
   return (
     <SettingRow
-      label={rule.label}
-      description={rule.sub}
+      label={label}
+      description={intl.formatMessage(rule.sub)}
       badge={
         value !== 'inherit' ? (
           <Badge variant="outline" size="sm">
-            Override
+            {intl.formatMessage({
+              id: 'admin.settings.boards.moderation.overrideBadge',
+              defaultMessage: 'Override',
+            })}
           </Badge>
         ) : undefined
       }
       control={
-        <SegmentedControl label={rule.label} options={options} value={value} onChange={onChange} />
+        <SegmentedControl label={label} options={options} value={value} onChange={onChange} />
       }
     />
   )

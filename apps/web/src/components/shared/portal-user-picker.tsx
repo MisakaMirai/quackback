@@ -5,6 +5,7 @@ import { useDebouncedValue } from '@/lib/client/hooks/use-debounced-value'
 import { realEmail } from '@/lib/shared/anonymous-email'
 import { Input } from '@/components/ui/input'
 import { Avatar } from '@/components/ui/avatar'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 
 /** The identity fields a picked portal user hands back. */
 export interface PortalUserPick {
@@ -41,11 +42,18 @@ export function PortalUserPicker({
   requireEmail = false,
   searchRequired = false,
   autoFocus = false,
-  placeholder = 'Search users by name or email…',
+  placeholder,
 }: PortalUserPickerProps) {
+  const intl = useOptionalIntl()
   const [search, setSearch] = useState('')
   const debounced = useDebouncedValue(search.trim(), 350)
   const showResults = !searchRequired || debounced.length > 0
+  const resolvedPlaceholder =
+    placeholder ??
+    intl.formatMessage({
+      id: 'common.userPicker.searchPlaceholder',
+      defaultMessage: 'Search users by name or email…',
+    })
 
   const usersQuery = useQuery({
     ...adminQueries.portalUsers({ search: debounced || undefined, page: 1, limit }),
@@ -58,14 +66,24 @@ export function PortalUserPicker({
         autoFocus={autoFocus}
         value={search}
         onChange={(e) => setSearch(e.target.value)}
-        placeholder={placeholder}
+        placeholder={resolvedPlaceholder}
       />
       {showResults && (
         <div className="max-h-64 divide-y divide-border/40 overflow-y-auto rounded-md border border-border/60">
           {usersQuery.isLoading ? (
-            <p className="px-3 py-4 text-sm text-muted-foreground">Searching…</p>
+            <p className="px-3 py-4 text-sm text-muted-foreground">
+              {intl.formatMessage({
+                id: 'common.userPicker.searching',
+                defaultMessage: 'Searching…',
+              })}
+            </p>
           ) : (usersQuery.data?.items.length ?? 0) === 0 ? (
-            <p className="px-3 py-4 text-sm text-muted-foreground">No users found.</p>
+            <p className="px-3 py-4 text-sm text-muted-foreground">
+              {intl.formatMessage({
+                id: 'common.userPicker.empty',
+                defaultMessage: 'No users found.',
+              })}
+            </p>
           ) : (
             usersQuery.data!.items.map((u) => {
               const deliverable = !requireEmail || !!realEmail(u.email)
@@ -74,7 +92,14 @@ export function PortalUserPicker({
                   key={u.principalId}
                   type="button"
                   disabled={!deliverable}
-                  title={deliverable ? undefined : 'This user has no email address'}
+                  title={
+                    deliverable
+                      ? undefined
+                      : intl.formatMessage({
+                          id: 'common.userPicker.noEmailTitle',
+                          defaultMessage: 'This user has no email address',
+                        })
+                  }
                   onClick={() =>
                     onSelect({
                       principalId: u.principalId,
@@ -85,13 +110,27 @@ export function PortalUserPicker({
                   }
                   className="flex w-full items-center gap-2.5 px-3 py-2 text-start transition-colors hover:bg-muted/50 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  <Avatar src={u.image} name={u.name ?? 'User'} className="size-7 text-xs" />
+                  <Avatar
+                    src={u.image}
+                    name={
+                      u.name ?? intl.formatMessage({ id: 'common.user', defaultMessage: 'User' })
+                    }
+                    className="size-7 text-xs"
+                  />
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm text-foreground">
-                      {u.name || 'Unnamed user'}
+                      {u.name ||
+                        intl.formatMessage({
+                          id: 'common.userPicker.unnamed',
+                          defaultMessage: 'Unnamed user',
+                        })}
                     </span>
                     <span className="block truncate text-xs text-muted-foreground">
-                      {realEmail(u.email) ?? 'No email'}
+                      {realEmail(u.email) ??
+                        intl.formatMessage({
+                          id: 'common.userPicker.noEmail',
+                          defaultMessage: 'No email',
+                        })}
                     </span>
                   </span>
                 </button>

@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Avatar } from '@/components/ui/avatar'
 import { TimeAgo } from '@/components/ui/time-ago'
 import { Skeleton } from '@/components/ui/skeleton'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -14,7 +15,7 @@ import {
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
 } from '@/components/ui/dropdown-menu'
-import { SOURCE_TYPE_LABELS, SourceTypeIcon } from '@/components/admin/feedback/source-type-icon'
+import { sourceTypeLabel, SourceTypeIcon } from '@/components/admin/feedback/source-type-icon'
 import { adminQueries } from '@/lib/client/queries/admin'
 import type { VotersQuerySource } from '@/components/admin/feedback/voters-avatar-stack'
 import { fetchPostVotersFn } from '@/lib/server/functions/posts'
@@ -45,10 +46,16 @@ interface VotersModalProps {
   onVotersInvalidate?: () => void
 }
 
-const SUBSCRIPTION_LABELS: Record<SubscriptionLevel, string> = {
-  all: 'All activity',
-  status_only: 'Status only',
-  none: 'Not subscribed',
+const SUBSCRIPTION_LABELS: Record<SubscriptionLevel, { id: string; defaultMessage: string }> = {
+  all: { id: 'portal.subscriptionBell.level.all', defaultMessage: 'All activity' },
+  status_only: {
+    id: 'portal.voters.subscriptionStatusOnly',
+    defaultMessage: 'Status only',
+  },
+  none: {
+    id: 'portal.voters.subscriptionNone',
+    defaultMessage: 'Not subscribed',
+  },
 }
 
 export function VotersModal({
@@ -61,6 +68,7 @@ export function VotersModal({
   votersQuery,
   onVotersInvalidate,
 }: VotersModalProps) {
+  const intl = useOptionalIntl()
   const { data: primaryVoters, isLoading: primaryLoading } = useQuery({
     ...(votersQuery ?? adminQueries.postVoters(postId)),
     enabled: open,
@@ -109,7 +117,12 @@ export function VotersModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Voters ({voteCount})</DialogTitle>
+          <DialogTitle>
+            {intl.formatMessage(
+              { id: 'portal.voters.title', defaultMessage: 'Voters ({count})' },
+              { count: voteCount }
+            )}
+          </DialogTitle>
         </DialogHeader>
         <div className="max-h-[400px] overflow-y-auto -mx-6 px-6">
           {isLoading ? (
@@ -137,7 +150,12 @@ export function VotersModal({
                     />
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-medium text-foreground truncate">
-                        {voter.displayName || voter.email || 'Anonymous'}
+                        {voter.displayName ||
+                          voter.email ||
+                          intl.formatMessage({
+                            id: 'portal.postDetail.metadata.authorFallback',
+                            defaultMessage: 'Anonymous',
+                          })}
                       </p>
                       <VoterSourceLine voter={voter} />
                     </div>
@@ -154,7 +172,10 @@ export function VotersModal({
                             disabled={
                               removeVote.isPending && removeVote.variables === voter.principalId
                             }
-                            aria-label="Remove vote"
+                            aria-label={intl.formatMessage({
+                              id: 'portal.voters.removeVote',
+                              defaultMessage: 'Remove vote',
+                            })}
                           >
                             <XMarkIcon className="h-3.5 w-3.5" />
                           </button>
@@ -182,14 +203,28 @@ export function VotersModal({
               })}
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground text-center py-4">No voters yet</p>
+            <p className="text-sm text-muted-foreground text-center py-4">
+              {intl.formatMessage({
+                id: 'portal.voters.none',
+                defaultMessage: 'No voters yet',
+              })}
+            </p>
           )}
         </div>
         {summary && summary.total > 0 && (
           <div className="border-t pt-3 -mx-6 px-6 text-xs text-muted-foreground">
-            {summary.statusCount} of {summary.total} voters notified on status change
-            {' · '}
-            {summary.commentCount} on comments
+            {intl.formatMessage(
+              {
+                id: 'portal.voters.summary',
+                defaultMessage:
+                  '{statusCount} of {total} voters notified on status change · {commentCount} on comments',
+              },
+              {
+                statusCount: summary.statusCount,
+                total: summary.total,
+                commentCount: summary.commentCount,
+              }
+            )}
           </div>
         )}
       </DialogContent>
@@ -204,6 +239,7 @@ function SubscriptionBadge({
   level: SubscriptionLevel
   onChangeLevel: (level: SubscriptionLevel) => void
 }) {
+  const intl = useOptionalIntl()
   const config = {
     all: {
       icon: BellIcon,
@@ -228,7 +264,7 @@ function SubscriptionBadge({
           className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium shrink-0 cursor-pointer transition-opacity hover:opacity-80 ${config.className}`}
         >
           <Icon className="h-3 w-3" />
-          <span>{SUBSCRIPTION_LABELS[level]}</span>
+          <span>{intl.formatMessage(SUBSCRIPTION_LABELS[level])}</span>
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
@@ -236,13 +272,15 @@ function SubscriptionBadge({
           value={level}
           onValueChange={(v) => onChangeLevel(v as SubscriptionLevel)}
         >
-          {(Object.entries(SUBSCRIPTION_LABELS) as Array<[SubscriptionLevel, string]>).map(
-            ([value, label]) => (
-              <DropdownMenuRadioItem key={value} value={value}>
-                {label}
-              </DropdownMenuRadioItem>
-            )
-          )}
+          {(
+            Object.entries(SUBSCRIPTION_LABELS) as Array<
+              [SubscriptionLevel, { id: string; defaultMessage: string }]
+            >
+          ).map(([value, label]) => (
+            <DropdownMenuRadioItem key={value} value={value}>
+              {intl.formatMessage(label)}
+            </DropdownMenuRadioItem>
+          ))}
         </DropdownMenuRadioGroup>
       </DropdownMenuContent>
     </DropdownMenu>
@@ -259,12 +297,21 @@ function VoterSourceLine({
     createdAt: string
   }
 }) {
+  const intl = useOptionalIntl()
   const time = <TimeAgo date={voter.createdAt} />
   const separator = <span aria-hidden> · </span>
 
   // Proxy votes: "{time} · Added by {admin}"
   if (voter.sourceType === 'proxy') {
-    const label = voter.addedByName ? `Added by ${voter.addedByName}` : 'Added manually'
+    const label = voter.addedByName
+      ? intl.formatMessage(
+          { id: 'portal.voters.addedBy', defaultMessage: 'Added by {name}' },
+          { name: voter.addedByName }
+        )
+      : intl.formatMessage({
+          id: 'portal.voters.addedManually',
+          defaultMessage: 'Added manually',
+        })
     return (
       <p className="text-xs text-muted-foreground">
         {time}
@@ -276,7 +323,7 @@ function VoterSourceLine({
 
   // Integration votes with link: "{time} · via Slack ↗"
   if (voter.sourceType && voter.sourceExternalUrl) {
-    const platformName = SOURCE_TYPE_LABELS[voter.sourceType] ?? capitalize(voter.sourceType)
+    const platformName = sourceTypeLabel(intl, voter.sourceType)
     return (
       <p className="text-xs text-muted-foreground">
         {time}
@@ -288,7 +335,12 @@ function VoterSourceLine({
           className="inline-flex items-center gap-1 hover:text-foreground transition-colors"
         >
           <SourceTypeIcon sourceType={voter.sourceType} size="xs" />
-          <span>via {platformName}</span>
+          <span>
+            {intl.formatMessage(
+              { id: 'portal.voters.via', defaultMessage: 'via {platform}' },
+              { platform: platformName }
+            )}
+          </span>
           <ArrowTopRightOnSquareIcon className="h-3 w-3" />
         </a>
       </p>
@@ -297,21 +349,22 @@ function VoterSourceLine({
 
   // Integration votes without link: "{time} · via Zendesk"
   if (voter.sourceType) {
-    const platformName = SOURCE_TYPE_LABELS[voter.sourceType] ?? capitalize(voter.sourceType)
+    const platformName = sourceTypeLabel(intl, voter.sourceType)
     return (
       <p className="inline-flex items-center gap-1 text-xs text-muted-foreground">
         {time}
         {separator}
         <SourceTypeIcon sourceType={voter.sourceType} size="xs" />
-        <span>via {platformName}</span>
+        <span>
+          {intl.formatMessage(
+            { id: 'portal.voters.via', defaultMessage: 'via {platform}' },
+            { platform: platformName }
+          )}
+        </span>
       </p>
     )
   }
 
   // Direct votes: just "{time}"
   return <TimeAgo date={voter.createdAt} className="text-xs text-muted-foreground" />
-}
-
-function capitalize(s: string): string {
-  return s.charAt(0).toUpperCase() + s.slice(1)
 }

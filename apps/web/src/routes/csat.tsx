@@ -9,10 +9,13 @@
  */
 import { createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
+import { FormattedMessage, useIntl, type MessageDescriptor } from 'react-intl'
 import { z } from 'zod'
 import { CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/solid'
+import { PortalIntlProvider } from '@/components/portal-intl-provider'
 import { recordCsatViaTokenFn, validateCsatEmailTokenFn } from '@/lib/server/functions/csat-email'
 import { CSAT_FACES } from '@/lib/shared/db-types'
+import { DEFAULT_LOCALE, loadPortalMessages, type SupportedLocale } from '@/lib/shared/i18n'
 import { cn } from '@/lib/shared/utils'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -26,18 +29,39 @@ const searchSchema = z.object({
   rating: z.string().optional(),
 })
 
-type CsatLoaderResult = { ok: true } | { ok: false; error: 'missing' | 'invalid' }
+type CsatLoaderResult =
+  | { ok: true; locale: SupportedLocale; messages: Record<string, string> }
+  | {
+      ok: false
+      error: 'missing' | 'invalid'
+      locale: SupportedLocale
+      messages: Record<string, string>
+    }
 
 export const Route = createFileRoute('/csat')({
   validateSearch: searchSchema,
   loaderDeps: ({ search }) => ({ token: search.token }),
-  loader: async ({ deps }): Promise<CsatLoaderResult> => {
-    if (!deps.token) return { ok: false, error: 'missing' }
+  loader: async ({ context, deps }): Promise<CsatLoaderResult> => {
+    const locale = context.acceptLanguageLocale ?? DEFAULT_LOCALE
+    const messages = await loadPortalMessages(locale)
+    if (!deps.token) return { ok: false, error: 'missing', locale, messages }
     const { valid } = await validateCsatEmailTokenFn({ data: { token: deps.token } })
-    return valid ? { ok: true } : { ok: false, error: 'invalid' }
+    return valid
+      ? { ok: true, locale, messages }
+      : { ok: false, error: 'invalid', locale, messages }
   },
-  component: CsatPage,
+  component: CsatRoute,
 })
+
+function CsatRoute() {
+  const { locale, messages } = Route.useLoaderData()
+
+  return (
+    <PortalIntlProvider locale={locale} messages={messages}>
+      <CsatPage />
+    </PortalIntlProvider>
+  )
+}
 
 function CsatPage() {
   const result = Route.useLoaderData()
@@ -53,6 +77,7 @@ function CsatPage() {
  *  covers the rating-then-comment follow-up, same as the widget's own
  *  two-POST CSAT flow). */
 function RateView({ token, linkedRating }: { token: string; linkedRating?: number }) {
+  const intl = useIntl()
   const preselected =
     linkedRating && Number.isInteger(linkedRating) && linkedRating >= 1 && linkedRating <= 5
       ? linkedRating
@@ -109,10 +134,26 @@ function RateView({ token, linkedRating }: { token: string; linkedRating?: numbe
 
         <div className="text-center space-y-2">
           <h1 className="text-xl font-semibold text-foreground">
-            {recorded ? 'Thanks for the feedback' : 'How did we do?'}
+            {recorded
+              ? intl.formatMessage({
+                  id: 'portal.csat.thanksTitle',
+                  defaultMessage: 'Thanks for the feedback',
+                })
+              : intl.formatMessage({
+                  id: 'portal.csat.howDidWeDo',
+                  defaultMessage: 'How did we do?',
+                })}
           </h1>
           <p className="text-sm text-muted-foreground">
-            {recorded ? 'Your rating has been recorded.' : 'Tap a face to confirm your rating.'}
+            {recorded
+              ? intl.formatMessage({
+                  id: 'portal.csat.ratingRecorded',
+                  defaultMessage: 'Your rating has been recorded.',
+                })
+              : intl.formatMessage({
+                  id: 'portal.csat.tapFace',
+                  defaultMessage: 'Tap a face to confirm your rating.',
+                })}
           </p>
         </div>
 
@@ -127,7 +168,13 @@ function RateView({ token, linkedRating }: { token: string; linkedRating?: numbe
                     type="button"
                     disabled={submitting}
                     onClick={() => rate(rating)}
-                    aria-label={`Rate ${rating} of 5`}
+                    aria-label={intl.formatMessage(
+                      {
+                        id: 'widget.messenger.csat.rateAria',
+                        defaultMessage: 'Rate {n} of 5',
+                      },
+                      { n: rating }
+                    )}
                     className={cn(
                       'flex h-12 w-12 items-center justify-center rounded-full text-2xl transition-transform hover:scale-110 disabled:opacity-40',
                       preselected === rating ? 'bg-primary/10 ring-2 ring-ring' : 'hover:bg-muted'
@@ -140,7 +187,10 @@ function RateView({ token, linkedRating }: { token: string; linkedRating?: numbe
             </div>
             {rateError && (
               <p className="text-center text-sm text-red-600 dark:text-red-400">
-                Something went wrong. Please try again.
+                <FormattedMessage
+                  id="portal.auth.error.generic"
+                  defaultMessage="Something went wrong. Please try again."
+                />
               </p>
             )}
           </div>
@@ -152,12 +202,18 @@ function RateView({ token, linkedRating }: { token: string; linkedRating?: numbe
               value={comment}
               onChange={(e) => setComment(e.target.value)}
               maxLength={2000}
-              placeholder="Anything you'd like to add? (optional)"
+              placeholder={intl.formatMessage({
+                id: 'portal.csat.commentPlaceholder',
+                defaultMessage: "Anything you'd like to add? (optional)",
+              })}
               className="min-h-24"
             />
             {commentError && (
               <p className="text-center text-sm text-red-600 dark:text-red-400">
-                Something went wrong. Please try again.
+                <FormattedMessage
+                  id="portal.auth.error.generic"
+                  defaultMessage="Something went wrong. Please try again."
+                />
               </p>
             )}
             <div className="flex justify-center">
@@ -166,7 +222,11 @@ function RateView({ token, linkedRating }: { token: string; linkedRating?: numbe
                 onClick={submitComment}
                 disabled={!comment.trim() || submitting}
               >
-                {submitting ? 'Sending…' : 'Send comment'}
+                {submitting ? (
+                  <FormattedMessage id="portal.csat.sending" defaultMessage="Sending…" />
+                ) : (
+                  <FormattedMessage id="portal.csat.sendComment" defaultMessage="Send comment" />
+                )}
               </Button>
             </div>
           </div>
@@ -174,7 +234,10 @@ function RateView({ token, linkedRating }: { token: string; linkedRating?: numbe
 
         {commentSaved && (
           <p className="text-center text-sm text-muted-foreground">
-            Thanks, your comment has been added.
+            <FormattedMessage
+              id="portal.csat.commentAdded"
+              defaultMessage="Thanks, your comment has been added."
+            />
           </p>
         )}
       </div>
@@ -182,8 +245,26 @@ function RateView({ token, linkedRating }: { token: string; linkedRating?: numbe
   )
 }
 
+const ERROR_CONTENT: Record<string, { title: MessageDescriptor; message: MessageDescriptor }> = {
+  missing: {
+    title: { id: 'portal.csat.missing.title', defaultMessage: 'Missing Link' },
+    message: {
+      id: 'portal.csat.missing.body',
+      defaultMessage: 'This link is missing some information. Please use the link from your email.',
+    },
+  },
+  invalid: {
+    title: { id: 'portal.csat.expired.title', defaultMessage: 'Link Expired' },
+    message: {
+      id: 'portal.csat.expired.body',
+      defaultMessage: 'This rating link has expired or is no longer valid.',
+    },
+  },
+}
+
 function ErrorView({ error }: { error: string }) {
-  const { title, message } = getErrorContent(error)
+  const intl = useIntl()
+  const copy = ERROR_CONTENT[error] ?? ERROR_CONTENT.invalid
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center p-4 bg-background">
@@ -195,26 +276,12 @@ function ErrorView({ error }: { error: string }) {
         </div>
 
         <div className="text-center space-y-2">
-          <h1 className="text-xl font-semibold text-foreground">{title}</h1>
-          <p className="text-sm text-muted-foreground">{message}</p>
+          <h1 className="text-xl font-semibold text-foreground">
+            {intl.formatMessage(copy.title)}
+          </h1>
+          <p className="text-sm text-muted-foreground">{intl.formatMessage(copy.message)}</p>
         </div>
       </div>
     </div>
   )
-}
-
-function getErrorContent(error: string): { title: string; message: string } {
-  switch (error) {
-    case 'missing':
-      return {
-        title: 'Missing Link',
-        message: 'This link is missing some information. Please use the link from your email.',
-      }
-    case 'invalid':
-    default:
-      return {
-        title: 'Link Expired',
-        message: 'This rating link has expired or is no longer valid.',
-      }
-  }
 }

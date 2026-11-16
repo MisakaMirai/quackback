@@ -5,6 +5,7 @@ import { ArrowPathIcon, CheckCircleIcon } from '@heroicons/react/24/solid'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { getZendeskConnectUrl } from '@/integrations/zendesk/server/functions'
 import { useDeleteIntegration } from '@/lib/client/mutations'
@@ -22,6 +23,7 @@ export function ZendeskConnectionActions({
   integrationId,
   isConnected,
 }: ZendeskConnectionActionsProps) {
+  const intl = useOptionalIntl()
   const deleteMutation = useDeleteIntegration()
   const showSuccess = useOAuthResult('zendesk', 'Zendesk')
   const [connecting, setConnecting] = useState(false)
@@ -32,11 +34,21 @@ export function ZendeskConnectionActions({
   const handleConnect = async () => {
     const trimmed = subdomain.trim().toLowerCase()
     if (!trimmed) {
-      setSubdomainError('Subdomain is required')
+      setSubdomainError(
+        intl.formatMessage({
+          id: 'admin.integrations.zendesk.subdomainRequired',
+          defaultMessage: 'Subdomain is required',
+        })
+      )
       return
     }
     if (!SUBDOMAIN_PATTERN.test(trimmed)) {
-      setSubdomainError('Must be lowercase alphanumeric with hyphens (e.g. your-company)')
+      setSubdomainError(
+        intl.formatMessage({
+          id: 'admin.integrations.zendesk.subdomainInvalid',
+          defaultMessage: 'Must be lowercase alphanumeric with hyphens (e.g. your-company)',
+        })
+      )
       return
     }
     setSubdomainError('')
@@ -46,7 +58,13 @@ export function ZendeskConnectionActions({
       window.location.href = url
     } catch (err) {
       console.error('Failed to get connect URL:', err)
-      toastError(err, "Couldn't start connection. Try again.")
+      toastError(
+        err,
+        intl.formatMessage({
+          id: 'admin.integrations.zendesk.connectStartFailed',
+          defaultMessage: "Couldn't start connection. Try again.",
+        })
+      )
       setConnecting(false)
     }
   }
@@ -63,14 +81,24 @@ export function ZendeskConnectionActions({
       {showSuccess && (
         <div className="flex items-center gap-2 rounded-lg border border-green-500/30 bg-green-500/10 px-3 py-2 text-sm text-green-600 dark:text-green-400">
           <CheckCircleIcon className="h-4 w-4" />
-          <span>Connected successfully!</span>
+          <span>
+            {intl.formatMessage({
+              id: 'admin.integrations.connection.connected',
+              defaultMessage: 'Connected successfully!',
+            })}
+          </span>
         </div>
       )}
 
       {!isConnected && (
         <div className="flex w-full flex-col gap-3">
           <div className="space-y-1.5">
-            <Label htmlFor="zendesk-subdomain">Zendesk Subdomain</Label>
+            <Label htmlFor="zendesk-subdomain">
+              {intl.formatMessage({
+                id: 'admin.integrations.zendesk.subdomainLabel',
+                defaultMessage: 'Zendesk Subdomain',
+              })}
+            </Label>
             <div className="flex items-center gap-2">
               <Input
                 id="zendesk-subdomain"
@@ -92,10 +120,16 @@ export function ZendeskConnectionActions({
               {connecting ? (
                 <>
                   <ArrowPathIcon className="mr-2 h-4 w-4 animate-spin" />
-                  Connecting...
+                  {intl.formatMessage({
+                    id: 'admin.integrations.connection.connecting',
+                    defaultMessage: 'Connecting...',
+                  })}
                 </>
               ) : (
-                'Connect'
+                intl.formatMessage({
+                  id: 'admin.integrations.connection.connect',
+                  defaultMessage: 'Connect',
+                })
               )}
             </Button>
           </div>
@@ -113,18 +147,37 @@ export function ZendeskConnectionActions({
             {disconnecting ? (
               <>
                 <ArrowPathIcon className="mr-2 h-4 w-4 animate-spin" />
-                Disconnecting...
+                {intl.formatMessage({
+                  id: 'admin.integrations.connection.disconnecting',
+                  defaultMessage: 'Disconnecting...',
+                })}
               </>
             ) : (
-              'Disconnect'
+              intl.formatMessage({
+                id: 'admin.integrations.connection.disconnect',
+                defaultMessage: 'Disconnect',
+              })
             )}
           </Button>
           <ConfirmDialog
             open={disconnectDialogOpen}
             onOpenChange={setDisconnectDialogOpen}
-            title="Disconnect Zendesk?"
-            description="This will remove the Zendesk integration and stop syncing support data. You can reconnect at any time."
-            confirmLabel="Disconnect"
+            title={intl.formatMessage(
+              {
+                id: 'admin.integrations.connection.disconnectTitle',
+                defaultMessage: 'Disconnect {name}?',
+              },
+              { name: 'Zendesk' }
+            )}
+            description={intl.formatMessage({
+              id: 'admin.integrations.zendesk.disconnectDescription',
+              defaultMessage:
+                'This will remove the Zendesk integration and stop syncing support data. You can reconnect at any time.',
+            })}
+            confirmLabel={intl.formatMessage({
+              id: 'admin.integrations.connection.disconnect',
+              defaultMessage: 'Disconnect',
+            })}
             isPending={disconnecting}
             onConfirm={handleDisconnect}
           />

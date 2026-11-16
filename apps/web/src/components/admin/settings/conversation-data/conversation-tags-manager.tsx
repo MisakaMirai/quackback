@@ -21,6 +21,7 @@ import {
 import { SettingsCard } from '@/components/admin/settings/settings-card'
 import { RowDot, SettingsList, SettingsListRow } from '@/components/admin/settings/settings-list'
 import { EmptyState } from '@/components/shared/empty-state'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { Badge } from '@/components/ui/badge'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { ColorPickerGrid } from '@/components/shared/color-picker'
@@ -52,17 +53,28 @@ function EditTagDialog({
   onSave: (input: { name: string; color: string }) => Promise<void>
   isPending: boolean
 }) {
+  const intl = useOptionalIntl()
   const [name, setName] = useState(tag.name)
   const [color, setColor] = useState(tag.color)
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-sm">
         <DialogHeader>
-          <DialogTitle>Edit tag</DialogTitle>
+          <DialogTitle>
+            {intl.formatMessage({
+              id: 'admin.settings.conversationData.tags.editTitle',
+              defaultMessage: 'Edit tag',
+            })}
+          </DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-1.5">
-            <Label htmlFor="tag-name">Name</Label>
+            <Label htmlFor="tag-name">
+              {intl.formatMessage({
+                id: 'admin.settings.conversationData.tags.nameLabel',
+                defaultMessage: 'Name',
+              })}
+            </Label>
             <Input
               id="tag-name"
               value={name}
@@ -70,24 +82,42 @@ function EditTagDialog({
               onChange={(e) => setName(e.target.value)}
             />
             <p className="text-[11px] text-muted-foreground">
-              Renaming updates the tag everywhere it is applied.
+              {intl.formatMessage({
+                id: 'admin.settings.conversationData.tags.renameHint',
+                defaultMessage: 'Renaming updates the tag everywhere it is applied.',
+              })}
             </p>
           </div>
           <div className="space-y-1.5">
-            <Label>Color</Label>
+            <Label>
+              {intl.formatMessage({
+                id: 'admin.settings.conversationData.tags.colorLabel',
+                defaultMessage: 'Color',
+              })}
+            </Label>
             <ColorPickerGrid selectedColor={color} onColorChange={setColor} />
           </div>
         </div>
         <DialogFooter>
           <Button type="button" variant="outline" onClick={onClose} disabled={isPending}>
-            Cancel
+            {intl.formatMessage({ id: 'common.cancel', defaultMessage: 'Cancel' })}
           </Button>
           <Button
             type="button"
             disabled={!name.trim() || isPending}
             onClick={() => void onSave({ name: name.trim(), color })}
           >
-            {isPending ? 'Saving...' : 'Save'}
+            {intl.formatMessage(
+              isPending
+                ? {
+                    id: 'admin.settings.conversationData.tags.saving',
+                    defaultMessage: 'Saving...',
+                  }
+                : {
+                    id: 'admin.settings.conversationData.tags.save',
+                    defaultMessage: 'Save',
+                  }
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -96,6 +126,7 @@ function EditTagDialog({
 }
 
 export function ConversationTagsManager() {
+  const intl = useOptionalIntl()
   const queryClient = useQueryClient()
   const { data: tags } = useQuery({
     queryKey: TAGS_SETTINGS_KEY,
@@ -113,22 +144,42 @@ export function ConversationTagsManager() {
     mutationFn: (input: { id: ConversationTagId; name: string; color: string }) =>
       updateConversationTagFn({ data: input }),
     onSuccess: invalidate,
-    onError: onError('Failed to update tag'),
+    onError: onError(
+      intl.formatMessage({
+        id: 'admin.settings.conversationData.tags.updateFailed',
+        defaultMessage: 'Failed to update tag',
+      })
+    ),
   })
   const archiveTag = useMutation({
     mutationFn: (id: ConversationTagId) => deleteConversationTagFn({ data: { id } }),
     onSuccess: invalidate,
-    onError: onError('Failed to archive tag'),
+    onError: onError(
+      intl.formatMessage({
+        id: 'admin.settings.conversationData.tags.archiveFailed',
+        defaultMessage: 'Failed to archive tag',
+      })
+    ),
   })
   const restoreTag = useMutation({
     mutationFn: (id: ConversationTagId) => restoreConversationTagFn({ data: { id } }),
     onSuccess: invalidate,
-    onError: onError('Failed to restore tag'),
+    onError: onError(
+      intl.formatMessage({
+        id: 'admin.settings.conversationData.tags.restoreFailed',
+        defaultMessage: 'Failed to restore tag',
+      })
+    ),
   })
   const hardDeleteTag = useMutation({
     mutationFn: (id: ConversationTagId) => hardDeleteConversationTagFn({ data: { id } }),
     onSuccess: invalidate,
-    onError: onError('Failed to delete tag'),
+    onError: onError(
+      intl.formatMessage({
+        id: 'admin.settings.conversationData.tags.deleteFailed',
+        defaultMessage: 'Failed to delete tag',
+      })
+    ),
   })
 
   const [editTarget, setEditTarget] = useState<TagRow | null>(null)
@@ -139,18 +190,40 @@ export function ConversationTagsManager() {
   const archived = (tags ?? []).filter((t) => t.archived)
 
   return (
-    <SettingsCard title="Tags" description="Agents create tags inline from the inbox." flush>
+    <SettingsCard
+      title={intl.formatMessage({
+        id: 'admin.settings.conversationData.tags.title',
+        defaultMessage: 'Tags',
+      })}
+      description={intl.formatMessage({
+        id: 'admin.settings.conversationData.tags.description',
+        defaultMessage: 'Agents create tags inline from the inbox.',
+      })}
+      flush
+    >
       {!tags || tags.length === 0 ? (
         <EmptyState
           size="compact"
           icon={TagIcon}
-          title="No tags yet"
-          description="Agents create them inline from a conversation."
+          title={intl.formatMessage({
+            id: 'admin.settings.conversationData.tags.emptyTitle',
+            defaultMessage: 'No tags yet',
+          })}
+          description={intl.formatMessage({
+            id: 'admin.settings.conversationData.tags.emptyDescription',
+            defaultMessage: 'Agents create them inline from a conversation.',
+          })}
         />
       ) : (
         <SettingsList>
           {[...live, ...archived].map((tag) => {
-            const count = `${tag.count} conversation${tag.count === 1 ? '' : 's'}`
+            const count = intl.formatMessage(
+              {
+                id: 'admin.settings.conversationData.tags.conversationCount',
+                defaultMessage: '{count, plural, one {# conversation} other {# conversations}}',
+              },
+              { count: tag.count }
+            )
             return (
               <div key={tag.id} className={cn(tag.archived && 'opacity-60')}>
                 <SettingsListRow
@@ -159,7 +232,10 @@ export function ConversationTagsManager() {
                   badges={
                     tag.archived ? (
                       <Badge size="sm" variant="secondary">
-                        Archived
+                        {intl.formatMessage({
+                          id: 'admin.settings.conversationData.tags.archived',
+                          defaultMessage: 'Archived',
+                        })}
                       </Badge>
                     ) : undefined
                   }
@@ -171,7 +247,10 @@ export function ConversationTagsManager() {
                         to="/admin/inbox"
                         search={{ tag: tag.id }}
                         className="hover:text-foreground hover:underline"
-                        title="Open in the inbox"
+                        title={intl.formatMessage({
+                          id: 'admin.settings.conversationData.tags.openInInbox',
+                          defaultMessage: 'Open in the inbox',
+                        })}
                       >
                         {count}
                       </Link>
@@ -180,16 +259,37 @@ export function ConversationTagsManager() {
                   actions={
                     tag.archived
                       ? [
-                          { label: 'Restore', onSelect: () => restoreTag.mutate(tag.id) },
                           {
-                            label: 'Delete permanently',
+                            label: intl.formatMessage({
+                              id: 'admin.settings.conversationData.tags.restore',
+                              defaultMessage: 'Restore',
+                            }),
+                            onSelect: () => restoreTag.mutate(tag.id),
+                          },
+                          {
+                            label: intl.formatMessage({
+                              id: 'admin.settings.conversationData.tags.deletePermanently',
+                              defaultMessage: 'Delete permanently',
+                            }),
                             destructive: true,
                             onSelect: () => setDeleteTarget(tag),
                           },
                         ]
                       : [
-                          { label: 'Edit', onSelect: () => setEditTarget(tag) },
-                          { label: 'Archive', onSelect: () => setArchiveTarget(tag) },
+                          {
+                            label: intl.formatMessage({
+                              id: 'admin.settings.conversationData.tags.edit',
+                              defaultMessage: 'Edit',
+                            }),
+                            onSelect: () => setEditTarget(tag),
+                          },
+                          {
+                            label: intl.formatMessage({
+                              id: 'admin.settings.conversationData.tags.archive',
+                              defaultMessage: 'Archive',
+                            }),
+                            onSelect: () => setArchiveTarget(tag),
+                          },
                         ]
                   }
                 />
@@ -214,9 +314,22 @@ export function ConversationTagsManager() {
       <ConfirmDialog
         open={!!archiveTarget}
         onOpenChange={(open) => !open && setArchiveTarget(null)}
-        title={`Archive "${archiveTarget?.name}"?`}
-        description="The tag disappears from pickers and filters. Conversation history keeps it and the name stays reserved; you can restore it at any time. Tags used by live workflows or macros cannot be archived."
-        confirmLabel="Archive"
+        title={intl.formatMessage(
+          {
+            id: 'admin.settings.conversationData.tags.archiveTitle',
+            defaultMessage: 'Archive "{name}"?',
+          },
+          { name: archiveTarget?.name ?? '' }
+        )}
+        description={intl.formatMessage({
+          id: 'admin.settings.conversationData.tags.archiveDescription',
+          defaultMessage:
+            'The tag disappears from pickers and filters. Conversation history keeps it and the name stays reserved; you can restore it at any time. Tags used by live workflows or macros cannot be archived.',
+        })}
+        confirmLabel={intl.formatMessage({
+          id: 'admin.settings.conversationData.tags.archiveConfirm',
+          defaultMessage: 'Archive',
+        })}
         isPending={archiveTag.isPending}
         onConfirm={async () => {
           if (!archiveTarget) return
@@ -228,9 +341,25 @@ export function ConversationTagsManager() {
       <ConfirmDialog
         open={!!deleteTarget}
         onOpenChange={(open) => !open && setDeleteTarget(null)}
-        title={`Delete "${deleteTarget?.name}" permanently?`}
-        description={`This removes the tag from ${deleteTarget?.count ?? 0} conversation${deleteTarget?.count === 1 ? '' : 's'} and cannot be undone.`}
-        confirmLabel="Delete permanently"
+        title={intl.formatMessage(
+          {
+            id: 'admin.settings.conversationData.tags.deleteTitle',
+            defaultMessage: 'Delete "{name}" permanently?',
+          },
+          { name: deleteTarget?.name ?? '' }
+        )}
+        description={intl.formatMessage(
+          {
+            id: 'admin.settings.conversationData.tags.deleteDescription',
+            defaultMessage:
+              'This removes the tag from {count, plural, one {# conversation} other {# conversations}} and cannot be undone.',
+          },
+          { count: deleteTarget?.count ?? 0 }
+        )}
+        confirmLabel={intl.formatMessage({
+          id: 'admin.settings.conversationData.tags.deleteConfirm',
+          defaultMessage: 'Delete permanently',
+        })}
         variant="destructive"
         isPending={hardDeleteTag.isPending}
         onConfirm={async () => {

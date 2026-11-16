@@ -27,7 +27,7 @@ import { warmQuery } from '@/lib/client/queries/warm-query'
 import { adminPageHead } from '@/lib/client/admin-head'
 
 export const Route = createFileRoute('/admin/feedback/moderation')({
-  head: adminPageHead('Moderation'),
+  head: adminPageHead('Moderation', 'admin.pageTitle.moderation'),
   // The parent `/admin` guard admits team members; the queue needs the
   // permission its server functions check, so a teammate without it is turned
   // away instead of seeing an empty queue.

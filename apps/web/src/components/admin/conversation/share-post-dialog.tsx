@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 
 interface SharePostDialogProps {
   open: boolean
@@ -30,6 +31,7 @@ export const SharePostDialog = memo(function SharePostDialog({
   conversationId,
   onShared,
 }: SharePostDialogProps) {
+  const intl = useOptionalIntl()
   const [search, setSearch] = useState('')
   const debounced = useDebouncedValue(search.trim(), 350)
 
@@ -48,27 +50,49 @@ export const SharePostDialog = memo(function SharePostDialog({
   const share = useMutation({
     mutationFn: (postId: PostId) => sharePostFn({ data: { conversationId, postId } }),
     onSuccess: () => {
-      toast.success('Post shared in conversation')
+      toast.success(
+        intl.formatMessage({
+          id: 'admin.inbox.sharePost.shared',
+          defaultMessage: 'Post shared in conversation',
+        })
+      )
       onOpenChange(false)
       onShared?.()
     },
-    onError: () => toast.error('Failed to share post'),
+    onError: () =>
+      toast.error(
+        intl.formatMessage({
+          id: 'admin.inbox.sharePost.failed',
+          defaultMessage: 'Failed to share post',
+        })
+      ),
   })
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Share a post</DialogTitle>
+          <DialogTitle>
+            {intl.formatMessage({
+              id: 'admin.inbox.sharePost.title',
+              defaultMessage: 'Share a post',
+            })}
+          </DialogTitle>
           <DialogDescription>
-            Search for an existing post to embed in this conversation.
+            {intl.formatMessage({
+              id: 'admin.inbox.sharePost.description',
+              defaultMessage: 'Search for an existing post to embed in this conversation.',
+            })}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-3">
           <Input
             value={search}
-            placeholder="Search posts by title…"
+            placeholder={intl.formatMessage({
+              id: 'admin.inbox.sharePost.searchPlaceholder',
+              defaultMessage: 'Search posts by title…',
+            })}
             onChange={(e) => setSearch(e.target.value)}
           />
 
@@ -89,16 +113,28 @@ export const SharePostDialog = memo(function SharePostDialog({
                   disabled={share.isPending}
                   onClick={() => share.mutate(p.id as PostId)}
                 >
-                  <ChatBubbleLeftRightIcon className="h-3.5 w-3.5" /> Share
+                  <ChatBubbleLeftRightIcon className="h-3.5 w-3.5" />{' '}
+                  {intl.formatMessage({
+                    id: 'admin.inbox.sharePost.action',
+                    defaultMessage: 'Share',
+                  })}
                 </Button>
               </div>
             ))}
             {debounced.length >= 3 && results.length === 0 && (
-              <p className="py-4 text-center text-sm text-muted-foreground">No matching posts</p>
+              <p className="py-4 text-center text-sm text-muted-foreground">
+                {intl.formatMessage({
+                  id: 'admin.inbox.sharePost.empty',
+                  defaultMessage: 'No matching posts',
+                })}
+              </p>
             )}
             {debounced.length < 3 && (
               <p className="py-4 text-center text-sm text-muted-foreground">
-                Type at least 3 characters to search.
+                {intl.formatMessage({
+                  id: 'admin.inbox.sharePost.minChars',
+                  defaultMessage: 'Type at least 3 characters to search.',
+                })}
               </p>
             )}
           </div>

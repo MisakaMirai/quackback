@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
-import { useIntl } from 'react-intl'
+import { FormattedMessage, useIntl, type MessageDescriptor } from 'react-intl'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { PERMISSIONS } from '@/lib/shared/permissions'
 import { assertRoutePermission } from '@/lib/shared/route-permission'
 import { createFileRoute, Link, redirect } from '@tanstack/react-router'
@@ -71,7 +72,7 @@ const slaOfficeHoursQuery = queryOptions({
 })
 
 export const Route = createFileRoute('/admin/settings/sla')({
-  head: adminPageHead('SLA settings'),
+  head: adminPageHead('SLA settings', 'admin.pageTitle.slaSettings'),
   beforeLoad: ({ context }) => {
     if (!isProductEnabled(context.settings?.featureFlags, 'support')) {
       throw redirect({ to: '/admin/settings/general' })
@@ -94,7 +95,11 @@ export const Route = createFileRoute('/admin/settings/sla')({
 
 type DurationUnit = 'm' | 'h' | 'd'
 const UNIT_SECS: Record<DurationUnit, number> = { m: 60, h: 3600, d: 86400 }
-const UNIT_LABELS: Record<DurationUnit, string> = { m: 'minutes', h: 'hours', d: 'days' }
+const UNIT_LABELS: Record<DurationUnit, MessageDescriptor> = {
+  m: { id: 'admin.settings.sla.unitMinutes', defaultMessage: 'minutes' },
+  h: { id: 'admin.settings.sla.unitHours', defaultMessage: 'hours' },
+  d: { id: 'admin.settings.sla.unitDays', defaultMessage: 'days' },
+}
 
 interface DurationDraft {
   value: string
@@ -119,10 +124,22 @@ function toSecs(draft: DurationDraft): number | null | undefined {
 }
 
 const TARGET_FIELDS = [
-  { key: 'firstResponseTargetSecs', label: 'First response' },
-  { key: 'nextResponseTargetSecs', label: 'Next response' },
-  { key: 'timeToCloseTargetSecs', label: 'Time to close' },
-  { key: 'timeToResolveTargetSecs', label: 'Time to resolve' },
+  {
+    key: 'firstResponseTargetSecs',
+    message: { id: 'admin.settings.sla.firstResponse', defaultMessage: 'First response' },
+  },
+  {
+    key: 'nextResponseTargetSecs',
+    message: { id: 'admin.settings.sla.nextResponse', defaultMessage: 'Next response' },
+  },
+  {
+    key: 'timeToCloseTargetSecs',
+    message: { id: 'admin.settings.sla.timeToClose', defaultMessage: 'Time to close' },
+  },
+  {
+    key: 'timeToResolveTargetSecs',
+    message: { id: 'admin.settings.sla.timeToResolve', defaultMessage: 'Time to resolve' },
+  },
 ] as const
 type TargetKey = (typeof TARGET_FIELDS)[number]['key']
 
@@ -133,6 +150,11 @@ type EditorState =
   { mode: 'create'; seed: SlaPolicyDTO | null } | { mode: 'edit'; policy: SlaPolicyDTO } | null
 
 const DEFAULT_SLA_NONE = '__none__'
+
+/** A tab label with its row count, e.g. "Live (3)". */
+function tabLabel(label: string, count: number): string {
+  return count ? `${label} (${count})` : label
+}
 
 function SlaSettingsPage() {
   const intl = useIntl()
@@ -154,23 +176,51 @@ function SlaSettingsPage() {
   const archiveMutation = useMutation({
     mutationFn: (id: string) => archiveSlaPolicyFn({ data: { id } }),
     onSuccess: () => {
-      toast.success('Policy archived')
+      toast.success(
+        intl.formatMessage({
+          id: 'admin.settings.sla.policyArchived',
+          defaultMessage: 'Policy archived',
+        })
+      )
       refresh()
     },
-    onError: () => toast.error('Failed to archive policy'),
+    onError: () =>
+      toast.error(
+        intl.formatMessage({
+          id: 'admin.settings.sla.archiveFailed',
+          defaultMessage: 'Failed to archive policy',
+        })
+      ),
   })
 
   const restoreMutation = useMutation({
     mutationFn: (id: string) => restoreSlaPolicyFn({ data: { id } }),
     onSuccess: () => {
-      toast.success('Policy restored')
+      toast.success(
+        intl.formatMessage({
+          id: 'admin.settings.sla.policyRestored',
+          defaultMessage: 'Policy restored',
+        })
+      )
       refresh()
     },
-    onError: () => toast.error('Failed to restore policy'),
+    onError: () =>
+      toast.error(
+        intl.formatMessage({
+          id: 'admin.settings.sla.restoreFailed',
+          defaultMessage: 'Failed to restore policy',
+        })
+      ),
   })
 
   return (
-    <SettingsPage page="/admin/settings/sla" description="Response and resolution targets.">
+    <SettingsPage
+      page="/admin/settings/sla"
+      description={intl.formatMessage({
+        id: 'admin.settings.sla.description',
+        defaultMessage: 'Response and resolution targets.',
+      })}
+    >
       <SettingsCard>
         <SettingRows>
           <SettingRow
@@ -216,9 +266,17 @@ function SlaSettingsPage() {
       </SettingsCard>
 
       <SettingsCard
-        title="Policies"
+        title={intl.formatMessage({
+          id: 'admin.settings.sla.policiesTitle',
+          defaultMessage: 'Policies',
+        })}
         action={
-          <NewButton noun="policy" onClick={() => setEditor({ mode: 'create', seed: null })} />
+          <NewButton noun="policy" onClick={() => setEditor({ mode: 'create', seed: null })}>
+            {intl.formatMessage({
+              id: 'admin.settings.sla.newPolicy',
+              defaultMessage: 'New policy',
+            })}
+          </NewButton>
         }
         flush
       >
@@ -230,10 +288,22 @@ function SlaSettingsPage() {
         >
           <TabsList className="h-9">
             <TabsTrigger value="live" className="pb-2">
-              {`Live${live.length ? ` (${live.length})` : ''}`}
+              {tabLabel(
+                intl.formatMessage({
+                  id: 'admin.settings.sla.tabLive',
+                  defaultMessage: 'Live',
+                }),
+                live.length
+              )}
             </TabsTrigger>
             <TabsTrigger value="archived" className="pb-2">
-              {`Archived${archived.length ? ` (${archived.length})` : ''}`}
+              {tabLabel(
+                intl.formatMessage({
+                  id: 'admin.settings.sla.tabArchived',
+                  defaultMessage: 'Archived',
+                }),
+                archived.length
+              )}
             </TabsTrigger>
           </TabsList>
         </Tabs>
@@ -242,8 +312,25 @@ function SlaSettingsPage() {
           <EmptyState
             size="compact"
             icon={ShieldCheckIcon}
-            title={tab === 'live' ? 'No SLA policies yet' : 'No archived policies'}
-            description={tab === 'live' ? 'Create one, then apply it from a workflow.' : undefined}
+            title={
+              tab === 'live'
+                ? intl.formatMessage({
+                    id: 'admin.settings.sla.emptyLiveTitle',
+                    defaultMessage: 'No SLA policies yet',
+                  })
+                : intl.formatMessage({
+                    id: 'admin.settings.sla.emptyArchivedTitle',
+                    defaultMessage: 'No archived policies',
+                  })
+            }
+            description={
+              tab === 'live'
+                ? intl.formatMessage({
+                    id: 'admin.settings.sla.emptyLiveDescription',
+                    defaultMessage: 'Create one, then apply it from a workflow.',
+                  })
+                : undefined
+            }
           />
         ) : (
           <SettingsList>
@@ -294,25 +381,71 @@ function PolicyRow({
   onArchive: () => void
   onRestore: () => void
 }) {
+  const intl = useOptionalIntl()
   const isArchived = !!policy.archivedAt
   const details = [
     slaTargetsSummary(policy),
-    policy.pauseOnSnooze ? 'Pauses on snooze' : null,
+    policy.pauseOnSnooze
+      ? intl.formatMessage({
+          id: 'admin.settings.sla.pausesOnSnooze',
+          defaultMessage: 'Pauses on snooze',
+        })
+      : null,
     // Only shown when the ticket clock exists; the flag is inert otherwise.
-    policy.pauseOnPending && policy.timeToResolveTargetSecs ? 'Pauses while pending' : null,
+    policy.pauseOnPending && policy.timeToResolveTargetSecs
+      ? intl.formatMessage({
+          id: 'admin.settings.sla.pausesWhilePending',
+          defaultMessage: 'Pauses while pending',
+        })
+      : null,
   ].filter(Boolean)
   return (
     <SettingsListRow
       title={policy.name}
       meta={details.join(' · ')}
-      badges={officeHoursEnabled && <Badge variant="secondary">Office hours</Badge>}
+      badges={
+        officeHoursEnabled && (
+          <Badge variant="secondary">
+            {intl.formatMessage({
+              id: 'admin.settings.sla.officeHoursBadge',
+              defaultMessage: 'Office hours',
+            })}
+          </Badge>
+        )
+      }
       actions={
         isArchived
-          ? [{ label: 'Restore', onSelect: onRestore }]
+          ? [
+              {
+                label: intl.formatMessage({
+                  id: 'admin.settings.sla.restore',
+                  defaultMessage: 'Restore',
+                }),
+                onSelect: onRestore,
+              },
+            ]
           : [
-              { label: 'Edit', onSelect: onEdit },
-              { label: 'Clone', onSelect: onClone },
-              { label: 'Archive', onSelect: onArchive },
+              {
+                label: intl.formatMessage({
+                  id: 'admin.settings.sla.edit',
+                  defaultMessage: 'Edit',
+                }),
+                onSelect: onEdit,
+              },
+              {
+                label: intl.formatMessage({
+                  id: 'admin.settings.sla.clone',
+                  defaultMessage: 'Clone',
+                }),
+                onSelect: onClone,
+              },
+              {
+                label: intl.formatMessage({
+                  id: 'admin.settings.sla.archive',
+                  defaultMessage: 'Archive',
+                }),
+                onSelect: onArchive,
+              },
             ]
       }
     />
@@ -330,11 +463,17 @@ function PolicyEditorDialog({
   onClose: () => void
   onSaved: () => void
 }) {
+  const intl = useOptionalIntl()
   const editing = editor.mode === 'edit' ? editor.policy : null
   const seed = editor.mode === 'create' ? editor.seed : editing
 
   const [name, setName] = useState(
-    editor.mode === 'create' && editor.seed ? `${editor.seed.name} (copy)` : (seed?.name ?? '')
+    editor.mode === 'create' && editor.seed
+      ? intl.formatMessage(
+          { id: 'admin.settings.sla.copySuffix', defaultMessage: '{name} (copy)' },
+          { name: editor.seed.name }
+        )
+      : (seed?.name ?? '')
   )
   const [targets, setTargets] = useState<Record<TargetKey, DurationDraft>>({
     firstResponseTargetSecs: toDraft(seed?.firstResponseTargetSecs ?? null),
@@ -358,17 +497,44 @@ function PolicyEditorDialog({
       const parsed = {} as Record<TargetKey, number | null>
       for (const field of TARGET_FIELDS) {
         const secs = toSecs(targets[field.key])
-        if (secs === undefined) throw new EditorError(`${field.label}: enter a whole number`)
+        if (secs === undefined) {
+          throw new EditorError(
+            intl.formatMessage(
+              {
+                id: 'admin.settings.sla.invalidTarget',
+                defaultMessage: '{target}: enter a whole number',
+              },
+              { target: intl.formatMessage(field.message) }
+            )
+          )
+        }
         // Targets may be added or changed, never removed once set (the server
         // enforces the same rule).
         if (editing && editing[field.key] != null && secs === null) {
-          throw new EditorError('Targets can be changed but not removed once set')
+          throw new EditorError(
+            intl.formatMessage({
+              id: 'admin.settings.sla.targetNotRemovable',
+              defaultMessage: 'Targets can be changed but not removed once set',
+            })
+          )
         }
         parsed[field.key] = secs
       }
-      if (!name.trim()) throw new EditorError('Give the policy a name')
+      if (!name.trim()) {
+        throw new EditorError(
+          intl.formatMessage({
+            id: 'admin.settings.sla.nameRequired',
+            defaultMessage: 'Give the policy a name',
+          })
+        )
+      }
       if (Object.values(parsed).every((v) => v === null)) {
-        throw new EditorError('Set at least one target')
+        throw new EditorError(
+          intl.formatMessage({
+            id: 'admin.settings.sla.targetRequired',
+            defaultMessage: 'Set at least one target',
+          })
+        )
       }
       const payload = {
         name: name.trim(),
@@ -384,12 +550,26 @@ function PolicyEditorDialog({
       await createSlaPolicyFn({ data: payload })
     },
     onSuccess: () => {
-      toast.success(editing ? 'Policy updated' : 'Policy created')
+      toast.success(
+        editing
+          ? intl.formatMessage({
+              id: 'admin.settings.sla.policyUpdated',
+              defaultMessage: 'Policy updated',
+            })
+          : intl.formatMessage({
+              id: 'admin.settings.sla.policyCreated',
+              defaultMessage: 'Policy created',
+            })
+      )
       onSaved()
     },
     onError: (err) => {
-      if (err instanceof EditorError) setError(errorText(err, 'Failed to save policy'))
-      else toast.error('Failed to save policy')
+      const failedToSave = intl.formatMessage({
+        id: 'admin.settings.sla.saveFailed',
+        defaultMessage: 'Failed to save policy',
+      })
+      if (err instanceof EditorError) setError(errorText(err, failedToSave))
+      else toast.error(failedToSave)
     },
   })
 
@@ -397,22 +577,42 @@ function PolicyEditorDialog({
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{editing ? 'Edit SLA policy' : 'New SLA policy'}</DialogTitle>
+          <DialogTitle>
+            {editing
+              ? intl.formatMessage({
+                  id: 'admin.settings.sla.editTitle',
+                  defaultMessage: 'Edit SLA policy',
+                })
+              : intl.formatMessage({
+                  id: 'admin.settings.sla.createTitle',
+                  defaultMessage: 'New SLA policy',
+                })}
+          </DialogTitle>
           <DialogDescription>
-            Response targets count from the customer&apos;s message; the resolve target clocks the
-            linked ticket to a resolved status. Leave a target empty to skip it; at least one is
-            required.
+            {intl.formatMessage({
+              id: 'admin.settings.sla.editorDescription',
+              defaultMessage:
+                "Response targets count from the customer's message; the resolve target clocks the linked ticket to a resolved status. Leave a target empty to skip it; at least one is required.",
+            })}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
           <div className="space-y-1.5">
-            <Label htmlFor="sla-policy-name">Name</Label>
+            <Label htmlFor="sla-policy-name">
+              {intl.formatMessage({
+                id: 'admin.settings.sla.nameLabel',
+                defaultMessage: 'Name',
+              })}
+            </Label>
             <Input
               id="sla-policy-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Premium support"
+              placeholder={intl.formatMessage({
+                id: 'admin.settings.sla.namePlaceholder',
+                defaultMessage: 'e.g. Premium support',
+              })}
               maxLength={120}
             />
           </div>
@@ -421,10 +621,11 @@ function PolicyEditorDialog({
             {TARGET_FIELDS.map((field) => {
               const draft = targets[field.key]
               const locked = !!editing && editing[field.key] != null
+              const fieldLabel = intl.formatMessage(field.message)
               return (
                 <div key={field.key} className="flex items-center gap-2">
                   <Label htmlFor={`sla-${field.key}`} className="w-28 shrink-0 text-xs">
-                    {field.label}
+                    {fieldLabel}
                   </Label>
                   <Input
                     id={`sla-${field.key}`}
@@ -438,7 +639,14 @@ function PolicyEditorDialog({
                         [field.key]: { ...draft, value: e.target.value },
                       }))
                     }
-                    placeholder={locked ? undefined : 'Off'}
+                    placeholder={
+                      locked
+                        ? undefined
+                        : intl.formatMessage({
+                            id: 'admin.settings.sla.targetPlaceholder',
+                            defaultMessage: 'Off',
+                          })
+                    }
                     className="h-8 w-24 text-sm"
                   />
                   <Select
@@ -450,13 +658,23 @@ function PolicyEditorDialog({
                       }))
                     }
                   >
-                    <SelectTrigger size="sm" className="w-28" aria-label={`${field.label} unit`}>
+                    <SelectTrigger
+                      size="sm"
+                      className="w-28"
+                      aria-label={intl.formatMessage(
+                        {
+                          id: 'admin.settings.sla.targetUnitAria',
+                          defaultMessage: '{target} unit',
+                        },
+                        { target: fieldLabel }
+                      )}
+                    >
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       {(Object.keys(UNIT_SECS) as DurationUnit[]).map((u) => (
                         <SelectItem key={u} value={u}>
-                          {UNIT_LABELS[u]}
+                          {intl.formatMessage(UNIT_LABELS[u])}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -466,8 +684,11 @@ function PolicyEditorDialog({
             })}
             {editing && (
               <p className="text-[11px] text-muted-foreground">
-                Targets can be changed but not removed once set. Edits only affect conversations the
-                policy is applied to afterwards.
+                {intl.formatMessage({
+                  id: 'admin.settings.sla.targetLockNote',
+                  defaultMessage:
+                    'Targets can be changed but not removed once set. Edits only affect conversations the policy is applied to afterwards.',
+                })}
               </p>
             )}
           </div>
@@ -475,10 +696,16 @@ function PolicyEditorDialog({
           <div className="flex items-center justify-between py-1">
             <div className="pr-4">
               <Label htmlFor="sla-pause-on-snooze" className="text-sm font-medium cursor-pointer">
-                Pause while snoozed
+                {intl.formatMessage({
+                  id: 'admin.settings.sla.pauseOnSnooze',
+                  defaultMessage: 'Pause while snoozed',
+                })}
               </Label>
               <p className="mt-0.5 text-xs text-muted-foreground">
-                Stop the clocks while the conversation is snoozed.
+                {intl.formatMessage({
+                  id: 'admin.settings.sla.pauseOnSnoozeDescription',
+                  defaultMessage: 'Stop the clocks while the conversation is snoozed.',
+                })}
               </p>
             </div>
             <Switch
@@ -491,12 +718,23 @@ function PolicyEditorDialog({
           <div className="flex items-center justify-between py-1">
             <div className="pr-4">
               <Label htmlFor="sla-pause-on-pending" className="text-sm font-medium cursor-pointer">
-                Pause while pending
+                {intl.formatMessage({
+                  id: 'admin.settings.sla.pauseOnPending',
+                  defaultMessage: 'Pause while pending',
+                })}
               </Label>
               <p className="mt-0.5 text-xs text-muted-foreground">
-                Stop a ticket&apos;s resolve clock while it waits in a pending status (on the
-                customer or a third party).
-                {!hasResolveTarget && ' Inert without a time-to-resolve target.'}
+                {intl.formatMessage({
+                  id: 'admin.settings.sla.pauseOnPendingDescription',
+                  defaultMessage:
+                    "Stop a ticket's resolve clock while it waits in a pending status (on the customer or a third party).",
+                })}
+                {!hasResolveTarget &&
+                  ' ' +
+                    intl.formatMessage({
+                      id: 'admin.settings.sla.pauseOnPendingInert',
+                      defaultMessage: 'Inert without a time-to-resolve target.',
+                    })}
               </p>
             </div>
             <Switch
@@ -508,18 +746,33 @@ function PolicyEditorDialog({
           </div>
 
           <div className="space-y-1.5">
-            <Label>Business hours</Label>
+            <Label>
+              {intl.formatMessage({
+                id: 'admin.settings.sla.businessHours',
+                defaultMessage: 'Business hours',
+              })}
+            </Label>
             <p className="text-xs text-muted-foreground">
               {officeHoursEnabled ? (
-                'Clocks count only time inside your workspace office hours.'
+                intl.formatMessage({
+                  id: 'admin.settings.sla.businessHoursEnabled',
+                  defaultMessage: 'Clocks count only time inside your workspace office hours.',
+                })
               ) : (
-                <>
-                  Clocks run around the clock.{' '}
-                  <Link to="/admin/settings/office-hours" className={INLINE_LINK}>
-                    Set office hours
-                  </Link>{' '}
-                  to make clocks count only open time.
-                </>
+                <FormattedMessage
+                  id="admin.settings.sla.businessHoursDisabled"
+                  defaultMessage="Clocks run around the clock. {link} to make clocks count only open time."
+                  values={{
+                    link: (
+                      <Link to="/admin/settings/office-hours" className={INLINE_LINK}>
+                        {intl.formatMessage({
+                          id: 'admin.settings.officeHours.enableLabel',
+                          defaultMessage: 'Set office hours',
+                        })}
+                      </Link>
+                    ),
+                  }}
+                />
               )}
             </p>
           </div>
@@ -529,7 +782,10 @@ function PolicyEditorDialog({
 
         <DialogFooter>
           <Button type="button" variant="outline" onClick={onClose}>
-            Cancel
+            {intl.formatMessage({
+              id: 'common.cancel',
+              defaultMessage: 'Cancel',
+            })}
           </Button>
           <Button
             type="button"
@@ -539,7 +795,15 @@ function PolicyEditorDialog({
             }}
             disabled={saveMutation.isPending}
           >
-            {editing ? 'Save changes' : 'Create policy'}
+            {editing
+              ? intl.formatMessage({
+                  id: 'admin.settings.sla.saveChanges',
+                  defaultMessage: 'Save changes',
+                })
+              : intl.formatMessage({
+                  id: 'admin.settings.sla.createPolicy',
+                  defaultMessage: 'Create policy',
+                })}
           </Button>
         </DialogFooter>
       </DialogContent>

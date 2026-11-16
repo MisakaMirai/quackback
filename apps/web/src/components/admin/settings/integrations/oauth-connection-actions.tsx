@@ -150,12 +150,20 @@ export function OAuthConnectionActions({
   getConnectUrl,
   displayName,
   disconnectDescription,
-  connectLabel = `Connect ${displayName}`,
+  connectLabel,
 }: OAuthConnectionActionsProps) {
+  const intl = useIntl()
   const deleteMutation = useDeleteIntegration()
   const showSuccess = useOAuthResult(searchParamKey, displayName)
   const [connecting, setConnecting] = useState(false)
   const [disconnectDialogOpen, setDisconnectDialogOpen] = useState(false)
+
+  const resolvedConnectLabel =
+    connectLabel ??
+    intl.formatMessage(
+      { id: 'admin.integrations.connection.connectTo', defaultMessage: 'Connect {name}' },
+      { name: displayName }
+    )
 
   const handleConnect = async () => {
     setConnecting(true)
@@ -164,7 +172,13 @@ export function OAuthConnectionActions({
       window.location.href = url
     } catch (err) {
       console.error('Failed to get connect URL:', err)
-      toastError(err, "Couldn't start connection. Try again.")
+      toastError(
+        err,
+        intl.formatMessage({
+          id: 'admin.integrations.connection.startFailed',
+          defaultMessage: "Couldn't start connection. Try again.",
+        })
+      )
       setConnecting(false)
     }
   }
@@ -181,7 +195,12 @@ export function OAuthConnectionActions({
       {showSuccess && (
         <div className="flex items-center gap-2 rounded-lg border border-success/30 bg-success/10 px-3 py-2 text-sm text-success">
           <CheckCircleIcon className="h-4 w-4" />
-          <span>Connected successfully!</span>
+          <span>
+            {intl.formatMessage({
+              id: 'admin.integrations.connection.connected',
+              defaultMessage: 'Connected successfully!',
+            })}
+          </span>
         </div>
       )}
 
@@ -191,10 +210,13 @@ export function OAuthConnectionActions({
             {connecting ? (
               <>
                 <ArrowPathIcon className="mr-2 h-4 w-4 animate-spin" />
-                Connecting...
+                {intl.formatMessage({
+                  id: 'admin.integrations.connection.connecting',
+                  defaultMessage: 'Connecting...',
+                })}
               </>
             ) : (
-              connectLabel
+              resolvedConnectLabel
             )}
           </Button>
         )}
@@ -210,18 +232,33 @@ export function OAuthConnectionActions({
               {disconnecting ? (
                 <>
                   <ArrowPathIcon className="mr-2 h-4 w-4 animate-spin" />
-                  Disconnecting...
+                  {intl.formatMessage({
+                    id: 'admin.integrations.connection.disconnecting',
+                    defaultMessage: 'Disconnecting...',
+                  })}
                 </>
               ) : (
-                'Disconnect'
+                intl.formatMessage({
+                  id: 'admin.integrations.connection.disconnect',
+                  defaultMessage: 'Disconnect',
+                })
               )}
             </Button>
             <ConfirmDialog
               open={disconnectDialogOpen}
               onOpenChange={setDisconnectDialogOpen}
-              title={`Disconnect ${displayName}?`}
+              title={intl.formatMessage(
+                {
+                  id: 'admin.integrations.connection.disconnectTitle',
+                  defaultMessage: 'Disconnect {name}?',
+                },
+                { name: displayName }
+              )}
               description={disconnectDescription}
-              confirmLabel="Disconnect"
+              confirmLabel={intl.formatMessage({
+                id: 'admin.integrations.connection.disconnect',
+                defaultMessage: 'Disconnect',
+              })}
               isPending={disconnecting}
               onConfirm={handleDisconnect}
             />

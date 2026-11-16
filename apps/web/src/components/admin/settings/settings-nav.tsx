@@ -13,6 +13,8 @@ import {
   type NavModule,
 } from './settings-nav-sections'
 import { SettingsNavContext } from './settings-page'
+import { settingsPageLabelId, settingsSectionLabelId } from '@/lib/shared/settings-pages'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { useFeatureFlags, usePermissions } from '@/lib/client/hooks/use-root-context'
 
 type IconComponent = ComponentType<{ className?: string }>
@@ -56,13 +58,20 @@ export function SettingsNavProvider({ children }: { children: ReactNode }) {
  * on its own, so a navigation renders only the rows whose highlight moved.
  */
 export function SettingsNav() {
+  const intl = useOptionalIntl()
   const navSections = useContext(SettingsNavContext)
   if (!navSections) throw new Error('SettingsNav renders inside SettingsNavProvider')
 
   return (
     <div>
       {navSections.map((section) => (
-        <FilterSection key={section.label} title={section.label}>
+        <FilterSection
+          key={section.label}
+          title={intl.formatMessage({
+            id: settingsSectionLabelId(section.label),
+            defaultMessage: section.label,
+          })}
+        >
           <div className="space-y-0.5">
             {section.items.map((entry) =>
               isNavModule(entry) ? (
@@ -103,7 +112,18 @@ function rowContent(label: string, iconPath: string) {
  */
 const NavLink = memo(
   function NavLink({ item }: { item: NavItem }) {
-    const content = useMemo(() => rowContent(item.label, item.to), [item.label, item.to])
+    const intl = useOptionalIntl()
+    const content = useMemo(
+      () =>
+        rowContent(
+          intl.formatMessage({
+            id: settingsPageLabelId(item.to),
+            defaultMessage: item.label,
+          }),
+          item.to
+        ),
+      [intl, item.label, item.to]
+    )
     return (
       <Link
         to={item.to}
@@ -126,10 +146,21 @@ const NavLink = memo(
  * when the location moves into or out of the module.
  */
 const ModuleNavLink = memo(function ModuleNavLink({ module }: { module: NavModule }) {
+  const intl = useOptionalIntl()
   const active = useRouterState({
     select: (s) => module.pages.some((page) => pathIsUnder(s.location.pathname, page.to)),
   })
-  const content = useMemo(() => rowContent(module.label, module.id), [module.label, module.id])
+  const content = useMemo(
+    () =>
+      rowContent(
+        intl.formatMessage({
+          id: settingsPageLabelId(module.id),
+          defaultMessage: module.label,
+        }),
+        module.id
+      ),
+    [intl, module.id, module.label]
+  )
   return (
     <Link
       to={module.pages[0]!.to}

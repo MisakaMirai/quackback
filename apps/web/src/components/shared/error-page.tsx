@@ -121,28 +121,54 @@ export function PermissionDeniedPage({ fullPage = true }: { fullPage?: boolean }
 
   return (
     <FriendlyShell fullPage={fullPage}>
-      <h1 className="text-2xl font-semibold tracking-tight">You don&apos;t have access</h1>
-      <p className="mt-2 text-sm text-muted-foreground">
-        Only people with the right permissions can open this page. Ask a workspace admin if you need
-        access.
-      </p>
-
-      <div className="mt-6 flex items-center justify-center gap-3">
-        {isAdminArea ? (
+      <ErrorPageCopy>
+        {(copy) => (
           <>
-            <Button asChild>
-              <a href="/admin/feedback">Back to Feedback</a>
-            </Button>
-            <Button variant="outline" asChild>
-              <a href="/">View public board</a>
-            </Button>
+            <h1 className="text-2xl font-semibold tracking-tight">
+              {copy({
+                id: 'common.errorPage.permissionDenied.title',
+                defaultMessage: "You don't have access",
+              })}
+            </h1>
+            <p className="mt-2 text-sm text-muted-foreground">
+              {copy({
+                id: 'common.errorPage.permissionDenied.description',
+                defaultMessage:
+                  'Only people with the right permissions can open this page. Ask a workspace admin if you need access.',
+              })}
+            </p>
+
+            <div className="mt-6 flex items-center justify-center gap-3">
+              {isAdminArea ? (
+                <>
+                  <Button asChild>
+                    <a href="/admin/feedback">
+                      {copy({
+                        id: 'common.errorPage.backToFeedback',
+                        defaultMessage: 'Back to Feedback',
+                      })}
+                    </a>
+                  </Button>
+                  <Button variant="outline" asChild>
+                    <a href="/">
+                      {copy({
+                        id: 'common.errorPage.viewPublicBoard',
+                        defaultMessage: 'View public board',
+                      })}
+                    </a>
+                  </Button>
+                </>
+              ) : (
+                <Button variant="outline" asChild>
+                  <a href="/">
+                    {copy({ id: 'common.errorPage.goHome', defaultMessage: 'Go home' })}
+                  </a>
+                </Button>
+              )}
+            </div>
           </>
-        ) : (
-          <Button variant="outline" asChild>
-            <a href="/">Go home</a>
-          </Button>
         )}
-      </div>
+      </ErrorPageCopy>
     </FriendlyShell>
   )
 }

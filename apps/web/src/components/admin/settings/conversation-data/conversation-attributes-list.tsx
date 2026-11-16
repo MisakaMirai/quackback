@@ -32,6 +32,7 @@ import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { AttributeList, type AttributeListItem } from '@/components/admin/settings/attribute-list'
 import { Badge } from '@/components/ui/badge'
 import { SettingRow, SettingRows } from '@/components/admin/settings/setting-row'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import {
   createConversationAttributeFn,
   updateConversationAttributeFn,
@@ -45,19 +46,60 @@ import {
 import { toastError } from '@/lib/client/error-notice'
 
 const FIELD_TYPES = [
-  { value: 'text', label: 'Text' },
-  { value: 'number', label: 'Number' },
-  { value: 'select', label: 'Select' },
-  { value: 'multi_select', label: 'Multi select' },
-  { value: 'checkbox', label: 'Checkbox' },
-  { value: 'date', label: 'Date' },
+  {
+    value: 'text',
+    label: { id: 'admin.settings.ticketFields.type.text', defaultMessage: 'Text' },
+  },
+  {
+    value: 'number',
+    label: { id: 'admin.settings.ticketFields.type.number', defaultMessage: 'Number' },
+  },
+  {
+    value: 'select',
+    label: { id: 'admin.settings.ticketFields.type.select', defaultMessage: 'Select' },
+  },
+  {
+    value: 'multi_select',
+    label: {
+      id: 'admin.settings.conversationData.attributes.fieldType.multiSelect',
+      defaultMessage: 'Multi select',
+    },
+  },
+  {
+    value: 'checkbox',
+    label: { id: 'admin.settings.ticketFields.type.checkbox', defaultMessage: 'Checkbox' },
+  },
+  {
+    value: 'date',
+    label: { id: 'admin.settings.ticketFields.type.date', defaultMessage: 'Date' },
+  },
 ] as const
 
 type FieldType = (typeof FIELD_TYPES)[number]['value']
 
 const SOURCE_HINTS = [
-  { value: 'agent', label: 'Agent', usually: 'an agent' },
-  { value: 'workflow', label: 'Workflow', usually: 'a workflow' },
+  {
+    value: 'agent',
+    label: {
+      id: 'admin.settings.conversationData.attributes.sourceHint.agent',
+      defaultMessage: 'Agent',
+    },
+    usually: {
+      id: 'admin.settings.conversationData.attributes.sourceHint.agentUsually',
+      defaultMessage: 'an agent',
+    },
+  },
+  {
+    value: 'workflow',
+    label: {
+      id: 'admin.settings.conversationData.attributes.sourceHint.workflow',
+      defaultMessage: 'Workflow',
+    },
+    usually: {
+      id: 'admin.settings.conversationData.attributes.sourceHint.workflowUsually',
+      defaultMessage: 'a workflow',
+    },
+  },
 ] as const
 
 const isSelectType = (t: FieldType) => t === 'select' || t === 'multi_select'
@@ -92,6 +134,7 @@ function AttributeFormDialog({
   onSubmit: (values: AttributeFormValues) => Promise<void>
   isPending?: boolean
 }) {
+  const intl = useOptionalIntl()
   const isEditing = !!initialValues?.id
 
   const [key, setKey] = useState(initialValues?.key ?? '')
@@ -141,12 +184,29 @@ function AttributeFormDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>{isEditing ? 'Edit attribute' : 'New conversation attribute'}</DialogTitle>
+          <DialogTitle>
+            {intl.formatMessage(
+              isEditing
+                ? {
+                    id: 'admin.settings.conversationData.attributes.editTitle',
+                    defaultMessage: 'Edit attribute',
+                  }
+                : {
+                    id: 'admin.settings.conversationData.attributes.newTitle',
+                    defaultMessage: 'New conversation attribute',
+                  }
+            )}
+          </DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
-            <Label htmlFor="conv-attr-key">Key</Label>
+            <Label htmlFor="conv-attr-key">
+              {intl.formatMessage({
+                id: 'admin.settings.conversationData.attributes.keyLabel',
+                defaultMessage: 'Key',
+              })}
+            </Label>
             <Input
               id="conv-attr-key"
               value={key}
@@ -158,24 +218,41 @@ function AttributeFormDialog({
             />
             {!isEditing && (
               <p className="text-[11px] text-muted-foreground">
-                Lowercase letters, numbers, underscores only. Cannot be changed after creation.
+                {intl.formatMessage({
+                  id: 'admin.settings.conversationData.attributes.keyHint',
+                  defaultMessage:
+                    'Lowercase letters, numbers, underscores only. Cannot be changed after creation.',
+                })}
               </p>
             )}
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="conv-attr-label">Display label</Label>
+            <Label htmlFor="conv-attr-label">
+              {intl.formatMessage({
+                id: 'admin.settings.conversationData.attributes.displayLabel',
+                defaultMessage: 'Display label',
+              })}
+            </Label>
             <Input
               id="conv-attr-label"
               value={label}
               onChange={(e) => setLabel(e.target.value)}
-              placeholder="Issue type"
+              placeholder={intl.formatMessage({
+                id: 'admin.settings.conversationData.attributes.displayLabelPlaceholder',
+                defaultMessage: 'Issue type',
+              })}
               required
             />
           </div>
 
           <div className="space-y-1.5">
-            <Label>Type</Label>
+            <Label>
+              {intl.formatMessage({
+                id: 'admin.settings.ticketFields.typeLabel',
+                defaultMessage: 'Type',
+              })}
+            </Label>
             <Select
               value={fieldType}
               onValueChange={(v) => setFieldType(v as FieldType)}
@@ -187,25 +264,42 @@ function AttributeFormDialog({
               <SelectContent>
                 {FIELD_TYPES.map((t) => (
                   <SelectItem key={t.value} value={t.value}>
-                    {t.label}
+                    {intl.formatMessage(t.label)}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
             {isEditing && (
-              <p className="text-[11px] text-muted-foreground">The type is fixed after creation.</p>
+              <p className="text-[11px] text-muted-foreground">
+                {intl.formatMessage({
+                  id: 'admin.settings.conversationData.attributes.typeFixed',
+                  defaultMessage: 'The type is fixed after creation.',
+                })}
+              </p>
             )}
           </div>
 
           <div className="space-y-1.5">
             <Label htmlFor="conv-attr-desc">
-              Description <span className="text-muted-foreground font-normal">(optional)</span>
+              {intl.formatMessage({
+                id: 'admin.settings.conversationData.attributes.descriptionLabel',
+                defaultMessage: 'Description',
+              })}{' '}
+              <span className="text-muted-foreground font-normal">
+                {intl.formatMessage({
+                  id: 'admin.settings.conversationData.attributes.optional',
+                  defaultMessage: '(optional)',
+                })}
+              </span>
             </Label>
             <Textarea
               id="conv-attr-desc"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="What this attribute captures."
+              placeholder={intl.formatMessage({
+                id: 'admin.settings.conversationData.attributes.descriptionPlaceholder',
+                defaultMessage: 'What this attribute captures.',
+              })}
               rows={2}
               className="resize-none text-sm"
             />
@@ -213,7 +307,12 @@ function AttributeFormDialog({
 
           {isSelectType(fieldType) && (
             <div className="space-y-1.5">
-              <Label>Options</Label>
+              <Label>
+                {intl.formatMessage({
+                  id: 'admin.settings.ticketFields.options',
+                  defaultMessage: 'Options',
+                })}
+              </Label>
               <div className="space-y-2">
                 {options.map((option, i) => (
                   <div key={option.id ?? `new-${i}`} className="flex items-start gap-1.5">
@@ -221,13 +320,19 @@ function AttributeFormDialog({
                       <Input
                         value={option.label}
                         onChange={(e) => updateOption(i, { label: e.target.value })}
-                        placeholder="Option label"
+                        placeholder={intl.formatMessage({
+                          id: 'admin.settings.conversationData.attributes.optionLabelPlaceholder',
+                          defaultMessage: 'Option label',
+                        })}
                         className="h-8 text-sm"
                       />
                       <Input
                         value={option.description}
                         onChange={(e) => updateOption(i, { description: e.target.value })}
-                        placeholder="Description (optional)"
+                        placeholder={intl.formatMessage({
+                          id: 'admin.settings.conversationData.attributes.optionDescriptionPlaceholder',
+                          defaultMessage: 'Description (optional)',
+                        })}
                         className="h-8 text-xs"
                       />
                     </div>
@@ -240,7 +345,10 @@ function AttributeFormDialog({
                         size="sm"
                         className="h-8 px-2 text-muted-foreground hover:text-destructive"
                         onClick={() => setOptions((prev) => prev.filter((_, j) => j !== i))}
-                        title="Remove option"
+                        title={intl.formatMessage({
+                          id: 'admin.settings.conversationData.attributes.removeOption',
+                          defaultMessage: 'Remove option',
+                        })}
                       >
                         <XMarkIcon className="h-3.5 w-3.5" />
                       </Button>
@@ -254,13 +362,20 @@ function AttributeFormDialog({
                   className="h-7 gap-1 text-xs"
                   onClick={() => setOptions((prev) => [...prev, { label: '', description: '' }])}
                 >
-                  <PlusIcon className="h-3 w-3" /> Add option
+                  <PlusIcon className="h-3 w-3" />
+                  {intl.formatMessage({
+                    id: 'admin.settings.conversationData.attributes.addOption',
+                    defaultMessage: 'Add option',
+                  })}
                 </Button>
               </div>
               {isEditing && (
                 <p className="text-[11px] text-muted-foreground">
-                  Existing options can be renamed but not removed, because stored values reference
-                  them.
+                  {intl.formatMessage({
+                    id: 'admin.settings.conversationData.attributes.optionsRenameOnly',
+                    defaultMessage:
+                      'Existing options can be renamed but not removed, because stored values reference them.',
+                  })}
                 </p>
               )}
             </div>
@@ -268,8 +383,15 @@ function AttributeFormDialog({
 
           <SettingRows>
             <SettingRow
-              label="Required to close"
-              description="Teammates must fill this before closing a conversation. Automations are exempt."
+              label={intl.formatMessage({
+                id: 'admin.settings.conversationData.attributes.requiredToClose',
+                defaultMessage: 'Required to close',
+              })}
+              description={intl.formatMessage({
+                id: 'admin.settings.conversationData.attributes.requiredToCloseDescription',
+                defaultMessage:
+                  'Teammates must fill this before closing a conversation. Automations are exempt.',
+              })}
               htmlFor="attr-required-to-close"
               control={
                 <Switch
@@ -283,17 +405,31 @@ function AttributeFormDialog({
 
           <div className="space-y-1.5">
             <Label>
-              Usually set by <span className="text-muted-foreground font-normal">(optional)</span>
+              {intl.formatMessage({
+                id: 'admin.settings.conversationData.attributes.usuallySetBy',
+                defaultMessage: 'Usually set by',
+              })}{' '}
+              <span className="text-muted-foreground font-normal">
+                {intl.formatMessage({
+                  id: 'admin.settings.conversationData.attributes.optional',
+                  defaultMessage: '(optional)',
+                })}
+              </span>
             </Label>
             <Select value={sourceHint} onValueChange={setSourceHint}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="none">No hint</SelectItem>
+                <SelectItem value="none">
+                  {intl.formatMessage({
+                    id: 'admin.settings.conversationData.attributes.noHint',
+                    defaultMessage: 'No hint',
+                  })}
+                </SelectItem>
                 {SOURCE_HINTS.map((s) => (
                   <SelectItem key={s.value} value={s.value}>
-                    {s.label}
+                    {intl.formatMessage(s.label)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -307,10 +443,25 @@ function AttributeFormDialog({
               onClick={() => onOpenChange(false)}
               disabled={isPending}
             >
-              Cancel
+              {intl.formatMessage({ id: 'common.cancel', defaultMessage: 'Cancel' })}
             </Button>
             <Button type="submit" disabled={!canSubmit || isPending}>
-              {isPending ? 'Saving...' : isEditing ? 'Save changes' : 'Create attribute'}
+              {intl.formatMessage(
+                isPending
+                  ? {
+                      id: 'admin.settings.conversationData.attributes.saving',
+                      defaultMessage: 'Saving...',
+                    }
+                  : isEditing
+                    ? {
+                        id: 'admin.settings.conversationData.attributes.saveChanges',
+                        defaultMessage: 'Save changes',
+                      }
+                    : {
+                        id: 'admin.settings.conversationData.attributes.createSubmit',
+                        defaultMessage: 'Create attribute',
+                      }
+              )}
             </Button>
           </DialogFooter>
         </form>
@@ -320,6 +471,7 @@ function AttributeFormDialog({
 }
 
 export function ConversationAttributesList() {
+  const intl = useOptionalIntl()
   const queryClient = useQueryClient()
   const registryQuery = useSuspenseQuery(conversationAttributeQueries.registry())
   const attributes = registryQuery.data
@@ -331,23 +483,51 @@ export function ConversationAttributesList() {
     mutationFn: (input: Parameters<typeof createConversationAttributeFn>[0]['data']) =>
       createConversationAttributeFn({ data: input }),
     onSuccess: invalidate,
-    onError: (e) => toastError(e, 'Failed to create attribute'),
+    onError: (e) =>
+      toastError(
+        e,
+        intl.formatMessage({
+          id: 'admin.settings.conversationData.attributes.createFailed',
+          defaultMessage: 'Failed to create attribute',
+        })
+      ),
   })
   const updateAttr = useMutation({
     mutationFn: (input: Parameters<typeof updateConversationAttributeFn>[0]['data']) =>
       updateConversationAttributeFn({ data: input }),
     onSuccess: invalidate,
-    onError: (e) => toastError(e, 'Failed to update attribute'),
+    onError: (e) =>
+      toastError(
+        e,
+        intl.formatMessage({
+          id: 'admin.settings.conversationData.attributes.updateFailed',
+          defaultMessage: 'Failed to update attribute',
+        })
+      ),
   })
   const archiveAttr = useMutation({
     mutationFn: (id: ConversationAttributeId) => archiveConversationAttributeFn({ data: { id } }),
     onSuccess: invalidate,
-    onError: (e) => toastError(e, 'Failed to archive attribute'),
+    onError: (e) =>
+      toastError(
+        e,
+        intl.formatMessage({
+          id: 'admin.settings.conversationData.attributes.archiveFailed',
+          defaultMessage: 'Failed to archive attribute',
+        })
+      ),
   })
   const restoreAttr = useMutation({
     mutationFn: (id: ConversationAttributeId) => restoreConversationAttributeFn({ data: { id } }),
     onSuccess: invalidate,
-    onError: (e) => toastError(e, 'Failed to restore attribute'),
+    onError: (e) =>
+      toastError(
+        e,
+        intl.formatMessage({
+          id: 'admin.settings.conversationData.attributes.restoreFailed',
+          defaultMessage: 'Failed to restore attribute',
+        })
+      ),
   })
 
   const [createOpen, setCreateOpen] = useState(false)
@@ -406,38 +586,71 @@ export function ConversationAttributesList() {
 
   const items: AttributeListItem[] = [...live, ...archived].map((attr) => {
     const isArchived = !!attr.archivedAt
+    const fieldType = FIELD_TYPES.find((t) => t.value === attr.fieldType)
+    const hint = SOURCE_HINTS.find((h) => h.value === attr.sourceHint)
     return {
       id: attr.id,
       label: attr.label,
       attrKey: attr.key,
-      typeLabel: FIELD_TYPES.find((t) => t.value === attr.fieldType)?.label ?? attr.fieldType,
+      typeLabel: fieldType ? intl.formatMessage(fieldType.label) : attr.fieldType,
       description: attr.description,
       muted: isArchived,
       badges: (
         <>
           {attr.sourceHint && attr.sourceHint !== 'ai' && (
             <span className="text-[13px] font-normal text-muted-foreground">
-              Usually set by{' '}
-              {SOURCE_HINTS.find((h) => h.value === attr.sourceHint)?.usually ?? attr.sourceHint}
+              {intl.formatMessage(
+                {
+                  id: 'admin.settings.conversationData.attributes.setByBadge',
+                  defaultMessage: 'Usually set by {source}',
+                },
+                { source: hint ? intl.formatMessage(hint.usually) : attr.sourceHint }
+              )}
             </span>
           )}
           {attr.requiredToClose && (
             <Badge variant="outline" size="sm">
-              Required to close
+              {intl.formatMessage({
+                id: 'admin.settings.conversationData.attributes.requiredToClose',
+                defaultMessage: 'Required to close',
+              })}
             </Badge>
           )}
           {isArchived && (
             <Badge variant="secondary" size="sm">
-              Archived
+              {intl.formatMessage({
+                id: 'admin.settings.conversationData.attributes.archived',
+                defaultMessage: 'Archived',
+              })}
             </Badge>
           )}
         </>
       ),
       actions: isArchived
-        ? [{ label: 'Restore', onSelect: () => restoreAttr.mutate(attr.id) }]
+        ? [
+            {
+              label: intl.formatMessage({
+                id: 'admin.settings.conversationData.attributes.restore',
+                defaultMessage: 'Restore',
+              }),
+              onSelect: () => restoreAttr.mutate(attr.id),
+            },
+          ]
         : [
-            { label: 'Edit', onSelect: () => setEditTarget(attr) },
-            { label: 'Archive', onSelect: () => setArchiveTarget(attr) },
+            {
+              label: intl.formatMessage({
+                id: 'admin.settings.conversationData.attributes.edit',
+                defaultMessage: 'Edit',
+              }),
+              onSelect: () => setEditTarget(attr),
+            },
+            {
+              label: intl.formatMessage({
+                id: 'admin.settings.conversationData.attributes.archive',
+                defaultMessage: 'Archive',
+              }),
+              onSelect: () => setArchiveTarget(attr),
+            },
           ],
     }
   })
@@ -446,7 +659,10 @@ export function ConversationAttributesList() {
     <AttributeList
       items={items}
       onNew={() => setCreateOpen(true)}
-      emptyDescription="Capture structured data on conversations and tickets."
+      emptyDescription={intl.formatMessage({
+        id: 'admin.settings.conversationData.attributes.emptyDescription',
+        defaultMessage: 'Capture structured data on conversations and tickets.',
+      })}
     >
       <AttributeFormDialog
         open={createOpen}
@@ -483,9 +699,22 @@ export function ConversationAttributesList() {
       <ConfirmDialog
         open={!!archiveTarget}
         onOpenChange={(open) => !open && setArchiveTarget(null)}
-        title={`Archive "${archiveTarget?.label}"?`}
-        description="Archived attributes disappear from pickers and the inbox editor. Stored values are kept and the key stays reserved. You can restore it at any time."
-        confirmLabel="Archive attribute"
+        title={intl.formatMessage(
+          {
+            id: 'admin.settings.conversationData.attributes.archiveTitle',
+            defaultMessage: 'Archive "{label}"?',
+          },
+          { label: archiveTarget?.label ?? '' }
+        )}
+        description={intl.formatMessage({
+          id: 'admin.settings.conversationData.attributes.archiveDescription',
+          defaultMessage:
+            'Archived attributes disappear from pickers and the inbox editor. Stored values are kept and the key stays reserved. You can restore it at any time.',
+        })}
+        confirmLabel={intl.formatMessage({
+          id: 'admin.settings.conversationData.attributes.archiveConfirm',
+          defaultMessage: 'Archive attribute',
+        })}
         isPending={archiveAttr.isPending}
         onConfirm={handleArchive}
       />

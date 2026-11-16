@@ -13,6 +13,7 @@ import { useUpdateChangelog } from '@/lib/client/mutations/changelog'
 import { changelogQueries } from '@/lib/client/queries/changelog'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { Form } from '@/components/ui/form'
 import { ChangelogFormFields } from './changelog-form-fields'
 import { ChangelogMetadataSidebar } from './changelog-metadata-sidebar'
@@ -33,6 +34,7 @@ interface ChangelogModalContentProps {
 }
 
 export function ChangelogModalContent({ entryId, onClose }: ChangelogModalContentProps) {
+  const intl = useOptionalIntl()
   const [contentJson, setContentJson] = useState<JSONContent | null>(null)
   const [linkedPostIds, setLinkedPostIds] = useState<PostId[]>([])
   const [categoryIds, setCategoryIds] = useState<ChangelogCategoryId[]>([])
@@ -152,15 +154,32 @@ export function ChangelogModalContent({ entryId, onClose }: ChangelogModalConten
 
   const getSubmitButtonText = () => {
     if (updateChangelogMutation.isPending) {
-      return publishState.type === 'published' ? 'Publishing...' : 'Saving...'
+      return publishState.type === 'published'
+        ? intl.formatMessage({
+            id: 'admin.changelog.actions.publishing',
+            defaultMessage: 'Publishing...',
+          })
+        : intl.formatMessage({
+            id: 'admin.changelog.actions.saving',
+            defaultMessage: 'Saving...',
+          })
     }
     switch (publishState.type) {
       case 'draft':
-        return 'Save draft'
+        return intl.formatMessage({
+          id: 'admin.changelog.actions.saveDraft',
+          defaultMessage: 'Save draft',
+        })
       case 'scheduled':
-        return 'Save schedule'
+        return intl.formatMessage({
+          id: 'admin.changelog.actions.saveSchedule',
+          defaultMessage: 'Save schedule',
+        })
       case 'published':
-        return 'Update and publish'
+        return intl.formatMessage({
+          id: 'admin.changelog.actions.updateAndPublish',
+          defaultMessage: 'Update and publish',
+        })
     }
   }
 
@@ -177,8 +196,17 @@ export function ChangelogModalContent({ entryId, onClose }: ChangelogModalConten
       <form onSubmit={handleSubmit} onKeyDown={handleKeyDown} className="flex flex-col h-full">
         {/* Header */}
         <ModalHeader
-          section="Changelog"
-          title={entry?.title || 'Edit entry'}
+          section={intl.formatMessage({
+            id: 'admin.nav.changelog',
+            defaultMessage: 'Changelog',
+          })}
+          title={
+            entry?.title ||
+            intl.formatMessage({
+              id: 'admin.changelog.modal.editTitle',
+              defaultMessage: 'Edit entry',
+            })
+          }
           onClose={onClose}
           viewUrl={entry?.status === 'published' ? `/changelog/${entryId}` : null}
         />
@@ -230,12 +258,20 @@ export function ChangelogModalContent({ entryId, onClose }: ChangelogModalConten
             <SheetTrigger asChild>
               <Button type="button" variant="outline" size="sm" className="lg:hidden">
                 <Cog6ToothIcon className="h-4 w-4 mr-1.5" />
-                Settings
+                {intl.formatMessage({
+                  id: 'admin.changelog.actions.settings',
+                  defaultMessage: 'Settings',
+                })}
               </Button>
             </SheetTrigger>
             <SheetContent side="bottom" className="h-[70vh]">
               <SheetHeader>
-                <SheetTitle>Entry settings</SheetTitle>
+                <SheetTitle>
+                  {intl.formatMessage({
+                    id: 'admin.changelog.settings.title',
+                    defaultMessage: 'Entry settings',
+                  })}
+                </SheetTitle>
               </SheetHeader>
               <div className="py-4 overflow-y-auto">
                 <ChangelogMetadataSidebarContent

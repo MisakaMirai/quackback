@@ -7,6 +7,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import { SettingRow } from '@/components/admin/settings/setting-row'
 import { Button } from '@/components/ui/button'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { surfaceSenderQuery } from '@/lib/client/queries/channel-accounts'
 import { useHasPermission } from '@/lib/client/hooks/use-root-context'
 import {
@@ -30,12 +31,16 @@ export function useSurfaceSender(surface: ProductSenderSurface): string | null {
 }
 
 export function SurfaceSenderRow({ surface }: { surface: ProductSenderSurface }) {
+  const intl = useOptionalIntl()
   const { data } = useQuery(surfaceSenderQuery(surface))
   const canChange = useHasPermission(EMAIL_SENDING_PERMISSION)
   if (!data?.from) return null
   return (
     <SettingRow
-      label="Sent from"
+      label={intl.formatMessage({
+        id: 'admin.channels.sendFrom.sentFrom',
+        defaultMessage: 'Sent from',
+      })}
       description={data.from}
       control={
         canChange ? (

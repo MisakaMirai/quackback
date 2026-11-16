@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/dialog'
 import { Route } from '@/routes/admin/status'
 import { useCreateStatusIncident } from '@/lib/client/mutations/status'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import {
   AffectedComponentsField,
   TemplatePickerButton,
@@ -36,6 +37,7 @@ export function ScheduleMaintenanceDialog({
 }: {
   variant?: 'default' | 'outline'
 }) {
+  const intl = useOptionalIntl()
   const [open, setOpen] = useState(false)
   const navigate = useNavigate({ from: Route.fullPath })
   const search = Route.useSearch()
@@ -102,7 +104,13 @@ export function ScheduleMaintenanceDialog({
         search: { ...search, view: 'maintenance', incident: created.id },
       })
     } catch (error) {
-      toastError(error, 'Failed to schedule maintenance')
+      toastError(
+        error,
+        intl.formatMessage({
+          id: 'admin.status.schedule.toastFailed',
+          defaultMessage: 'Failed to schedule maintenance',
+        })
+      )
     }
   }
 
@@ -116,23 +124,40 @@ export function ScheduleMaintenanceDialog({
     >
       <DialogTrigger asChild>
         <Button size="sm" variant={variant}>
-          Schedule maintenance
+          {intl.formatMessage({
+            id: 'admin.status.schedule.action',
+            defaultMessage: 'Schedule maintenance',
+          })}
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-xl">
         <DialogHeader>
-          <DialogTitle>Schedule maintenance</DialogTitle>
+          <DialogTitle>
+            {intl.formatMessage({
+              id: 'admin.status.schedule.action',
+              defaultMessage: 'Schedule maintenance',
+            })}
+          </DialogTitle>
           <DialogDescription>
-            Appears on your status page and emails subscribers once, when scheduled.
+            {intl.formatMessage({
+              id: 'admin.status.schedule.description',
+              defaultMessage:
+                'Appears on your status page and emails subscribers once, when scheduled.',
+            })}
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label htmlFor="maint-title">Title</Label>
+              <Label htmlFor="maint-title">
+                {intl.formatMessage({ id: 'admin.status.field.title', defaultMessage: 'Title' })}
+              </Label>
               <TemplatePickerButton
-                label="Start from template"
+                label={intl.formatMessage({
+                  id: 'admin.status.action.startFromTemplate',
+                  defaultMessage: 'Start from template',
+                })}
                 onApply={(t) => {
                   setTitle(t.title)
                   setBody(t.body)
@@ -145,19 +170,31 @@ export function ScheduleMaintenanceDialog({
               id="maint-title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Database maintenance window"
+              placeholder={intl.formatMessage({
+                id: 'admin.status.schedule.titlePlaceholder',
+                defaultMessage: 'Database maintenance window',
+              })}
               required
               autoFocus
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="maint-body">What's planned?</Label>
+            <Label htmlFor="maint-body">
+              {intl.formatMessage({
+                id: 'admin.status.schedule.bodyLabel',
+                defaultMessage: "What's planned?",
+              })}
+            </Label>
             <Textarea
               id="maint-body"
               value={body}
               onChange={(e) => setBody(e.target.value)}
-              placeholder="What's happening during this window, and what should users expect?"
+              placeholder={intl.formatMessage({
+                id: 'admin.status.schedule.bodyPlaceholder',
+                defaultMessage:
+                  "What's happening during this window, and what should users expect?",
+              })}
               className="min-h-20"
               required
             />
@@ -165,7 +202,12 @@ export function ScheduleMaintenanceDialog({
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
-              <Label>Scheduled start</Label>
+              <Label>
+                {intl.formatMessage({
+                  id: 'admin.status.field.scheduledStart',
+                  defaultMessage: 'Scheduled start',
+                })}
+              </Label>
               <DateTimePicker
                 value={scheduledStart}
                 onChange={setScheduledStart}
@@ -173,31 +215,54 @@ export function ScheduleMaintenanceDialog({
               />
             </div>
             <div className="space-y-2">
-              <Label>Scheduled end</Label>
+              <Label>
+                {intl.formatMessage({
+                  id: 'admin.status.field.scheduledEnd',
+                  defaultMessage: 'Scheduled end',
+                })}
+              </Label>
               {/* No minDate: the picker would move an end before the start up
                   to the start. The admin's value stays, with the error below. */}
               <DateTimePicker value={scheduledEnd} onChange={setScheduledEnd} />
             </div>
             {windowOutOfOrder && (
               <p className="col-span-2 text-xs text-destructive">
-                The end must be after the start.
+                {intl.formatMessage({
+                  id: 'admin.status.field.endAfterStart',
+                  defaultMessage: 'The end must be after the start.',
+                })}
               </p>
             )}
             <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer">
               <Switch checked={autoStart} onCheckedChange={setAutoStart} />
-              Auto-start at scheduled time
+              {intl.formatMessage({
+                id: 'admin.status.field.autoStart',
+                defaultMessage: 'Auto-start at scheduled time',
+              })}
             </label>
             <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer">
               <Switch checked={autoComplete} onCheckedChange={setAutoComplete} />
-              Auto-complete at end time
+              {intl.formatMessage({
+                id: 'admin.status.field.autoComplete',
+                defaultMessage: 'Auto-complete at end time',
+              })}
             </label>
           </div>
 
           <div className="space-y-2">
-            <Label>Affected services</Label>
+            <Label>
+              {intl.formatMessage({
+                id: 'admin.status.field.affectedServices',
+                defaultMessage: 'Affected services',
+              })}
+            </Label>
             <AffectedComponentsField kind="maintenance" value={affected} onChange={setAffected} />
             <p className="text-xs text-muted-foreground">
-              Services switch to Under maintenance while the window runs, then restore.
+              {intl.formatMessage({
+                id: 'admin.status.schedule.affectedHint',
+                defaultMessage:
+                  'Services switch to Under maintenance while the window runs, then restore.',
+              })}
             </p>
           </div>
 
@@ -209,19 +274,34 @@ export function ScheduleMaintenanceDialog({
               data-in-label
             />
             <span className="text-sm">
-              Email subscribers
+              {intl.formatMessage({
+                id: 'admin.status.field.emailSubscribers',
+                defaultMessage: 'Email subscribers',
+              })}
               <span className="block text-xs text-muted-foreground">
-                One email when this is scheduled. Start, progress, and completion never email.
+                {intl.formatMessage({
+                  id: 'admin.status.schedule.emailHint',
+                  defaultMessage:
+                    'One email when this is scheduled. Start, progress, and completion never email.',
+                })}
               </span>
             </span>
           </label>
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-              Cancel
+              {intl.formatMessage({ id: 'common.cancel', defaultMessage: 'Cancel' })}
             </Button>
             <Button type="submit" disabled={!canSubmit || createMutation.isPending}>
-              {createMutation.isPending ? 'Scheduling…' : 'Schedule maintenance'}
+              {createMutation.isPending
+                ? intl.formatMessage({
+                    id: 'admin.status.schedule.submitting',
+                    defaultMessage: 'Scheduling…',
+                  })
+                : intl.formatMessage({
+                    id: 'admin.status.schedule.action',
+                    defaultMessage: 'Schedule maintenance',
+                  })}
             </Button>
           </DialogFooter>
         </form>

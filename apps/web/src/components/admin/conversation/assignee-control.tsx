@@ -8,6 +8,7 @@ import type { TeamMember } from '@/lib/server/domains/principals/principal.servi
 import { assignConversationFn } from '@/lib/server/functions/conversation'
 import { useTeamMembers } from '@/lib/client/hooks/use-team-members'
 import { Avatar } from '@/components/ui/avatar'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -34,10 +35,17 @@ export function AssigneeMenuItems({
   showUnassign?: boolean
   onSelect: (assignTo: string | null) => void
 }) {
+  const intl = useOptionalIntl()
   return (
     <>
-      <DropdownMenuItem onClick={() => onSelect('me')}>Assign to me</DropdownMenuItem>
-      {showUnassign && <DropdownMenuItem onClick={() => onSelect(null)}>Unassign</DropdownMenuItem>}
+      <DropdownMenuItem onClick={() => onSelect('me')}>
+        {intl.formatMessage({ id: 'inbox.assign.assignToMe', defaultMessage: 'Assign to me' })}
+      </DropdownMenuItem>
+      {showUnassign && (
+        <DropdownMenuItem onClick={() => onSelect(null)}>
+          {intl.formatMessage({ id: 'inbox.assign.unassign', defaultMessage: 'Unassign' })}
+        </DropdownMenuItem>
+      )}
       {members && members.length > 0 && <DropdownMenuSeparator />}
       {members?.map((m) => (
         <DropdownMenuItem
@@ -67,16 +75,26 @@ export const AssigneeControl = memo(function AssigneeControl({
   onChanged?: () => void
 }) {
   const { data: members } = useTeamMembers()
+  const intl = useOptionalIntl()
 
   const mutation = useMutation({
     // `'me'` is resolved to the caller's principal server-side; null unassigns.
     mutationFn: (assignTo: string | null) =>
       assignConversationFn({ data: { conversationId, assignTo } }),
     onSuccess: () => onChanged?.(),
-    onError: () => toast.error('Failed to assign conversation'),
+    onError: () =>
+      toast.error(
+        intl.formatMessage({
+          id: 'admin.inbox.conversationAssignFailed',
+          defaultMessage: 'Failed to assign conversation',
+        })
+      ),
   })
 
-  const label = assignedAgent ? (assignedAgent.displayName ?? 'Assigned') : 'Unassigned'
+  const label = assignedAgent
+    ? (assignedAgent.displayName ??
+      intl.formatMessage({ id: 'inbox.assign.assigned', defaultMessage: 'Assigned' }))
+    : intl.formatMessage({ id: 'inbox.assign.unassigned', defaultMessage: 'Unassigned' })
 
   return (
     <DropdownMenu>
@@ -89,7 +107,10 @@ export const AssigneeControl = memo(function AssigneeControl({
           {assignedAgent ? (
             <Avatar
               src={assignedAgent.avatarUrl}
-              name={assignedAgent.displayName ?? 'Agent'}
+              name={
+                assignedAgent.displayName ??
+                intl.formatMessage({ id: 'inbox.assign.agent', defaultMessage: 'Agent' })
+              }
               className="size-4 text-xs"
             />
           ) : (

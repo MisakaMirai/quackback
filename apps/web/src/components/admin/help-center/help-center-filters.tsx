@@ -1,8 +1,10 @@
 import { useQuery } from '@tanstack/react-query'
+import type { MessageDescriptor } from 'react-intl'
 import { BookOpenIcon, ChartBarIcon, TrashIcon } from '@heroicons/react/16/solid'
 import { PaneAddButton } from '@/components/shared/pane-add-button'
 import { FilterSection } from '@/components/shared/filter-section'
 import { FilterList } from '@/components/admin/feedback/single-select-filter-list'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { HelpCenterCategoryTree, type CategoryActions } from './help-center-category-tree'
 import { helpCenterQueries } from '@/lib/client/queries/help-center'
 import type { HelpCenterStatusFilter } from './use-help-center-filters'
@@ -20,10 +22,42 @@ interface HelpCenterFiltersProps {
   onShowPerformanceChange?: (showPerformance: boolean | undefined) => void
 }
 
-const ARTICLE_STATUSES: Array<{ id: HelpCenterStatusFilter; name: string; color?: string }> = [
-  { id: 'all', name: 'All' },
-  { id: 'draft', name: 'Draft', color: '#6b7280' },
-  { id: 'published', name: 'Published', color: '#22c55e' },
+const ARTICLE_STATUSES: Array<{
+  id: HelpCenterStatusFilter
+  name: MessageDescriptor
+  color?: string
+}> = [
+  {
+    id: 'all',
+    name: { id: 'admin.helpCenter.filter.all', defaultMessage: 'All' },
+  },
+  {
+    id: 'draft',
+    name: { id: 'admin.helpCenter.status.draft', defaultMessage: 'Draft' },
+    color: '#6b7280',
+  },
+  {
+    id: 'published',
+    name: { id: 'admin.helpCenter.status.published', defaultMessage: 'Published' },
+    color: '#22c55e',
+  },
+]
+
+const OTHER_ITEMS: Array<{
+  id: string
+  name: MessageDescriptor
+  icon: React.ComponentType<{ className?: string }>
+}> = [
+  {
+    id: 'performance',
+    name: { id: 'admin.helpCenter.performance.title', defaultMessage: 'Article performance' },
+    icon: ChartBarIcon,
+  },
+  {
+    id: 'deleted',
+    name: { id: 'admin.helpCenter.deleted.title', defaultMessage: 'Deleted items' },
+    icon: TrashIcon,
+  },
 ]
 
 export function HelpCenterFiltersPanel({
@@ -37,13 +71,23 @@ export function HelpCenterFiltersPanel({
   showPerformance,
   onShowPerformanceChange,
 }: HelpCenterFiltersProps) {
+  const intl = useOptionalIntl()
   const { data: categories = [] } = useQuery(helpCenterQueries.categories())
 
   return (
     <div className="space-y-0">
-      <FilterSection title="Status">
+      <FilterSection
+        title={intl.formatMessage({
+          id: 'admin.helpCenter.filter.status',
+          defaultMessage: 'Status',
+        })}
+      >
         <FilterList
-          items={ARTICLE_STATUSES}
+          items={ARTICLE_STATUSES.map(({ id, name, color }) => ({
+            id,
+            name: intl.formatMessage(name),
+            color,
+          }))}
           selectedIds={[status]}
           onSelect={(id) => onStatusChange(id as HelpCenterStatusFilter)}
           renderItem={(item) => (
@@ -62,8 +106,19 @@ export function HelpCenterFiltersPanel({
       </FilterSection>
 
       <FilterSection
-        title="Categories"
-        action={<PaneAddButton label="New category" onClick={() => categoryActions.onNew(null)} />}
+        title={intl.formatMessage({
+          id: 'admin.helpCenter.filter.categories',
+          defaultMessage: 'Categories',
+        })}
+        action={
+          <PaneAddButton
+            label={intl.formatMessage({
+              id: 'admin.helpCenter.category.createTitle',
+              defaultMessage: 'New category',
+            })}
+            onClick={() => categoryActions.onNew(null)}
+          />
+        }
       >
         <HelpCenterCategoryTree
           categories={categories}
@@ -73,12 +128,18 @@ export function HelpCenterFiltersPanel({
         />
       </FilterSection>
 
-      <FilterSection title="Other">
+      <FilterSection
+        title={intl.formatMessage({
+          id: 'admin.helpCenter.filter.other',
+          defaultMessage: 'Other',
+        })}
+      >
         <FilterList
-          items={[
-            { id: 'performance', name: 'Article performance', icon: ChartBarIcon },
-            { id: 'deleted', name: 'Deleted items', icon: TrashIcon },
-          ]}
+          items={OTHER_ITEMS.map(({ id, name, icon }) => ({
+            id,
+            name: intl.formatMessage(name),
+            icon,
+          }))}
           selectedIds={[
             ...(showPerformance ? ['performance'] : []),
             ...(showDeleted ? ['deleted'] : []),

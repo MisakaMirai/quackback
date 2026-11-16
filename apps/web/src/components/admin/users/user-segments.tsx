@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 import { XMarkIcon, BoltIcon, PlusIcon } from '@heroicons/react/24/solid'
 import { cn } from '@/lib/shared/utils'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import type { UserSegmentSummary } from '@/lib/shared/types'
 import type { SegmentId, PrincipalId } from '@quackback/ids'
 import { useRemoveUsersFromSegment, useAssignUsersToSegment } from '@/lib/client/mutations'
@@ -20,6 +21,7 @@ interface SegmentBadgeProps {
 }
 
 export function SegmentBadge({ segment, onRemove, isRemoving, readOnly }: SegmentBadgeProps) {
+  const intl = useOptionalIntl()
   const canRemove = !readOnly && segment.type === 'manual' && !!onRemove
 
   return (
@@ -33,7 +35,14 @@ export function SegmentBadge({ segment, onRemove, isRemoving, readOnly }: Segmen
         borderColor: segment.color + '40',
         color: segment.color,
       }}
-      title={segment.type === 'dynamic' ? 'Auto-managed segment' : segment.name}
+      title={
+        segment.type === 'dynamic'
+          ? intl.formatMessage({
+              id: 'admin.people.segmentBadge.autoManaged',
+              defaultMessage: 'Auto-managed segment',
+            })
+          : segment.name
+      }
     >
       {segment.type === 'dynamic' && <BoltIcon className="h-2.5 w-2.5 shrink-0 opacity-70" />}
       <span>{segment.name}</span>
@@ -46,7 +55,13 @@ export function SegmentBadge({ segment, onRemove, isRemoving, readOnly }: Segmen
           }}
           disabled={isRemoving}
           className="ml-0.5 opacity-0 group-hover:opacity-100 transition-opacity hover:text-red-500 disabled:opacity-50"
-          aria-label={`Remove from ${segment.name}`}
+          aria-label={intl.formatMessage(
+            {
+              id: 'admin.people.segmentBadge.removeAria',
+              defaultMessage: 'Remove from {segment}',
+            },
+            { segment: segment.name }
+          )}
         >
           <XMarkIcon className="h-3 w-3" />
         </button>
@@ -68,6 +83,7 @@ export function UserSegmentBadges({
   canManage = false,
   onSegmentsChange,
 }: UserSegmentBadgesProps) {
+  const intl = useOptionalIntl()
   const { data: allSegments } = useSegments()
   const removeUsers = useRemoveUsersFromSegment()
   const assignUsers = useAssignUsersToSegment()
@@ -80,29 +96,65 @@ export function UserSegmentBadges({
     (s) => s.type === 'manual' && !currentSegmentIds.has(s.id as SegmentId)
   )
 
+  const segmentLabel = (name: string | undefined) =>
+    name ??
+    intl.formatMessage({
+      id: 'admin.people.segments.fallbackName',
+      defaultMessage: 'segment',
+    })
+
   const handleRemove = async (segmentId: SegmentId) => {
     const segment = segments.find((s) => s.id === segmentId)
+    const segmentName = segmentLabel(segment?.name)
     setRemovingId(segmentId)
     try {
       await removeUsers.mutateAsync({ segmentId, principalIds: [principalId] })
       onSegmentsChange?.()
-      toast.success(`Removed from ${segment?.name ?? 'segment'}`, {
-        action: {
-          label: 'Undo',
-          onClick: () => {
-            assignUsers.mutate(
-              { segmentId, principalIds: [principalId] },
-              {
-                onSuccess: () => onSegmentsChange?.(),
-                onError: () =>
-                  toast.error(`Failed to undo: ${segment?.name ?? 'segment'} was not restored`),
-              }
-            )
+      toast.success(
+        intl.formatMessage(
+          {
+            id: 'admin.people.segments.removed',
+            defaultMessage: 'Removed from {segment}',
           },
-        },
-      })
+          { segment: segmentName }
+        ),
+        {
+          action: {
+            label: intl.formatMessage({
+              id: 'admin.people.segments.undo',
+              defaultMessage: 'Undo',
+            }),
+            onClick: () => {
+              assignUsers.mutate(
+                { segmentId, principalIds: [principalId] },
+                {
+                  onSuccess: () => onSegmentsChange?.(),
+                  onError: () =>
+                    toast.error(
+                      intl.formatMessage(
+                        {
+                          id: 'admin.people.segments.undoFailed',
+                          defaultMessage: 'Failed to undo: {segment} was not restored',
+                        },
+                        { segment: segmentName }
+                      )
+                    ),
+                }
+              )
+            },
+          },
+        }
+      )
     } catch {
-      toast.error(`Failed to remove from ${segment?.name ?? 'segment'}`)
+      toast.error(
+        intl.formatMessage(
+          {
+            id: 'admin.people.segments.removeFailed',
+            defaultMessage: 'Failed to remove from {segment}',
+          },
+          { segment: segmentName }
+        )
+      )
     } finally {
       setRemovingId(null)
     }
@@ -110,13 +162,30 @@ export function UserSegmentBadges({
 
   const handleAssign = async (segmentId: SegmentId) => {
     const segment = availableManualSegments.find((s) => s.id === segmentId)
+    const segmentName = segmentLabel(segment?.name)
     try {
       await assignUsers.mutateAsync({ segmentId, principalIds: [principalId] })
       onSegmentsChange?.()
       setPopoverOpen(false)
-      toast.success(`Added to ${segment?.name ?? 'segment'}`)
+      toast.success(
+        intl.formatMessage(
+          {
+            id: 'admin.people.segments.added',
+            defaultMessage: 'Added to {segment}',
+          },
+          { segment: segmentName }
+        )
+      )
     } catch {
-      toast.error(`Failed to add to ${segment?.name ?? 'segment'}`)
+      toast.error(
+        intl.formatMessage(
+          {
+            id: 'admin.people.segments.addFailed',
+            defaultMessage: 'Failed to add to {segment}',
+          },
+          { segment: segmentName }
+        )
+      )
     }
   }
 
@@ -141,7 +210,7 @@ export function UserSegmentBadges({
               className="h-5 px-1.5 text-[13px] text-muted-foreground hover:text-foreground"
             >
               <PlusIcon className="size-3.5 mr-0.5" />
-              Add
+              {intl.formatMessage({ id: 'common.add', defaultMessage: 'Add' })}
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-48 p-0" align="start">
@@ -155,7 +224,12 @@ export function UserSegmentBadges({
       )}
 
       {segments.length === 0 && !canManage && (
-        <span className="text-xs text-muted-foreground">No segments</span>
+        <span className="text-xs text-muted-foreground">
+          {intl.formatMessage({
+            id: 'admin.people.segments.empty',
+            defaultMessage: 'No segments',
+          })}
+        </span>
       )}
     </div>
   )
@@ -167,6 +241,7 @@ interface CompactSegmentBadgesProps {
 }
 
 export function CompactSegmentBadges({ segments, maxVisible = 2 }: CompactSegmentBadgesProps) {
+  const intl = useOptionalIntl()
   if (segments.length === 0) return null
 
   const visible = segments.slice(0, maxVisible)
@@ -183,7 +258,17 @@ export function CompactSegmentBadges({ segments, maxVisible = 2 }: CompactSegmen
             borderColor: seg.color + '40',
             color: seg.color,
           }}
-          title={seg.type === 'dynamic' ? `${seg.name} (auto)` : seg.name}
+          title={
+            seg.type === 'dynamic'
+              ? intl.formatMessage(
+                  {
+                    id: 'admin.people.segments.autoSuffix',
+                    defaultMessage: '{segment} (auto)',
+                  },
+                  { segment: seg.name }
+                )
+              : seg.name
+          }
         >
           {seg.type === 'dynamic' && <BoltIcon className="h-2 w-2 shrink-0" />}
           {seg.name}

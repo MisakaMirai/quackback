@@ -2,6 +2,7 @@ import { memo } from 'react'
 import { ChatBubbleLeftIcon } from '@heroicons/react/16/solid'
 import { cn } from '@/lib/shared/utils'
 import { MENU_ICON, MENU_ROW } from '@/components/ui/menu'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 
 type RowIcon = React.ComponentType<{ className?: string }>
 
@@ -30,13 +31,21 @@ export function FilterList<T extends { id: string; name: string; icon?: RowIcon 
   counts,
   className,
 }: FilterListProps<T>) {
+  const intl = useOptionalIntl()
   const handleClick = (id: string, event: React.MouseEvent) => {
     const addToSelection = event.metaKey || event.ctrlKey
     onSelect(id, addToSelection)
   }
 
   return (
-    <div className={cn('space-y-1', className)} role="listbox" aria-label="Filter selection">
+    <div
+      className={cn('space-y-1', className)}
+      role="listbox"
+      aria-label={intl.formatMessage({
+        id: 'admin.feedback.filters.selectionAria',
+        defaultMessage: 'Filter selection',
+      })}
+    >
       {items.map((item) => {
         const isSelected = selectedIds.includes(item.id)
         const count = counts ? (counts[item.id] ?? 0) : undefined

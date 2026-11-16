@@ -28,6 +28,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
 import { MENU_ICON, MENU_LABEL } from '@/components/ui/menu'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { postViewQueries } from '@/lib/client/queries/post-views'
 import { createPostViewFn, deletePostViewFn } from '@/lib/server/functions/post-views'
 import {
@@ -44,6 +45,7 @@ interface SavedViewsMenuProps {
 }
 
 export function SavedViewsMenu({ filters, hasActiveFilters, onApply }: SavedViewsMenuProps) {
+  const intl = useOptionalIntl()
   const queryClient = useQueryClient()
   const [wanted, setWanted] = useState(false)
   const viewsQuery = useQuery({ ...postViewQueries.list(), enabled: wanted })
@@ -78,15 +80,35 @@ export function SavedViewsMenu({ filters, hasActiveFilters, onApply }: SavedView
         <DropdownMenuTrigger asChild>
           <Button variant="outline" size="sm" onPointerEnter={want} onFocus={want}>
             <BookmarkIcon className={MENU_ICON} />
-            Views
+            {intl.formatMessage({
+              id: 'admin.feedback.views.trigger',
+              defaultMessage: 'Views',
+            })}
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-64">
-          <DropdownMenuLabel className={MENU_LABEL}>Saved views</DropdownMenuLabel>
+          <DropdownMenuLabel className={MENU_LABEL}>
+            {intl.formatMessage({
+              id: 'inbox.nav.savedViews',
+              defaultMessage: 'Saved views',
+            })}
+          </DropdownMenuLabel>
           {viewsQuery.isPending ? (
-            <DropdownMenuItem disabled>Loading views…</DropdownMenuItem>
+            <DropdownMenuItem disabled>
+              {intl.formatMessage({
+                id: 'admin.feedback.views.loading',
+                defaultMessage: 'Loading views…',
+              })}
+            </DropdownMenuItem>
           ) : (
-            views.length === 0 && <DropdownMenuItem disabled>No saved views</DropdownMenuItem>
+            views.length === 0 && (
+              <DropdownMenuItem disabled>
+                {intl.formatMessage({
+                  id: 'admin.feedback.views.none',
+                  defaultMessage: 'No saved views',
+                })}
+              </DropdownMenuItem>
+            )
           )}
           {views.map((view: PostViewDTO) => (
             <DropdownMenuItem
@@ -96,7 +118,13 @@ export function SavedViewsMenu({ filters, hasActiveFilters, onApply }: SavedView
               <span className="flex-1 truncate">{view.name}</span>
               <button
                 type="button"
-                aria-label={`Delete view ${view.name}`}
+                aria-label={intl.formatMessage(
+                  {
+                    id: 'admin.feedback.views.deleteAria',
+                    defaultMessage: 'Delete view {name}',
+                  },
+                  { name: view.name }
+                )}
                 className="text-muted-foreground hover:text-destructive"
                 onClick={(e) => {
                   e.stopPropagation()
@@ -110,7 +138,10 @@ export function SavedViewsMenu({ filters, hasActiveFilters, onApply }: SavedView
           <DropdownMenuSeparator />
           <DropdownMenuItem disabled={!hasActiveFilters} onClick={() => setSaveOpen(true)}>
             <PlusIcon className={MENU_ICON} />
-            Save current filters
+            {intl.formatMessage({
+              id: 'admin.feedback.views.saveCurrent',
+              defaultMessage: 'Save current filters',
+            })}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -118,7 +149,12 @@ export function SavedViewsMenu({ filters, hasActiveFilters, onApply }: SavedView
       <Dialog open={saveOpen} onOpenChange={setSaveOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Save current filters as a view</DialogTitle>
+            <DialogTitle>
+              {intl.formatMessage({
+                id: 'admin.feedback.views.saveTitle',
+                defaultMessage: 'Save current filters as a view',
+              })}
+            </DialogTitle>
           </DialogHeader>
           <form
             onSubmit={(e) => {
@@ -132,15 +168,21 @@ export function SavedViewsMenu({ filters, hasActiveFilters, onApply }: SavedView
               autoFocus
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="View name"
+              placeholder={intl.formatMessage({
+                id: 'admin.feedback.views.namePlaceholder',
+                defaultMessage: 'View name',
+              })}
               maxLength={80}
             />
             <DialogFooter className="mt-4">
               <Button type="button" variant="outline" size="sm" onClick={() => setSaveOpen(false)}>
-                Cancel
+                {intl.formatMessage({ id: 'common.cancel', defaultMessage: 'Cancel' })}
               </Button>
               <Button type="submit" size="sm" disabled={!name.trim() || createMutation.isPending}>
-                Save view
+                {intl.formatMessage({
+                  id: 'admin.feedback.views.save',
+                  defaultMessage: 'Save view',
+                })}
               </Button>
             </DialogFooter>
           </form>

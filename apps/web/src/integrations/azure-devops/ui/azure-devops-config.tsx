@@ -12,6 +12,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { useUpdateIntegration } from '@/lib/client/mutations'
 import { fetchExternalStatusesFn } from '@/lib/server/functions/external-statuses'
 import {
@@ -42,8 +43,15 @@ interface AzureDevOpsConfigProps {
 const EVENT_CONFIG = [
   {
     id: 'post.created' as const,
-    label: 'Create work item from new feedback',
-    description: 'Automatically create an Azure DevOps work item when new feedback is submitted',
+    label: {
+      id: 'admin.integrations.config.eventCreateWorkItem',
+      defaultMessage: 'Create work item from new feedback',
+    },
+    description: {
+      id: 'admin.integrations.azureDevops.eventCreateWorkItemDescription',
+      defaultMessage:
+        'Automatically create an Azure DevOps work item when new feedback is submitted',
+    },
   },
 ]
 
@@ -61,6 +69,7 @@ export function AzureDevOpsConfig({
   initialEventMappings,
   enabled,
 }: AzureDevOpsConfigProps) {
+  const intl = useOptionalIntl()
   const updateMutation = useUpdateIntegration()
 
   const { projectName: initialProjectName, workItemType: initialWorkItemType } = parseChannelId(
@@ -95,24 +104,37 @@ export function AzureDevOpsConfig({
       const result = await fetchAzureDevOpsProjectsFn()
       setProjects(result)
     } catch {
-      setProjectError('Failed to load projects. Please try again.')
+      setProjectError(
+        intl.formatMessage({
+          id: 'admin.integrations.config.loadProjectsFailed',
+          defaultMessage: 'Failed to load projects. Please try again.',
+        })
+      )
     } finally {
       setLoadingProjects(false)
     }
-  }, [])
+  }, [intl])
 
-  const fetchWorkItemTypes = useCallback(async (project: string) => {
-    setLoadingWorkItemTypes(true)
-    setWorkItemTypeError(null)
-    try {
-      const result = await fetchAzureDevOpsWorkItemTypesFn({ data: { project } })
-      setWorkItemTypes(result)
-    } catch {
-      setWorkItemTypeError('Failed to load work item types. Please try again.')
-    } finally {
-      setLoadingWorkItemTypes(false)
-    }
-  }, [])
+  const fetchWorkItemTypes = useCallback(
+    async (project: string) => {
+      setLoadingWorkItemTypes(true)
+      setWorkItemTypeError(null)
+      try {
+        const result = await fetchAzureDevOpsWorkItemTypesFn({ data: { project } })
+        setWorkItemTypes(result)
+      } catch {
+        setWorkItemTypeError(
+          intl.formatMessage({
+            id: 'admin.integrations.config.loadWorkItemTypesFailed',
+            defaultMessage: 'Failed to load work item types. Please try again.',
+          })
+        )
+      } finally {
+        setLoadingWorkItemTypes(false)
+      }
+    },
+    [intl]
+  )
 
   useEffect(() => {
     fetchProjects()
@@ -163,10 +185,16 @@ export function AzureDevOpsConfig({
       <div className="flex items-center justify-between">
         <div>
           <Label htmlFor="enabled-toggle" className="text-base font-medium">
-            Integration enabled
+            {intl.formatMessage({
+              id: 'admin.integrations.config.enabled',
+              defaultMessage: 'Integration enabled',
+            })}
           </Label>
           <p className="text-xs text-muted-foreground">
-            Turn off to pause all Azure DevOps work item creation
+            {intl.formatMessage({
+              id: 'admin.integrations.azureDevops.disableHint',
+              defaultMessage: 'Turn off to pause all Azure DevOps work item creation',
+            })}
           </p>
         </div>
         <Switch
@@ -179,7 +207,12 @@ export function AzureDevOpsConfig({
 
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <Label htmlFor="project-select">Project</Label>
+          <Label htmlFor="project-select">
+            {intl.formatMessage({
+              id: 'admin.integrations.config.project',
+              defaultMessage: 'Project',
+            })}
+          </Label>
           <Button
             variant="ghost"
             size="sm"
@@ -188,7 +221,10 @@ export function AzureDevOpsConfig({
             className="h-8 gap-1.5 text-xs"
           >
             <ArrowPathIcon className={`h-3.5 w-3.5 ${loadingProjects ? 'animate-spin' : ''}`} />
-            Refresh
+            {intl.formatMessage({
+              id: 'admin.integrations.config.refresh',
+              defaultMessage: 'Refresh',
+            })}
           </Button>
         </div>
         {projectError ? (
@@ -203,10 +239,20 @@ export function AzureDevOpsConfig({
               {loadingProjects ? (
                 <div className="flex items-center gap-2">
                   <ArrowPathIcon className="h-4 w-4 animate-spin" />
-                  <span>Loading projects...</span>
+                  <span>
+                    {intl.formatMessage({
+                      id: 'admin.integrations.config.loadingProjects',
+                      defaultMessage: 'Loading projects...',
+                    })}
+                  </span>
                 </div>
               ) : (
-                <SelectValue placeholder="Select a project" />
+                <SelectValue
+                  placeholder={intl.formatMessage({
+                    id: 'admin.integrations.config.selectProject',
+                    defaultMessage: 'Select a project',
+                  })}
+                />
               )}
             </SelectTrigger>
             <SelectContent>
@@ -222,12 +268,20 @@ export function AzureDevOpsConfig({
           </Select>
         )}
         <p className="text-xs text-muted-foreground">
-          New work items will be created in this project.
+          {intl.formatMessage({
+            id: 'admin.integrations.azureDevops.projectHint',
+            defaultMessage: 'New work items will be created in this project.',
+          })}
         </p>
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="work-item-type-select">Work item type</Label>
+        <Label htmlFor="work-item-type-select">
+          {intl.formatMessage({
+            id: 'admin.integrations.config.workItemType',
+            defaultMessage: 'Work item type',
+          })}
+        </Label>
         {workItemTypeError ? (
           <p className="text-sm text-destructive">{workItemTypeError}</p>
         ) : (
@@ -240,12 +294,25 @@ export function AzureDevOpsConfig({
               {loadingWorkItemTypes ? (
                 <div className="flex items-center gap-2">
                   <ArrowPathIcon className="h-4 w-4 animate-spin" />
-                  <span>Loading work item types...</span>
+                  <span>
+                    {intl.formatMessage({
+                      id: 'admin.integrations.config.loadingWorkItemTypes',
+                      defaultMessage: 'Loading work item types...',
+                    })}
+                  </span>
                 </div>
               ) : (
                 <SelectValue
                   placeholder={
-                    selectedProject ? 'Select a work item type' : 'Select a project first'
+                    selectedProject
+                      ? intl.formatMessage({
+                          id: 'admin.integrations.config.selectWorkItemType',
+                          defaultMessage: 'Select a work item type',
+                        })
+                      : intl.formatMessage({
+                          id: 'admin.integrations.config.selectProjectFirst',
+                          defaultMessage: 'Select a project first',
+                        })
                   }
                 />
               )}
@@ -260,14 +327,25 @@ export function AzureDevOpsConfig({
           </Select>
         )}
         <p className="text-xs text-muted-foreground">
-          The work item type used when creating items from feedback.
+          {intl.formatMessage({
+            id: 'admin.integrations.azureDevops.workItemTypeHint',
+            defaultMessage: 'The work item type used when creating items from feedback.',
+          })}
         </p>
       </div>
 
       <div className="space-y-3">
-        <Label className="text-base font-medium">Events</Label>
+        <Label className="text-base font-medium">
+          {intl.formatMessage({
+            id: 'admin.integrations.config.events',
+            defaultMessage: 'Events',
+          })}
+        </Label>
         <p className="text-xs text-muted-foreground">
-          Choose which events trigger work item creation
+          {intl.formatMessage({
+            id: 'admin.integrations.config.chooseEventsWorkItemCreation',
+            defaultMessage: 'Choose which events trigger work item creation',
+          })}
         </p>
         <div className="space-y-3 pt-2">
           {EVENT_CONFIG.map((event) => (
@@ -276,8 +354,10 @@ export function AzureDevOpsConfig({
               className="flex items-center justify-between rounded-lg border border-border/50 p-3"
             >
               <div>
-                <div className="font-medium text-sm">{event.label}</div>
-                <div className="text-xs text-muted-foreground">{event.description}</div>
+                <div className="font-medium text-sm">{intl.formatMessage(event.label)}</div>
+                <div className="text-xs text-muted-foreground">
+                  {intl.formatMessage(event.description)}
+                </div>
               </div>
               <Switch
                 checked={eventSettings[event.id] ?? false}
@@ -292,13 +372,22 @@ export function AzureDevOpsConfig({
       {saving && (
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <ArrowPathIcon className="h-4 w-4 animate-spin" />
-          <span>Saving...</span>
+          <span>
+            {intl.formatMessage({
+              id: 'admin.integrations.config.saving',
+              defaultMessage: 'Saving...',
+            })}
+          </span>
         </div>
       )}
 
       {updateMutation.isError && (
         <div className="text-sm text-destructive">
-          {updateMutation.error?.message || 'Failed to save changes'}
+          {updateMutation.error?.message ||
+            intl.formatMessage({
+              id: 'admin.integrations.config.saveFailed',
+              defaultMessage: 'Failed to save changes',
+            })}
         </div>
       )}
 

@@ -13,8 +13,10 @@
  * it.
  */
 import { useId, useMemo, useState } from 'react'
+import type { IntlShape } from 'react-intl'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import type { JsonValue } from '@/lib/shared/json'
 import { deriveAttributeClaimPaths } from '@/lib/shared/claim-suggestions'
 import {
@@ -102,18 +104,52 @@ export function checkAvatarClaim(
   return claimIsMissing(raw) ? { kind: 'missing' } : { kind: 'not_url' }
 }
 
-function statusFor(check: AvatarClaimCheck, loadFailed: boolean): { text: string; tone: string } {
+function statusFor(
+  intl: IntlShape,
+  check: AvatarClaimCheck,
+  loadFailed: boolean
+): { text: string; tone: string } {
   switch (check.kind) {
     case 'no_capture':
-      return { text: 'Run a test sign-in to preview', tone: 'text-muted-foreground' }
+      return {
+        text: intl.formatMessage({
+          id: 'admin.settings.security.idp.avatar.runTest',
+          defaultMessage: 'Run a test sign-in to preview',
+        }),
+        tone: 'text-muted-foreground',
+      }
     case 'missing':
-      return { text: 'Not in the last test sign-in', tone: 'text-muted-foreground' }
+      return {
+        text: intl.formatMessage({
+          id: 'admin.settings.security.idp.avatar.notInTest',
+          defaultMessage: 'Not in the last test sign-in',
+        }),
+        tone: 'text-muted-foreground',
+      }
     case 'not_url':
-      return { text: 'Not an image URL', tone: 'text-destructive' }
+      return {
+        text: intl.formatMessage({
+          id: 'admin.settings.security.idp.avatar.notImageUrl',
+          defaultMessage: 'Not an image URL',
+        }),
+        tone: 'text-destructive',
+      }
     case 'url':
       return loadFailed
-        ? { text: 'Could not load this picture', tone: 'text-warning' }
-        : { text: 'Shows this picture', tone: 'text-success' }
+        ? {
+            text: intl.formatMessage({
+              id: 'admin.settings.security.idp.avatar.loadFailed',
+              defaultMessage: 'Could not load this picture',
+            }),
+            tone: 'text-warning',
+          }
+        : {
+            text: intl.formatMessage({
+              id: 'admin.settings.security.idp.avatar.showsPicture',
+              defaultMessage: 'Shows this picture',
+            }),
+            tone: 'text-success',
+          }
   }
 }
 
@@ -140,6 +176,7 @@ export function AvatarClaimPicker({
   canTest: boolean
 }) {
   const id = useId()
+  const intl = useOptionalIntl()
   const inputId = `${id}-claim`
   const hintId = `${id}-hint`
   const statusId = `${id}-status`
@@ -159,14 +196,19 @@ export function AvatarClaimPicker({
   )
 
   const url = check.kind === 'url' ? check.url : undefined
-  const status = statusFor(check, url !== undefined && failedUrl === url)
+  const status = statusFor(intl, check, url !== undefined && failedUrl === url)
   const chosen = value.trim()
 
   return (
     <div className="space-y-4">
       <div className="flex items-start gap-4">
         <div className="min-w-0 flex-1 space-y-1.5">
-          <Label htmlFor={inputId}>Provider claim</Label>
+          <Label htmlFor={inputId}>
+            {intl.formatMessage({
+              id: 'admin.settings.security.idp.providerClaim',
+              defaultMessage: 'Provider claim',
+            })}
+          </Label>
           <Input
             id={inputId}
             value={value}
@@ -179,7 +221,10 @@ export function AvatarClaimPicker({
             className="font-mono text-[13px] md:text-[13px]"
           />
           <p id={hintId} className="text-xs text-muted-foreground">
-            For a nested claim use a dot, like profile.photo
+            {intl.formatMessage({
+              id: 'admin.settings.security.idp.avatar.nestedClaimHint',
+              defaultMessage: 'For a nested claim use a dot, like profile.photo',
+            })}
           </p>
         </div>
         <figure
@@ -192,7 +237,14 @@ export function AvatarClaimPicker({
         >
           <ClaimPicture
             src={url}
-            alt={url ? 'Picture from the test sign-in' : undefined}
+            alt={
+              url
+                ? intl.formatMessage({
+                    id: 'admin.settings.security.idp.avatar.pictureAlt',
+                    defaultMessage: 'Picture from the test sign-in',
+                  })
+                : undefined
+            }
             className="size-16"
             iconClassName="size-5"
             onError={() => setFailedUrl(url ?? null)}
@@ -213,7 +265,10 @@ export function AvatarClaimPicker({
       {options.length > 0 && (
         <div className="space-y-1.5">
           <p id={listLabelId} className="text-sm font-medium">
-            Claims in your last test sign-in
+            {intl.formatMessage({
+              id: 'admin.settings.security.idp.avatar.claimsTitle',
+              defaultMessage: 'Claims in your last test sign-in',
+            })}
           </p>
           <ul
             aria-labelledby={listLabelId}

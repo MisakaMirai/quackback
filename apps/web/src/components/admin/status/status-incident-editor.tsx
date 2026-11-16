@@ -39,6 +39,8 @@ import {
   type StatusIncidentAdminDetail,
 } from '@/lib/client/queries/status'
 import { useUpdateStatusIncident, usePostStatusIncidentUpdate } from '@/lib/client/mutations/status'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
+import { createIntl, type IntlShape } from 'react-intl'
 import {
   AffectedComponentsField,
   TemplatePickerButton,
@@ -47,23 +49,20 @@ import {
 import { StatusLifecycleStepper } from './status-lifecycle-stepper'
 import {
   IMPACT_COLORS,
-  IMPACT_LABELS,
   LIFECYCLE_COLORS,
-  LIFECYCLE_LABELS,
   isTerminalLifecycle,
   lifecycleValuesForKind,
   type StatusIncidentImpact,
   type StatusIncidentLifecycle,
 } from './status-admin-colors'
+import { IMPACT_LABEL, LIFECYCLE_LABEL } from '@/components/portal/status/status-colors'
 import { toastError } from '@/lib/client/error-notice'
 
 const PINNABLE_IMPACTS = ['minor', 'major', 'critical'] as const
 
-const impactPinOptions = PINNABLE_IMPACTS.map((value) => ({
-  value,
-  label: IMPACT_LABELS[value],
-  color: IMPACT_COLORS[value],
-}))
+/** English wording for the places that format outside any provider (the
+ *  exported `deletedServicesNotice` helper and its tests). */
+const fallbackIntl: IntlShape = createIntl({ locale: 'en', messages: {}, onError: () => {} })
 
 interface DetailsState {
   title: string
@@ -141,29 +140,72 @@ function choiceNames(data: StatusComponentChoices | undefined): Array<[string, s
   return [...data.groups.flatMap((g) => g.components), ...data.ungrouped].map((c) => [c.id, c.name])
 }
 
-const SERVICE_LIST = new Intl.ListFormat('en', { style: 'long', type: 'conjunction' })
+const listFormatters = new Map<string, Intl.ListFormat>()
+
+function serviceList(locale: string): Intl.ListFormat {
+  let formatter = listFormatters.get(locale)
+  if (!formatter) {
+    formatter = new Intl.ListFormat(locale, { style: 'long', type: 'conjunction' })
+    listFormatters.set(locale, formatter)
+  }
+  return formatter
+}
 
 /** "Webhooks was deleted and removed from this incident." Names that are no
  *  longer known are counted instead. */
-export function deletedServicesNotice(names: Array<string | undefined>): string {
+export function deletedServicesNotice(
+  names: Array<string | undefined>,
+  intl: IntlShape = fallbackIntl
+): string {
   const known = names.filter((n): n is string => !!n)
   const subject =
     known.length === names.length
-      ? SERVICE_LIST.format(known)
+      ? serviceList(intl.locale).format(known)
       : names.length === 1
-        ? 'A service'
-        : `${names.length} services`
-  return `${subject} ${names.length === 1 ? 'was' : 'were'} deleted and removed from this incident.`
+        ? intl.formatMessage({
+            id: 'admin.status.editor.deletedServiceOne',
+            defaultMessage: 'A service',
+          })
+        : intl.formatMessage(
+            {
+              id: 'admin.status.editor.deletedServicesCount',
+              defaultMessage: '{count} services',
+            },
+            { count: names.length }
+          )
+  return intl.formatMessage(
+    names.length === 1
+      ? {
+          id: 'admin.status.editor.deletedServicesNoticeOne',
+          defaultMessage: '{subject} was deleted and removed from this incident.',
+        }
+      : {
+          id: 'admin.status.editor.deletedServicesNoticeMany',
+          defaultMessage: '{subject} were deleted and removed from this incident.',
+        },
+    { subject }
+  )
 }
 
-function formatDuration(startIso: string, endIso: string | null): string {
+function formatDuration(intl: IntlShape, startIso: string, endIso: string | null): string {
   const start = new Date(startIso).getTime()
   const end = endIso ? new Date(endIso).getTime() : Date.now()
   const mins = Math.max(0, Math.round((end - start) / 60_000))
-  if (mins < 60) return `${mins}m`
+  if (mins < 60)
+    return intl.formatMessage(
+      { id: 'admin.status.editor.durationMinutes', defaultMessage: '{minutes}m' },
+      { minutes: mins }
+    )
   const hours = Math.floor(mins / 60)
-  if (hours < 48) return `${hours}h ${mins % 60}m`
-  return `${Math.floor(hours / 24)}d ${hours % 24}h`
+  if (hours < 48)
+    return intl.formatMessage(
+      { id: 'admin.status.editor.durationHours', defaultMessage: '{hours}h {minutes}m' },
+      { hours, minutes: mins % 60 }
+    )
+  return intl.formatMessage(
+    { id: 'admin.status.editor.durationDays', defaultMessage: '{days}d {hours}h' },
+    { days: Math.floor(hours / 24), hours: hours % 24 }
+  )
 }
 
 function nextStage(
@@ -184,6 +226,7 @@ function StatusIncidentEditorContent({
   incidentId: StatusIncidentId
   onClose: () => void
 }) {
+  const intl = useOptionalIntl()
   const {
     data: incident,
     isLoading,
@@ -243,7 +286,12 @@ function StatusIncidentEditorContent({
       if (detailsSave.hasPending()) detailsSave.queue(next)
       return next
     })
-    setRemovedNotice(deletedServicesNotice(ids.map((id) => serviceNames.current.get(id))))
+    setRemovedNotice(
+      deletedServicesNotice(
+        ids.map((id) => serviceNames.current.get(id)),
+        intl
+      )
+    )
     // The picker's list is as stale as the incident was: reload it so the
     // deleted service isn't offered again.
     void queryClient.invalidateQueries({ queryKey: statusKeys.components() })
@@ -297,7 +345,13 @@ function StatusIncidentEditorContent({
       return true
     } catch (error) {
       setSaveState('idle')
-      toastError(error, 'Failed to save details')
+      toastError(
+        error,
+        intl.formatMessage({
+          id: 'admin.status.editor.toastSaveFailed',
+          defaultMessage: 'Failed to save details',
+        })
+      )
       // The save may have failed on a service deleted since; the server's
       // copy says which.
       void refetch()
@@ -384,9 +438,20 @@ function StatusIncidentEditorContent({
       setRestore(true)
       setTemplateId(null)
       setTarget(nextStage(incident.kind, effectiveTarget))
-      toast.success('Update posted')
+      toast.success(
+        intl.formatMessage({
+          id: 'admin.status.editor.toastPosted',
+          defaultMessage: 'Update posted',
+        })
+      )
     } catch (error) {
-      toastError(error, 'Failed to post update')
+      toastError(
+        error,
+        intl.formatMessage({
+          id: 'admin.status.editor.toastPostFailed',
+          defaultMessage: 'Failed to post update',
+        })
+      )
     } finally {
       posting.current = false
     }
@@ -399,11 +464,25 @@ function StatusIncidentEditorContent({
     return (
       <EditorUnavailable
         onClose={onClose}
-        title="Couldn't load this incident"
-        description="Something went wrong loading it. Check your connection and try again."
+        title={intl.formatMessage({
+          id: 'admin.status.editor.loadFailedTitle',
+          defaultMessage: "Couldn't load this incident",
+        })}
+        description={intl.formatMessage({
+          id: 'admin.status.loadFailedDescription',
+          defaultMessage: 'Something went wrong loading it. Check your connection and try again.',
+        })}
         action={
           <Button variant="outline" size="sm" onClick={() => void refetch()} disabled={isFetching}>
-            {isFetching ? 'Retrying…' : 'Try again'}
+            {isFetching
+              ? intl.formatMessage({
+                  id: 'admin.status.action.retrying',
+                  defaultMessage: 'Retrying…',
+                })
+              : intl.formatMessage({
+                  id: 'common.tryAgain',
+                  defaultMessage: 'Try again',
+                })}
           </Button>
         }
       />
@@ -426,17 +505,44 @@ function StatusIncidentEditorContent({
     if (!reachedAt[s]) reachedAt[s] = u.createdAt
   }
 
+  const lifecycleLabel = (status: StatusIncidentLifecycle) =>
+    intl.formatMessage(LIFECYCLE_LABEL[status])
+
   const submitLabel = postMutation.isPending
-    ? 'Posting…'
+    ? intl.formatMessage({
+        id: 'admin.status.editor.posting',
+        defaultMessage: 'Posting…',
+      })
     : effectiveTarget === currentStatus
-      ? 'Post update'
+      ? intl.formatMessage({
+          id: 'admin.status.action.postUpdate',
+          defaultMessage: 'Post update',
+        })
       : effectiveTarget === 'resolved'
-        ? 'Post update & resolve'
+        ? intl.formatMessage({
+            id: 'admin.status.editor.postResolve',
+            defaultMessage: 'Post update & resolve',
+          })
         : effectiveTarget === 'completed'
-          ? 'Post update & complete'
+          ? intl.formatMessage({
+              id: 'admin.status.editor.postComplete',
+              defaultMessage: 'Post update & complete',
+            })
           : currentStatus && isTerminalLifecycle(currentStatus)
-            ? `Post update & reopen as ${LIFECYCLE_LABELS[effectiveTarget]}`
-            : `Post update & mark as ${LIFECYCLE_LABELS[effectiveTarget]}`
+            ? intl.formatMessage(
+                {
+                  id: 'admin.status.editor.postReopen',
+                  defaultMessage: 'Post update & reopen as {status}',
+                },
+                { status: lifecycleLabel(effectiveTarget) }
+              )
+            : intl.formatMessage(
+                {
+                  id: 'admin.status.editor.postMarkAs',
+                  defaultMessage: 'Post update & mark as {status}',
+                },
+                { status: lifecycleLabel(effectiveTarget) }
+              )
 
   const sidebar = (
     <EditorSidebarContent
@@ -451,7 +557,17 @@ function StatusIncidentEditorContent({
   return (
     <div className="flex flex-col h-full" onKeyDown={handleKeyDown}>
       <ModalHeader
-        section={incident.kind === 'maintenance' ? 'Maintenance' : 'Incidents'}
+        section={
+          incident.kind === 'maintenance'
+            ? intl.formatMessage({
+                id: 'admin.status.editor.sectionMaintenance',
+                defaultMessage: 'Maintenance',
+              })
+            : intl.formatMessage({
+                id: 'admin.status.editor.sectionIncidents',
+                defaultMessage: 'Incidents',
+              })
+        }
         title={details.title || incident.title}
         onClose={onClose}
         viewUrl={`/status/${incidentId}`}
@@ -473,22 +589,37 @@ function StatusIncidentEditorContent({
 
           <div className="mt-6">
             <p className="text-xs text-muted-foreground mb-2">
-              Posting as{' '}
+              {intl.formatMessage({
+                id: 'admin.status.editor.postingAs',
+                defaultMessage: 'Posting as',
+              })}{' '}
               <span className="font-semibold" style={{ color: LIFECYCLE_COLORS[effectiveTarget] }}>
-                {LIFECYCLE_LABELS[effectiveTarget]}
+                {lifecycleLabel(effectiveTarget)}
               </span>
-              <span className="text-muted-foreground/60"> · click a step above to change</span>
+              <span className="text-muted-foreground/60">
+                {' '}
+                {intl.formatMessage({
+                  id: 'admin.status.editor.postingAsHint',
+                  defaultMessage: '· click a step above to change',
+                })}
+              </span>
             </p>
             <div className="rounded-xl border border-border/60 shadow-sm overflow-hidden focus-within:border-ring/50">
               <Textarea
                 value={body}
                 onChange={(e) => setBody(e.target.value)}
-                placeholder="What's the latest? This appears on the public status page."
+                placeholder={intl.formatMessage({
+                  id: 'admin.status.editor.bodyPlaceholder',
+                  defaultMessage: "What's the latest? This appears on the public status page.",
+                })}
                 className="min-h-24 border-0 focus-visible:ring-0 resize-y"
               />
               <div className="flex items-center gap-2 px-3 py-2 border-t border-border/40 bg-muted/30">
                 <TemplatePickerButton
-                  label="Insert template"
+                  label={intl.formatMessage({
+                    id: 'admin.status.editor.insertTemplate',
+                    defaultMessage: 'Insert template',
+                  })}
                   onApply={(t) => {
                     setBody((b) => (b ? `${b}\n\n${t.body}` : t.body))
                     setTemplateId(t.id)
@@ -502,7 +633,10 @@ function StatusIncidentEditorContent({
                         onCheckedChange={(c) => setRestore(c === true)}
                         data-in-label
                       />
-                      Restore affected services to operational
+                      {intl.formatMessage({
+                        id: 'admin.status.editor.restoreServices',
+                        defaultMessage: 'Restore affected services to operational',
+                      })}
                     </label>
                   )}
                 </div>
@@ -511,18 +645,36 @@ function StatusIncidentEditorContent({
             <p className="flex items-start gap-1.5 text-xs text-muted-foreground mt-2.5">
               <EnvelopeIcon className="h-3.5 w-3.5 mt-px shrink-0" />
               {incident.backfilled
-                ? 'Backfilled incident: subscribers were never emailed.'
+                ? intl.formatMessage({
+                    id: 'admin.status.editor.notifyBackfilled',
+                    defaultMessage: 'Backfilled incident: subscribers were never emailed.',
+                  })
                 : !incident.notifySubscribers
-                  ? 'Subscribers were not emailed: "Email subscribers" was off when this was published. Updates appear on the status page and in-app.'
+                  ? intl.formatMessage({
+                      id: 'admin.status.editor.notifyOff',
+                      defaultMessage:
+                        'Subscribers were not emailed: "Email subscribers" was off when this was published. Updates appear on the status page and in-app.',
+                    })
                   : incident.notifiedAt
-                    ? 'Subscribers were emailed once, when this was published. Updates appear on the status page and in-app.'
-                    : 'Subscribers are emailed once at publish. Updates appear on the status page and in-app.'}
+                    ? intl.formatMessage({
+                        id: 'admin.status.editor.notifyEmailed',
+                        defaultMessage:
+                          'Subscribers were emailed once, when this was published. Updates appear on the status page and in-app.',
+                      })
+                    : intl.formatMessage({
+                        id: 'admin.status.editor.notifyPending',
+                        defaultMessage:
+                          'Subscribers are emailed once at publish. Updates appear on the status page and in-app.',
+                      })}
             </p>
           </div>
 
           <div className="mt-8">
             <h3 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-4">
-              Timeline
+              {intl.formatMessage({
+                id: 'admin.status.editor.timeline',
+                defaultMessage: 'Timeline',
+              })}
             </h3>
             <IncidentTimeline incident={incident} />
           </div>
@@ -539,18 +691,29 @@ function StatusIncidentEditorContent({
         submitType="button"
         onSubmit={handlePost}
         submitDisabled={!body.trim()}
-        hintAction="to post"
+        hintAction={intl.formatMessage({
+          id: 'admin.status.editor.hintToPost',
+          defaultMessage: 'to post',
+        })}
       >
         <Sheet open={mobileSettingsOpen} onOpenChange={setMobileSettingsOpen}>
           <SheetTrigger asChild>
             <Button type="button" variant="outline" size="sm" className="lg:hidden">
               <Cog6ToothIcon className="h-4 w-4 mr-1.5" />
-              Details
+              {intl.formatMessage({
+                id: 'admin.status.editor.details',
+                defaultMessage: 'Details',
+              })}
             </Button>
           </SheetTrigger>
           <SheetContent side="bottom" className="h-[70vh]">
             <SheetHeader>
-              <SheetTitle>Incident details</SheetTitle>
+              <SheetTitle>
+                {intl.formatMessage({
+                  id: 'admin.status.editor.incidentDetails',
+                  defaultMessage: 'Incident details',
+                })}
+              </SheetTitle>
             </SheetHeader>
             <div className="py-4 overflow-y-auto space-y-5">{sidebar}</div>
           </SheetContent>
@@ -561,11 +724,18 @@ function StatusIncidentEditorContent({
 }
 
 function IncidentNotFound({ onClose }: { onClose: () => void }) {
+  const intl = useOptionalIntl()
   return (
     <EditorUnavailable
       onClose={onClose}
-      title="Incident not found"
-      description="It may have been deleted, or the link is wrong."
+      title={intl.formatMessage({
+        id: 'admin.status.editor.notFoundTitle',
+        defaultMessage: 'Incident not found',
+      })}
+      description={intl.formatMessage({
+        id: 'admin.status.editor.notFoundDescription',
+        defaultMessage: 'It may have been deleted, or the link is wrong.',
+      })}
     />
   )
 }
@@ -581,9 +751,18 @@ function EditorUnavailable({
   description: string
   action?: React.ReactNode
 }) {
+  const intl = useOptionalIntl()
   return (
     <div className="flex flex-col h-full">
-      <ModalHeader section="Incidents" title={title} onClose={onClose} hideCopyLink />
+      <ModalHeader
+        section={intl.formatMessage({
+          id: 'admin.status.editor.sectionIncidents',
+          defaultMessage: 'Incidents',
+        })}
+        title={title}
+        onClose={onClose}
+        hideCopyLink
+      />
       <EmptyState
         icon={ExclamationTriangleIcon}
         title={title}
@@ -622,11 +801,23 @@ function EditorSidebarContent({
   /** Services the server dropped because they were deleted. */
   removedNotice: string | null
 }) {
+  const intl = useOptionalIntl()
   const lifecycle = incident.status as StatusIncidentLifecycle
+  const impactPinOptions = useMemo(
+    () =>
+      PINNABLE_IMPACTS.map((value) => ({
+        value,
+        label: intl.formatMessage(IMPACT_LABEL[value]),
+        color: IMPACT_COLORS[value],
+      })),
+    [intl]
+  )
 
   return (
     <>
-      <SideSection label="Status">
+      <SideSection
+        label={intl.formatMessage({ id: 'admin.status.field.status', defaultMessage: 'Status' })}
+      >
         <span
           className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium"
           style={{
@@ -638,13 +829,20 @@ function EditorSidebarContent({
             className="h-1.5 w-1.5 rounded-full"
             style={{ backgroundColor: LIFECYCLE_COLORS[lifecycle] }}
           />
-          {LIFECYCLE_LABELS[lifecycle]}
+          {intl.formatMessage(LIFECYCLE_LABEL[lifecycle])}
         </span>
-        <p className="text-[11px] text-muted-foreground">Changes when you post an update.</p>
+        <p className="text-[11px] text-muted-foreground">
+          {intl.formatMessage({
+            id: 'admin.status.editor.statusHint',
+            defaultMessage: 'Changes when you post an update.',
+          })}
+        </p>
       </SideSection>
 
       {incident.kind === 'incident' && (
-        <SideSection label="Impact">
+        <SideSection
+          label={intl.formatMessage({ id: 'admin.status.field.impact', defaultMessage: 'Impact' })}
+        >
           {details.impactOverride ? (
             <div className="space-y-1">
               <StatusSelect
@@ -653,30 +851,50 @@ function EditorSidebarContent({
                 onChange={(v) => onPatch({ impact: v as StatusIncidentImpact })}
               />
               <p className="text-[11px] text-muted-foreground">
-                Pinned.{' '}
+                {intl.formatMessage({
+                  id: 'admin.status.editor.pinned',
+                  defaultMessage: 'Pinned.',
+                })}{' '}
                 <button
                   type="button"
                   className="underline underline-offset-2 hover:text-foreground"
                   onClick={() => onPatch({ impactOverride: false })}
                 >
-                  Derive from affected services instead
+                  {intl.formatMessage({
+                    id: 'admin.status.editor.deriveInstead',
+                    defaultMessage: 'Derive from affected services instead',
+                  })}
                 </button>
               </p>
             </div>
           ) : (
             <div className="space-y-1">
               <p className="text-sm">
-                <span className="font-semibold">{IMPACT_LABELS[incident.impact]}</span>
-                <span className="text-xs text-muted-foreground"> · derived</span>
+                <span className="font-semibold">
+                  {intl.formatMessage(IMPACT_LABEL[incident.impact])}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {' '}
+                  {intl.formatMessage({
+                    id: 'admin.status.editor.derivedSuffix',
+                    defaultMessage: '· derived',
+                  })}
+                </span>
               </p>
               <p className="text-[11px] text-muted-foreground">
-                The worst affected service sets the impact.{' '}
+                {intl.formatMessage({
+                  id: 'admin.status.editor.worstSetsImpact',
+                  defaultMessage: 'The worst affected service sets the impact.',
+                })}{' '}
                 <button
                   type="button"
                   className="underline underline-offset-2 hover:text-foreground"
                   onClick={() => onPatch({ impactOverride: true })}
                 >
-                  Pin a different impact
+                  {intl.formatMessage({
+                    id: 'admin.status.editor.pinImpact',
+                    defaultMessage: 'Pin a different impact',
+                  })}
                 </button>
               </p>
             </div>
@@ -685,17 +903,29 @@ function EditorSidebarContent({
       )}
 
       {incident.kind === 'maintenance' && (
-        <SideSection label="Window">
+        <SideSection
+          label={intl.formatMessage({ id: 'admin.status.editor.window', defaultMessage: 'Window' })}
+        >
           <div className="space-y-2">
             <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">Scheduled start</Label>
+              <Label className="text-xs text-muted-foreground">
+                {intl.formatMessage({
+                  id: 'admin.status.field.scheduledStart',
+                  defaultMessage: 'Scheduled start',
+                })}
+              </Label>
               <DateTimePicker
                 value={details.scheduledStart}
                 onChange={(d) => onPatch({ scheduledStart: d })}
               />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">Scheduled end</Label>
+              <Label className="text-xs text-muted-foreground">
+                {intl.formatMessage({
+                  id: 'admin.status.field.scheduledEnd',
+                  defaultMessage: 'Scheduled end',
+                })}
+              </Label>
               <DateTimePicker
                 value={details.scheduledEnd}
                 onChange={(d) => onPatch({ scheduledEnd: d })}
@@ -703,18 +933,28 @@ function EditorSidebarContent({
             </div>
             {!windowInOrder(details) && (
               <p className="text-[11px] text-destructive">
-                The end must be after the start. Changes are not saved until it is.
+                {intl.formatMessage({
+                  id: 'admin.status.editor.windowOrderError',
+                  defaultMessage:
+                    'The end must be after the start. Changes are not saved until it is.',
+                })}
               </p>
             )}
             <label className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
-              Auto-start at scheduled time
+              {intl.formatMessage({
+                id: 'admin.status.field.autoStart',
+                defaultMessage: 'Auto-start at scheduled time',
+              })}
               <Switch
                 checked={details.autoStart}
                 onCheckedChange={(c) => onPatch({ autoStart: c })}
               />
             </label>
             <label className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
-              Auto-complete at end time
+              {intl.formatMessage({
+                id: 'admin.status.field.autoComplete',
+                defaultMessage: 'Auto-complete at end time',
+              })}
               <Switch
                 checked={details.autoComplete}
                 onCheckedChange={(c) => onPatch({ autoComplete: c })}
@@ -724,7 +964,12 @@ function EditorSidebarContent({
         </SideSection>
       )}
 
-      <SideSection label="Affected services">
+      <SideSection
+        label={intl.formatMessage({
+          id: 'admin.status.field.affectedServices',
+          defaultMessage: 'Affected services',
+        })}
+      >
         <AffectedComponentsField
           kind={incident.kind}
           value={details.affected}
@@ -737,15 +982,26 @@ function EditorSidebarContent({
         )}
         {details.affected.length === 0 && (
           <p className="text-[11px] text-destructive">
-            Select at least one service. Changes are not saved until one is selected.
+            {intl.formatMessage({
+              id: 'admin.status.editor.noServicesError',
+              defaultMessage:
+                'Select at least one service. Changes are not saved until one is selected.',
+            })}
           </p>
         )}
       </SideSection>
 
-      <SideSection label="Started">
+      <SideSection
+        label={intl.formatMessage({ id: 'admin.status.editor.started', defaultMessage: 'Started' })}
+      >
         {incident.kind === 'maintenance' && incident.status === 'scheduled' ? (
           // Until a window starts, startedAt only holds its planned start.
-          <p className="text-sm text-muted-foreground">Not started yet</p>
+          <p className="text-sm text-muted-foreground">
+            {intl.formatMessage({
+              id: 'admin.status.editor.notStartedYet',
+              defaultMessage: 'Not started yet',
+            })}
+          </p>
         ) : (
           <>
             <p className="text-sm">
@@ -753,14 +1009,28 @@ function EditorSidebarContent({
             </p>
             <p className="text-[11px] text-muted-foreground">
               {incident.resolvedAt
-                ? `Lasted ${formatDuration(incident.startedAt, incident.resolvedAt)}`
-                : `Ongoing for ${formatDuration(incident.startedAt, null)}`}
+                ? intl.formatMessage(
+                    {
+                      id: 'admin.status.editor.lasted',
+                      defaultMessage: 'Lasted {duration}',
+                    },
+                    { duration: formatDuration(intl, incident.startedAt, incident.resolvedAt) }
+                  )
+                : intl.formatMessage(
+                    {
+                      id: 'admin.status.editor.ongoingFor',
+                      defaultMessage: 'Ongoing for {duration}',
+                    },
+                    { duration: formatDuration(intl, incident.startedAt, null) }
+                  )}
             </p>
           </>
         )}
       </SideSection>
 
-      <SideSection label="Title">
+      <SideSection
+        label={intl.formatMessage({ id: 'admin.status.field.title', defaultMessage: 'Title' })}
+      >
         <Input
           value={details.title}
           onChange={(e) => onPatch({ title: e.target.value })}
@@ -768,15 +1038,27 @@ function EditorSidebarContent({
         />
         {details.title.trim().length === 0 ? (
           <p className="text-[11px] text-destructive h-3.5">
-            Add a title. Changes are not saved without one.
+            {intl.formatMessage({
+              id: 'admin.status.editor.titleRequired',
+              defaultMessage: 'Add a title. Changes are not saved without one.',
+            })}
           </p>
         ) : (
           <p className="text-[11px] text-muted-foreground h-3.5">
             {saveState === 'saving'
-              ? 'Saving…'
+              ? intl.formatMessage({
+                  id: 'admin.status.action.saving',
+                  defaultMessage: 'Saving…',
+                })
               : saveState === 'saved'
-                ? 'Saved'
-                : 'Details save automatically.'}
+                ? intl.formatMessage({
+                    id: 'admin.status.action.saved',
+                    defaultMessage: 'Saved',
+                  })
+                : intl.formatMessage({
+                    id: 'admin.status.editor.autosaveHint',
+                    defaultMessage: 'Details save automatically.',
+                  })}
           </p>
         )}
       </SideSection>
@@ -787,6 +1069,7 @@ function EditorSidebarContent({
 // ─── Timeline ───────────────────────────────────────────────────────────
 
 function IncidentTimeline({ incident }: { incident: StatusIncidentAdminDetail }) {
+  const intl = useOptionalIntl()
   const formatNumber = useFormatNumber()
   const updates = useMemo(
     () =>
@@ -820,7 +1103,7 @@ function IncidentTimeline({ incident }: { incident: StatusIncidentAdminDetail })
             <div className="flex-1 min-w-0">
               <div className="flex items-baseline gap-2 flex-wrap">
                 <span className="text-xs font-semibold" style={{ color: LIFECYCLE_COLORS[s] }}>
-                  {LIFECYCLE_LABELS[s]}
+                  {intl.formatMessage(LIFECYCLE_LABEL[s])}
                 </span>
                 <TimeAgo date={u.createdAt} className="text-[11px] text-muted-foreground" />
               </div>
@@ -828,20 +1111,39 @@ function IncidentTimeline({ incident }: { incident: StatusIncidentAdminDetail })
               {isPublishRow && emailed && (
                 <span className="inline-flex items-center gap-1.5 mt-2 rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
                   <EnvelopeIcon className="h-3 w-3" />
-                  Published
+                  {intl.formatMessage({
+                    id: 'admin.status.editor.published',
+                    defaultMessage: 'Published',
+                  })}
                   {typeof incident.notifiedSubscriberCount === 'number' &&
-                    incident.notifiedSubscriberCount > 0 &&
-                    ` · emailed ~${formatNumber(incident.notifiedSubscriberCount)} subscribers`}
+                    incident.notifiedSubscriberCount > 0 && (
+                      <>
+                        {' '}
+                        {intl.formatMessage(
+                          {
+                            id: 'admin.status.editor.emailedSubscribers',
+                            defaultMessage: '· emailed ~{count} subscribers',
+                          },
+                          { count: formatNumber(incident.notifiedSubscriberCount) }
+                        )}
+                      </>
+                    )}
                 </span>
               )}
               {isPublishRow && !incident.notifySubscribers && !incident.backfilled && (
                 <span className="inline-flex items-center gap-1.5 mt-2 rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
-                  Published · subscribers not emailed
+                  {intl.formatMessage({
+                    id: 'admin.status.editor.publishedNoEmail',
+                    defaultMessage: 'Published · subscribers not emailed',
+                  })}
                 </span>
               )}
               {isPublishRow && incident.backfilled && (
                 <span className="inline-flex items-center gap-1.5 mt-2 rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
-                  Backfilled · no emails sent
+                  {intl.formatMessage({
+                    id: 'admin.status.editor.backfilledNoEmail',
+                    defaultMessage: 'Backfilled · no emails sent',
+                  })}
                 </span>
               )}
             </div>
@@ -859,6 +1161,7 @@ export function StatusIncidentModal({
 }: {
   incidentId: string | undefined
 }) {
+  const intl = useOptionalIntl()
   const { open, validatedId, close } = useUrlModal<StatusIncidentId>({
     urlId: urlIncidentId,
     idPrefix: 'status_incident',
@@ -871,7 +1174,10 @@ export function StatusIncidentModal({
     <UrlModalShell
       open={open}
       onOpenChange={(o) => !o && close()}
-      srTitle="Status incident"
+      srTitle={intl.formatMessage({
+        id: 'admin.status.editor.srTitle',
+        defaultMessage: 'Status incident',
+      })}
       hasValidId={open}
     >
       {validatedId ? (

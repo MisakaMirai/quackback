@@ -1,6 +1,7 @@
 import { Button } from '@/components/ui/button'
 import { StatusBadge } from '@/components/ui/status-badge'
 import { TimeAgo } from '@/components/ui/time-ago'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -41,10 +42,23 @@ export function HelpCenterListItem({
   onEdit,
   onDelete,
 }: HelpCenterListItemProps) {
+  const intl = useOptionalIntl()
   const isPublished = !!publishedAt
   const statusConfig = isPublished
-    ? { label: 'Published', color: '#22c55e' }
-    : { label: 'Draft', color: '#a1a1aa' }
+    ? {
+        label: intl.formatMessage({
+          id: 'admin.helpCenter.status.published',
+          defaultMessage: 'Published',
+        }),
+        color: '#22c55e',
+      }
+    : {
+        label: intl.formatMessage({
+          id: 'admin.helpCenter.status.draft',
+          defaultMessage: 'Draft',
+        }),
+        color: '#a1a1aa',
+      }
 
   const contentPreview = description || stripMarkdownPreview(content)
 
@@ -72,24 +86,48 @@ export function HelpCenterListItem({
           <span className="text-muted-foreground/70">
             {isPublished ? (
               <>
-                Published <TimeAgo date={publishedAt!} locale="en" />
+                {intl.formatMessage({
+                  id: 'admin.helpCenter.status.published',
+                  defaultMessage: 'Published',
+                })}{' '}
+                <TimeAgo date={publishedAt!} />
               </>
             ) : (
               <>
-                Created <TimeAgo date={createdAt} locale="en" />
+                {intl.formatMessage({
+                  id: 'admin.helpCenter.list.created',
+                  defaultMessage: 'Created',
+                })}{' '}
+                <TimeAgo date={createdAt} />
               </>
             )}
           </span>
           {viewCount > 0 && (
             <>
               <span className="text-muted-foreground/40">&middot;</span>
-              <span className="text-muted-foreground/50">{viewCount} views</span>
+              <span className="text-muted-foreground/50">
+                {intl.formatMessage(
+                  {
+                    id: 'admin.helpCenter.list.views',
+                    defaultMessage: '{count, plural, one {# view} other {# views}}',
+                  },
+                  { count: viewCount }
+                )}
+              </span>
             </>
           )}
           {helpfulCount > 0 && (
             <>
               <span className="text-muted-foreground/40">&middot;</span>
-              <span className="text-muted-foreground/50">{helpfulCount} helpful</span>
+              <span className="text-muted-foreground/50">
+                {intl.formatMessage(
+                  {
+                    id: 'admin.helpCenter.list.helpful',
+                    defaultMessage: '{count} helpful',
+                  },
+                  { count: helpfulCount }
+                )}
+              </span>
             </>
           )}
         </div>
@@ -108,7 +146,10 @@ export function HelpCenterListItem({
           <DropdownMenuContent align="end">
             <DropdownMenuItem onClick={() => onEdit?.(id)}>
               <PencilIcon className="mr-2 h-4 w-4" />
-              Edit
+              {intl.formatMessage({
+                id: 'admin.helpCenter.actions.edit',
+                defaultMessage: 'Edit',
+              })}
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
@@ -116,7 +157,7 @@ export function HelpCenterListItem({
               className="text-destructive focus:text-destructive"
             >
               <TrashIcon className="mr-2 h-4 w-4" />
-              Delete
+              {intl.formatMessage({ id: 'common.delete', defaultMessage: 'Delete' })}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

@@ -44,9 +44,22 @@ function makeEntry(over: Partial<IntegrationSettingsEntry> = {}): IntegrationSet
       <button type="button">{isConnected ? 'Disconnect' : 'Connect Slack'}</button>
     ),
     setup: {
-      title: 'Connect your Slack workspace',
-      description: 'Notifications when users submit feedback.',
-      steps: [<p key="1">Authorize Quackback</p>],
+      title: {
+        id: 'test.setup.title',
+        defaultMessage: 'Connect your Slack workspace',
+      },
+      description: {
+        id: 'test.setup.description',
+        defaultMessage: 'Notifications when users submit feedback.',
+      },
+      steps: (intl) => [
+        <p key="1">
+          {intl.formatMessage({
+            id: 'test.setup.authorize',
+            defaultMessage: 'Authorize Quackback',
+          })}
+        </p>,
+      ],
     },
     renderConfig: () => <p>channel config</p>,
     ...over,

@@ -17,6 +17,7 @@ import { ExclamationTriangleIcon } from '@heroicons/react/24/solid'
 import type { IdentityProviderId } from '@quackback/ids'
 import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { SettingsPage } from '@/components/admin/settings/settings-page'
 import { IdpLogo } from '@/components/icons/idp-provider-icons'
 import { settingsQueries } from '@/lib/client/queries/settings'
@@ -46,13 +47,25 @@ export function ProviderDetailPage({
   autoTest?: boolean
   onAutoTestConsumed?: () => void
 }) {
+  const intl = useOptionalIntl()
   const providers = useSuspenseQuery(settingsQueries.identityProviders()).data ?? []
   const provider = providers.find((p) => p.id === providerId) ?? null
 
   if (!provider) {
     return (
-      <SettingsPage title="Identity provider" crumbs={SSO_CRUMBS}>
-        <p className="text-sm text-muted-foreground">Identity provider not found.</p>
+      <SettingsPage
+        title={intl.formatMessage({
+          id: 'admin.settings.security.idp.title',
+          defaultMessage: 'Identity provider',
+        })}
+        crumbs={SSO_CRUMBS}
+      >
+        <p className="text-sm text-muted-foreground">
+          {intl.formatMessage({
+            id: 'admin.settings.security.idp.notFound',
+            defaultMessage: 'Identity provider not found.',
+          })}
+        </p>
       </SettingsPage>
     )
   }
@@ -140,6 +153,7 @@ function ProviderPageShell({
   children: React.ReactNode
 }) {
   const { saving, save } = useProviderSave(provider)
+  const intl = useOptionalIntl()
   const [enabled, setEnabled] = useState(provider.enabled)
   // Resync when the query refetches with a server-side change.
   useEffect(() => setEnabled(provider.enabled), [provider.enabled])
@@ -149,7 +163,18 @@ function ProviderPageShell({
 
   const toggle = async (checked: boolean) => {
     setEnabled(checked)
-    const ok = await save({ enabled: checked }, checked ? 'Sign-in enabled.' : 'Sign-in disabled.')
+    const ok = await save(
+      { enabled: checked },
+      checked
+        ? intl.formatMessage({
+            id: 'admin.settings.security.idp.enabledSaved',
+            defaultMessage: 'Sign-in enabled.',
+          })
+        : intl.formatMessage({
+            id: 'admin.settings.security.idp.disabledSaved',
+            defaultMessage: 'Sign-in disabled.',
+          })
+    )
     if (!ok) setEnabled(!checked)
   }
 
@@ -157,7 +182,10 @@ function ProviderPageShell({
     <>
       {!provider.configured && (
         <Badge size="sm" variant="outline">
-          No client secret
+          {intl.formatMessage({
+            id: 'admin.settings.security.idp.noClientSecret',
+            defaultMessage: 'No client secret',
+          })}
         </Badge>
       )}
       {mappingIssue && (
@@ -190,14 +218,32 @@ function ProviderPageShell({
         <>
           <div
             className="flex items-center gap-2 text-sm"
-            title={isOnlyMethod ? 'At least one sign-in method must stay enabled.' : undefined}
+            title={
+              isOnlyMethod
+                ? intl.formatMessage({
+                    id: 'admin.settings.auth.oauthGrid.lastMethodTooltip',
+                    defaultMessage: 'At least one sign-in method must stay enabled.',
+                  })
+                : undefined
+            }
           >
-            <span className="text-muted-foreground">{enabled ? 'On' : 'Off'}</span>
+            <span className="text-muted-foreground">
+              {intl.formatMessage({
+                id: enabled ? 'common.state.on' : 'common.state.off',
+                defaultMessage: enabled ? 'On' : 'Off',
+              })}
+            </span>
             <Switch
               checked={enabled}
               onCheckedChange={(v) => void toggle(v)}
               disabled={saving || isOnlyMethod}
-              aria-label={`Enable ${provider.label}`}
+              aria-label={intl.formatMessage(
+                {
+                  id: 'admin.settings.security.idp.enableAria',
+                  defaultMessage: 'Enable {provider}',
+                },
+                { provider: provider.label }
+              )}
             />
           </div>
           <ProviderMenu provider={provider} isOnlyMethod={isOnlyMethod} />

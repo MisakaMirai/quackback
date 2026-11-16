@@ -14,6 +14,7 @@
  */
 import { useId, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import type { IntlShape } from 'react-intl'
 import { PlusIcon, TrashIcon } from '@heroicons/react/24/solid'
 import { ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/24/outline'
 import type { Role } from '@/lib/shared/roles'
@@ -21,6 +22,7 @@ import { cn } from '@/lib/shared/utils'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Autocomplete } from '@/components/ui/autocomplete'
 import { Button } from '@/components/ui/button'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import {
   Select,
@@ -72,12 +74,28 @@ const PRESETS: Role[] = ['admin', 'member', 'user']
 const CUSTOM_PREFIX = 'custom:'
 
 export function RolesCard({ provider }: { provider: IdentityProvider }) {
-  const label = provider.label.trim() || 'your provider'
+  const intl = useOptionalIntl()
+  const label =
+    provider.label.trim() ||
+    intl.formatMessage({
+      id: 'admin.settings.security.idp.roles.yourProvider',
+      defaultMessage: 'your provider',
+    })
   return (
     <div id="roles" className="scroll-mt-6">
       <SettingsCard
-        title="Roles"
-        description={`The role each person gets when they sign in with ${label}. Checked from the top; the first match wins.`}
+        title={intl.formatMessage({
+          id: 'admin.settings.security.idp.roles.title',
+          defaultMessage: 'Roles',
+        })}
+        description={intl.formatMessage(
+          {
+            id: 'admin.settings.security.idp.roles.description',
+            defaultMessage:
+              'The role each person gets when they sign in with {provider}. Checked from the top; the first match wins.',
+          },
+          { provider: label }
+        )}
         contentClassName="space-y-5"
       >
         <RolesEditor provider={provider} label={label} />
@@ -141,6 +159,7 @@ function ssoManagerRoleIds(
 }
 
 function RolesEditor({ provider, label }: { provider: IdentityProvider; label: string }) {
+  const intl = useOptionalIntl()
   const { saving, save, saveClaimMapping } = useProviderSave(provider)
   const capture = useProviderCapture(provider)
   const { data: rolesData } = useQuery(settingsQueries.roles())
@@ -279,9 +298,15 @@ function RolesEditor({ provider, label }: { provider: IdentityProvider; label: s
   // Save waits for the role list (so an admin-level custom role is always
   // confirmed) and, under "Every sign-in", for the admin check.
   const waiting = !rolesData
-    ? 'Loading roles…'
+    ? intl.formatMessage({
+        id: 'admin.settings.security.idp.roles.loading',
+        defaultMessage: 'Loading roles…',
+      })
     : guard.kind === 'loading'
-      ? 'Checking admins…'
+      ? intl.formatMessage({
+          id: 'admin.settings.security.idp.roles.checkingAdmins',
+          defaultMessage: 'Checking admins…',
+        })
       : null
 
   const update = (patch: Partial<RolesDraft>) => {
@@ -314,6 +339,10 @@ function RolesEditor({ provider, label }: { provider: IdentityProvider; label: s
 
   const persist = async () => {
     const both = roleChanged && defaultChanged
+    const savedMessage = intl.formatMessage({
+      id: 'admin.settings.security.idp.roles.saved',
+      defaultMessage: 'Roles saved.',
+    })
     if (roleChanged) {
       const saved = await saveClaimMapping(
         {
@@ -321,13 +350,13 @@ function RolesEditor({ provider, label }: { provider: IdentityProvider; label: s
           operations,
           acknowledgeAdminRules: risks.hasAdminRules,
         },
-        both ? null : 'Roles saved.',
+        both ? null : savedMessage,
         (err) => {
           if (isSyncLockout(err)) {
-            setSyncRefused(syncLockoutMessage(label))
+            setSyncRefused(syncLockoutMessage(intl, label))
             return true
           }
-          const refusal = grantRefusal(err)
+          const refusal = grantRefusal(intl, err)
           // The server names no rule, but it only checks rules this save adds
           // or changes, so the refusal belongs on those.
           const roleIds = roleRuleRoleIds(proposed, { newSince: baseline.mapping })
@@ -339,9 +368,9 @@ function RolesEditor({ provider, label }: { provider: IdentityProvider; label: s
       if (!saved) return
     }
     if (defaultChanged) {
-      const ok = await save({ autoProvisionRole: draft.defaultRole }, 'Roles saved.', (err) => {
+      const ok = await save({ autoProvisionRole: draft.defaultRole }, savedMessage, (err) => {
         if (!isSyncLockout(err)) return false
-        setSyncRefused(syncLockoutMessage(label))
+        setSyncRefused(syncLockoutMessage(intl, label))
         return true
       })
       if (!ok) {
@@ -369,7 +398,11 @@ function RolesEditor({ provider, label }: { provider: IdentityProvider; label: s
     <div className="space-y-5">
       {!provider.autoCreateUsers && (
         <p className="text-sm text-muted-foreground">
-          Account creation is off in Sign-in &amp; access, so these roles are not applied.
+          {intl.formatMessage({
+            id: 'admin.settings.security.idp.roles.creationOff',
+            defaultMessage:
+              'Account creation is off in Sign-in & access, so these roles are not applied.',
+          })}
         </p>
       )}
 
@@ -377,7 +410,12 @@ function RolesEditor({ provider, label }: { provider: IdentityProvider; label: s
         {draft.rules.length > 0 && (
           // Every rule reads the same claim, so it is chosen once, above them.
           <div className="flex flex-wrap items-center gap-2 text-sm">
-            <span className="text-muted-foreground">Claim</span>
+            <span className="text-muted-foreground">
+              {intl.formatMessage({
+                id: 'admin.settings.security.idp.roles.claim',
+                defaultMessage: 'Claim',
+              })}
+            </span>
             <div className="w-56">
               <ClaimPathInput
                 value={draft.claimPath}
@@ -385,7 +423,10 @@ function RolesEditor({ provider, label }: { provider: IdentityProvider; label: s
                 registrationId={provider.registrationId}
                 canTest
                 placeholder="groups"
-                ariaLabel="Claim to check"
+                ariaLabel={intl.formatMessage({
+                  id: 'admin.settings.security.idp.roles.claimToCheck',
+                  defaultMessage: 'Claim to check',
+                })}
                 disabled={saving}
                 capture={capture}
                 suggestionsFor="role"
@@ -396,11 +437,20 @@ function RolesEditor({ provider, label }: { provider: IdentityProvider; label: s
         )}
         {draft.rules.length === 0 ? (
           <p className="rounded-lg border border-dashed border-border px-4 py-3 text-sm text-muted-foreground">
-            No rules yet. Everyone gets the roles below. Add a rule to give a role based on a claim
-            such as groups.
+            {intl.formatMessage({
+              id: 'admin.settings.security.idp.roles.noRules',
+              defaultMessage:
+                'No rules yet. Everyone gets the roles below. Add a rule to give a role based on a claim such as groups.',
+            })}
           </p>
         ) : (
-          <ol aria-label="Role rules" className="space-y-2.5">
+          <ol
+            aria-label={intl.formatMessage({
+              id: 'admin.settings.security.idp.roles.rulesAria',
+              defaultMessage: 'Role rules',
+            })}
+            className="space-y-2.5"
+          >
             {draft.rules.map((rule, index) => (
               <li
                 key={index}
@@ -416,21 +466,47 @@ function RolesEditor({ provider, label }: { provider: IdentityProvider; label: s
                   <span className="w-4 shrink-0 text-center text-xs text-muted-foreground">
                     {index + 1}
                   </span>
-                  <span className="text-muted-foreground">If</span>
+                  <span className="text-muted-foreground">
+                    {intl.formatMessage({
+                      id: 'admin.settings.security.idp.roles.if',
+                      defaultMessage: 'If',
+                    })}
+                  </span>
                   <code
                     title={draft.claimPath.trim()}
                     className="max-w-32 truncate rounded bg-muted px-1.5 py-0.5 font-mono text-xs"
                   >
-                    {draft.claimPath.trim() || 'claim'}
+                    {draft.claimPath.trim() ||
+                      intl.formatMessage({
+                        id: 'admin.settings.security.idp.roles.claimFallback',
+                        defaultMessage: 'claim',
+                      })}
                   </code>
-                  <span className="text-muted-foreground">contains</span>
+                  <span className="text-muted-foreground">
+                    {intl.formatMessage({
+                      id: 'admin.settings.security.idp.roles.contains',
+                      defaultMessage: 'contains',
+                    })}
+                  </span>
                   <Autocomplete
                     value={rule.whenContains}
                     onValueChange={(whenContains) => updateRule(index, { whenContains })}
                     suggestions={seenValues.map((value) => ({ value }))}
-                    ariaLabel={`Value for rule ${index + 1}`}
-                    placeholder="value"
-                    emptyHint="No values seen yet. Type the value to match."
+                    ariaLabel={intl.formatMessage(
+                      {
+                        id: 'admin.settings.security.idp.roles.valueAria',
+                        defaultMessage: 'Value for rule {index}',
+                      },
+                      { index: index + 1 }
+                    )}
+                    placeholder={intl.formatMessage({
+                      id: 'admin.settings.security.idp.roles.valuePlaceholder',
+                      defaultMessage: 'value',
+                    })}
+                    emptyHint={intl.formatMessage({
+                      id: 'admin.settings.security.idp.roles.valueEmptyHint',
+                      defaultMessage: 'No values seen yet. Type the value to match.',
+                    })}
                     disabled={saving}
                     size="sm"
                     className={cn('w-40 shrink-0', NEUTRAL_BUTTON_FOCUS)}
@@ -445,7 +521,15 @@ function RolesEditor({ provider, label }: { provider: IdentityProvider; label: s
                     namedRole={
                       rule.roleId
                         ? (liveRoles?.find((r) => r.id === rule.roleId)?.name ??
-                          (roleMissing(rule) ? 'Missing role' : 'Custom role'))
+                          (roleMissing(rule)
+                            ? intl.formatMessage({
+                                id: 'admin.settings.security.idp.roles.missingRole',
+                                defaultMessage: 'Missing role',
+                              })
+                            : intl.formatMessage({
+                                id: 'admin.settings.security.idp.customRole',
+                                defaultMessage: 'Custom role',
+                              })))
                         : undefined
                     }
                     disabled={saving}
@@ -457,7 +541,13 @@ function RolesEditor({ provider, label }: { provider: IdentityProvider; label: s
                       variant="ghost"
                       size="sm"
                       className={cn('h-8 px-2', NEUTRAL_BUTTON_FOCUS)}
-                      aria-label={`Move rule ${index + 1} up`}
+                      aria-label={intl.formatMessage(
+                        {
+                          id: 'admin.settings.security.idp.roles.moveUp',
+                          defaultMessage: 'Move rule {index} up',
+                        },
+                        { index: index + 1 }
+                      )}
                       onClick={() => moveRule(index, -1)}
                       disabled={saving || index === 0}
                     >
@@ -468,7 +558,13 @@ function RolesEditor({ provider, label }: { provider: IdentityProvider; label: s
                       variant="ghost"
                       size="sm"
                       className={cn('h-8 px-2', NEUTRAL_BUTTON_FOCUS)}
-                      aria-label={`Move rule ${index + 1} down`}
+                      aria-label={intl.formatMessage(
+                        {
+                          id: 'admin.settings.security.idp.roles.moveDown',
+                          defaultMessage: 'Move rule {index} down',
+                        },
+                        { index: index + 1 }
+                      )}
                       onClick={() => moveRule(index, 1)}
                       disabled={saving || index === draft.rules.length - 1}
                     >
@@ -479,7 +575,13 @@ function RolesEditor({ provider, label }: { provider: IdentityProvider; label: s
                       variant="ghost"
                       size="sm"
                       className={cn('h-8 px-2', NEUTRAL_BUTTON_FOCUS)}
-                      aria-label={`Remove rule ${index + 1}`}
+                      aria-label={intl.formatMessage(
+                        {
+                          id: 'admin.settings.security.idp.roles.removeRule',
+                          defaultMessage: 'Remove rule {index}',
+                        },
+                        { index: index + 1 }
+                      )}
                       onClick={() => update({ rules: draft.rules.filter((_, i) => i !== index) })}
                       disabled={saving}
                     >
@@ -502,7 +604,13 @@ function RolesEditor({ provider, label }: { provider: IdentityProvider; label: s
                       index === firstMatch ? 'text-success' : 'text-muted-foreground'
                     )}
                   >
-                    Matches {testPerson} in the last test sign-in
+                    {intl.formatMessage(
+                      {
+                        id: 'admin.settings.security.idp.roles.matches',
+                        defaultMessage: 'Matches {person} in the last test sign-in',
+                      },
+                      { person: testPerson }
+                    )}
                   </p>
                 )}
               </li>
@@ -519,12 +627,18 @@ function RolesEditor({ provider, label }: { provider: IdentityProvider; label: s
           disabled={saving}
         >
           <PlusIcon className="h-3.5 w-3.5" />
-          Add rule
+          {intl.formatMessage({
+            id: 'admin.settings.security.idp.roles.addRule',
+            defaultMessage: 'Add rule',
+          })}
         </Button>
 
         {seenValues.length > 0 && (
           <p className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
-            Values seen in the last test sign-in:
+            {intl.formatMessage({
+              id: 'admin.settings.security.idp.roles.valuesSeen',
+              defaultMessage: 'Values seen in the last test sign-in:',
+            })}
             {seenValues.map((value) => (
               <span
                 key={value}
@@ -554,7 +668,15 @@ function RolesEditor({ provider, label }: { provider: IdentityProvider; label: s
       {guard.kind === 'error' && (
         <Alert variant="destructive">
           <AlertDescription className="flex flex-wrap items-center gap-2">
-            <span>Couldn&apos;t check which admins sign in with {label}. Try again.</span>
+            <span>
+              {intl.formatMessage(
+                {
+                  id: 'admin.settings.security.idp.roles.adminCheckFailed',
+                  defaultMessage: "Couldn't check which admins sign in with {provider}. Try again.",
+                },
+                { provider: label }
+              )}
+            </span>
             <Button
               type="button"
               variant="outline"
@@ -562,7 +684,10 @@ function RolesEditor({ provider, label }: { provider: IdentityProvider; label: s
               className={NEUTRAL_BUTTON_FOCUS}
               onClick={() => void admins.refetch()}
             >
-              Retry
+              {intl.formatMessage({
+                id: 'admin.settings.security.idp.roles.retry',
+                defaultMessage: 'Retry',
+              })}
             </Button>
           </AlertDescription>
         </Alert>
@@ -574,24 +699,47 @@ function RolesEditor({ provider, label }: { provider: IdentityProvider; label: s
       )}
       {guard.kind === 'caller' && (
         <Alert variant="destructive">
-          <AlertTitle>This would remove admin access from you.</AlertTitle>
+          <AlertTitle>
+            {intl.formatMessage({
+              id: 'admin.settings.security.idp.roles.callerTitle',
+              defaultMessage: 'This would remove admin access from you.',
+            })}
+          </AlertTitle>
           <AlertDescription>
-            You sign in with {label} and no rule gives you Admin. Add a rule that matches you, or
-            keep &ldquo;First sign-in only&rdquo;.
+            {intl.formatMessage(
+              {
+                id: 'admin.settings.security.idp.roles.callerBody',
+                defaultMessage:
+                  'You sign in with {provider} and no rule gives you Admin. Add a rule that matches you, or keep “First sign-in only”.',
+              },
+              { provider: label }
+            )}
           </AlertDescription>
         </Alert>
       )}
       {guard.kind === 'block' && (
         <Alert variant="destructive">
-          <AlertTitle>{blockTitle(guard.people)}</AlertTitle>
+          <AlertTitle>{blockTitle(intl, guard.people)}</AlertTitle>
           <AlertDescription>
             <p>
-              They sign in with {label} and no rule gives Admin. Add a rule that gives Admin, or
-              keep &ldquo;First sign-in only&rdquo;.
+              {intl.formatMessage(
+                {
+                  id: 'admin.settings.security.idp.roles.blockBody',
+                  defaultMessage:
+                    'They sign in with {provider} and no rule gives Admin. Add a rule that gives Admin, or keep “First sign-in only”.',
+                },
+                { provider: label }
+              )}
             </p>
-            <ul aria-label="Admins who would lose access" className="list-disc pl-4">
+            <ul
+              aria-label={intl.formatMessage({
+                id: 'admin.settings.security.idp.roles.lostAccessAria',
+                defaultMessage: 'Admins who would lose access',
+              })}
+              className="list-disc pl-4"
+            >
               {guard.people.map((p) => (
-                <li key={p.principalId}>{personLabel(p)}</li>
+                <li key={p.principalId}>{personLabel(intl, p)}</li>
               ))}
             </ul>
           </AlertDescription>
@@ -600,28 +748,39 @@ function RolesEditor({ provider, label }: { provider: IdentityProvider; label: s
       {offDomainAtRisk > 0 && (
         <Alert role="status" className="text-warning">
           <AlertDescription className="text-warning">
-            {offDomainAtRisk === 1
-              ? '1 admin outside your verified domains signs in'
-              : `${offDomainAtRisk} admins outside your verified domains sign in`}{' '}
-            with {label}. If one matches a rule that does not give Admin, they lose admin access at
-            their next sign-in.
+            {intl.formatMessage(
+              {
+                id: 'admin.settings.security.idp.roles.offDomainWarning',
+                defaultMessage:
+                  '{count, plural, one {# admin outside your verified domains signs in} other {# admins outside your verified domains sign in}} with {provider}. If one matches a rule that does not give Admin, they lose admin access at their next sign-in.',
+              },
+              { count: offDomainAtRisk, provider: label }
+            )}
           </AlertDescription>
         </Alert>
       )}
       {guard.kind === 'warn' && (
         <Alert role="status" className="text-warning">
           <AlertDescription className="text-warning">
-            {guard.count === 1 ? '1 admin signs in' : `${guard.count} admins sign in`} with {label}.
-            Make sure each one matches a rule that gives Admin, or they lose admin access at their
-            next sign-in.
+            {intl.formatMessage(
+              {
+                id: 'admin.settings.security.idp.roles.warnAdmins',
+                defaultMessage:
+                  '{count, plural, one {# admin signs in} other {# admins sign in}} with {provider}. Make sure each one matches a rule that gives Admin, or they lose admin access at their next sign-in.',
+              },
+              { count: guard.count, provider: label }
+            )}
           </AlertDescription>
         </Alert>
       )}
 
       {conflict && (
         <p role="status" className="text-sm font-medium text-warning">
-          This provider&apos;s roles changed elsewhere. Review before saving, or Cancel to take the
-          saved roles.
+          {intl.formatMessage({
+            id: 'admin.settings.security.idp.roles.conflict',
+            defaultMessage:
+              "This provider's roles changed elsewhere. Review before saving, or Cancel to take the saved roles.",
+          })}
         </p>
       )}
 
@@ -631,8 +790,14 @@ function RolesEditor({ provider, label }: { provider: IdentityProvider; label: s
           {!valid && (
             <p className="mr-auto text-sm text-muted-foreground">
               {filled
-                ? 'Pick a role that exists for the rules you changed.'
-                : 'Each rule needs a claim and a value.'}
+                ? intl.formatMessage({
+                    id: 'admin.settings.security.idp.roles.pickExistingRole',
+                    defaultMessage: 'Pick a role that exists for the rules you changed.',
+                  })
+                : intl.formatMessage({
+                    id: 'admin.settings.security.idp.roles.eachRule',
+                    defaultMessage: 'Each rule needs a claim and a value.',
+                  })}
             </p>
           )}
           <Button
@@ -647,7 +812,7 @@ function RolesEditor({ provider, label }: { provider: IdentityProvider; label: s
             }}
             disabled={saving}
           >
-            Cancel
+            {intl.formatMessage({ id: 'common.cancel', defaultMessage: 'Cancel' })}
           </Button>
           <Button
             type="button"
@@ -656,7 +821,15 @@ function RolesEditor({ provider, label }: { provider: IdentityProvider; label: s
             onClick={requestSave}
             disabled={saving || lockout || conflict || !valid || waiting !== null}
           >
-            {saving ? 'Saving…' : 'Save changes'}
+            {saving
+              ? intl.formatMessage({
+                  id: 'admin.settings.security.idp.saving',
+                  defaultMessage: 'Saving…',
+                })
+              : intl.formatMessage({
+                  id: 'admin.settings.security.idp.saveChanges',
+                  defaultMessage: 'Save changes',
+                })}
           </Button>
         </div>
       )}
@@ -664,15 +837,30 @@ function RolesEditor({ provider, label }: { provider: IdentityProvider; label: s
       <ConfirmDialog
         open={confirmOpen}
         onOpenChange={setConfirmOpen}
-        title="Confirm these changes"
-        confirmLabel="Save changes"
+        title={intl.formatMessage({
+          id: 'admin.settings.security.idp.roles.confirmTitle',
+          defaultMessage: 'Confirm these changes',
+        })}
+        confirmLabel={intl.formatMessage({
+          id: 'admin.settings.security.idp.saveChanges',
+          defaultMessage: 'Save changes',
+        })}
         description={
           <p className="text-sm">
             {risks.adminRules.length === 1
-              ? 'A rule grants admin access.'
-              : `${risks.adminRules.length} rules grant admin access.`}{' '}
-            Matching users become admins even when their email is outside this provider&apos;s
-            verified domains.
+              ? intl.formatMessage({
+                  id: 'admin.settings.security.idp.roles.confirmBodyOne',
+                  defaultMessage:
+                    "A rule grants admin access. Matching users become admins even when their email is outside this provider's verified domains.",
+                })
+              : intl.formatMessage(
+                  {
+                    id: 'admin.settings.security.idp.roles.confirmBodyMany',
+                    defaultMessage:
+                      "{count} rules grant admin access. Matching users become admins even when their email is outside this provider's verified domains.",
+                  },
+                  { count: risks.adminRules.length }
+                )}
           </p>
         }
         onConfirm={() => {
@@ -690,12 +878,19 @@ function isSyncLockout(err: unknown): boolean {
   return code === 'SYNC_LOCKOUT' || (err instanceof Error && /SYNC_LOCKOUT/.test(err.message))
 }
 
-function syncLockoutMessage(label: string): string {
-  return `Saving this would remove admin access from people who sign in with ${label}. Add a rule that gives Admin, or keep “First sign-in only”.`
+function syncLockoutMessage(intl: IntlShape, label: string): string {
+  return intl.formatMessage(
+    {
+      id: 'admin.settings.security.idp.roles.syncLockout',
+      defaultMessage:
+        'Saving this would remove admin access from people who sign in with {provider}. Add a rule that gives Admin, or keep “First sign-in only”.',
+    },
+    { provider: label }
+  )
 }
 
 /** The plain-English reason a save that grants a role was refused, or null. */
-function grantRefusal(err: unknown): string | null {
+function grantRefusal(intl: IntlShape, err: unknown): string | null {
   const code =
     typeof (err as { code?: unknown })?.code === 'string' ? (err as { code: string }).code : ''
   const message = err instanceof Error ? err.message : ''
@@ -703,13 +898,19 @@ function grantRefusal(err: unknown): string | null {
     code === 'ROLE_RULE_UNKNOWN_ROLE' ||
     /ROLE_RULE_UNKNOWN_ROLE|no longer exists/.test(message)
   ) {
-    return 'This role no longer exists. Pick another role.'
+    return intl.formatMessage({
+      id: 'admin.settings.security.idp.roles.roleMissingError',
+      defaultMessage: 'This role no longer exists. Pick another role.',
+    })
   }
   if (
     code === 'GRANT_CEILING' ||
     /GRANT_CEILING|permissions you don.t hold|Assigner permission/.test(message)
   ) {
-    return "You can't give this role: it has permissions you don't hold."
+    return intl.formatMessage({
+      id: 'admin.settings.security.idp.roles.grantCeilingError',
+      defaultMessage: "You can't give this role: it has permissions you don't hold.",
+    })
   }
   return null
 }
@@ -794,16 +995,41 @@ function adminGuard({
   return demoted.length > 0 ? { kind: 'block', people: demoted } : { kind: 'none' }
 }
 
-function personLabel(p: ProviderAdmin): string {
-  const name = p.name?.trim() || p.email || 'Unnamed teammate'
-  return p.isCaller ? `${name} (you)` : name
+function personLabel(intl: IntlShape, p: ProviderAdmin): string {
+  const name =
+    p.name?.trim() ||
+    p.email ||
+    intl.formatMessage({
+      id: 'admin.settings.security.idp.roles.unnamedTeammate',
+      defaultMessage: 'Unnamed teammate',
+    })
+  return p.isCaller
+    ? intl.formatMessage(
+        {
+          id: 'admin.settings.security.idp.roles.personYou',
+          defaultMessage: '{name} (you)',
+        },
+        { name }
+      )
+    : name
 }
 
-function blockTitle(people: ProviderAdmin[]): string {
+function blockTitle(intl: IntlShape, people: ProviderAdmin[]): string {
   const includesCaller = people.some((p) => p.isCaller)
-  if (people.length === 1 && includesCaller) return 'This would remove admin access from you.'
-  const count = `${people.length} ${people.length === 1 ? 'person' : 'people'}`
-  return `This would remove admin access from ${count}${includesCaller ? ', including you' : ''}.`
+  if (people.length === 1 && includesCaller) {
+    return intl.formatMessage({
+      id: 'admin.settings.security.idp.roles.callerTitle',
+      defaultMessage: 'This would remove admin access from you.',
+    })
+  }
+  return intl.formatMessage(
+    {
+      id: 'admin.settings.security.idp.roles.blockTitle',
+      defaultMessage:
+        'This would remove admin access from {count, plural, one {# person} other {# people}}{includesCaller, select, yes {, including you} other {}}.',
+    },
+    { count: people.length, includesCaller: includesCaller ? 'yes' : 'no' }
+  )
 }
 
 function RuleRoleSelect({
@@ -823,6 +1049,7 @@ function RuleRoleSelect({
   disabled: boolean
   onChange: (patch: Partial<RoleRuleDraft>) => void
 }) {
+  const intl = useOptionalIntl()
   const value = rule.roleId ? `${CUSTOM_PREFIX}${rule.roleId}` : rule.role
   const unknownCustom = rule.roleId && !customRoles.some((r) => r.id === rule.roleId)
   return (
@@ -841,13 +1068,24 @@ function RuleRoleSelect({
       <SelectTrigger
         size="sm"
         className={cn('w-36 shrink-0', NEUTRAL_SELECT_FOCUS)}
-        aria-label={`Role for rule ${index + 1}`}
+        aria-label={intl.formatMessage(
+          {
+            id: 'admin.settings.security.idp.roles.ruleRoleAria',
+            defaultMessage: 'Role for rule {index}',
+          },
+          { index: index + 1 }
+        )}
       >
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
         <SelectGroup>
-          <SelectLabel>Presets</SelectLabel>
+          <SelectLabel>
+            {intl.formatMessage({
+              id: 'admin.settings.security.idp.roles.presets',
+              defaultMessage: 'Presets',
+            })}
+          </SelectLabel>
           {PRESETS.map((role) => (
             <SelectItem key={role} value={role}>
               {ROLE_PRESET_LABELS[role]}
@@ -856,13 +1094,26 @@ function RuleRoleSelect({
         </SelectGroup>
         {(customRoles.length > 0 || unknownCustom) && (
           <SelectGroup>
-            <SelectLabel>Custom roles</SelectLabel>
+            <SelectLabel>
+              {intl.formatMessage({
+                id: 'admin.settings.security.idp.roles.customRoles',
+                defaultMessage: 'Custom roles',
+              })}
+            </SelectLabel>
             {customRoles.map((role) => (
               <SelectItem key={role.id} value={`${CUSTOM_PREFIX}${role.id}`}>
                 {role.name}
               </SelectItem>
             ))}
-            {unknownCustom && <SelectItem value={value}>{namedRole ?? 'Custom role'}</SelectItem>}
+            {unknownCustom && (
+              <SelectItem value={value}>
+                {namedRole ??
+                  intl.formatMessage({
+                    id: 'admin.settings.security.idp.customRole',
+                    defaultMessage: 'Custom role',
+                  })}
+              </SelectItem>
+            )}
           </SelectGroup>
         )}
       </SelectContent>
@@ -881,14 +1132,23 @@ function OtherwiseBlock({
   disabled: boolean
   onDefaultRoleChange: (role: Role) => void
 }) {
+  const intl = useOptionalIntl()
   return (
     <div className="space-y-3 border-t border-border/40 pt-5 text-sm">
-      <h3 className="font-medium">Otherwise</h3>
+      <h3 className="font-medium">
+        {intl.formatMessage({
+          id: 'admin.settings.security.idp.roles.otherwise',
+          defaultMessage: 'Otherwise',
+        })}
+      </h3>
       <div className="flex flex-wrap items-center gap-2">
         <span className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
           {domains.length > 0 ? (
             <>
-              {'People with an email at '}
+              {intl.formatMessage({
+                id: 'admin.settings.security.idp.roles.peopleWithEmailAt',
+                defaultMessage: 'People with an email at',
+              })}{' '}
               {domains.map((name) => (
                 <span key={name} className="rounded-full bg-muted px-2 py-0.5 text-xs">
                   {name}
@@ -896,7 +1156,10 @@ function OtherwiseBlock({
               ))}
             </>
           ) : (
-            'People at a verified domain'
+            intl.formatMessage({
+              id: 'admin.settings.security.idp.roles.peopleAtVerifiedDomain',
+              defaultMessage: 'People at a verified domain',
+            })
           )}
         </span>
         <span aria-hidden="true" className="text-muted-foreground">
@@ -910,7 +1173,10 @@ function OtherwiseBlock({
           <SelectTrigger
             size="sm"
             className={cn('w-36', NEUTRAL_SELECT_FOCUS)}
-            aria-label="Role for people at a verified domain"
+            aria-label={intl.formatMessage({
+              id: 'admin.settings.security.idp.roles.defaultRoleAria',
+              defaultMessage: 'Role for people at a verified domain',
+            })}
           >
             <SelectValue />
           </SelectTrigger>
@@ -925,39 +1191,72 @@ function OtherwiseBlock({
       </div>
       {domains.length === 0 && (
         <p className="text-xs text-muted-foreground">
-          This provider has no verified domain yet.{' '}
-          <a href="#signin" className={cn(INLINE_LINK, NEUTRAL_LINK_FOCUS)}>
-            Add one in Sign-in &amp; access
-          </a>
-          . Until then, only rules give team roles.
+          {intl.formatMessage(
+            {
+              id: 'admin.settings.security.idp.roles.noDomainNotice',
+              defaultMessage:
+                'This provider has no verified domain yet. <a>Add one in Sign-in & access</a>. Until then, only rules give team roles.',
+            },
+            {
+              a: (chunks) => (
+                <a href="#signin" className={cn(INLINE_LINK, NEUTRAL_LINK_FOCUS)}>
+                  {chunks}
+                </a>
+              ),
+            }
+          )}
         </p>
       )}
       <div className="flex flex-wrap items-center gap-2">
-        <span className="flex-1">Everyone else</span>
+        <span className="flex-1">
+          {intl.formatMessage({
+            id: 'admin.settings.security.idp.roles.everyoneElse',
+            defaultMessage: 'Everyone else',
+          })}
+        </span>
         <span aria-hidden="true" className="text-muted-foreground">
           →
         </span>
-        <span className="w-36 px-1 text-muted-foreground">Portal user</span>
+        <span className="w-36 px-1 text-muted-foreground">
+          {intl.formatMessage({
+            id: 'admin.settings.security.idp.roles.portalUser',
+            defaultMessage: 'Portal user',
+          })}
+        </span>
       </div>
       <p className="text-xs text-muted-foreground">
-        Portal users can post, vote and comment, with no access to the team workspace.
+        {intl.formatMessage({
+          id: 'admin.settings.security.idp.roles.portalUserNote',
+          defaultMessage:
+            'Portal users can post, vote and comment, with no access to the team workspace.',
+        })}
       </p>
     </div>
   )
 }
 
-const MODES: Array<{ value: Mode; title: string; body: (label: string) => string }> = [
+const MODES: Array<{
+  value: Mode
+  titleId: string
+  titleDefault: string
+  bodyId: string
+  bodyDefault: string
+}> = [
   {
     value: 'first',
-    title: 'First sign-in only',
-    body: () =>
+    titleId: 'admin.settings.security.idp.roles.modeTitleFirst',
+    titleDefault: 'First sign-in only',
+    bodyId: 'admin.settings.security.idp.roles.modeBodyFirst',
+    bodyDefault:
       'Gives a role the first time someone signs in or matches a rule. Never removes a role.',
   },
   {
     value: 'every',
-    title: 'Every sign-in',
-    body: (label) =>
-      `Keeps roles in step with ${label}. Someone who stops matching loses their team role at their next sign-in.`,
+    titleId: 'admin.settings.security.idp.roles.modeTitleEvery',
+    titleDefault: 'Every sign-in',
+    bodyId: 'admin.settings.security.idp.roles.modeBodyEvery',
+    bodyDefault:
+      'Keeps roles in step with {provider}. Someone who stops matching loses their team role at their next sign-in.',
   },
 ]
 
@@ -973,10 +1272,14 @@ function WhenApplied({
   onChange: (mode: Mode) => void
 }) {
   const id = useId()
+  const intl = useOptionalIntl()
   return (
     <div className="space-y-3 border-t border-border/40 pt-5 text-sm">
       <h3 id={`${id}-heading`} className="font-medium">
-        When roles are applied
+        {intl.formatMessage({
+          id: 'admin.settings.security.idp.roles.whenApplied',
+          defaultMessage: 'When roles are applied',
+        })}
       </h3>
       <RadioGroup
         value={mode}
@@ -993,9 +1296,17 @@ function WhenApplied({
               className={cn('mt-0.5', NEUTRAL_FOCUS)}
             />
             <span className="space-y-0.5">
-              <span className="block font-medium">{option.title}</span>
+              <span className="block font-medium">
+                {intl.formatMessage({
+                  id: option.titleId,
+                  defaultMessage: option.titleDefault,
+                })}
+              </span>
               <span id={`${id}-${option.value}`} className="block text-muted-foreground">
-                {option.body(label)}
+                {intl.formatMessage(
+                  { id: option.bodyId, defaultMessage: option.bodyDefault },
+                  { provider: label }
+                )}
               </span>
             </span>
           </label>

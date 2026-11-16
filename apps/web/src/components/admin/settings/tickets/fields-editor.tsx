@@ -47,6 +47,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import type { TicketType } from '@/lib/shared/db-types'
 import { TICKET_FORM_FIELD_TYPES } from '@/lib/shared/tickets'
@@ -55,13 +56,13 @@ import { ticketFormFieldSchema, deriveFieldKey, uniqueFieldKey } from './form-fi
 
 const FIELD_TYPES = TICKET_FORM_FIELD_TYPES
 
-const FIELD_TYPE_LABEL: Record<TicketFormFieldType, string> = {
-  text: 'Text',
-  long_text: 'Long text',
-  number: 'Number',
-  select: 'Select',
-  date: 'Date',
-  checkbox: 'Checkbox',
+const FIELD_TYPE_MESSAGES: Record<TicketFormFieldType, { id: string; defaultMessage: string }> = {
+  text: { id: 'admin.settings.ticketFields.type.text', defaultMessage: 'Text' },
+  long_text: { id: 'admin.settings.ticketFields.type.longText', defaultMessage: 'Long text' },
+  number: { id: 'admin.settings.ticketFields.type.number', defaultMessage: 'Number' },
+  select: { id: 'admin.settings.ticketFields.type.select', defaultMessage: 'Select' },
+  date: { id: 'admin.settings.ticketFields.type.date', defaultMessage: 'Date' },
+  checkbox: { id: 'admin.settings.ticketFields.type.checkbox', defaultMessage: 'Checkbox' },
 }
 
 export interface FieldsEditorProps {
@@ -71,6 +72,7 @@ export interface FieldsEditorProps {
 }
 
 export function FieldsEditor({ category, fields, onChange }: FieldsEditorProps) {
+  const intl = useOptionalIntl()
   // Only customer-category fields can be customer-visible; internal categories
   // force visibleToCustomer false (customers never see internal tickets).
   const internal = category !== 'customer'
@@ -109,7 +111,12 @@ export function FieldsEditor({ category, fields, onChange }: FieldsEditorProps) 
   return (
     <div className="space-y-2 rounded-lg border border-border/50 p-3">
       <div className="flex items-center justify-between">
-        <p className="text-xs font-medium text-muted-foreground">Fields</p>
+        <p className="text-xs font-medium text-muted-foreground">
+          {intl.formatMessage({
+            id: 'admin.settings.ticketFields.heading',
+            defaultMessage: 'Fields',
+          })}
+        </p>
         <Button
           type="button"
           variant="outline"
@@ -119,12 +126,28 @@ export function FieldsEditor({ category, fields, onChange }: FieldsEditorProps) 
             setDialogOpen(true)
           }}
         >
-          <PlusIcon className="h-4 w-4" /> Add field
+          <PlusIcon className="h-4 w-4" />{' '}
+          {intl.formatMessage({
+            id: 'admin.settings.ticketFields.addField',
+            defaultMessage: 'Add field',
+          })}
         </Button>
       </div>
 
-      <FixedFieldRow label="Subject" typeLabel="Text" />
-      <FixedFieldRow label="Details" typeLabel="Long text" />
+      <FixedFieldRow
+        label={intl.formatMessage({
+          id: 'admin.settings.ticketFields.fixed.subject',
+          defaultMessage: 'Subject',
+        })}
+        typeLabel={intl.formatMessage(FIELD_TYPE_MESSAGES.text)}
+      />
+      <FixedFieldRow
+        label={intl.formatMessage({
+          id: 'admin.settings.ticketFields.fixed.details',
+          defaultMessage: 'Details',
+        })}
+        typeLabel={intl.formatMessage(FIELD_TYPE_MESSAGES.long_text)}
+      />
 
       <DndContext
         id={dndId}
@@ -152,7 +175,12 @@ export function FieldsEditor({ category, fields, onChange }: FieldsEditorProps) 
       </DndContext>
 
       {fields.length === 0 && (
-        <p className="py-1 text-xs text-muted-foreground">No custom fields yet.</p>
+        <p className="py-1 text-xs text-muted-foreground">
+          {intl.formatMessage({
+            id: 'admin.settings.ticketFields.empty',
+            defaultMessage: 'No custom fields yet.',
+          })}
+        </p>
       )}
 
       <FieldDialog
@@ -168,13 +196,26 @@ export function FieldsEditor({ category, fields, onChange }: FieldsEditorProps) 
         open={toDelete !== null}
         onOpenChange={(open) => !open && setToDelete(null)}
         variant="destructive"
-        title="Delete field?"
+        title={intl.formatMessage({
+          id: 'admin.settings.ticketFields.deleteTitle',
+          defaultMessage: 'Delete field?',
+        })}
         description={
           toDelete
-            ? `"${toDelete.label}" is removed from this type's New ticket form when you save the type. Answers already on tickets are kept.`
+            ? intl.formatMessage(
+                {
+                  id: 'admin.settings.ticketFields.deleteDescription',
+                  defaultMessage:
+                    '"{label}" is removed from this type\'s New ticket form when you save the type. Answers already on tickets are kept.',
+                },
+                { label: toDelete.label }
+              )
             : undefined
         }
-        confirmLabel="Delete field"
+        confirmLabel={intl.formatMessage({
+          id: 'admin.settings.ticketFields.deleteField',
+          defaultMessage: 'Delete field',
+        })}
         onConfirm={() => {
           if (toDelete) removeField(toDelete)
           setToDelete(null)
@@ -186,12 +227,18 @@ export function FieldsEditor({ category, fields, onChange }: FieldsEditorProps) 
 
 /** Built-in Subject / Details rows: always present, never editable. */
 function FixedFieldRow({ label, typeLabel }: { label: string; typeLabel: string }) {
+  const intl = useOptionalIntl()
   return (
     <div className="flex items-center gap-3 rounded-md border border-dashed border-border/50 px-3 py-2">
       <span className="w-4 shrink-0" />
       <span className="flex-1 text-sm">{label}</span>
       <Badge variant="outline">{typeLabel}</Badge>
-      <Badge variant="subtle">Built-in</Badge>
+      <Badge variant="subtle">
+        {intl.formatMessage({
+          id: 'admin.settings.ticketFields.builtIn',
+          defaultMessage: 'Built-in',
+        })}
+      </Badge>
     </div>
   )
 }
@@ -205,6 +252,7 @@ interface FieldRowProps {
 }
 
 function FieldRow({ field, internal, onToggleVisible, onEdit, onDelete }: FieldRowProps) {
+  const intl = useOptionalIntl()
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: field.key,
   })
@@ -225,25 +273,46 @@ function FieldRow({ field, internal, onToggleVisible, onEdit, onDelete }: FieldR
         {...attributes}
         {...listeners}
         className="w-4 shrink-0 touch-none cursor-grab active:cursor-grabbing"
-        aria-label="Reorder"
+        aria-label={intl.formatMessage({
+          id: 'admin.settings.ticketFields.reorderAria',
+          defaultMessage: 'Reorder',
+        })}
       >
         <Bars3Icon className="h-4 w-4 text-muted-foreground opacity-0 group-hover/field:opacity-100" />
       </button>
 
       <span className="flex-1 min-w-0 truncate text-sm">{field.label}</span>
-      <Badge variant="outline">{FIELD_TYPE_LABEL[field.type]}</Badge>
-      {field.required && <Badge variant="subtle">Required</Badge>}
+      <Badge variant="outline">{intl.formatMessage(FIELD_TYPE_MESSAGES[field.type])}</Badge>
+      {field.required && (
+        <Badge variant="subtle">
+          {intl.formatMessage({
+            id: 'admin.settings.ticketFields.required',
+            defaultMessage: 'Required',
+          })}
+        </Badge>
+      )}
 
       {internal ? (
         // Internal tickets are never shown to customers, so there is nothing to toggle.
         <span className="w-16" aria-hidden />
       ) : (
         <span className="flex items-center gap-1.5">
-          <span className="text-xs text-muted-foreground">Visible</span>
+          <span className="text-xs text-muted-foreground">
+            {intl.formatMessage({
+              id: 'admin.settings.ticketFields.visible',
+              defaultMessage: 'Visible',
+            })}
+          </span>
           <Switch
             checked={field.visibleToCustomer}
             onCheckedChange={onToggleVisible}
-            aria-label={`Show ${field.label} to customers`}
+            aria-label={intl.formatMessage(
+              {
+                id: 'admin.settings.ticketFields.visibleAria',
+                defaultMessage: 'Show {label} to customers',
+              },
+              { label: field.label }
+            )}
           />
         </span>
       )}
@@ -254,7 +323,10 @@ function FieldRow({ field, internal, onToggleVisible, onEdit, onDelete }: FieldR
         size="icon"
         className="h-7 w-7 text-muted-foreground opacity-0 group-hover/field:opacity-100"
         onClick={onEdit}
-        title="Edit field"
+        title={intl.formatMessage({
+          id: 'admin.settings.ticketFields.editField',
+          defaultMessage: 'Edit field',
+        })}
       >
         <PencilSquareIcon className="h-3.5 w-3.5" />
       </Button>
@@ -264,7 +336,10 @@ function FieldRow({ field, internal, onToggleVisible, onEdit, onDelete }: FieldR
         size="icon"
         className="h-7 w-7 text-muted-foreground opacity-0 group-hover/field:opacity-100 hover:text-destructive"
         onClick={onDelete}
-        title="Delete field"
+        title={intl.formatMessage({
+          id: 'admin.settings.ticketFields.deleteField',
+          defaultMessage: 'Delete field',
+        })}
       >
         <TrashIcon className="h-3.5 w-3.5" />
       </Button>
@@ -289,6 +364,7 @@ function FieldDialog({
   existingKeys,
   onSubmit,
 }: FieldDialogProps) {
+  const intl = useOptionalIntl()
   const [label, setLabel] = useState('')
   const [fieldType, setFieldType] = useState<TicketFormFieldType>('text')
   const [required, setRequired] = useState(false)
@@ -339,7 +415,13 @@ function FieldDialog({
 
     const parsed = ticketFormFieldSchema.safeParse(draft)
     if (!parsed.success) {
-      setError(parsed.error.issues[0]?.message ?? 'Invalid field')
+      setError(
+        parsed.error.issues[0]?.message ??
+          intl.formatMessage({
+            id: 'admin.settings.ticketFields.invalid',
+            defaultMessage: 'Invalid field',
+          })
+      )
       return
     }
     onSubmit(draft)
@@ -350,27 +432,53 @@ function FieldDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>{field ? 'Edit field' : 'Add field'}</DialogTitle>
+          <DialogTitle>
+            {field
+              ? intl.formatMessage({
+                  id: 'admin.settings.ticketFields.editField',
+                  defaultMessage: 'Edit field',
+                })
+              : intl.formatMessage({
+                  id: 'admin.settings.ticketFields.addField',
+                  defaultMessage: 'Add field',
+                })}
+          </DialogTitle>
           <DialogDescription>
-            Custom fields appear on this type&apos;s New ticket form.
+            {intl.formatMessage({
+              id: 'admin.settings.ticketFields.dialogDescription',
+              defaultMessage: "Custom fields appear on this type's New ticket form.",
+            })}
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={submit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="field-label">Field name</Label>
+            <Label htmlFor="field-label">
+              {intl.formatMessage({
+                id: 'admin.settings.ticketFields.fieldName',
+                defaultMessage: 'Field name',
+              })}
+            </Label>
             <Input
               id="field-label"
               value={label}
               maxLength={120}
               onChange={(e) => setLabel(e.target.value)}
-              placeholder="e.g. Order number"
+              placeholder={intl.formatMessage({
+                id: 'admin.settings.ticketFields.fieldNamePlaceholder',
+                defaultMessage: 'e.g. Order number',
+              })}
               required
             />
           </div>
 
           <div className="space-y-2">
-            <Label>Type</Label>
+            <Label>
+              {intl.formatMessage({
+                id: 'admin.settings.ticketFields.typeLabel',
+                defaultMessage: 'Type',
+              })}
+            </Label>
             <Select value={fieldType} onValueChange={(v) => setFieldType(v as TicketFormFieldType)}>
               <SelectTrigger className="w-full">
                 <SelectValue />
@@ -378,7 +486,7 @@ function FieldDialog({
               <SelectContent>
                 {FIELD_TYPES.map((t) => (
                   <SelectItem key={t} value={t}>
-                    {FIELD_TYPE_LABEL[t]}
+                    {intl.formatMessage(FIELD_TYPE_MESSAGES[t])}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -387,13 +495,21 @@ function FieldDialog({
 
           {fieldType === 'select' && (
             <div className="space-y-2">
-              <Label htmlFor="field-options">Options</Label>
+              <Label htmlFor="field-options">
+                {intl.formatMessage({
+                  id: 'admin.settings.ticketFields.options',
+                  defaultMessage: 'Options',
+                })}
+              </Label>
               <Textarea
                 id="field-options"
                 value={optionsText}
                 rows={3}
                 onChange={(e) => setOptionsText(e.target.value)}
-                placeholder="One option per line"
+                placeholder={intl.formatMessage({
+                  id: 'admin.settings.ticketFields.optionsPlaceholder',
+                  defaultMessage: 'One option per line',
+                })}
               />
             </div>
           )}
@@ -404,7 +520,10 @@ function FieldDialog({
               onCheckedChange={(v) => setRequired(v === true)}
               data-in-label
             />
-            Required
+            {intl.formatMessage({
+              id: 'admin.settings.ticketFields.required',
+              defaultMessage: 'Required',
+            })}
           </label>
 
           {!internal && (
@@ -414,7 +533,10 @@ function FieldDialog({
                 onCheckedChange={(v) => setVisibleToCustomer(v === true)}
                 data-in-label
               />
-              Show to customers on the New ticket form
+              {intl.formatMessage({
+                id: 'admin.settings.ticketFields.showToCustomers',
+                defaultMessage: 'Show to customers on the New ticket form',
+              })}
             </label>
           )}
 
@@ -422,10 +544,18 @@ function FieldDialog({
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
+              {intl.formatMessage({ id: 'common.cancel', defaultMessage: 'Cancel' })}
             </Button>
             <Button type="submit" disabled={!label.trim()}>
-              {field ? 'Save field' : 'Add field'}
+              {field
+                ? intl.formatMessage({
+                    id: 'admin.settings.ticketFields.saveField',
+                    defaultMessage: 'Save field',
+                  })
+                : intl.formatMessage({
+                    id: 'admin.settings.ticketFields.addField',
+                    defaultMessage: 'Add field',
+                  })}
             </Button>
           </DialogFooter>
         </form>

@@ -33,6 +33,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { EmptyState } from '@/components/shared/empty-state'
 import { NewButton } from '@/components/shared/new-button'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { SettingsCard } from '@/components/admin/settings/settings-card'
 import { RowDot, SettingsList, SettingsListRow } from '@/components/admin/settings/settings-list'
 import { AUTOSAVE } from '@/lib/client/autosave'
@@ -102,6 +103,7 @@ interface CategoryDialogProps {
 }
 
 function CategoryDialog({ open, onOpenChange, category, segments, onSaved }: CategoryDialogProps) {
+  const intl = useOptionalIntl()
   const [name, setName] = useState('')
   const [color, setColor] = useState('#6b7280')
   const [segmentIds, setSegmentIds] = useState<string[]>([])
@@ -128,7 +130,12 @@ function CategoryDialog({ open, onOpenChange, category, segments, onSaved }: Cat
   async function handleSave() {
     const trimmedName = name.trim()
     if (!trimmedName) {
-      setError('Name is required')
+      setError(
+        intl.formatMessage({
+          id: 'admin.settings.changelog.labels.nameRequired',
+          defaultMessage: 'Name is required',
+        })
+      )
       return
     }
 
@@ -149,7 +156,15 @@ function CategoryDialog({ open, onOpenChange, category, segments, onSaved }: Cat
       onSaved(saved)
       onOpenChange(false)
     } catch (err) {
-      setError(errorText(err, 'Failed to save label'))
+      setError(
+        errorText(
+          err,
+          intl.formatMessage({
+            id: 'admin.settings.changelog.labels.saveFailed',
+            defaultMessage: 'Failed to save label',
+          })
+        )
+      )
     } finally {
       setIsSaving(false)
     }
@@ -159,7 +174,19 @@ function CategoryDialog({ open, onOpenChange, category, segments, onSaved }: Cat
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{isEdit ? 'Edit label' : 'Create label'}</DialogTitle>
+          <DialogTitle>
+            {intl.formatMessage(
+              isEdit
+                ? {
+                    id: 'admin.settings.changelog.labels.editTitle',
+                    defaultMessage: 'Edit label',
+                  }
+                : {
+                    id: 'admin.settings.changelog.labels.createTitle',
+                    defaultMessage: 'Create label',
+                  }
+            )}
+          </DialogTitle>
         </DialogHeader>
 
         <div className="flex justify-center py-3 bg-muted/30 rounded-lg">
@@ -167,40 +194,71 @@ function CategoryDialog({ open, onOpenChange, category, segments, onSaved }: Cat
             className="inline-flex items-center px-3 py-0.5 rounded-md text-sm font-medium"
             style={{ backgroundColor: color + '20', color }}
           >
-            {name.trim() || 'Label name'}
+            {name.trim() ||
+              intl.formatMessage({
+                id: 'admin.settings.changelog.labels.namePreview',
+                defaultMessage: 'Label name',
+              })}
           </span>
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="category-name">Name</Label>
+          <Label htmlFor="category-name">
+            {intl.formatMessage({
+              id: 'admin.settings.changelog.labels.nameLabel',
+              defaultMessage: 'Name',
+            })}
+          </Label>
           <Input
             id="category-name"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="e.g. New, Improved, Fixed"
+            placeholder={intl.formatMessage({
+              id: 'admin.settings.changelog.labels.namePlaceholder',
+              defaultMessage: 'e.g. New, Improved, Fixed',
+            })}
             maxLength={50}
           />
         </div>
 
         <div className="space-y-2">
-          <Label>Color</Label>
+          <Label>
+            {intl.formatMessage({
+              id: 'admin.settings.changelog.labels.colorLabel',
+              defaultMessage: 'Color',
+            })}
+          </Label>
           <ColorPickerGrid selectedColor={color} onColorChange={setColor} />
         </div>
 
         {segments.length > 0 && (
           <div className="space-y-2">
             <Label>
-              Restrict to segments{' '}
-              <span className="text-muted-foreground font-normal">(optional)</span>
+              {intl.formatMessage({
+                id: 'admin.settings.changelog.labels.restrictToSegments',
+                defaultMessage: 'Restrict to segments',
+              })}{' '}
+              <span className="text-muted-foreground font-normal">
+                {intl.formatMessage({
+                  id: 'admin.settings.changelog.labels.optional',
+                  defaultMessage: '(optional)',
+                })}
+              </span>
             </Label>
             <p className="text-xs text-muted-foreground">
-              Leave empty to show this category to everyone.
+              {intl.formatMessage({
+                id: 'admin.settings.changelog.labels.restrictHint',
+                defaultMessage: 'Leave empty to show this category to everyone.',
+              })}
             </p>
             <SegmentMultiSelect
               segments={segments}
               value={segmentIds}
               onChange={setSegmentIds}
-              ariaLabel="Category segment gate"
+              ariaLabel={intl.formatMessage({
+                id: 'admin.settings.changelog.labels.segmentGate',
+                defaultMessage: 'Category segment gate',
+              })}
             />
           </div>
         )}
@@ -209,10 +267,25 @@ function CategoryDialog({ open, onOpenChange, category, segments, onSaved }: Cat
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>
-            Cancel
+            {intl.formatMessage({ id: 'common.cancel', defaultMessage: 'Cancel' })}
           </Button>
           <Button onClick={handleSave} disabled={isSaving}>
-            {isSaving ? 'Saving...' : isEdit ? 'Save changes' : 'Create label'}
+            {intl.formatMessage(
+              isSaving
+                ? {
+                    id: 'admin.settings.changelog.labels.saving',
+                    defaultMessage: 'Saving...',
+                  }
+                : isEdit
+                  ? {
+                      id: 'admin.settings.changelog.labels.saveChanges',
+                      defaultMessage: 'Save changes',
+                    }
+                  : {
+                      id: 'admin.settings.changelog.labels.createSubmit',
+                      defaultMessage: 'Create label',
+                    }
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -231,6 +304,7 @@ function SortableLabelRow({
   onEdit: () => void
   onDelete: () => void
 }) {
+  const intl = useOptionalIntl()
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: category.id,
   })
@@ -250,7 +324,13 @@ function SortableLabelRow({
           <button
             {...attributes}
             {...listeners}
-            aria-label={`Reorder ${category.name}`}
+            aria-label={intl.formatMessage(
+              {
+                id: 'admin.settings.changelog.labels.reorderAria',
+                defaultMessage: 'Reorder {name}',
+              },
+              { name: category.name }
+            )}
             className="touch-none cursor-grab active:cursor-grabbing"
           >
             <Bars3Icon className="size-4 text-muted-foreground/70" />
@@ -263,23 +343,44 @@ function SortableLabelRow({
             <Popover>
               <PopoverTrigger asChild>
                 <button className="rounded-full bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground hover:bg-muted/70">
-                  {category.segmentIds.length} segment
-                  {category.segmentIds.length === 1 ? '' : 's'}
+                  {intl.formatMessage(
+                    {
+                      id: 'admin.settings.changelog.labels.segmentCount',
+                      defaultMessage: '{count, plural, one {# segment} other {# segments}}',
+                    },
+                    { count: category.segmentIds.length }
+                  )}
                 </button>
               </PopoverTrigger>
               <PopoverContent className="w-64 text-xs" align="start">
-                Only visible to members of{' '}
-                {category.segmentIds
-                  .map((id) => segments.find((s) => s.id === id)?.name ?? id)
-                  .join(', ')}
-                .
+                {intl.formatMessage(
+                  {
+                    id: 'admin.settings.changelog.labels.visibleTo',
+                    defaultMessage: 'Only visible to members of {segments}.',
+                  },
+                  {
+                    segments: category.segmentIds
+                      .map((id) => segments.find((s) => s.id === id)?.name ?? id)
+                      .join(', '),
+                  }
+                )}
               </PopoverContent>
             </Popover>
           )
         }
         actions={[
-          { label: 'Edit', onSelect: onEdit },
-          { label: 'Delete', onSelect: onDelete, destructive: true },
+          {
+            label: intl.formatMessage({
+              id: 'admin.settings.changelog.labels.edit',
+              defaultMessage: 'Edit',
+            }),
+            onSelect: onEdit,
+          },
+          {
+            label: intl.formatMessage({ id: 'common.delete', defaultMessage: 'Delete' }),
+            onSelect: onDelete,
+            destructive: true,
+          },
         ]}
       />
     </div>
@@ -291,6 +392,7 @@ interface LabelsCardProps {
 }
 
 export function LabelsCard({ initialCategories }: LabelsCardProps) {
+  const intl = useOptionalIntl()
   const router = useRouter()
   const [, startTransition] = useTransition()
   const [categories, setCategories] = useState(initialCategories)
@@ -327,7 +429,13 @@ export function LabelsCard({ initialCategories }: LabelsCardProps) {
       setCategories((prev) => prev.filter((c) => c.id !== deletingCategory.id))
       startTransition(() => router.invalidate())
     } catch (error) {
-      toastError(error, 'Failed to delete label')
+      toastError(
+        error,
+        intl.formatMessage({
+          id: 'admin.settings.changelog.labels.deleteFailed',
+          defaultMessage: 'Failed to delete label',
+        })
+      )
     } finally {
       setDeletingCategory(null)
     }
@@ -363,13 +471,26 @@ export function LabelsCard({ initialCategories }: LabelsCardProps) {
   return (
     <>
       <SettingsCard
-        title="Labels"
-        description="Group entries by label."
+        title={intl.formatMessage({
+          id: 'admin.settings.changelog.labels.cardTitle',
+          defaultMessage: 'Labels',
+        })}
+        description={intl.formatMessage({
+          id: 'admin.settings.changelog.labels.cardDescription',
+          defaultMessage: 'Group entries by label.',
+        })}
         action={<NewButton noun="label" onClick={openCreate} />}
         flush
       >
         {categories.length === 0 ? (
-          <EmptyState icon={TagIcon} title="No labels yet" size="compact" />
+          <EmptyState
+            icon={TagIcon}
+            title={intl.formatMessage({
+              id: 'admin.settings.changelog.labels.emptyTitle',
+              defaultMessage: 'No labels yet',
+            })}
+            size="compact"
+          />
         ) : (
           <DndContext
             id={dndId}
@@ -408,9 +529,21 @@ export function LabelsCard({ initialCategories }: LabelsCardProps) {
       <ConfirmDialog
         open={!!deletingCategory}
         onOpenChange={() => setDeletingCategory(null)}
-        title="Delete label?"
-        description={`Delete "${deletingCategory?.name}"? This removes it from every changelog entry.`}
-        confirmLabel="Delete label"
+        title={intl.formatMessage({
+          id: 'admin.settings.changelog.labels.deleteTitle',
+          defaultMessage: 'Delete label?',
+        })}
+        description={intl.formatMessage(
+          {
+            id: 'admin.settings.changelog.labels.deleteDescription',
+            defaultMessage: 'Delete "{name}"? This removes it from every changelog entry.',
+          },
+          { name: deletingCategory?.name ?? '' }
+        )}
+        confirmLabel={intl.formatMessage({
+          id: 'admin.settings.changelog.labels.deleteConfirm',
+          defaultMessage: 'Delete label',
+        })}
         variant="destructive"
         onConfirm={handleDelete}
       />

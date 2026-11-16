@@ -44,6 +44,7 @@ import {
   deleteCategoryTranslationFn,
 } from '@/lib/server/functions/help-center-translations'
 import { InlineSpinner } from '@/components/admin/settings/inline-spinner'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import type { KbCategoryId } from '@quackback/ids'
 import type { SupportedLocale } from '@/lib/shared/i18n'
 
@@ -55,6 +56,7 @@ const LOCALE_LABELS: Record<string, string> = {
 /** Compact per-locale name/description editor (domains/languages §2). No
  *  draft/published status for categories -- a non-empty name IS translated. */
 function CategoryTranslationsSection({ categoryId }: { categoryId: KbCategoryId }) {
+  const intl = useOptionalIntl()
   const configQuery = useQuery(settingsQueries.helpCenterConfig())
   const additionalLocales = configQuery.data?.locales?.additional ?? []
   const [locale, setLocale] = useState<string | null>(null)
@@ -127,7 +129,12 @@ function CategoryTranslationsSection({ categoryId }: { categoryId: KbCategoryId 
   return (
     <div className="space-y-2 rounded-lg border border-border/50 p-3">
       <div className="flex items-center justify-between">
-        <Label>Translations</Label>
+        <Label>
+          {intl.formatMessage({
+            id: 'admin.helpCenter.translations.title',
+            defaultMessage: 'Translations',
+          })}
+        </Label>
         <Select value={locale ?? undefined} onValueChange={setLocale}>
           <SelectTrigger size="sm" className="w-36">
             <SelectValue />
@@ -141,11 +148,21 @@ function CategoryTranslationsSection({ categoryId }: { categoryId: KbCategoryId 
           </SelectContent>
         </Select>
       </div>
-      <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Translated name" />
+      <Input
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        placeholder={intl.formatMessage({
+          id: 'admin.helpCenter.translations.namePlaceholder',
+          defaultMessage: 'Translated name',
+        })}
+      />
       <Input
         value={description}
         onChange={(e) => setDescription(e.target.value)}
-        placeholder="Translated description (optional)"
+        placeholder={intl.formatMessage({
+          id: 'admin.helpCenter.translations.descriptionPlaceholder',
+          defaultMessage: 'Translated description (optional)',
+        })}
       />
       <div className="flex justify-between">
         <Button
@@ -155,11 +172,17 @@ function CategoryTranslationsSection({ categoryId }: { categoryId: KbCategoryId 
           disabled={saving || !translated}
           onClick={handleDelete}
         >
-          Clear
+          {intl.formatMessage({
+            id: 'admin.helpCenter.translations.clear',
+            defaultMessage: 'Clear',
+          })}
         </Button>
         <Button type="button" size="sm" disabled={saving || !name.trim()} onClick={handleSave}>
           <InlineSpinner visible={saving} />
-          Save translation
+          {intl.formatMessage({
+            id: 'admin.helpCenter.translations.save',
+            defaultMessage: 'Save translation',
+          })}
         </Button>
       </div>
     </div>
@@ -237,6 +260,7 @@ export function CategoryFormDialog({
   defaultParentId,
   onCreated,
 }: CategoryFormDialogProps) {
+  const intl = useOptionalIntl()
   const isEdit = !!initialValues
   const createCategory = useCreateCategory()
   const updateCategory = useUpdateCategory()
@@ -337,15 +361,38 @@ export function CategoryFormDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{isEdit ? 'Edit category' : 'New category'}</DialogTitle>
+          <DialogTitle>
+            {isEdit
+              ? intl.formatMessage({
+                  id: 'admin.helpCenter.category.editTitle',
+                  defaultMessage: 'Edit category',
+                })
+              : intl.formatMessage({
+                  id: 'admin.helpCenter.category.createTitle',
+                  defaultMessage: 'New category',
+                })}
+          </DialogTitle>
           <DialogDescription>
-            {isEdit ? 'Update category details.' : 'Create a new help center category.'}
+            {isEdit
+              ? intl.formatMessage({
+                  id: 'admin.helpCenter.category.editDescription',
+                  defaultMessage: 'Update category details.',
+                })
+              : intl.formatMessage({
+                  id: 'admin.helpCenter.category.createDescription',
+                  defaultMessage: 'Create a new help center category.',
+                })}
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="category-name">Name</Label>
+            <Label htmlFor="category-name">
+              {intl.formatMessage({
+                id: 'admin.helpCenter.form.name',
+                defaultMessage: 'Name',
+              })}
+            </Label>
             <div className="flex items-center gap-2">
               <Popover
                 open={iconPickerOpen}
@@ -364,7 +411,10 @@ export function CategoryFormDialog({
                 </PopoverTrigger>
                 <PopoverContent className="w-72 p-2" align="start">
                   <Input
-                    placeholder="Search icons…"
+                    placeholder={intl.formatMessage({
+                      id: 'admin.helpCenter.category.iconSearchPlaceholder',
+                      defaultMessage: 'Search icons…',
+                    })}
                     value={iconSearch}
                     onChange={(e) => setIconSearch(e.target.value)}
                     className="mb-2 h-8 text-sm"
@@ -388,7 +438,10 @@ export function CategoryFormDialog({
                 id="category-name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="e.g., Getting Started"
+                placeholder={intl.formatMessage({
+                  id: 'admin.helpCenter.category.namePlaceholder',
+                  defaultMessage: 'e.g., Getting Started',
+                })}
                 required
                 className="flex-1"
               />
@@ -396,17 +449,30 @@ export function CategoryFormDialog({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="category-description">Description</Label>
+            <Label htmlFor="category-description">
+              {intl.formatMessage({
+                id: 'admin.helpCenter.form.description',
+                defaultMessage: 'Description',
+              })}
+            </Label>
             <Input
               id="category-description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Optional short description"
+              placeholder={intl.formatMessage({
+                id: 'admin.helpCenter.category.descriptionPlaceholder',
+                defaultMessage: 'Optional short description',
+              })}
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="category-parent">Parent category</Label>
+            <Label htmlFor="category-parent">
+              {intl.formatMessage({
+                id: 'admin.helpCenter.category.parentLabel',
+                defaultMessage: 'Parent category',
+              })}
+            </Label>
             <Select
               value={parentId ?? '__none__'}
               onValueChange={(value) =>
@@ -414,10 +480,20 @@ export function CategoryFormDialog({
               }
             >
               <SelectTrigger id="category-parent">
-                <SelectValue placeholder="No parent (top-level)" />
+                <SelectValue
+                  placeholder={intl.formatMessage({
+                    id: 'admin.helpCenter.category.noParent',
+                    defaultMessage: 'No parent (top-level)',
+                  })}
+                />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="__none__">No parent (top-level)</SelectItem>
+                <SelectItem value="__none__">
+                  {intl.formatMessage({
+                    id: 'admin.helpCenter.category.noParent',
+                    defaultMessage: 'No parent (top-level)',
+                  })}
+                </SelectItem>
                 {eligibleParents.map((cat) => (
                   <SelectItem key={cat.id} value={cat.id}>
                     <span className="flex items-center gap-1.5">
@@ -429,14 +505,31 @@ export function CategoryFormDialog({
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground">
-              Maximum depth is {MAX_CATEGORY_DEPTH} levels. Parents that would exceed it are hidden.
+              {intl.formatMessage(
+                {
+                  id: 'admin.helpCenter.category.depthHint',
+                  defaultMessage:
+                    'Maximum depth is {depth} levels. Parents that would exceed it are hidden.',
+                },
+                { depth: MAX_CATEGORY_DEPTH }
+              )}
             </p>
           </div>
 
           <div className="flex items-center justify-between">
             <div>
-              <Label>Public</Label>
-              <p className="text-xs text-muted-foreground">Visible on your public help center</p>
+              <Label>
+                {intl.formatMessage({
+                  id: 'admin.helpCenter.category.publicLabel',
+                  defaultMessage: 'Public',
+                })}
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                {intl.formatMessage({
+                  id: 'admin.helpCenter.category.publicHint',
+                  defaultMessage: 'Visible on your public help center',
+                })}
+              </p>
             </div>
             <Switch checked={isPublic} onCheckedChange={setIsPublic} />
           </div>
@@ -444,18 +537,32 @@ export function CategoryFormDialog({
           {isPublic && segments.length > 0 && (
             <div className="space-y-2">
               <Label>
-                Restrict to segments{' '}
-                <span className="text-muted-foreground font-normal">(optional)</span>
+                {intl.formatMessage({
+                  id: 'admin.helpCenter.category.restrictLabel',
+                  defaultMessage: 'Restrict to segments',
+                })}{' '}
+                <span className="text-muted-foreground font-normal">
+                  {intl.formatMessage({
+                    id: 'admin.helpCenter.category.optionalSuffix',
+                    defaultMessage: '(optional)',
+                  })}
+                </span>
               </Label>
               <p className="text-xs text-muted-foreground">
-                Leave empty to show this category and its articles to everyone. Selecting segments
-                limits them to signed-in members of those segments.
+                {intl.formatMessage({
+                  id: 'admin.helpCenter.category.restrictHint',
+                  defaultMessage:
+                    'Leave empty to show this category and its articles to everyone. Selecting segments limits them to signed-in members of those segments.',
+                })}
               </p>
               <SegmentMultiSelect
                 segments={segments}
                 value={segmentIds}
                 onChange={setSegmentIds}
-                ariaLabel="Category segment gate"
+                ariaLabel={intl.formatMessage({
+                  id: 'admin.helpCenter.category.segmentGateAria',
+                  defaultMessage: 'Category segment gate',
+                })}
               />
             </div>
           )}
@@ -464,10 +571,28 @@ export function CategoryFormDialog({
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
+              {intl.formatMessage({ id: 'common.cancel', defaultMessage: 'Cancel' })}
             </Button>
             <Button type="submit" disabled={isPending || !name.trim()}>
-              {isPending ? (isEdit ? 'Saving...' : 'Creating...') : isEdit ? 'Save' : 'Create'}
+              {isPending
+                ? isEdit
+                  ? intl.formatMessage({
+                      id: 'admin.helpCenter.actions.saving',
+                      defaultMessage: 'Saving...',
+                    })
+                  : intl.formatMessage({
+                      id: 'admin.helpCenter.actions.creating',
+                      defaultMessage: 'Creating...',
+                    })
+                : isEdit
+                  ? intl.formatMessage({
+                      id: 'admin.helpCenter.actions.save',
+                      defaultMessage: 'Save',
+                    })
+                  : intl.formatMessage({
+                      id: 'admin.helpCenter.actions.create',
+                      defaultMessage: 'Create',
+                    })}
             </Button>
           </DialogFooter>
         </form>

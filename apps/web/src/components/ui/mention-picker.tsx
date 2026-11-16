@@ -5,6 +5,7 @@ import { Avatar } from './avatar'
 import { ScrollArea } from './scroll-area'
 import { applySuggestionListKey } from './suggestion-list-keys'
 import { HighlightQuery } from './highlight-query'
+import { useOptionalIntl } from './use-optional-intl'
 import { useWorkspaceSettings } from '@/lib/client/hooks/use-root-context'
 
 export interface MentionItem {
@@ -26,6 +27,7 @@ export interface MentionPickerHandle {
 
 export const MentionPicker = forwardRef<MentionPickerHandle, MentionPickerProps>(
   ({ items, command, query = '' }, ref) => {
+    const intl = useOptionalIntl()
     const [selected, setSelected] = useState(0)
     const listRef = useRef<HTMLDivElement>(null)
     // Refs shadow state so the imperative handle (empty-deps useImperativeHandle)
@@ -73,7 +75,12 @@ export const MentionPicker = forwardRef<MentionPickerHandle, MentionPickerProps>
     return (
       <div className="mention-picker">
         {items.length === 0 ? (
-          <div className="mention-picker__empty">No people match.</div>
+          <div className="mention-picker__empty">
+            {intl.formatMessage({
+              id: 'ui.mention.noMatches',
+              defaultMessage: 'No people match.',
+            })}
+          </div>
         ) : (
           <ScrollArea className="mention-picker__scroll">
             <div role="listbox" ref={listRef} className="mention-picker__list">
@@ -101,8 +108,14 @@ export const MentionPicker = forwardRef<MentionPickerHandle, MentionPickerProps>
                   {isTeamMember(item.role) && (
                     <span
                       className="mention-picker__team-badge"
-                      aria-label={`${teamBadgeLabel} Member`}
-                      title={`${teamBadgeLabel} Member`}
+                      aria-label={intl.formatMessage(
+                        { id: 'ui.mention.member', defaultMessage: '{name} Member' },
+                        { name: teamBadgeLabel }
+                      )}
+                      title={intl.formatMessage(
+                        { id: 'ui.mention.member', defaultMessage: '{name} Member' },
+                        { name: teamBadgeLabel }
+                      )}
                     >
                       {teamBadgeLogoUrl ? (
                         <img

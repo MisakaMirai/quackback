@@ -2,6 +2,7 @@ import { Button } from '@/components/ui/button'
 import { StatusBadge } from '@/components/ui/status-badge'
 import { TimeAgo } from '@/components/ui/time-ago'
 import { LocalDate } from '@/components/ui/local-date'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -42,9 +43,18 @@ interface ChangelogListItemProps {
 }
 
 const STATUS_CONFIG = {
-  draft: { label: 'Draft', color: 'var(--muted-foreground)' },
-  scheduled: { label: 'Scheduled', color: '#3b82f6' }, // blue-500 (no semantic blue token)
-  published: { label: 'Published', color: 'var(--success)' },
+  draft: {
+    label: { id: 'admin.changelog.status.draft', defaultMessage: 'Draft' },
+    color: 'var(--muted-foreground)',
+  },
+  scheduled: {
+    label: { id: 'admin.changelog.status.scheduled', defaultMessage: 'Scheduled' },
+    color: '#3b82f6', // blue-500 (no semantic blue token)
+  },
+  published: {
+    label: { id: 'admin.changelog.status.published', defaultMessage: 'Published' },
+    color: 'var(--success)',
+  },
 } as const
 
 export function ChangelogListItem({
@@ -60,6 +70,7 @@ export function ChangelogListItem({
   onEdit,
   onDelete,
 }: ChangelogListItemProps) {
+  const intl = useOptionalIntl()
   const config = STATUS_CONFIG[status]
   const contentPreview = stripMarkdownPreview(content, 150)
   const portalDisplayDate =
@@ -80,7 +91,11 @@ export function ChangelogListItem({
       {/* Content */}
       <div className="flex-1 min-w-0">
         {/* Status badge */}
-        <StatusBadge name={config.label} color={config.color} className="mb-1" />
+        <StatusBadge
+          name={intl.formatMessage(config.label)}
+          color={config.color}
+          className="mb-1"
+        />
 
         {/* Title */}
         <h3 className="font-semibold text-base text-foreground line-clamp-1">{title}</h3>

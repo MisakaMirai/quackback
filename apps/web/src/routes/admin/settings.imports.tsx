@@ -15,7 +15,7 @@ import { adminPageHead } from '@/lib/client/admin-head'
  * experimental surface.
  */
 export const Route = createFileRoute('/admin/settings/imports')({
-  head: adminPageHead('Imports settings'),
+  head: adminPageHead('Imports settings', 'admin.pageTitle.importsSettings'),
   loader: async ({ context }) => {
     assertRoutePermission(context.permissions, PERMISSIONS.SETTINGS_MANAGE)
     const ensure = readBatch(context.queryClient)

@@ -30,6 +30,7 @@ import type { IdentityProvider } from '@/lib/server/domains/settings/identity-pr
 import { inferIdpKind, IDP_KIND_NAMES } from '../idp-shortcuts'
 import { RecoveryCodesSection } from '../sso/recovery-codes-section'
 import { isOnlyWorkingMethod } from './only-working-method'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { toastError } from '@/lib/client/error-notice'
 
 export function IdentityProvidersSection({
@@ -107,6 +108,7 @@ function ProviderRow({
   enabledMethodCount: number
   tierEnabled: boolean
 }) {
+  const intl = useOptionalIntl()
   const queryClient = useQueryClient()
   const upsert = useServerFn(upsertIdentityProviderFn)
   const [enabled, setEnabled] = useState(provider.enabled)
@@ -172,11 +174,28 @@ function ProviderRow({
               key={d.id}
               size="sm"
               variant={d.enforced ? 'success' : 'secondary'}
-              {...(d.enforced ? { title: `SSO enforced for ${d.name}` } : {})}
+              {...(d.enforced
+                ? {
+                    title: intl.formatMessage(
+                      {
+                        id: 'admin.settings.security.idp.ssoEnforcedFor',
+                        defaultMessage: 'SSO enforced for {name}',
+                      },
+                      { name: d.name }
+                    ),
+                  }
+                : {})}
             >
               {d.enforced && <LockClosedIcon className="shrink-0" />}
               {d.name}
-              {d.enforced && <span className="ml-0.5">enforced</span>}
+              {d.enforced && (
+                <span className="ml-0.5">
+                  {intl.formatMessage({
+                    id: 'admin.settings.security.idp.enforced',
+                    defaultMessage: 'enforced',
+                  })}
+                </span>
+              )}
             </Badge>
           ))}
         </span>

@@ -13,17 +13,19 @@ import { TeamDialog } from '@/components/admin/settings/teams/team-dialog'
 import type { FeatureFlags } from '@/lib/shared/types'
 import { useWorkspaceSettings } from '@/lib/client/hooks/use-root-context'
 import { toastError } from '@/lib/client/error-notice'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 
-const METHOD_LABELS: Record<string, string> = {
-  manual: 'Manual',
-  round_robin: 'Round robin',
-  balanced: 'Balanced',
+const METHOD_LABELS: Record<string, { id: string; defaultMessage: string }> = {
+  manual: { id: 'admin.settings.teams.method.manual', defaultMessage: 'Manual' },
+  round_robin: { id: 'admin.settings.teams.method.roundRobin', defaultMessage: 'Round robin' },
+  balanced: { id: 'admin.settings.teams.method.balanced', defaultMessage: 'Balanced' },
 }
 
 /** Named teammate groups (the Teams tab of Members & Teams). Teams are the
  *  workspace org-unit; the assignment method is the support facet and only
  *  shows when the support inbox is enabled. */
 export function TeamsTab() {
+  const intl = useOptionalIntl()
   const queryClient = useQueryClient()
   const settings = useWorkspaceSettings()
   const flags = settings?.featureFlags as FeatureFlags | undefined
@@ -52,10 +54,21 @@ export function TeamsTab() {
     try {
       await deleteTeamFn({ data: { id: deleting.id } })
       await queryClient.invalidateQueries({ queryKey: ['settings', 'teams'] })
-      toast.success('Team deleted')
+      toast.success(
+        intl.formatMessage({
+          id: 'admin.settings.teams.deletedToast',
+          defaultMessage: 'Team deleted',
+        })
+      )
       setDeleting(null)
     } catch (err) {
-      toastError(err, 'Failed to delete team')
+      toastError(
+        err,
+        intl.formatMessage({
+          id: 'admin.settings.teams.deleteFailed',
+          defaultMessage: 'Failed to delete team',
+        })
+      )
     } finally {
       setDeletePending(false)
     }
@@ -64,54 +77,104 @@ export function TeamsTab() {
   return (
     <div className="space-y-6">
       <SettingsCard
-        title="Teams"
-        description="Group teammates into named teams."
-        action={teams.length > 0 ? <NewButton noun="team" onClick={openCreate} /> : undefined}
+        title={intl.formatMessage({
+          id: 'admin.settings.members.tabTeams',
+          defaultMessage: 'Teams',
+        })}
+        description={intl.formatMessage({
+          id: 'admin.settings.teams.description',
+          defaultMessage: 'Group teammates into named teams.',
+        })}
+        action={
+          teams.length > 0 ? (
+            <NewButton noun="team" onClick={openCreate}>
+              {intl.formatMessage({
+                id: 'admin.settings.teams.dialog.newTitle',
+                defaultMessage: 'New team',
+              })}
+            </NewButton>
+          ) : undefined
+        }
         flush
       >
         {teams.length === 0 ? (
           <EmptyState
             size="compact"
             icon={UserGroupIcon}
-            title="No teams yet"
-            description="Group teammates so work can be assigned to a team."
-            action={<NewButton noun="team" onClick={openCreate} />}
+            title={intl.formatMessage({
+              id: 'admin.settings.teams.emptyTitle',
+              defaultMessage: 'No teams yet',
+            })}
+            description={intl.formatMessage({
+              id: 'admin.settings.teams.emptyDescription',
+              defaultMessage: 'Group teammates so work can be assigned to a team.',
+            })}
+            action={
+              <NewButton noun="team" onClick={openCreate}>
+                {intl.formatMessage({
+                  id: 'admin.settings.teams.dialog.newTitle',
+                  defaultMessage: 'New team',
+                })}
+              </NewButton>
+            }
           />
         ) : (
           <SettingsList>
-            {teams.map((team) => (
-              <SettingsListRow
-                key={team.id}
-                leading={
-                  <div
-                    className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted text-base"
-                    style={{ backgroundColor: team.color ? `${team.color}22` : undefined }}
-                  >
-                    {team.icon || <UserGroupIcon className="size-4 text-muted-foreground" />}
-                  </div>
-                }
-                title={team.name}
-                meta={[
-                  `${team.memberCount} ${team.memberCount === 1 ? 'member' : 'members'}`,
-                  showAssignmentMethod
-                    ? (METHOD_LABELS[team.assignmentMethod] ?? team.assignmentMethod)
-                    : null,
-                  team.description || null,
-                ]
-                  .filter(Boolean)
-                  .join(' · ')}
-                actions={[
-                  { label: 'Edit', onSelect: () => openEdit(team) },
-                  {
-                    label: 'Delete',
-                    destructive: true,
-                    disabled: team.isDefault,
-                    hint: team.isDefault ? 'The default team cannot be deleted' : undefined,
-                    onSelect: () => setDeleting(team),
-                  },
-                ]}
-              />
-            ))}
+            {teams.map((team) => {
+              const methodLabel = METHOD_LABELS[team.assignmentMethod]
+              return (
+                <SettingsListRow
+                  key={team.id}
+                  leading={
+                    <div
+                      className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted text-base"
+                      style={{ backgroundColor: team.color ? `${team.color}22` : undefined }}
+                    >
+                      {team.icon || <UserGroupIcon className="size-4 text-muted-foreground" />}
+                    </div>
+                  }
+                  title={team.name}
+                  meta={[
+                    intl.formatMessage(
+                      {
+                        id: 'admin.settings.teams.memberCount',
+                        defaultMessage: '{count, plural, one {# member} other {# members}}',
+                      },
+                      { count: team.memberCount }
+                    ),
+                    showAssignmentMethod
+                      ? methodLabel
+                        ? intl.formatMessage(methodLabel)
+                        : team.assignmentMethod
+                      : null,
+                    team.description || null,
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')}
+                  actions={[
+                    {
+                      label: intl.formatMessage({
+                        id: 'admin.settings.teams.edit',
+                        defaultMessage: 'Edit',
+                      }),
+                      onSelect: () => openEdit(team),
+                    },
+                    {
+                      label: intl.formatMessage({ id: 'common.delete', defaultMessage: 'Delete' }),
+                      destructive: true,
+                      disabled: team.isDefault,
+                      hint: team.isDefault
+                        ? intl.formatMessage({
+                            id: 'admin.settings.teams.defaultCannotDelete',
+                            defaultMessage: 'The default team cannot be deleted',
+                          })
+                        : undefined,
+                      onSelect: () => setDeleting(team),
+                    },
+                  ]}
+                />
+              )
+            })}
           </SettingsList>
         )}
       </SettingsCard>
@@ -126,14 +189,27 @@ export function TeamsTab() {
       <ConfirmDialog
         open={!!deleting}
         onOpenChange={(o) => !o && setDeleting(null)}
-        title="Delete team?"
+        title={intl.formatMessage({
+          id: 'admin.settings.teams.deleteTitle',
+          defaultMessage: 'Delete team?',
+        })}
         description={
           deleting
-            ? `Delete "${deleting.name}"? Conversations assigned to it will become team-unassigned.`
+            ? intl.formatMessage(
+                {
+                  id: 'admin.settings.teams.deleteDescription',
+                  defaultMessage:
+                    'Delete "{name}"? Conversations assigned to it will become team-unassigned.',
+                },
+                { name: deleting.name }
+              )
             : ''
         }
         variant="destructive"
-        confirmLabel="Delete team"
+        confirmLabel={intl.formatMessage({
+          id: 'admin.settings.teams.deleteTeam',
+          defaultMessage: 'Delete team',
+        })}
         isPending={deletePending}
         onConfirm={handleDelete}
       />

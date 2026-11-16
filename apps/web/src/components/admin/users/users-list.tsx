@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { useIntl } from 'react-intl'
+import { useIntl, type MessageDescriptor } from 'react-intl'
 import { TagIcon, UsersIcon, ViewColumnsIcon } from '@heroicons/react/24/solid'
 import { useInfiniteScroll } from '@/lib/client/hooks/use-infinite-scroll'
 import { useDebouncedSearch } from '@/lib/client/hooks/use-debounced-search'
@@ -9,6 +9,7 @@ import { NewButton } from '@/components/shared/new-button'
 import { Spinner } from '@/components/shared/spinner'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -58,15 +59,39 @@ interface UsersListProps {
   canManage?: boolean
 }
 
-const SORT_OPTIONS = [
-  { value: 'newest', label: 'Newest' },
-  { value: 'oldest', label: 'Oldest' },
-  { value: 'most_active', label: 'Most active' },
-  { value: 'last_active', label: 'Last active' },
-  { value: 'most_posts', label: 'Most posts' },
-  { value: 'most_comments', label: 'Most comments' },
-  { value: 'most_votes', label: 'Most votes' },
-  { value: 'name', label: 'Name A-Z' },
+const SORT_OPTIONS: { value: string; label: MessageDescriptor }[] = [
+  {
+    value: 'newest',
+    label: { id: 'admin.people.list.sortNewest', defaultMessage: 'Newest' },
+  },
+  {
+    value: 'oldest',
+    label: { id: 'admin.people.list.sortOldest', defaultMessage: 'Oldest' },
+  },
+  {
+    value: 'most_active',
+    label: { id: 'admin.people.list.sortMostActive', defaultMessage: 'Most active' },
+  },
+  {
+    value: 'last_active',
+    label: { id: 'admin.people.list.sortLastActive', defaultMessage: 'Last active' },
+  },
+  {
+    value: 'most_posts',
+    label: { id: 'admin.people.list.sortMostPosts', defaultMessage: 'Most posts' },
+  },
+  {
+    value: 'most_comments',
+    label: { id: 'admin.people.list.sortMostComments', defaultMessage: 'Most comments' },
+  },
+  {
+    value: 'most_votes',
+    label: { id: 'admin.people.list.sortMostVotes', defaultMessage: 'Most votes' },
+  },
+  {
+    value: 'name',
+    label: { id: 'admin.people.list.sortName', defaultMessage: 'Name A-Z' },
+  },
 ]
 
 const SHOW_COUNTRY_STORAGE_KEY = 'quackback:users-list:show-country'
@@ -122,16 +147,33 @@ function UsersEmptyState({
   hasActiveFilters: boolean
   onClearFilters: () => void
 }) {
+  const intl = useOptionalIntl()
   return (
     <div className="p-3">
       <div className="rounded-xl overflow-hidden shadow-sm bg-card border border-border/50">
         <EmptyState
           icon={UsersIcon}
-          title={hasActiveFilters ? 'No users match your filters' : 'No users yet'}
+          title={
+            hasActiveFilters
+              ? intl.formatMessage({
+                  id: 'admin.people.list.emptyFilteredTitle',
+                  defaultMessage: 'No users match your filters',
+                })
+              : intl.formatMessage({
+                  id: 'admin.people.list.emptyTitle',
+                  defaultMessage: 'No users yet',
+                })
+          }
           description={
             hasActiveFilters
-              ? "Try adjusting your filters to find what you're looking for."
-              : 'Users appear here when they sign up to your feedback portal.'
+              ? intl.formatMessage({
+                  id: 'admin.people.list.emptyFilteredBody',
+                  defaultMessage: "Try adjusting your filters to find what you're looking for.",
+                })
+              : intl.formatMessage({
+                  id: 'admin.people.list.emptyBody',
+                  defaultMessage: 'Users appear here when they sign up to your feedback portal.',
+                })
           }
           action={
             hasActiveFilters ? (
@@ -140,7 +182,10 @@ function UsersEmptyState({
                 onClick={onClearFilters}
                 className="text-sm text-primary hover:underline"
               >
-                Clear filters
+                {intl.formatMessage({
+                  id: 'admin.people.list.clearFilters',
+                  defaultMessage: 'Clear filters',
+                })}
               </button>
             ) : undefined
           }
@@ -163,6 +208,7 @@ function UserTagFilterDropdown({
   selectedTagIds: string[]
   onChange: (tagIds: string[]) => void
 }) {
+  const intl = useOptionalIntl()
   const { data: tags } = useUserTags()
   if (!tags || tags.length === 0) return null
 
@@ -179,7 +225,18 @@ function UserTagFilterDropdown({
           className={cn(selectedTagIds.length > 0 && 'border-primary/40 text-primary')}
         >
           <TagIcon className={MENU_ICON} />
-          Tags{selectedTagIds.length > 0 ? ` (${selectedTagIds.length})` : ''}
+          {selectedTagIds.length > 0
+            ? intl.formatMessage(
+                {
+                  id: 'admin.people.list.tagsTriggerCount',
+                  defaultMessage: 'Tags ({count})',
+                },
+                { count: selectedTagIds.length }
+              )
+            : intl.formatMessage({
+                id: 'admin.people.tags',
+                defaultMessage: 'Tags',
+              })}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
@@ -308,8 +365,14 @@ export function UsersList({
       <AdminListHeader
         searchValue={searchValue}
         onSearchChange={setSearchValue}
-        searchPlaceholder="Search users..."
-        sortOptions={SORT_OPTIONS}
+        searchPlaceholder={intl.formatMessage({
+          id: 'admin.people.list.searchPlaceholder',
+          defaultMessage: 'Search users...',
+        })}
+        sortOptions={SORT_OPTIONS.map((option) => ({
+          value: option.value,
+          label: intl.formatMessage(option.label),
+        }))}
         activeSort={sort}
         onSortChange={(value) => handleSortChange(value as UsersFilters['sort'])}
         filters={
@@ -325,12 +388,18 @@ export function UsersList({
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm">
                   <ViewColumnsIcon className={MENU_ICON} />
-                  Columns
+                  {intl.formatMessage({
+                    id: 'admin.people.list.columns',
+                    defaultMessage: 'Columns',
+                  })}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuCheckboxItem checked={showCountry} onCheckedChange={setShowCountry}>
-                  Country
+                  {intl.formatMessage({
+                    id: 'admin.people.country',
+                    defaultMessage: 'Country',
+                  })}
                 </DropdownMenuCheckboxItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -354,7 +423,13 @@ export function UsersList({
 
         <div className="mt-2 flex items-center gap-2">
           <span className="text-xs text-muted-foreground">
-            {total} {total === 1 ? 'user' : 'users'}
+            {intl.formatMessage(
+              {
+                id: 'admin.people.list.userCount',
+                defaultMessage: '{count, plural, one {# user} other {# users}}',
+              },
+              { count: total }
+            )}
           </span>
         </div>
       </AdminListHeader>
@@ -392,16 +467,39 @@ export function UsersList({
               list a vertical lane to scan down instead of a stacked cell. */}
           <div className="flex items-center gap-3 border-b border-border/50 px-3 py-2">
             <div className="h-8 w-8 shrink-0" aria-hidden="true" />
-            <span className={cn('min-w-0 flex-1', MENU_LABEL)}>Name</span>
-            <span className={cn(EMAIL_COLUMN_WIDTH, MENU_LABEL, 'shrink-0')}>Email</span>
-            <span className={cn(JOINED_COLUMN_WIDTH, MENU_LABEL, 'shrink-0')}>Joined</span>
+            <span className={cn('min-w-0 flex-1', MENU_LABEL)}>
+              {intl.formatMessage({
+                id: 'admin.people.name',
+                defaultMessage: 'Name',
+              })}
+            </span>
+            <span className={cn(EMAIL_COLUMN_WIDTH, MENU_LABEL, 'shrink-0')}>
+              {intl.formatMessage({
+                id: 'admin.people.email',
+                defaultMessage: 'Email',
+              })}
+            </span>
+            <span className={cn(JOINED_COLUMN_WIDTH, MENU_LABEL, 'shrink-0')}>
+              {intl.formatMessage({ id: 'admin.people.joined', defaultMessage: 'Joined' })}
+            </span>
             {showCountry && (
-              <span className={cn(COUNTRY_COLUMN_WIDTH, MENU_LABEL, 'shrink-0')}>Country</span>
+              <span className={cn(COUNTRY_COLUMN_WIDTH, MENU_LABEL, 'shrink-0')}>
+                {intl.formatMessage({ id: 'admin.people.country', defaultMessage: 'Country' })}
+              </span>
             )}
             <div className="flex shrink-0 items-center gap-3">
-              <span className={cn(METRIC_COLUMN_WIDTH, MENU_LABEL, 'text-right')}>Posts</span>
-              <span className={cn(METRIC_COLUMN_WIDTH, MENU_LABEL, 'text-right')}>Comments</span>
-              <span className={cn(METRIC_COLUMN_WIDTH, MENU_LABEL, 'text-right')}>Votes</span>
+              <span className={cn(METRIC_COLUMN_WIDTH, MENU_LABEL, 'text-right')}>
+                {intl.formatMessage({ id: 'common.userStats.ideas', defaultMessage: 'Posts' })}
+              </span>
+              <span className={cn(METRIC_COLUMN_WIDTH, MENU_LABEL, 'text-right')}>
+                {intl.formatMessage({
+                  id: 'common.userStats.comments',
+                  defaultMessage: 'Comments',
+                })}
+              </span>
+              <span className={cn(METRIC_COLUMN_WIDTH, MENU_LABEL, 'text-right')}>
+                {intl.formatMessage({ id: 'common.userStats.votes', defaultMessage: 'Votes' })}
+              </span>
             </div>
           </div>
           <div className="divide-y divide-border/50">
@@ -435,7 +533,10 @@ export function UsersList({
               onClick={onLoadMore}
               className="text-muted-foreground"
             >
-              Load more
+              {intl.formatMessage({
+                id: 'admin.people.loadMore',
+                defaultMessage: 'Load more',
+              })}
             </Button>
           )}
         </div>

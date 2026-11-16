@@ -7,7 +7,7 @@ interface NotificationsSearch {
 }
 
 export const Route = createFileRoute('/admin/notifications')({
-  head: adminPageHead('Notifications'),
+  head: adminPageHead('Notifications', 'admin.pageTitle.notifications'),
   // Only the literal 'unread' is accepted; anything else falls back to the
   // default All tab rather than surfacing a broken filter state.
   validateSearch: (search: Record<string, unknown>): NotificationsSearch => ({

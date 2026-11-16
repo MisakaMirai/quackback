@@ -125,7 +125,17 @@ export const ConvertToPostDialog = memo(function ConvertToPostDialog({
         },
       }),
     onSuccess: (res) => {
-      toast.success(res.created ? 'Post created from conversation' : 'Upvoted existing post')
+      toast.success(
+        res.created
+          ? intl.formatMessage({
+              id: 'inbox.convert.created',
+              defaultMessage: 'Post created from conversation',
+            })
+          : intl.formatMessage({
+              id: 'inbox.convert.upvoted',
+              defaultMessage: 'Upvoted existing post',
+            })
+      )
       setOpen(false)
       onConverted?.()
     },
@@ -152,11 +162,22 @@ export const ConvertToPostDialog = memo(function ConvertToPostDialog({
   const share = useMutation({
     mutationFn: (postId: PostId) => sharePostFn({ data: { conversationId, postId } }),
     onSuccess: () => {
-      toast.success('Post shared in conversation')
+      toast.success(
+        intl.formatMessage({
+          id: 'inbox.convert.shared',
+          defaultMessage: 'Post shared in conversation',
+        })
+      )
       setOpen(false)
       onConverted?.()
     },
-    onError: () => toast.error('Failed to share post'),
+    onError: () =>
+      toast.error(
+        intl.formatMessage({
+          id: 'inbox.convert.shareFailed',
+          defaultMessage: 'Failed to share post',
+        })
+      ),
   })
 
   // Best-effort contact-email capture: fired alongside a track action and never
@@ -186,25 +207,41 @@ export const ConvertToPostDialog = memo(function ConvertToPostDialog({
             type="button"
             className="inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium text-muted-foreground hover:bg-muted transition-colors"
           >
-            <ArrowTopRightOnSquareIcon className="h-3.5 w-3.5" /> Track as feedback
+            <ArrowTopRightOnSquareIcon className="h-3.5 w-3.5" />{' '}
+            {intl.formatMessage({ id: 'inbox.convert.track', defaultMessage: 'Track as feedback' })}
           </button>
         </DialogTrigger>
       )}
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Track as a feedback post</DialogTitle>
+          <DialogTitle>
+            {intl.formatMessage({
+              id: 'inbox.convert.title',
+              defaultMessage: 'Track as a feedback post',
+            })}
+          </DialogTitle>
           <DialogDescription>
-            Create a post from this conversation, attributed to the customer. They'll see it in the
-            conversation and get status updates.
+            {intl.formatMessage({
+              id: 'inbox.convert.description',
+              defaultMessage:
+                "Create a post from this conversation, attributed to the customer. They'll see it in the conversation and get status updates.",
+            })}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
           <div className="space-y-1.5">
-            <Label htmlFor="convert-board">Board</Label>
+            <Label htmlFor="convert-board">
+              {intl.formatMessage({ id: 'inbox.convert.boardLabel', defaultMessage: 'Board' })}
+            </Label>
             <Select value={boardId} onValueChange={setBoardId}>
               <SelectTrigger id="convert-board">
-                <SelectValue placeholder="Select a board" />
+                <SelectValue
+                  placeholder={intl.formatMessage({
+                    id: 'inbox.convert.boardPlaceholder',
+                    defaultMessage: 'Select a board',
+                  })}
+                />
               </SelectTrigger>
               <SelectContent>
                 {boards.map((b) => (
@@ -217,7 +254,9 @@ export const ConvertToPostDialog = memo(function ConvertToPostDialog({
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="convert-title">Title</Label>
+            <Label htmlFor="convert-title">
+              {intl.formatMessage({ id: 'inbox.convert.titleLabel', defaultMessage: 'Title' })}
+            </Label>
             <Input
               id="convert-title"
               value={title}
@@ -227,7 +266,9 @@ export const ConvertToPostDialog = memo(function ConvertToPostDialog({
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="convert-content">Details</Label>
+            <Label htmlFor="convert-content">
+              {intl.formatMessage({ id: 'inbox.convert.detailsLabel', defaultMessage: 'Details' })}
+            </Label>
             <Textarea
               id="convert-content"
               value={content}
@@ -240,7 +281,10 @@ export const ConvertToPostDialog = memo(function ConvertToPostDialog({
           {showEmailCapture && (
             <div className="space-y-1.5">
               <Label htmlFor="convert-contact-email">
-                Capture an email so the visitor gets status updates (optional)
+                {intl.formatMessage({
+                  id: 'inbox.convert.captureEmailLabel',
+                  defaultMessage: 'Capture an email so the visitor gets status updates (optional)',
+                })}
               </Label>
               <Input
                 id="convert-contact-email"
@@ -256,7 +300,10 @@ export const ConvertToPostDialog = memo(function ConvertToPostDialog({
           {similar.length > 0 && (
             <div className="rounded-lg border border-border/60 p-2.5">
               <p className="mb-1.5 text-xs font-medium text-muted-foreground">
-                Similar posts: upvote instead of creating a duplicate?
+                {intl.formatMessage({
+                  id: 'inbox.convert.similar',
+                  defaultMessage: 'Similar posts: upvote instead of creating a duplicate?',
+                })}
               </p>
               <div className="flex flex-col gap-1">
                 {similar.map((p) => (
@@ -276,7 +323,8 @@ export const ConvertToPostDialog = memo(function ConvertToPostDialog({
                         })
                       }}
                     >
-                      <ChevronUpIcon className="h-3.5 w-3.5" /> Upvote
+                      <ChevronUpIcon className="h-3.5 w-3.5" />{' '}
+                      {intl.formatMessage({ id: 'inbox.convert.upvote', defaultMessage: 'Upvote' })}
                     </Button>
                     <Button
                       type="button"
@@ -285,7 +333,8 @@ export const ConvertToPostDialog = memo(function ConvertToPostDialog({
                       disabled={busy}
                       onClick={() => share.mutate(p.id as PostId)}
                     >
-                      <ChatBubbleLeftRightIcon className="h-3.5 w-3.5" /> Share
+                      <ChatBubbleLeftRightIcon className="h-3.5 w-3.5" />{' '}
+                      {intl.formatMessage({ id: 'inbox.convert.share', defaultMessage: 'Share' })}
                     </Button>
                   </div>
                 ))}
@@ -296,7 +345,7 @@ export const ConvertToPostDialog = memo(function ConvertToPostDialog({
 
         <DialogFooter>
           <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
-            Cancel
+            {intl.formatMessage({ id: 'common.cancel', defaultMessage: 'Cancel' })}
           </Button>
           <Button
             type="button"
@@ -306,7 +355,7 @@ export const ConvertToPostDialog = memo(function ConvertToPostDialog({
               convert.mutate({})
             }}
           >
-            Track as feedback
+            {intl.formatMessage({ id: 'inbox.convert.track', defaultMessage: 'Track as feedback' })}
           </Button>
         </DialogFooter>
       </DialogContent>

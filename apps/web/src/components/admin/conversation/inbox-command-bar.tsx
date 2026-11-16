@@ -23,6 +23,7 @@ import {
   CommandList,
 } from '@/components/ui/command'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 
 export interface InboxCommandBarProps {
   open: boolean
@@ -52,6 +53,7 @@ export const InboxCommandBar = memo(function InboxCommandBar({
   hasLinkedTicket,
   linkedTicketNumber,
 }: InboxCommandBarProps) {
+  const intl = useOptionalIntl()
   function run(id: InboxActionId) {
     onAction(id)
     onOpenChange(false)
@@ -60,15 +62,30 @@ export const InboxCommandBar = memo(function InboxCommandBar({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent showCloseButton={false} className="max-w-lg overflow-hidden p-0">
-        <DialogTitle className="sr-only">Inbox commands</DialogTitle>
+        <DialogTitle className="sr-only">
+          {intl.formatMessage({
+            id: 'admin.inbox.commands.title',
+            defaultMessage: 'Inbox commands',
+          })}
+        </DialogTitle>
         <Command
           // cmdk defaults to filtering by an item's `value`; we set that to the
           // label so search matches what the user reads.
           className="[&_[cmdk-group-heading]]:px-3"
         >
-          <CommandInput placeholder="Type a command…" />
+          <CommandInput
+            placeholder={intl.formatMessage({
+              id: 'admin.inbox.commands.placeholder',
+              defaultMessage: 'Type a command…',
+            })}
+          />
           <CommandList>
-            <CommandEmpty>No commands found.</CommandEmpty>
+            <CommandEmpty>
+              {intl.formatMessage({
+                id: 'admin.inbox.commands.empty',
+                defaultMessage: 'No commands found.',
+              })}
+            </CommandEmpty>
             {INBOX_ACTION_GROUP_ORDER.map((group) => {
               const items = INBOX_ACTIONS.filter((a) => a.group === group)
               if (items.length === 0) return null
@@ -83,7 +100,13 @@ export const InboxCommandBar = memo(function InboxCommandBar({
                     })
                     const label =
                       action.id === 'open_ticket' && linkedTicketNumber != null
-                        ? `Open ticket ${formatTicketNumber(linkedTicketNumber)}`
+                        ? intl.formatMessage(
+                            {
+                              id: 'admin.inbox.commands.openTicket',
+                              defaultMessage: 'Open ticket {number}',
+                            },
+                            { number: formatTicketNumber(linkedTicketNumber) }
+                          )
                         : action.label
                     return (
                       <CommandItem

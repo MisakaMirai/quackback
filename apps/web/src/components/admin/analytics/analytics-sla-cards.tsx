@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import {
   Table,
   TableBody,
@@ -16,15 +17,39 @@ import { AnalyticsEmpty } from './analytics-empty'
 import { LoadError } from './analytics-load-error'
 import { ChartSkeleton } from './analytics-skeletons'
 
-const CLOCKS: { key: keyof SlaAttainment; label: string }[] = [
-  { key: 'firstResponse', label: 'First response' },
-  { key: 'nextResponse', label: 'Next response' },
-  { key: 'resolution', label: 'Time to close' },
-  { key: 'timeToResolve', label: 'Time to resolve' },
+const CLOCKS: { key: keyof SlaAttainment; id: string; defaultMessage: string }[] = [
+  {
+    key: 'firstResponse',
+    id: 'admin.settings.sla.firstResponse',
+    defaultMessage: 'First response',
+  },
+  {
+    key: 'nextResponse',
+    id: 'admin.settings.sla.nextResponse',
+    defaultMessage: 'Next response',
+  },
+  {
+    key: 'resolution',
+    id: 'admin.settings.sla.timeToClose',
+    defaultMessage: 'Time to close',
+  },
+  {
+    key: 'timeToResolve',
+    id: 'admin.settings.sla.timeToResolve',
+    defaultMessage: 'Time to resolve',
+  },
 ]
 
 /** ISODOW 1 (Monday) to 7 (Sunday), matching the heatmap cells' `dow`. */
-const DOW_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+const DOW_LABELS = [
+  { id: 'admin.analytics.dow.mon', defaultMessage: 'Mon' },
+  { id: 'admin.analytics.dow.tue', defaultMessage: 'Tue' },
+  { id: 'admin.analytics.dow.wed', defaultMessage: 'Wed' },
+  { id: 'admin.analytics.dow.thu', defaultMessage: 'Thu' },
+  { id: 'admin.analytics.dow.fri', defaultMessage: 'Fri' },
+  { id: 'admin.analytics.dow.sat', defaultMessage: 'Sat' },
+  { id: 'admin.analytics.dow.sun', defaultMessage: 'Sun' },
+]
 
 /** A 0-1 attainment rate as a whole percent; a clock nothing was tracked on reads as a hyphen. */
 function rateLabel(rate: number | null | undefined): string {
@@ -33,15 +58,26 @@ function rateLabel(rate: number | null | undefined): string {
 
 /** 7x24 day-of-week by hour grid, shaded by breach count (UTC). */
 function BreachHeatmap({ cells }: { cells: SlaBreachHeatmapCell[] }) {
+  const intl = useOptionalIntl()
   const lookup = new Map(cells.map((c) => [`${c.dow}:${c.hour}`, c.count] as const))
   const max = Math.max(0, ...cells.map((c) => c.count))
-  if (max === 0) return <AnalyticsEmpty className="h-24" message="No breaches in this period" />
+  if (max === 0)
+    return (
+      <AnalyticsEmpty
+        className="h-24"
+        message={intl.formatMessage({
+          id: 'admin.analytics.sla.noBreaches',
+          defaultMessage: 'No breaches in this period',
+        })}
+      />
+    )
   return (
     <div className="space-y-0.5">
-      {DOW_LABELS.map((label, i) => {
+      {DOW_LABELS.map((dowLabel, i) => {
         const dow = i + 1
+        const label = intl.formatMessage(dowLabel)
         return (
-          <div key={dow} className="flex items-center gap-1.5">
+          <div key={dowLabel.id} className="flex items-center gap-1.5">
             <span className="w-8 shrink-0 text-xs text-muted-foreground">{label}</span>
             <div className="flex flex-1 gap-0.5">
               {Array.from({ length: 24 }, (_, hour) => {
@@ -49,7 +85,14 @@ function BreachHeatmap({ cells }: { cells: SlaBreachHeatmapCell[] }) {
                 return (
                   <div
                     key={hour}
-                    title={`${label} ${String(hour).padStart(2, '0')}:00, ${n} ${n === 1 ? 'breach' : 'breaches'}`}
+                    title={intl.formatMessage(
+                      {
+                        id: 'admin.analytics.sla.heatmapCell',
+                        defaultMessage:
+                          '{day} {hour}:00, {count, plural, one {# breach} other {# breaches}}',
+                      },
+                      { day: label, hour: String(hour).padStart(2, '0'), count: n }
+                    )}
                     className="h-3.5 flex-1 rounded-[2px] bg-primary"
                     style={{ opacity: n === 0 ? 0.08 : 0.15 + 0.85 * (n / max) }}
                   />
@@ -76,12 +119,19 @@ function BreachHeatmap({ cells }: { cells: SlaBreachHeatmapCell[] }) {
 /** The Support section's SLA cards: attainment per clock and per policy,
  *  breaches by hour, and time after a miss. */
 export function AnalyticsSlaCards({ range }: { range: DateRange }) {
+  const intl = useOptionalIntl()
   const { data, isError, refetch } = useQuery(supportReportingQuery(range.from, range.to))
 
   if (isError && !data) {
     return (
       <Card className="overflow-hidden py-0">
-        <LoadError message="SLA results could not be loaded." onRetry={() => void refetch()} />
+        <LoadError
+          message={intl.formatMessage({
+            id: 'admin.analytics.sla.loadFailed',
+            defaultMessage: 'SLA results could not be loaded.',
+          })}
+          onRetry={() => void refetch()}
+        />
       </Card>
     )
   }
@@ -94,16 +144,41 @@ export function AnalyticsSlaCards({ range }: { range: DateRange }) {
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2 md:items-start">
         <Card>
           <CardHeader>
-            <CardTitle>SLA attainment</CardTitle>
+            <CardTitle>
+              {intl.formatMessage({
+                id: 'admin.analytics.sla.attainmentTitle',
+                defaultMessage: 'SLA attainment',
+              })}
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Target</TableHead>
-                  <TableHead className="text-right">Met</TableHead>
-                  <TableHead className="text-right">Missed</TableHead>
-                  <TableHead className="text-right">Attained</TableHead>
+                  <TableHead>
+                    {intl.formatMessage({
+                      id: 'admin.analytics.sla.column.target',
+                      defaultMessage: 'Target',
+                    })}
+                  </TableHead>
+                  <TableHead className="text-right">
+                    {intl.formatMessage({
+                      id: 'admin.analytics.sla.column.met',
+                      defaultMessage: 'Met',
+                    })}
+                  </TableHead>
+                  <TableHead className="text-right">
+                    {intl.formatMessage({
+                      id: 'admin.analytics.sla.column.missed',
+                      defaultMessage: 'Missed',
+                    })}
+                  </TableHead>
+                  <TableHead className="text-right">
+                    {intl.formatMessage({
+                      id: 'admin.analytics.sla.column.attained',
+                      defaultMessage: 'Attained',
+                    })}
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -111,7 +186,7 @@ export function AnalyticsSlaCards({ range }: { range: DateRange }) {
                   const clock = data.sla[c.key]
                   return (
                     <TableRow key={c.key}>
-                      <TableCell>{c.label}</TableCell>
+                      <TableCell>{intl.formatMessage(c)}</TableCell>
                       <TableCell className="text-right tabular-nums">{clock.met}</TableCell>
                       <TableCell className="text-right tabular-nums">{clock.breached}</TableCell>
                       <TableCell className="text-right tabular-nums">
@@ -126,10 +201,15 @@ export function AnalyticsSlaCards({ range }: { range: DateRange }) {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Policy</TableHead>
+                    <TableHead>
+                      {intl.formatMessage({
+                        id: 'admin.analytics.sla.column.policy',
+                        defaultMessage: 'Policy',
+                      })}
+                    </TableHead>
                     {CLOCKS.map((c) => (
                       <TableHead key={c.key} className="text-right">
-                        {c.label}
+                        {intl.formatMessage(c)}
                       </TableHead>
                     ))}
                   </TableRow>
@@ -154,26 +234,56 @@ export function AnalyticsSlaCards({ range }: { range: DateRange }) {
 
       <Card>
         <CardHeader>
-          <CardTitle>Breaches by hour</CardTitle>
+          <CardTitle>
+            {intl.formatMessage({
+              id: 'admin.analytics.sla.breachesByHour',
+              defaultMessage: 'Breaches by hour',
+            })}
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <BreachHeatmap cells={data.slaHeatmap} />
-          <p className="mt-2 text-xs text-muted-foreground">Times are UTC.</p>
+          <p className="mt-2 text-xs text-muted-foreground">
+            {intl.formatMessage({
+              id: 'admin.analytics.sla.timesUtc',
+              defaultMessage: 'Times are UTC.',
+            })}
+          </p>
         </CardContent>
       </Card>
 
       {missed.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>Time after a miss</CardTitle>
+            <CardTitle>
+              {intl.formatMessage({
+                id: 'admin.analytics.sla.timeAfterMiss',
+                defaultMessage: 'Time after a miss',
+              })}
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Target</TableHead>
-                  <TableHead className="text-right">Misses</TableHead>
-                  <TableHead className="text-right">Average overdue</TableHead>
+                  <TableHead>
+                    {intl.formatMessage({
+                      id: 'admin.analytics.sla.column.target',
+                      defaultMessage: 'Target',
+                    })}
+                  </TableHead>
+                  <TableHead className="text-right">
+                    {intl.formatMessage({
+                      id: 'admin.analytics.sla.column.misses',
+                      defaultMessage: 'Misses',
+                    })}
+                  </TableHead>
+                  <TableHead className="text-right">
+                    {intl.formatMessage({
+                      id: 'admin.analytics.sla.column.averageOverdue',
+                      defaultMessage: 'Average overdue',
+                    })}
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -181,7 +291,7 @@ export function AnalyticsSlaCards({ range }: { range: DateRange }) {
                   const m = data.slaTimeAfterMiss[c.key]
                   return (
                     <TableRow key={c.key}>
-                      <TableCell>{c.label}</TableCell>
+                      <TableCell>{intl.formatMessage(c)}</TableCell>
                       <TableCell className="text-right tabular-nums">{m.count}</TableCell>
                       <TableCell className="text-right tabular-nums">
                         {m.avgOverdueSecs == null

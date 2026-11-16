@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { cn } from '@/lib/shared/utils'
 import { CHART_HEIGHT_CLASS } from './analytics-constants'
 import { COLS } from './analytics-stat-row'
@@ -99,6 +100,7 @@ function StatSectionSkeleton({ cols, children }: { cols: 3 | 4; children: React.
 /** Loading state shaped like the section it stands in for, so the layout does
  *  not reflow when data arrives. */
 export function SectionSkeleton({ section }: { section: Section }) {
+  const intl = useOptionalIntl()
   if (section === 'feedback') {
     return (
       <div className="flex flex-col gap-6">
@@ -106,8 +108,18 @@ export function SectionSkeleton({ section }: { section: Section }) {
           <StatusChartSkeleton />
         </StatSectionSkeleton>
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2 md:items-start">
-          <ListCardSkeleton title="Boards" />
-          <ListCardSkeleton title="Top posts" />
+          <ListCardSkeleton
+            title={intl.formatMessage({
+              id: 'admin.analytics.section.boards',
+              defaultMessage: 'Boards',
+            })}
+          />
+          <ListCardSkeleton
+            title={intl.formatMessage({
+              id: 'admin.analytics.section.topPosts',
+              defaultMessage: 'Top posts',
+            })}
+          />
         </div>
       </div>
     )
@@ -119,7 +131,13 @@ export function SectionSkeleton({ section }: { section: Section }) {
         <StatSectionSkeleton cols={4}>
           <BarListSkeleton />
         </StatSectionSkeleton>
-        <ListCardSkeleton title="Signups by source" rows={4} />
+        <ListCardSkeleton
+          title={intl.formatMessage({
+            id: 'admin.analytics.section.signupsBySource',
+            defaultMessage: 'Signups by source',
+          })}
+          rows={4}
+        />
       </div>
     )
   }

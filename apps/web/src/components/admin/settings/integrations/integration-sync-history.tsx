@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import type { IntlShape } from 'react-intl'
 import {
   ArrowPathIcon,
   ChevronDownIcon,
@@ -22,6 +23,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog'
 import { TimeAgo } from '@/components/ui/time-ago'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import {
   listIntegrationSyncHistoryFn,
   inspectIntegrationSyncFn,
@@ -29,30 +31,103 @@ import {
   verifyIntegrationSyncReferenceFn,
 } from '@/lib/server/functions/integration-sync'
 import {
-  SYNC_LABELS,
-  SYNC_KIND_LABELS,
   type SyncAction,
   type SyncFilter,
   type SyncHistoryItem,
+  type SyncState,
 } from '@/lib/shared/integration-sync'
 import { toastError } from '@/lib/client/error-notice'
 
-const filters: Array<[SyncFilter, string]> = [
-  ['all', 'All'],
-  ['attention', 'Needs attention'],
-  ['progress', 'In progress'],
-  ['successful', 'Successful'],
+type Message = { id: string; defaultMessage: string }
+
+const filterMessages: Array<[SyncFilter, Message]> = [
+  ['all', { id: 'admin.integrations.sync.filterAll', defaultMessage: 'All' }],
+  ['attention', { id: 'common.state.needsAttention', defaultMessage: 'Needs attention' }],
+  ['progress', { id: 'admin.integrations.sync.filterProgress', defaultMessage: 'In progress' }],
+  ['successful', { id: 'admin.integrations.sync.state.succeeded', defaultMessage: 'Successful' }],
 ]
-const actionLabels: Record<SyncAction, string> = {
-  retry: 'Try again',
-  cancel: 'Cancel',
-  reconcile: 'Check result',
-  keep_remote: 'Dismiss change',
-  link_existing: 'Link existing item',
+
+const actionMessages: Record<SyncAction, Message> = {
+  retry: { id: 'admin.integrations.sync.action.retry', defaultMessage: 'Try again' },
+  cancel: { id: 'common.cancel', defaultMessage: 'Cancel' },
+  reconcile: { id: 'admin.integrations.sync.action.reconcile', defaultMessage: 'Check result' },
+  keep_remote: {
+    id: 'admin.integrations.sync.action.keepRemote',
+    defaultMessage: 'Dismiss change',
+  },
+  link_existing: {
+    id: 'admin.integrations.sync.action.linkExisting',
+    defaultMessage: 'Link existing item',
+  },
 }
+
+const stateMessages: Record<SyncState, Message> = {
+  queued: { id: 'admin.integrations.sync.state.queued', defaultMessage: 'Queued' },
+  running: { id: 'admin.integrations.sync.state.running', defaultMessage: 'Syncing' },
+  retry_wait: {
+    id: 'admin.integrations.sync.state.retryWait',
+    defaultMessage: 'Retry scheduled',
+  },
+  failed: { id: 'admin.integrations.sync.state.failed', defaultMessage: 'Failed' },
+  auth_required: {
+    id: 'admin.integrations.sync.state.authRequired',
+    defaultMessage: 'Authentication required',
+  },
+  uncertain: { id: 'admin.integrations.sync.state.uncertain', defaultMessage: 'Outcome unknown' },
+  conflict: { id: 'admin.integrations.sync.state.conflict', defaultMessage: 'Needs review' },
+  succeeded: { id: 'admin.integrations.sync.state.succeeded', defaultMessage: 'Successful' },
+  cancelled: { id: 'admin.integrations.sync.state.cancelled', defaultMessage: 'Cancelled' },
+  superseded: { id: 'admin.integrations.sync.state.superseded', defaultMessage: 'Superseded' },
+}
+
+const kindMessages: Record<string, Message> = {
+  create: { id: 'admin.integrations.sync.kind.create', defaultMessage: 'Create item' },
+  refresh: { id: 'admin.integrations.sync.kind.refresh', defaultMessage: 'Update content' },
+  status: { id: 'admin.integrations.sync.kind.status', defaultMessage: 'Update status' },
+  'receive-status': {
+    id: 'admin.integrations.sync.kind.receiveStatus',
+    defaultMessage: 'Status received',
+  },
+  'receive-webhook': {
+    id: 'admin.integrations.sync.kind.receiveWebhook',
+    defaultMessage: 'Webhook received',
+  },
+  membership: {
+    id: 'admin.integrations.sync.kind.membership',
+    defaultMessage: 'Segment membership',
+  },
+  identify: { id: 'admin.integrations.sync.kind.identify', defaultMessage: 'Update user' },
+  archive: { id: 'admin.integrations.sync.kind.archive', defaultMessage: 'Archive item' },
+  'app-hook': { id: 'admin.integrations.sync.kind.appHook', defaultMessage: 'App event' },
+  notify: { id: 'admin.integrations.sync.kind.notify', defaultMessage: 'Notification' },
+  link: { id: 'admin.integrations.sync.action.linkExisting', defaultMessage: 'Link existing item' },
+}
+
+const attemptMessages: Record<string, Message> = {
+  remote_succeeded: {
+    id: 'admin.integrations.sync.attempt.remoteSucceeded',
+    defaultMessage: 'Remote change confirmed',
+  },
+  manually_verified: {
+    id: 'admin.integrations.sync.attempt.manuallyVerified',
+    defaultMessage: 'Manually linked',
+  },
+  late_result: {
+    id: 'admin.integrations.sync.attempt.lateResult',
+    defaultMessage: 'Late result received',
+  },
+  interrupted: { id: 'admin.integrations.sync.attempt.interrupted', defaultMessage: 'Interrupted' },
+}
+
+const recordedAttemptMessage: Message = {
+  id: 'admin.integrations.sync.attempt.recorded',
+  defaultMessage: 'Recorded',
+}
+
 type Cursor = { at: string; id: string }
 
 export function IntegrationSyncHistory({ provider }: { provider: string }) {
+  const intl = useOptionalIntl()
   const [filter, setFilter] = useState<SyncFilter>('all')
   const [cursors, setCursors] = useState<Cursor[]>([])
   const [expanded, setExpanded] = useState<string | null>(null)
@@ -79,15 +154,33 @@ export function IntegrationSyncHistory({ provider }: { provider: string }) {
       await queryClient.invalidateQueries({ queryKey: ['admin', 'integrations'] })
     },
     onError: (error) => {
-      toastError(error, 'Could not update this sync')
+      toastError(
+        error,
+        intl.formatMessage({
+          id: 'admin.integrations.sync.updateFailed',
+          defaultMessage: 'Could not update this sync',
+        })
+      )
     },
   })
   if (history.data?.available === false) return null
   return (
-    <section aria-label="Sync history" className="space-y-4">
+    <section
+      aria-label={intl.formatMessage({
+        id: 'admin.integrations.sync.regionAria',
+        defaultMessage: 'Sync history',
+      })}
+      className="space-y-4"
+    >
       <div className="flex items-start justify-between gap-3">
-        <div className="flex min-w-0 flex-1 flex-wrap gap-1" aria-label="Filter sync history">
-          {filters.map(([value, label]) => (
+        <div
+          className="flex min-w-0 flex-1 flex-wrap gap-1"
+          aria-label={intl.formatMessage({
+            id: 'admin.integrations.sync.filterAria',
+            defaultMessage: 'Filter sync history',
+          })}
+        >
+          {filterMessages.map(([value, message]) => (
             <Button
               key={value}
               size="sm"
@@ -99,14 +192,17 @@ export function IntegrationSyncHistory({ provider }: { provider: string }) {
                 setExpanded(null)
               }}
             >
-              {label}
+              {intl.formatMessage(message)}
             </Button>
           ))}
         </div>
         <Button
           size="sm"
           variant="ghost"
-          aria-label="Refresh sync history"
+          aria-label={intl.formatMessage({
+            id: 'admin.integrations.sync.refreshAria',
+            defaultMessage: 'Refresh sync history',
+          })}
           onClick={() => void history.refetch()}
           disabled={history.isFetching}
         >
@@ -114,27 +210,49 @@ export function IntegrationSyncHistory({ provider }: { provider: string }) {
         </Button>
       </div>
       <p className="text-xs text-muted-foreground">
-        Activity from the last 90 days, plus unresolved syncs. Cancelling stops future attempts; it
-        does not undo changes on the platform.
+        {intl.formatMessage({
+          id: 'admin.integrations.sync.description',
+          defaultMessage:
+            'Activity from the last 90 days, plus unresolved syncs. Cancelling stops future attempts; it does not undo changes on the platform.',
+        })}
       </p>
       {history.isPending ? (
-        <div role="status" aria-label="Loading sync history" className="space-y-3">
+        <div
+          role="status"
+          aria-label={intl.formatMessage({
+            id: 'admin.integrations.sync.loadingAria',
+            defaultMessage: 'Loading sync history',
+          })}
+          className="space-y-3"
+        >
           {[0, 1, 2].map((row) => (
             <Skeleton key={row} className="h-16 w-full" />
           ))}
         </div>
       ) : history.isError ? (
         <p role="alert" className="py-8 text-sm text-destructive">
-          Could not load sync history. Try refreshing.
+          {intl.formatMessage({
+            id: 'admin.integrations.sync.loadFailed',
+            defaultMessage: 'Could not load sync history. Try refreshing.',
+          })}
         </p>
       ) : !history.data.items.length ? (
         <EmptyState
           icon={ArrowPathIcon}
-          title="No syncs to show"
+          title={intl.formatMessage({
+            id: 'admin.integrations.sync.emptyTitle',
+            defaultMessage: 'No syncs to show',
+          })}
           description={
             filter === 'all'
-              ? 'New integration activity will appear here.'
-              : 'No syncs match this filter.'
+              ? intl.formatMessage({
+                  id: 'admin.integrations.sync.emptyDescription',
+                  defaultMessage: 'New integration activity will appear here.',
+                })
+              : intl.formatMessage({
+                  id: 'admin.integrations.sync.emptyFiltered',
+                  defaultMessage: 'No syncs match this filter.',
+                })
           }
           className="py-8"
         />
@@ -158,13 +276,31 @@ export function IntegrationSyncHistory({ provider }: { provider: string }) {
                       />
                     )}
                     <span className="truncate" title={item.sourceTitle ?? undefined}>
-                      {item.sourceTitle ?? 'Restricted or deleted item'}
+                      {item.sourceTitle ??
+                        intl.formatMessage({
+                          id: 'admin.integrations.sync.restrictedItem',
+                          defaultMessage: 'Restricted or deleted item',
+                        })}
                     </span>
                   </span>
                   <span className="mt-1 block text-xs text-muted-foreground">
-                    {item.direction === 'outbound' ? 'To platform' : 'From platform'} ·{' '}
-                    {SYNC_KIND_LABELS[item.kind] ?? 'Sync activity'} ·{' '}
-                    <TimeAgo date={item.updatedAt} />
+                    {item.direction === 'outbound'
+                      ? intl.formatMessage({
+                          id: 'admin.integrations.sync.directionOutbound',
+                          defaultMessage: 'To platform',
+                        })
+                      : intl.formatMessage({
+                          id: 'admin.integrations.sync.directionInbound',
+                          defaultMessage: 'From platform',
+                        })}{' '}
+                    ·{' '}
+                    {kindMessages[item.kind]
+                      ? intl.formatMessage(kindMessages[item.kind])
+                      : intl.formatMessage({
+                          id: 'admin.integrations.sync.kindFallback',
+                          defaultMessage: 'Sync activity',
+                        })}{' '}
+                    · <TimeAgo date={item.updatedAt} />
                   </span>
                   {item.destinationLabel && (
                     <span
@@ -176,7 +312,10 @@ export function IntegrationSyncHistory({ provider }: { provider: string }) {
                   )}
                   {item.cancelRequested && ['running', 'uncertain'].includes(item.state) && (
                     <span className="mt-1 block text-xs text-muted-foreground">
-                      Further attempts stopped
+                      {intl.formatMessage({
+                        id: 'admin.integrations.sync.cancelRequested',
+                        defaultMessage: 'Further attempts stopped',
+                      })}
                     </span>
                   )}
                 </button>
@@ -189,7 +328,7 @@ export function IntegrationSyncHistory({ provider }: { provider: string }) {
                         : 'secondary'
                   }
                 >
-                  {SYNC_LABELS[item.state]}
+                  {intl.formatMessage(stateMessages[item.state])}
                 </Badge>
                 <div className="flex flex-wrap gap-1">
                   {item.actions.map((kind) =>
@@ -206,8 +345,11 @@ export function IntegrationSyncHistory({ provider }: { provider: string }) {
                         {kind === 'keep_remote' &&
                         item.direction === 'outbound' &&
                         item.kind !== 'create'
-                          ? 'Keep remote content'
-                          : actionLabels[kind]}
+                          ? intl.formatMessage({
+                              id: 'admin.integrations.sync.keepRemoteContent',
+                              defaultMessage: 'Keep remote content',
+                            })
+                          : intl.formatMessage(actionMessages[kind])}
                       </Button>
                     )
                   )}
@@ -226,7 +368,10 @@ export function IntegrationSyncHistory({ provider }: { provider: string }) {
             disabled={!cursors.length}
             onClick={() => setCursors((c) => c.slice(0, -1))}
           >
-            Previous
+            {intl.formatMessage({
+              id: 'admin.integrations.sync.previous',
+              defaultMessage: 'Previous',
+            })}
           </Button>
           <Button
             size="sm"
@@ -236,7 +381,7 @@ export function IntegrationSyncHistory({ provider }: { provider: string }) {
               if (history.data?.nextCursor) setCursors((c) => [...c, history.data.nextCursor!])
             }}
           >
-            Next
+            {intl.formatMessage({ id: 'admin.integrations.sync.next', defaultMessage: 'Next' })}
           </Button>
         </div>
       )}
@@ -245,6 +390,7 @@ export function IntegrationSyncHistory({ provider }: { provider: string }) {
 }
 
 function SyncDetail({ item }: { item: SyncHistoryItem }) {
+  const intl = useOptionalIntl()
   const incomingStatus = item.direction === 'inbound' && item.kind === 'status'
   const detail = useQuery({
     queryKey: ['integration-sync-detail', item.id, item.version],
@@ -266,7 +412,10 @@ function SyncDetail({ item }: { item: SyncHistoryItem }) {
                 : `/admin/inbox?i=${encodeURIComponent(item.sourceId)}`
             }
           >
-            View source
+            {intl.formatMessage({
+              id: 'admin.integrations.sync.viewSource',
+              defaultMessage: 'View source',
+            })}
           </a>
         )}
         {item.remoteUrl && (
@@ -276,16 +425,40 @@ function SyncDetail({ item }: { item: SyncHistoryItem }) {
             target="_blank"
             rel="noopener noreferrer"
           >
-            {item.remoteDisplayId ?? 'View remote item'}
+            {item.remoteDisplayId ??
+              intl.formatMessage({
+                id: 'admin.integrations.sync.viewRemoteItem',
+                defaultMessage: 'View remote item',
+              })}
             <ArrowTopRightOnSquareIcon className="h-3 w-3" />
           </a>
         )}
       </div>
-      {detail.isPending && <Skeleton aria-label="Loading sync details" className="h-16 w-full" />}
-      {detail.isError && <p role="alert">Could not load details.</p>}
+      {detail.isPending && (
+        <Skeleton
+          aria-label={intl.formatMessage({
+            id: 'admin.integrations.sync.loadingDetails',
+            defaultMessage: 'Loading sync details',
+          })}
+          className="h-16 w-full"
+        />
+      )}
+      {detail.isError && (
+        <p role="alert">
+          {intl.formatMessage({
+            id: 'admin.integrations.sync.detailsLoadFailed',
+            defaultMessage: 'Could not load details.',
+          })}
+        </p>
+      )}
       {detail.data?.remote && (
         <div className="space-y-2">
-          <p className="text-xs font-medium">Current remote content</p>
+          <p className="text-xs font-medium">
+            {intl.formatMessage({
+              id: 'admin.integrations.sync.currentRemoteContent',
+              defaultMessage: 'Current remote content',
+            })}
+          </p>
           {detail.data.remote.externalUrl && (
             <a
               className="text-xs underline"
@@ -293,11 +466,17 @@ function SyncDetail({ item }: { item: SyncHistoryItem }) {
               target="_blank"
               rel="noopener noreferrer"
             >
-              Open on platform
+              {intl.formatMessage({
+                id: 'admin.integrations.sync.openOnPlatform',
+                defaultMessage: 'Open on platform',
+              })}
             </a>
           )}
           <Textarea
-            aria-label="Current remote content"
+            aria-label={intl.formatMessage({
+              id: 'admin.integrations.sync.currentRemoteContent',
+              defaultMessage: 'Current remote content',
+            })}
             readOnly
             value={`${detail.data.remote.title}\n\n${detail.data.remote.content}`}
             className="min-h-40"
@@ -308,11 +487,29 @@ function SyncDetail({ item }: { item: SyncHistoryItem }) {
         <div className="space-y-2">
           <p className="text-xs text-muted-foreground">
             {incomingStatus
-              ? 'Received status from the platform. Review the source item and update its status manually if appropriate.'
-              : 'Proposed content. Review the remote item and apply changes there to preserve its edits.'}
+              ? intl.formatMessage({
+                  id: 'admin.integrations.sync.incomingStatusHint',
+                  defaultMessage:
+                    'Received status from the platform. Review the source item and update its status manually if appropriate.',
+                })
+              : intl.formatMessage({
+                  id: 'admin.integrations.sync.proposedContentHint',
+                  defaultMessage:
+                    'Proposed content. Review the remote item and apply changes there to preserve its edits.',
+                })}
           </p>
           <Textarea
-            aria-label={incomingStatus ? 'Received platform status' : 'Proposed sync content'}
+            aria-label={
+              incomingStatus
+                ? intl.formatMessage({
+                    id: 'admin.integrations.sync.receivedStatusAria',
+                    defaultMessage: 'Received platform status',
+                  })
+                : intl.formatMessage({
+                    id: 'admin.integrations.sync.proposedContentAria',
+                    defaultMessage: 'Proposed sync content',
+                  })
+            }
             readOnly
             value={
               incomingStatus
@@ -331,11 +528,33 @@ function SyncDetail({ item }: { item: SyncHistoryItem }) {
                   .writeText(
                     incomingStatus ? preview.content : `${preview.title}\n\n${preview.content}`
                   )
-                  .then(() => toast.success('Content copied'))
-                  .catch(() => toast.error('Select the content to copy it'))
+                  .then(() =>
+                    toast.success(
+                      intl.formatMessage({
+                        id: 'admin.integrations.sync.contentCopied',
+                        defaultMessage: 'Content copied',
+                      })
+                    )
+                  )
+                  .catch(() =>
+                    toast.error(
+                      intl.formatMessage({
+                        id: 'admin.integrations.sync.selectToCopy',
+                        defaultMessage: 'Select the content to copy it',
+                      })
+                    )
+                  )
             }}
           >
-            {incomingStatus ? 'Copy received status' : 'Copy proposed content'}
+            {incomingStatus
+              ? intl.formatMessage({
+                  id: 'admin.integrations.sync.copyReceivedStatus',
+                  defaultMessage: 'Copy received status',
+                })
+              : intl.formatMessage({
+                  id: 'admin.integrations.sync.copyProposedContent',
+                  defaultMessage: 'Copy proposed content',
+                })}
           </Button>
         </div>
       )}
@@ -343,8 +562,11 @@ function SyncDetail({ item }: { item: SyncHistoryItem }) {
         <ol className="space-y-2 text-xs text-muted-foreground">
           {detail.data.attempts.map((attempt) => (
             <li key={attempt.id}>
-              Attempt {attempt.number} · {attemptLabel(attempt.state)} ·{' '}
-              <TimeAgo date={attempt.startedAt} />
+              {intl.formatMessage(
+                { id: 'admin.integrations.sync.attemptNumber', defaultMessage: 'Attempt {number}' },
+                { number: attempt.number }
+              )}{' '}
+              · {attemptLabel(intl, attempt.state)} · <TimeAgo date={attempt.startedAt} />
               {attempt.error && <span className="block">{attempt.error}</span>}
             </li>
           ))}
@@ -355,13 +577,20 @@ function SyncDetail({ item }: { item: SyncHistoryItem }) {
 }
 
 function LinkExistingSyncItem({ item }: { item: SyncHistoryItem }) {
+  const intl = useOptionalIntl()
   const [open, setOpen] = useState(false)
   const [reference, setReference] = useState('')
   const request = useRef<{ key: string; id: string } | null>(null)
   const queryClient = useQueryClient()
   const verify = useMutation({
     mutationFn: () => verifyIntegrationSyncReferenceFn({ data: { id: item.id, reference } }),
-    onError: () => toast.error('Could not verify this item in the original destination.'),
+    onError: () =>
+      toast.error(
+        intl.formatMessage({
+          id: 'admin.integrations.sync.verifyFailedToast',
+          defaultMessage: 'Could not verify this item in the original destination.',
+        })
+      ),
   })
   const link = useMutation({
     mutationFn: () => {
@@ -382,15 +611,27 @@ function LinkExistingSyncItem({ item }: { item: SyncHistoryItem }) {
       await queryClient.invalidateQueries({ queryKey: ['integration-sync'] })
       await queryClient.invalidateQueries({ queryKey: ['integration-sync-detail'] })
       await queryClient.invalidateQueries({ queryKey: ['admin', 'integrations'] })
-      toast.success('Remote item linked')
+      toast.success(
+        intl.formatMessage({
+          id: 'admin.integrations.sync.linkSuccess',
+          defaultMessage: 'Remote item linked',
+        })
+      )
       setOpen(false)
     },
-    onError: (error) => toastError(error, "Couldn't link the remote item"),
+    onError: (error) =>
+      toastError(
+        error,
+        intl.formatMessage({
+          id: 'admin.integrations.sync.linkFailed',
+          defaultMessage: "Couldn't link the remote item",
+        })
+      ),
   })
   return (
     <>
       <Button size="sm" variant="outline" onClick={() => setOpen(true)}>
-        Link existing item
+        {intl.formatMessage(actionMessages.link_existing)}
       </Button>
       <Dialog
         open={open}
@@ -400,14 +641,22 @@ function LinkExistingSyncItem({ item }: { item: SyncHistoryItem }) {
       >
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Link existing item</DialogTitle>
+            <DialogTitle>{intl.formatMessage(actionMessages.link_existing)}</DialogTitle>
             <DialogDescription>
-              Find the item created by this sync. Verify its reference, then confirm the link to
-              avoid creating another item.
+              {intl.formatMessage({
+                id: 'admin.integrations.sync.linkDescription',
+                defaultMessage:
+                  'Find the item created by this sync. Verify its reference, then confirm the link to avoid creating another item.',
+              })}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
-            <Label htmlFor={`sync-reference-${item.id}`}>Remote issue reference</Label>
+            <Label htmlFor={`sync-reference-${item.id}`}>
+              {intl.formatMessage({
+                id: 'admin.integrations.sync.remoteReference',
+                defaultMessage: 'Remote issue reference',
+              })}
+            </Label>
             <Input
               id={`sync-reference-${item.id}`}
               value={reference}
@@ -423,7 +672,10 @@ function LinkExistingSyncItem({ item }: { item: SyncHistoryItem }) {
               disabled={!reference.trim() || verify.isPending || link.isPending}
               onClick={() => verify.mutate()}
             >
-              Verify item
+              {intl.formatMessage({
+                id: 'admin.integrations.sync.verifyItem',
+                defaultMessage: 'Verify item',
+              })}
             </Button>
             {verify.data && (
               <div className="space-y-2">
@@ -437,14 +689,20 @@ function LinkExistingSyncItem({ item }: { item: SyncHistoryItem }) {
                     rel="noopener noreferrer"
                     className="text-xs underline"
                   >
-                    Open on platform
+                    {intl.formatMessage({
+                      id: 'admin.integrations.sync.openOnPlatform',
+                      defaultMessage: 'Open on platform',
+                    })}
                   </a>
                 )}
               </div>
             )}
             {verify.isError && (
               <p role="alert" className="text-sm text-destructive">
-                Could not verify this item. Check the reference and try again.
+                {intl.formatMessage({
+                  id: 'admin.integrations.sync.verifyFailed',
+                  defaultMessage: 'Could not verify this item. Check the reference and try again.',
+                })}
               </p>
             )}
             {link.isError && (
@@ -455,10 +713,18 @@ function LinkExistingSyncItem({ item }: { item: SyncHistoryItem }) {
           </div>
           <DialogFooter>
             <Button variant="outline" disabled={link.isPending} onClick={() => setOpen(false)}>
-              Cancel
+              {intl.formatMessage({ id: 'common.cancel', defaultMessage: 'Cancel' })}
             </Button>
             <Button disabled={!verify.data || link.isPending} onClick={() => link.mutate()}>
-              {link.isPending ? 'Linking…' : 'Confirm link'}
+              {link.isPending
+                ? intl.formatMessage({
+                    id: 'admin.integrations.sync.linking',
+                    defaultMessage: 'Linking…',
+                  })
+                : intl.formatMessage({
+                    id: 'admin.integrations.sync.confirmLink',
+                    defaultMessage: 'Confirm link',
+                  })}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -467,16 +733,7 @@ function LinkExistingSyncItem({ item }: { item: SyncHistoryItem }) {
   )
 }
 
-function attemptLabel(state: string): string {
-  if (state in SYNC_LABELS) return SYNC_LABELS[state as keyof typeof SYNC_LABELS]
-  return (
-    (
-      {
-        remote_succeeded: 'Remote change confirmed',
-        manually_verified: 'Manually linked',
-        late_result: 'Late result received',
-        interrupted: 'Interrupted',
-      } as Record<string, string>
-    )[state] ?? 'Recorded'
-  )
+function attemptLabel(intl: IntlShape, state: string): string {
+  if (state in stateMessages) return intl.formatMessage(stateMessages[state as SyncState])
+  return intl.formatMessage(attemptMessages[state] ?? recordedAttemptMessage)
 }

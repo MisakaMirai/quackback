@@ -1,5 +1,6 @@
 import { Suspense, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { SettingsPage } from '@/components/admin/settings/settings-page'
 import { SettingsCard } from '@/components/admin/settings/settings-card'
 import { IntegrationSetupCard } from './integration-setup-card'
@@ -56,6 +57,7 @@ export function IntegrationDetail({
   onHistoryHandled,
 }: IntegrationDetailProps) {
   const integration = data.integration as IntegrationSettingsData | null
+  const intl = useOptionalIntl()
   const {
     platformCredentialFields,
     platformCredentialsConfigured,
@@ -81,9 +83,15 @@ export function IntegrationDetail({
   // panels, so the form that ran it unmounts before it can report success.
   const hadIntegration = useRef(integration !== null)
   useEffect(() => {
-    if (!hadIntegration.current && status === 'active') toast.success('Connected successfully')
+    if (!hadIntegration.current && status === 'active')
+      toast.success(
+        intl.formatMessage({
+          id: 'admin.integrations.detail.connectedToast',
+          defaultMessage: 'Connected successfully',
+        })
+      )
     hadIntegration.current = integration !== null
-  }, [integration, status])
+  }, [integration, status, intl])
   const isConnected = status === 'active'
   const isPaused = status === 'paused'
   const hasCredentials = platformCredentialFields.length > 0
@@ -111,7 +119,15 @@ export function IntegrationDetail({
     : emptyHealth
 
   const description =
-    (workspaceName ? `Connected to ${workspaceName}` : null) || catalog.description
+    (workspaceName
+      ? intl.formatMessage(
+          {
+            id: 'admin.integrations.detail.connectedTo',
+            defaultMessage: 'Connected to {workspace}',
+          },
+          { workspace: workspaceName }
+        )
+      : null) || catalog.description
 
   const connection = (
     <Suspense fallback={null}>
@@ -123,7 +139,15 @@ export function IntegrationDetail({
     <SettingsPage
       title={catalog.name}
       description={description}
-      crumbs={[{ label: 'Integrations', to: '/admin/settings/integrations' }]}
+      crumbs={[
+        {
+          label: intl.formatMessage({
+            id: 'admin.integrations.detail.breadcrumb',
+            defaultMessage: 'Integrations',
+          }),
+          to: '/admin/settings/integrations',
+        },
+      ]}
       logo={
         <div
           className={`flex size-6 shrink-0 items-center justify-center rounded-md ${catalog.iconBg}`}
@@ -136,7 +160,13 @@ export function IntegrationDetail({
           {isPaused && <StateBadge state="off" />}
           {catalog.docsUrl && (
             <DocsLink href={catalog.docsUrl} className="text-[13px] text-muted-foreground">
-              Learn how to set up {catalog.name}
+              {intl.formatMessage(
+                {
+                  id: 'admin.integrations.detail.learnSetup',
+                  defaultMessage: 'Learn how to set up {name}',
+                },
+                { name: catalog.name }
+              )}
             </DocsLink>
           )}
           {showCredentials && (
@@ -145,7 +175,10 @@ export function IntegrationDetail({
               size="sm"
               onClick={() => setCredentialsOpen(true)}
             >
-              Configure credentials
+              {intl.formatMessage({
+                id: 'admin.integrations.detail.configureCredentials',
+                defaultMessage: 'Configure credentials',
+              })}
             </Button>
           )}
           {(showDisconnect || showConnect) && !connectInSetup && connection}
@@ -174,9 +207,9 @@ export function IntegrationDetail({
 
       {!integration && (
         <IntegrationSetupCard
-          title={setup.title}
-          description={setup.description}
-          steps={setup.steps}
+          title={intl.formatMessage(setup.title)}
+          description={intl.formatMessage(setup.description)}
+          steps={setup.steps(intl)}
           connectionForm={connectInSetup && showConnect ? connection : undefined}
         />
       )}
@@ -184,7 +217,12 @@ export function IntegrationDetail({
       <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
         <DialogContent className="max-h-[min(80vh,720px)] sm:max-w-3xl overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Sync history</DialogTitle>
+            <DialogTitle>
+              {intl.formatMessage({
+                id: 'admin.integrations.sync.regionAria',
+                defaultMessage: 'Sync history',
+              })}
+            </DialogTitle>
           </DialogHeader>
           {historyOpen && <IntegrationSyncHistory key={type} provider={type} />}
         </DialogContent>

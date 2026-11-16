@@ -15,15 +15,16 @@ import { TimeAgo } from '@/components/ui/time-ago'
 import { ArchiveBoxIcon } from '@heroicons/react/24/solid'
 import { settingsQueries } from '@/lib/client/queries/settings'
 import type { ImportRunListItem } from '@/lib/server/functions/data-runs'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 
 const IN_FLIGHT_STATUSES = new Set(['pending', 'dry_run', 'running'])
 
-const STATUS_LABEL: Record<ImportRunListItem['status'], string> = {
-  pending: 'Queued',
-  dry_run: 'Validating',
-  running: 'Importing',
-  completed: 'Completed',
-  failed: 'Failed',
+const STATUS_LABEL: Record<ImportRunListItem['status'], { id: string; defaultMessage: string }> = {
+  pending: { id: 'admin.settings.imports.status.queued', defaultMessage: 'Queued' },
+  dry_run: { id: 'admin.settings.imports.status.validating', defaultMessage: 'Validating' },
+  running: { id: 'admin.settings.imports.status.importing', defaultMessage: 'Importing' },
+  completed: { id: 'portal.status.lifecycle.completed', defaultMessage: 'Completed' },
+  failed: { id: 'admin.settings.imports.status.failed', defaultMessage: 'Failed' },
 }
 
 const STATUS_VARIANT: Record<
@@ -57,6 +58,7 @@ function downloadErrorReport(run: ImportRunListItem): void {
 }
 
 export function ImportHistoryList() {
+  const intl = useOptionalIntl()
   const { data: runs, isLoading } = useQuery({
     ...settingsQueries.importRuns(),
     refetchInterval: (query) => {
@@ -66,15 +68,28 @@ export function ImportHistoryList() {
   })
 
   if (isLoading) {
-    return <p className="text-sm text-muted-foreground">Loading import history...</p>
+    return (
+      <p className="text-sm text-muted-foreground">
+        {intl.formatMessage({
+          id: 'admin.settings.imports.history.loading',
+          defaultMessage: 'Loading import history...',
+        })}
+      </p>
+    )
   }
 
   if (!runs || runs.length === 0) {
     return (
       <EmptyState
         icon={ArchiveBoxIcon}
-        title="No imports yet"
-        description="Runs you start above show up here with their status and counts."
+        title={intl.formatMessage({
+          id: 'admin.settings.imports.history.emptyTitle',
+          defaultMessage: 'No imports yet',
+        })}
+        description={intl.formatMessage({
+          id: 'admin.settings.imports.history.emptyDescription',
+          defaultMessage: 'Runs you start above show up here with their status and counts.',
+        })}
         className="py-8"
       />
     )
@@ -85,12 +100,39 @@ export function ImportHistoryList() {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Source</TableHead>
-            <TableHead>File</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Counts</TableHead>
-            <TableHead>Started</TableHead>
-            <TableHead className="text-right">Errors</TableHead>
+            <TableHead>
+              {intl.formatMessage({
+                id: 'admin.settings.imports.history.source',
+                defaultMessage: 'Source',
+              })}
+            </TableHead>
+            <TableHead>
+              {intl.formatMessage({ id: 'files.family.other', defaultMessage: 'File' })}
+            </TableHead>
+            <TableHead>
+              {intl.formatMessage({
+                id: 'admin.changelog.filters.status',
+                defaultMessage: 'Status',
+              })}
+            </TableHead>
+            <TableHead>
+              {intl.formatMessage({
+                id: 'admin.settings.imports.history.counts',
+                defaultMessage: 'Counts',
+              })}
+            </TableHead>
+            <TableHead>
+              {intl.formatMessage({
+                id: 'admin.settings.imports.started',
+                defaultMessage: 'Started',
+              })}
+            </TableHead>
+            <TableHead className="text-right">
+              {intl.formatMessage({
+                id: 'admin.settings.imports.history.errors',
+                defaultMessage: 'Errors',
+              })}
+            </TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -102,17 +144,41 @@ export function ImportHistoryList() {
               </TableCell>
               <TableCell>
                 {run.status === 'completed' ? (
-                  <span className="text-sm text-muted-foreground">{STATUS_LABEL[run.status]}</span>
+                  <span className="text-sm text-muted-foreground">
+                    {intl.formatMessage(STATUS_LABEL[run.status])}
+                  </span>
                 ) : (
-                  <Badge variant={STATUS_VARIANT[run.status]}>{STATUS_LABEL[run.status]}</Badge>
+                  <Badge variant={STATUS_VARIANT[run.status]}>
+                    {intl.formatMessage(STATUS_LABEL[run.status])}
+                  </Badge>
                 )}
               </TableCell>
               <TableCell className="text-sm text-muted-foreground">
                 {run.totals ? (
                   <>
-                    {run.totals.created} created
-                    {run.totals.updated > 0 && `, ${run.totals.updated} updated`}
-                    {run.totals.skipped > 0 && `, ${run.totals.skipped} skipped`}
+                    {intl.formatMessage(
+                      {
+                        id: 'admin.settings.imports.csv.createdCount',
+                        defaultMessage: '{count} created',
+                      },
+                      { count: run.totals.created }
+                    )}
+                    {run.totals.updated > 0 &&
+                      intl.formatMessage(
+                        {
+                          id: 'admin.settings.imports.csv.updatedSuffix',
+                          defaultMessage: ', {count} updated',
+                        },
+                        { count: run.totals.updated }
+                      )}
+                    {run.totals.skipped > 0 &&
+                      intl.formatMessage(
+                        {
+                          id: 'admin.settings.imports.csv.skippedSuffix',
+                          defaultMessage: ', {count} skipped',
+                        },
+                        { count: run.totals.skipped }
+                      )}
                   </>
                 ) : (
                   '-'

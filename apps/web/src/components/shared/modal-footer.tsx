@@ -1,5 +1,6 @@
 import { KeyboardHint } from '@/components/shared/keyboard-hint'
 import { Button } from '@/components/ui/button'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 
 interface ModalFooterProps {
   onCancel: () => void
@@ -20,22 +21,25 @@ export function ModalFooter({
   onCancel,
   submitLabel,
   isPending,
-  hintAction = 'to save',
+  hintAction,
   children,
   submitType = 'submit',
   onSubmit,
   submitDisabled,
 }: ModalFooterProps) {
+  const intl = useOptionalIntl()
+  const resolvedHintAction =
+    hintAction ?? intl.formatMessage({ id: 'common.modalFooter.toSave', defaultMessage: 'to save' })
   // A long submit label ("Post update & reopen as Investigating") must never
   // be clipped on a narrow screen: the actions wrap onto another line, and a
   // label wider than the whole footer wraps inside its button.
   return (
     <div className="flex flex-wrap items-center justify-between gap-2 px-4 sm:px-6 py-3 border-t bg-muted/30 shrink-0">
-      <KeyboardHint keys={['Mod', 'Enter']} action={hintAction} />
+      <KeyboardHint keys={['Mod', 'Enter']} action={resolvedHintAction} />
       <div className="flex min-w-0 flex-wrap items-center justify-end gap-2 ml-auto">
         {children}
         <Button type="button" variant="ghost" size="sm" onClick={onCancel} disabled={isPending}>
-          Cancel
+          {intl.formatMessage({ id: 'common.cancel', defaultMessage: 'Cancel' })}
         </Button>
         <Button
           type={submitType}

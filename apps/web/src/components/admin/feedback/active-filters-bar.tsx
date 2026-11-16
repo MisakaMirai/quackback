@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { type IntlShape, type MessageDescriptor } from 'react-intl'
 import { toggleItem } from '@/components/shared/filter-utils'
 import {
   Squares2X2Icon,
@@ -16,6 +17,7 @@ import {
 import { cn } from '@/lib/shared/utils'
 import { formatCalendarDate } from '@/lib/shared/utils/date'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { FilterAddButton, FilterChip, type FilterOption } from '@/components/shared/filter-chip'
 import {
   VOTE_THRESHOLDS,
@@ -76,26 +78,93 @@ type FilterCategory =
 
 type IconComponent = React.ComponentType<{ className?: string }>
 
-const FILTER_CATEGORIES: { key: FilterCategory; label: string; icon: IconComponent }[] = [
-  { key: 'status', label: 'Status', icon: CircleIcon },
-  { key: 'board', label: 'Board', icon: Squares2X2Icon },
-  { key: 'tags', label: 'Tag', icon: TagIcon },
-  { key: 'segment', label: 'Segment', icon: UserGroupIcon },
-  { key: 'owner', label: 'Assigned to', icon: UserIcon },
-  { key: 'date', label: 'Created date', icon: CalendarIcon },
-  { key: 'votes', label: 'Vote count', icon: ArrowTrendingUpIcon },
-  { key: 'comments', label: 'Comment count', icon: ChatBubbleOvalLeftIcon },
-  { key: 'response', label: 'Team response', icon: ChatBubbleLeftRightIcon },
-  { key: 'duplicates', label: 'Has duplicates', icon: Square2StackIcon },
+interface FilterCategoryDef {
+  key: FilterCategory
+  label: MessageDescriptor
+  icon: IconComponent
+}
+
+const FILTER_CATEGORIES: FilterCategoryDef[] = [
+  {
+    key: 'status',
+    label: { id: 'portal.feedback.filter.category.status', defaultMessage: 'Status' },
+    icon: CircleIcon,
+  },
+  {
+    key: 'board',
+    label: { id: 'portal.roadmap.filter.category.board', defaultMessage: 'Board' },
+    icon: Squares2X2Icon,
+  },
+  {
+    key: 'tags',
+    label: { id: 'portal.roadmap.filter.category.tag', defaultMessage: 'Tag' },
+    icon: TagIcon,
+  },
+  {
+    key: 'segment',
+    label: { id: 'portal.feedback.filter.category.segment', defaultMessage: 'Segment' },
+    icon: UserGroupIcon,
+  },
+  {
+    key: 'owner',
+    label: { id: 'admin.feedback.filters.categoryOwner', defaultMessage: 'Assigned to' },
+    icon: UserIcon,
+  },
+  {
+    key: 'date',
+    label: { id: 'portal.feedback.filter.category.date', defaultMessage: 'Created date' },
+    icon: CalendarIcon,
+  },
+  {
+    key: 'votes',
+    label: { id: 'portal.feedback.filter.category.votes', defaultMessage: 'Vote count' },
+    icon: ArrowTrendingUpIcon,
+  },
+  {
+    key: 'comments',
+    label: { id: 'admin.feedback.filters.categoryComments', defaultMessage: 'Comment count' },
+    icon: ChatBubbleOvalLeftIcon,
+  },
+  {
+    key: 'response',
+    label: { id: 'portal.feedback.filter.category.response', defaultMessage: 'Team response' },
+    icon: ChatBubbleLeftRightIcon,
+  },
+  {
+    key: 'duplicates',
+    label: { id: 'admin.feedback.filters.hasDuplicates', defaultMessage: 'Has duplicates' },
+    icon: Square2StackIcon,
+  },
 ]
 
-const COMMENT_THRESHOLDS = [
-  { value: 1, label: '1+ comments' },
-  { value: 5, label: '5+ comments' },
-  { value: 10, label: '10+ comments' },
-  { value: 25, label: '25+ comments' },
-  { value: 50, label: '50+ comments' },
-]
+const COMMENT_THRESHOLDS = [{ value: 1 }, { value: 5 }, { value: 10 }, { value: 25 }, { value: 50 }]
+
+/** Date presets derive their labels from the public filter ids. */
+const DATE_PRESET_LABELS: Record<string, MessageDescriptor> = {
+  today: { id: 'portal.feedback.filter.date.today', defaultMessage: 'Today' },
+  '7days': { id: 'portal.feedback.filter.date.last7Days', defaultMessage: 'Last 7 days' },
+  '30days': { id: 'portal.feedback.filter.date.last30Days', defaultMessage: 'Last 30 days' },
+  '90days': { id: 'portal.feedback.filter.date.last90Days', defaultMessage: 'Last 90 days' },
+}
+
+function datePresetLabel(intl: IntlShape, preset: (typeof DATE_PRESETS)[number]): string {
+  return intl.formatMessage(DATE_PRESET_LABELS[preset.value])
+}
+
+type ThresholdKey = 'minVotes' | 'minComments'
+
+/** A vote/comment threshold as both a menu option and a chip value ("5+ votes"). */
+function thresholdLabel(intl: IntlShape, key: ThresholdKey, value: number): string {
+  return key === 'minVotes'
+    ? intl.formatMessage(
+        { id: 'portal.feedback.filter.votes.min', defaultMessage: '{count}+ votes' },
+        { count: value }
+      )
+    : intl.formatMessage(
+        { id: 'admin.feedback.filters.comments.min', defaultMessage: '{count}+ comments' },
+        { count: value }
+      )
+}
 
 /** The Filter control that opens the category menu; lives in the list toolbar. */
 export function AddFilterButton({
@@ -123,6 +192,7 @@ export function AddFilterButton({
 }) {
   const [open, setOpen] = useState(false)
   const [activeCategory, setActiveCategory] = useState<FilterCategory | null>(null)
+  const intl = useOptionalIntl()
 
   const closePopover = () => {
     setOpen(false)
@@ -217,7 +287,7 @@ export function AddFilterButton({
                 >
                   <span className="flex items-center gap-2">
                     <Icon className="size-4 text-muted-foreground" />
-                    {category.label}
+                    {intl.formatMessage(category.label)}
                   </span>
                   {!isDirect && <ChevronRightIcon className="h-3 w-3 text-muted-foreground" />}
                 </button>
@@ -232,7 +302,7 @@ export function AddFilterButton({
               className="w-full flex items-center gap-1.5 px-2.5 py-1.5 text-[13px] text-muted-foreground hover:text-foreground border-b border-border/50"
             >
               <ChevronRightIcon className="h-2.5 w-2.5 rotate-180" />
-              Back
+              {intl.formatMessage({ id: 'portal.feedback.filter.back', defaultMessage: 'Back' })}
             </button>
             <div className="max-h-[250px] overflow-y-auto py-1">
               {activeCategory === 'status' &&
@@ -277,7 +347,10 @@ export function AddFilterButton({
                     onClick={() => handleSelectOwner('unassigned')}
                     className="text-muted-foreground"
                   >
-                    Unassigned
+                    {intl.formatMessage({
+                      id: 'portal.feedback.filter.owner.unassigned',
+                      defaultMessage: 'Unassigned',
+                    })}
                   </MenuButton>
                   {members.map((member) => (
                     <MenuButton key={member.id} onClick={() => handleSelectOwner(member.id)}>
@@ -290,7 +363,7 @@ export function AddFilterButton({
               {activeCategory === 'date' &&
                 DATE_PRESETS.map((preset) => (
                   <MenuButton key={preset.value} onClick={() => handleSelectDate(preset.daysAgo)}>
-                    {preset.label}
+                    {datePresetLabel(intl, preset)}
                   </MenuButton>
                 ))}
 
@@ -300,7 +373,7 @@ export function AddFilterButton({
                     key={threshold.value}
                     onClick={() => handleSelectThreshold('minVotes', threshold.value)}
                   >
-                    {threshold.label}
+                    {thresholdLabel(intl, 'minVotes', threshold.value)}
                   </MenuButton>
                 ))}
 
@@ -310,17 +383,23 @@ export function AddFilterButton({
                     key={threshold.value}
                     onClick={() => handleSelectThreshold('minComments', threshold.value)}
                   >
-                    {threshold.label}
+                    {thresholdLabel(intl, 'minComments', threshold.value)}
                   </MenuButton>
                 ))}
 
               {activeCategory === 'response' && (
                 <>
                   <MenuButton onClick={() => handleSelectResponse('responded')}>
-                    Responded
+                    {intl.formatMessage({
+                      id: 'admin.feedback.filterPanel.responded',
+                      defaultMessage: 'Responded',
+                    })}
                   </MenuButton>
                   <MenuButton onClick={() => handleSelectResponse('unresponded')}>
-                    Unresponded
+                    {intl.formatMessage({
+                      id: 'admin.feedback.filterPanel.unresponded',
+                      defaultMessage: 'Unresponded',
+                    })}
                   </MenuButton>
                 </>
               )}
@@ -361,7 +440,8 @@ function computeActiveFilters(
   statuses: PostStatusEntity[],
   members: TeamMember[],
   segments: SegmentListItem[] | undefined,
-  onFiltersChange: (updates: Partial<InboxFilters>) => void
+  onFiltersChange: (updates: Partial<InboxFilters>) => void,
+  intl: IntlShape
 ): ActiveFilter[] {
   const result: ActiveFilter[] = []
 
@@ -380,8 +460,20 @@ function computeActiveFilters(
     label: t.name,
   }))
   const ownerOptions: FilterOption[] = [
-    { id: 'unassigned', label: 'Unassigned' },
-    ...members.map((m) => ({ id: m.id, label: m.name || m.email || 'Unnamed' })),
+    {
+      id: 'unassigned',
+      label: intl.formatMessage({
+        id: 'portal.feedback.filter.owner.unassigned',
+        defaultMessage: 'Unassigned',
+      }),
+    },
+    ...members.map((m) => ({
+      id: m.id,
+      label:
+        m.name ||
+        m.email ||
+        intl.formatMessage({ id: 'common.authorSelector.unnamed', defaultMessage: 'Unnamed' }),
+    })),
   ]
 
   // Status filters
@@ -392,7 +484,10 @@ function computeActiveFilters(
         result.push({
           key: `status-${slug}`,
           type: 'status',
-          label: 'Status:',
+          label: intl.formatMessage({
+            id: 'portal.feedback.filter.chip.status',
+            defaultMessage: 'Status:',
+          }),
           value: status.name,
           valueId: slug,
           color: status.color,
@@ -422,7 +517,10 @@ function computeActiveFilters(
         result.push({
           key: `board-${id}`,
           type: 'board',
-          label: 'Board:',
+          label: intl.formatMessage({
+            id: 'portal.feedback.filter.chip.board',
+            defaultMessage: 'Board:',
+          }),
           value: board.name,
           valueId: id,
           options: boardOptions,
@@ -457,7 +555,10 @@ function computeActiveFilters(
           result.push({
             key: `tag-${id}`,
             type: 'tags',
-            label: 'Tag:',
+            label: intl.formatMessage({
+              id: 'portal.feedback.filter.chip.tag',
+              defaultMessage: 'Tag:',
+            }),
             value: tag.name,
             valueId: id,
             options: tagOptions,
@@ -477,7 +578,10 @@ function computeActiveFilters(
       result.push({
         key: 'tags-combined',
         type: 'tags',
-        label: 'Tags:',
+        label: intl.formatMessage({
+          id: 'portal.feedback.filter.chip.tags',
+          defaultMessage: 'Tags:',
+        }),
         value: `${tagNames.slice(0, 2).join(', ')} +${tagNames.length - 2}`,
         valueId: 'combined',
         onRemove: () => onFiltersChange({ tags: undefined }),
@@ -499,7 +603,10 @@ function computeActiveFilters(
         result.push({
           key: `segment-${id}`,
           type: 'segment',
-          label: 'Segment:',
+          label: intl.formatMessage({
+            id: 'portal.feedback.filter.chip.segment',
+            defaultMessage: 'Segment:',
+          }),
           value: segment.name,
           valueId: id,
           color: segment.color,
@@ -521,13 +628,23 @@ function computeActiveFilters(
   if (filters.owner) {
     const ownerName =
       filters.owner === 'unassigned'
-        ? 'Unassigned'
-        : members.find((m) => m.id === filters.owner)?.name || 'Unknown'
+        ? intl.formatMessage({
+            id: 'portal.feedback.filter.owner.unassigned',
+            defaultMessage: 'Unassigned',
+          })
+        : members.find((m) => m.id === filters.owner)?.name ||
+          intl.formatMessage({
+            id: 'admin.feedback.filters.unknownOwner',
+            defaultMessage: 'Unknown',
+          })
 
     result.push({
       key: 'owner',
       type: 'owner',
-      label: 'Assigned:',
+      label: intl.formatMessage({
+        id: 'admin.feedback.filters.chip.owner',
+        defaultMessage: 'Assigned:',
+      }),
       value: ownerName,
       valueId: filters.owner,
       options: ownerOptions,
@@ -539,7 +656,7 @@ function computeActiveFilters(
   // Date range - dropdown with presets
   const dateOptions: FilterOption[] = DATE_PRESETS.map((p) => ({
     id: p.value,
-    label: p.label,
+    label: datePresetLabel(intl, p),
   }))
 
   if (filters.dateFrom) {
@@ -551,8 +668,11 @@ function computeActiveFilters(
     result.push({
       key: 'date',
       type: 'date',
-      label: 'Date:',
-      value: matchedPreset ? matchedPreset.label : formatDate(filters.dateFrom),
+      label: intl.formatMessage({
+        id: 'portal.feedback.filter.chip.date',
+        defaultMessage: 'Date:',
+      }),
+      value: matchedPreset ? datePresetLabel(intl, matchedPreset) : formatDate(filters.dateFrom),
       valueId: matchedPreset?.value || filters.dateFrom,
       options: dateOptions,
       onChange: (presetId) => {
@@ -567,12 +687,26 @@ function computeActiveFilters(
 
   // Numeric threshold filters (votes, comments)
   const thresholdFilters: Array<{
-    key: 'minVotes' | 'minComments'
+    key: ThresholdKey
     label: string
-    thresholds: ReadonlyArray<{ value: number; label: string }>
+    thresholds: ReadonlyArray<{ value: number }>
   }> = [
-    { key: 'minVotes', label: 'Min votes:', thresholds: VOTE_THRESHOLDS },
-    { key: 'minComments', label: 'Min comments:', thresholds: COMMENT_THRESHOLDS },
+    {
+      key: 'minVotes',
+      label: intl.formatMessage({
+        id: 'portal.feedback.filter.chip.votes',
+        defaultMessage: 'Min votes:',
+      }),
+      thresholds: VOTE_THRESHOLDS,
+    },
+    {
+      key: 'minComments',
+      label: intl.formatMessage({
+        id: 'admin.feedback.filters.chip.minComments',
+        defaultMessage: 'Min comments:',
+      }),
+      thresholds: COMMENT_THRESHOLDS,
+    },
   ]
 
   for (const { key, label, thresholds } of thresholdFilters) {
@@ -581,7 +715,7 @@ function computeActiveFilters(
 
     const options: FilterOption[] = thresholds.map((t) => ({
       id: t.value.toString(),
-      label: t.label,
+      label: thresholdLabel(intl, key, t.value),
     }))
     const matched = thresholds.find((t) => t.value === current)
 
@@ -589,7 +723,7 @@ function computeActiveFilters(
       key,
       type: key,
       label,
-      value: matched ? matched.label : `${current}+`,
+      value: matched ? thresholdLabel(intl, key, matched.value) : `${current}+`,
       valueId: current.toString(),
       options,
       onChange: (newValue) => onFiltersChange({ [key]: parseInt(newValue, 10) }),
@@ -599,16 +733,40 @@ function computeActiveFilters(
 
   // Response filter
   const respondedOptions: FilterOption[] = [
-    { id: 'responded', label: 'Responded' },
-    { id: 'unresponded', label: 'Unresponded' },
+    {
+      id: 'responded',
+      label: intl.formatMessage({
+        id: 'admin.feedback.filterPanel.responded',
+        defaultMessage: 'Responded',
+      }),
+    },
+    {
+      id: 'unresponded',
+      label: intl.formatMessage({
+        id: 'admin.feedback.filterPanel.unresponded',
+        defaultMessage: 'Unresponded',
+      }),
+    },
   ]
 
   if (filters.responded && filters.responded !== 'all') {
     result.push({
       key: 'responded',
       type: 'responded',
-      label: 'Team response:',
-      value: filters.responded === 'responded' ? 'Responded' : 'Unresponded',
+      label: intl.formatMessage({
+        id: 'portal.feedback.filter.chip.response',
+        defaultMessage: 'Team response:',
+      }),
+      value:
+        filters.responded === 'responded'
+          ? intl.formatMessage({
+              id: 'admin.feedback.filterPanel.responded',
+              defaultMessage: 'Responded',
+            })
+          : intl.formatMessage({
+              id: 'admin.feedback.filterPanel.unresponded',
+              defaultMessage: 'Unresponded',
+            }),
       valueId: filters.responded,
       options: respondedOptions,
       onChange: (newValue) =>
@@ -623,7 +781,10 @@ function computeActiveFilters(
       key: 'hasDuplicates',
       type: 'hasDuplicates',
       label: '',
-      value: 'Has duplicates',
+      value: intl.formatMessage({
+        id: 'admin.feedback.filters.hasDuplicates',
+        defaultMessage: 'Has duplicates',
+      }),
       valueId: 'hasDuplicates',
       onRemove: () => onFiltersChange({ hasDuplicates: undefined }),
     })
@@ -635,7 +796,10 @@ function computeActiveFilters(
       key: 'deleted',
       type: 'deleted',
       label: '',
-      value: 'Deleted posts',
+      value: intl.formatMessage({
+        id: 'admin.feedback.filterPanel.deletedPosts',
+        defaultMessage: 'Deleted posts',
+      }),
       valueId: 'deleted',
       onRemove: () => onFiltersChange({ showDeleted: undefined }),
     })
@@ -654,15 +818,33 @@ export function ActiveFiltersBar({
   members,
   segments,
 }: ActiveFiltersBarProps) {
+  const intl = useOptionalIntl()
   const activeFilters = useMemo(
-    () => computeActiveFilters(filters, boards, tags, statuses, members, segments, onFiltersChange),
-    [filters, boards, tags, statuses, members, segments, onFiltersChange]
+    () =>
+      computeActiveFilters(
+        filters,
+        boards,
+        tags,
+        statuses,
+        members,
+        segments,
+        onFiltersChange,
+        intl
+      ),
+    [filters, boards, tags, statuses, members, segments, onFiltersChange, intl]
   )
 
   if (activeFilters.length === 0) return null
 
   return (
-    <div className="mt-2 bg-card/50" role="region" aria-label="Active filters">
+    <div
+      className="mt-2 bg-card/50"
+      role="region"
+      aria-label={intl.formatMessage({
+        id: 'portal.feedback.filter.activeFilters',
+        defaultMessage: 'Active filters',
+      })}
+    >
       <div className="flex flex-wrap gap-1 items-center">
         {activeFilters.map(({ key, type, ...filterProps }) => (
           <FilterChip key={key} icon={getFilterIcon(type)} {...filterProps} />
@@ -679,7 +861,10 @@ export function ActiveFiltersBar({
               'transition-colors'
             )}
           >
-            Clear all
+            {intl.formatMessage({
+              id: 'portal.feedback.filter.clearAll',
+              defaultMessage: 'Clear all',
+            })}
           </button>
         )}
       </div>

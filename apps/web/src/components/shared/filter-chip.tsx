@@ -3,6 +3,7 @@ import { PlusIcon, XMarkIcon } from '@heroicons/react/24/solid'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { cn } from '@/lib/shared/utils'
 
 export interface FilterOption {
@@ -58,6 +59,7 @@ export function FilterChip({
   internal = false,
   tooltip,
 }: FilterChipProps) {
+  const intl = useOptionalIntl()
   const [open, setOpen] = useState(false)
   const hasOptions = options && options.length > 0 && onChange
 
@@ -177,7 +179,13 @@ export function FilterChip({
             'text-muted-foreground hover:text-foreground',
             'transition-colors'
           )}
-          aria-label={`Remove ${label} ${value} filter`}
+          aria-label={intl.formatMessage(
+            {
+              id: 'common.filterChip.removeAria',
+              defaultMessage: 'Remove {label} {value} filter',
+            },
+            { label, value }
+          )}
         >
           <XMarkIcon className="h-2.5 w-2.5" />
         </button>

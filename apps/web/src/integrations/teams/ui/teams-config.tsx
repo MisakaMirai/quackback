@@ -10,6 +10,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { useUpdateIntegration } from '@/lib/client/mutations'
 import {
   fetchTeamsTeamsFn,
@@ -34,18 +35,36 @@ interface TeamsConfigProps {
 const EVENT_CONFIG = [
   {
     id: 'post.created' as const,
-    label: 'New feedback submitted',
-    description: 'When a user submits new feedback',
+    label: {
+      id: 'admin.integrations.config.eventNewFeedback',
+      defaultMessage: 'New feedback submitted',
+    },
+    description: {
+      id: 'admin.integrations.teams.eventNewFeedbackDescription',
+      defaultMessage: 'When a user submits new feedback',
+    },
   },
   {
     id: 'post.status_changed' as const,
-    label: 'Feedback status changed',
-    description: 'When the status of a feedback post is updated',
+    label: {
+      id: 'admin.integrations.config.eventStatusChanged',
+      defaultMessage: 'Feedback status changed',
+    },
+    description: {
+      id: 'admin.integrations.teams.eventStatusChangedDescription',
+      defaultMessage: 'When the status of a feedback post is updated',
+    },
   },
   {
     id: 'comment.created' as const,
-    label: 'New comment on feedback',
-    description: 'When someone comments on a feedback post',
+    label: {
+      id: 'admin.integrations.config.eventNewComment',
+      defaultMessage: 'New comment on feedback',
+    },
+    description: {
+      id: 'admin.integrations.teams.eventNewCommentDescription',
+      defaultMessage: 'When someone comments on a feedback post',
+    },
   },
 ]
 
@@ -55,6 +74,7 @@ export function TeamsConfig({
   initialEventMappings,
   enabled,
 }: TeamsConfigProps) {
+  const intl = useOptionalIntl()
   const updateMutation = useUpdateIntegration()
   const [teams, setTeams] = useState<TeamsTeam[]>([])
   const [channels, setChannels] = useState<TeamsChannel[]>([])
@@ -81,24 +101,37 @@ export function TeamsConfig({
       const result = await fetchTeamsTeamsFn()
       setTeams(result)
     } catch {
-      setTeamError('Failed to load teams. Please try again.')
+      setTeamError(
+        intl.formatMessage({
+          id: 'admin.integrations.config.loadTeamsFailed',
+          defaultMessage: 'Failed to load teams. Please try again.',
+        })
+      )
     } finally {
       setLoadingTeams(false)
     }
-  }, [])
+  }, [intl])
 
-  const fetchChannels = useCallback(async (teamId: string) => {
-    setLoadingChannels(true)
-    setChannelError(null)
-    try {
-      const result = await fetchTeamsChannelsFn({ data: { teamId } })
-      setChannels(result)
-    } catch {
-      setChannelError('Failed to load channels. Please try again.')
-    } finally {
-      setLoadingChannels(false)
-    }
-  }, [])
+  const fetchChannels = useCallback(
+    async (teamId: string) => {
+      setLoadingChannels(true)
+      setChannelError(null)
+      try {
+        const result = await fetchTeamsChannelsFn({ data: { teamId } })
+        setChannels(result)
+      } catch {
+        setChannelError(
+          intl.formatMessage({
+            id: 'admin.integrations.config.loadChannelsFailed',
+            defaultMessage: 'Failed to load channels. Please try again.',
+          })
+        )
+      } finally {
+        setLoadingChannels(false)
+      }
+    },
+    [intl]
+  )
 
   useEffect(() => {
     fetchTeams()
@@ -152,9 +185,17 @@ export function TeamsConfig({
       <div className="flex items-center justify-between">
         <div>
           <Label htmlFor="enabled-toggle" className="text-base font-medium">
-            Notifications enabled
+            {intl.formatMessage({
+              id: 'admin.integrations.config.notificationsEnabled',
+              defaultMessage: 'Notifications enabled',
+            })}
           </Label>
-          <p className="text-xs text-muted-foreground">Turn off to pause all Teams notifications</p>
+          <p className="text-xs text-muted-foreground">
+            {intl.formatMessage({
+              id: 'admin.integrations.teams.disableHint',
+              defaultMessage: 'Turn off to pause all Teams notifications',
+            })}
+          </p>
         </div>
         <Switch
           id="enabled-toggle"
@@ -166,7 +207,12 @@ export function TeamsConfig({
 
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <Label htmlFor="team-select">Team</Label>
+          <Label htmlFor="team-select">
+            {intl.formatMessage({
+              id: 'admin.integrations.config.team',
+              defaultMessage: 'Team',
+            })}
+          </Label>
           <Button
             variant="ghost"
             size="sm"
@@ -175,7 +221,10 @@ export function TeamsConfig({
             className="h-8 gap-1.5 text-xs"
           >
             <ArrowPathIcon className={`h-3.5 w-3.5 ${loadingTeams ? 'animate-spin' : ''}`} />
-            Refresh
+            {intl.formatMessage({
+              id: 'admin.integrations.config.refresh',
+              defaultMessage: 'Refresh',
+            })}
           </Button>
         </div>
         {teamError ? (
@@ -190,10 +239,20 @@ export function TeamsConfig({
               {loadingTeams ? (
                 <div className="flex items-center gap-2">
                   <ArrowPathIcon className="h-4 w-4 animate-spin" />
-                  <span>Loading teams...</span>
+                  <span>
+                    {intl.formatMessage({
+                      id: 'admin.integrations.config.loadingTeams',
+                      defaultMessage: 'Loading teams...',
+                    })}
+                  </span>
                 </div>
               ) : (
-                <SelectValue placeholder="Select a team" />
+                <SelectValue
+                  placeholder={intl.formatMessage({
+                    id: 'admin.integrations.config.selectTeam',
+                    defaultMessage: 'Select a team',
+                  })}
+                />
               )}
             </SelectTrigger>
             <SelectContent>
@@ -206,13 +265,21 @@ export function TeamsConfig({
           </Select>
         )}
         <p className="text-xs text-muted-foreground">
-          Select the Microsoft Teams team where notifications should be posted.
+          {intl.formatMessage({
+            id: 'admin.integrations.teams.teamHint',
+            defaultMessage: 'Select the Microsoft Teams team where notifications should be posted.',
+          })}
         </p>
       </div>
 
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <Label htmlFor="channel-select">Channel</Label>
+          <Label htmlFor="channel-select">
+            {intl.formatMessage({
+              id: 'admin.integrations.config.channel',
+              defaultMessage: 'Channel',
+            })}
+          </Label>
           {selectedTeam && (
             <Button
               variant="ghost"
@@ -222,7 +289,10 @@ export function TeamsConfig({
               className="h-8 gap-1.5 text-xs"
             >
               <ArrowPathIcon className={`h-3.5 w-3.5 ${loadingChannels ? 'animate-spin' : ''}`} />
-              Refresh
+              {intl.formatMessage({
+                id: 'admin.integrations.config.refresh',
+                defaultMessage: 'Refresh',
+              })}
             </Button>
           )}
         </div>
@@ -238,11 +308,26 @@ export function TeamsConfig({
               {loadingChannels ? (
                 <div className="flex items-center gap-2">
                   <ArrowPathIcon className="h-4 w-4 animate-spin" />
-                  <span>Loading channels...</span>
+                  <span>
+                    {intl.formatMessage({
+                      id: 'admin.integrations.config.loadingChannels',
+                      defaultMessage: 'Loading channels...',
+                    })}
+                  </span>
                 </div>
               ) : (
                 <SelectValue
-                  placeholder={selectedTeam ? 'Select a channel' : 'Select a team first'}
+                  placeholder={
+                    selectedTeam
+                      ? intl.formatMessage({
+                          id: 'admin.integrations.config.selectChannel',
+                          defaultMessage: 'Select a channel',
+                        })
+                      : intl.formatMessage({
+                          id: 'admin.integrations.config.selectTeamFirst',
+                          defaultMessage: 'Select a team first',
+                        })
+                  }
                 />
               )}
             </SelectTrigger>
@@ -259,14 +344,27 @@ export function TeamsConfig({
           </Select>
         )}
         <p className="text-xs text-muted-foreground">
-          The bot will post notifications to this channel. Make sure the bot has been added to your
-          team.
+          {intl.formatMessage({
+            id: 'admin.integrations.teams.channelHint',
+            defaultMessage:
+              'The bot will post notifications to this channel. Make sure the bot has been added to your team.',
+          })}
         </p>
       </div>
 
       <div className="space-y-3">
-        <Label className="text-base font-medium">Events</Label>
-        <p className="text-xs text-muted-foreground">Choose which events trigger notifications</p>
+        <Label className="text-base font-medium">
+          {intl.formatMessage({
+            id: 'admin.integrations.config.events',
+            defaultMessage: 'Events',
+          })}
+        </Label>
+        <p className="text-xs text-muted-foreground">
+          {intl.formatMessage({
+            id: 'admin.integrations.config.chooseEventsNotifications',
+            defaultMessage: 'Choose which events trigger notifications',
+          })}
+        </p>
         <div className="space-y-3 pt-2">
           {EVENT_CONFIG.map((event) => (
             <div
@@ -274,8 +372,10 @@ export function TeamsConfig({
               className="flex items-center justify-between rounded-lg border border-border/50 p-3"
             >
               <div>
-                <div className="font-medium text-sm">{event.label}</div>
-                <div className="text-xs text-muted-foreground">{event.description}</div>
+                <div className="font-medium text-sm">{intl.formatMessage(event.label)}</div>
+                <div className="text-xs text-muted-foreground">
+                  {intl.formatMessage(event.description)}
+                </div>
               </div>
               <Switch
                 checked={eventSettings[event.id] ?? false}
@@ -290,13 +390,22 @@ export function TeamsConfig({
       {saving && (
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <ArrowPathIcon className="h-4 w-4 animate-spin" />
-          <span>Saving...</span>
+          <span>
+            {intl.formatMessage({
+              id: 'admin.integrations.config.saving',
+              defaultMessage: 'Saving...',
+            })}
+          </span>
         </div>
       )}
 
       {updateMutation.isError && (
         <div className="text-sm text-destructive">
-          {updateMutation.error?.message || 'Failed to save changes'}
+          {updateMutation.error?.message ||
+            intl.formatMessage({
+              id: 'admin.integrations.config.saveFailed',
+              defaultMessage: 'Failed to save changes',
+            })}
         </div>
       )}
     </div>

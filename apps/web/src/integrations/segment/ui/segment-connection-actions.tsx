@@ -4,11 +4,13 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { useDeleteIntegration } from '@/lib/client/mutations'
 import { saveSegmentConnectionFn } from '@/lib/server/functions/segment-integration'
 import { errorText } from '@/lib/client/error-text'
 
 export function SegmentConnectionActions(props: { integrationId?: string; isConnected: boolean }) {
+  const intl = useOptionalIntl()
   const [incomingSecret, setIncomingSecret] = useState('')
   const [writeKey, setWriteKey] = useState('')
   const [outgoingEnabled, setOutgoingEnabled] = useState(false)
@@ -21,14 +23,30 @@ export function SegmentConnectionActions(props: { integrationId?: string; isConn
     return (
       <>
         <Button variant="outline" size="sm" onClick={() => setConfirmOpen(true)}>
-          Disconnect
+          {intl.formatMessage({
+            id: 'admin.integrations.connection.disconnect',
+            defaultMessage: 'Disconnect',
+          })}
         </Button>
         <ConfirmDialog
           open={confirmOpen}
           onOpenChange={setConfirmOpen}
-          title="Disconnect Segment?"
-          description="Inbound identify events and outbound membership sync will stop immediately."
-          confirmLabel="Disconnect"
+          title={intl.formatMessage(
+            {
+              id: 'admin.integrations.connection.disconnectTitle',
+              defaultMessage: 'Disconnect {name}?',
+            },
+            { name: 'Segment' }
+          )}
+          description={intl.formatMessage({
+            id: 'admin.integrations.segment.disconnectDescription',
+            defaultMessage:
+              'Inbound identify events and outbound membership sync will stop immediately.',
+          })}
+          confirmLabel={intl.formatMessage({
+            id: 'admin.integrations.connection.disconnect',
+            defaultMessage: 'Disconnect',
+          })}
           isPending={deleteMutation.isPending}
           onConfirm={() => {
             if (props.integrationId) deleteMutation.mutate({ id: props.integrationId })
@@ -41,7 +59,12 @@ export function SegmentConnectionActions(props: { integrationId?: string; isConn
   return (
     <div className="space-y-4">
       <div className="space-y-2">
-        <Label htmlFor="segment-incoming-secret">Inbound signing secret</Label>
+        <Label htmlFor="segment-incoming-secret">
+          {intl.formatMessage({
+            id: 'admin.integrations.segment.incomingSecretLabel',
+            defaultMessage: 'Inbound signing secret',
+          })}
+        </Label>
         <Input
           id="segment-incoming-secret"
           type="password"
@@ -51,7 +74,12 @@ export function SegmentConnectionActions(props: { integrationId?: string; isConn
         />
       </div>
       <div className="space-y-2">
-        <Label htmlFor="segment-write-key">Source write key (optional)</Label>
+        <Label htmlFor="segment-write-key">
+          {intl.formatMessage({
+            id: 'admin.integrations.segment.writeKeyLabel',
+            defaultMessage: 'Source write key (optional)',
+          })}
+        </Label>
         <Input
           id="segment-write-key"
           type="password"
@@ -66,7 +94,10 @@ export function SegmentConnectionActions(props: { integrationId?: string; isConn
           onCheckedChange={(checked) => setOutgoingEnabled(checked === true)}
           data-in-label
         />
-        Push segment membership changes back to Segment
+        {intl.formatMessage({
+          id: 'admin.integrations.segment.outgoingLabel',
+          defaultMessage: 'Push segment membership changes back to Segment',
+        })}
       </label>
       {error && (
         <p className="text-sm text-destructive" role="alert">
@@ -88,13 +119,29 @@ export function SegmentConnectionActions(props: { integrationId?: string; isConn
             })
             window.location.reload()
           } catch (cause) {
-            setError(errorText(cause, 'Failed to connect Segment'))
+            setError(
+              errorText(
+                cause,
+                intl.formatMessage({
+                  id: 'admin.integrations.segment.connectFailed',
+                  defaultMessage: 'Failed to connect Segment',
+                })
+              )
+            )
           } finally {
             setSaving(false)
           }
         }}
       >
-        {saving ? 'Saving…' : 'Connect Segment'}
+        {saving
+          ? intl.formatMessage({
+              id: 'admin.integrations.config.saving',
+              defaultMessage: 'Saving...',
+            })
+          : intl.formatMessage({
+              id: 'admin.integrations.segment.connectLabel',
+              defaultMessage: 'Connect Segment',
+            })}
       </Button>
     </div>
   )

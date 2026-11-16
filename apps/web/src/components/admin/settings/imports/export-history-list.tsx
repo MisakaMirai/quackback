@@ -21,14 +21,16 @@ import { DEFAULT_LOCALE } from '@/lib/shared/i18n'
 import { ArchiveBoxIcon } from '@heroicons/react/24/solid'
 import { settingsQueries } from '@/lib/client/queries/settings'
 import type { ExportRunListItem } from '@/lib/server/functions/data-runs'
+import type { IntlShape } from 'react-intl'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 
 const IN_FLIGHT_STATUSES = new Set<ExportRunListItem['status']>(['pending', 'running'])
 
-const STATUS_LABEL: Record<ExportRunListItem['status'], string> = {
-  pending: 'Queued',
-  running: 'Exporting',
-  completed: 'Completed',
-  failed: 'Failed',
+const STATUS_LABEL: Record<ExportRunListItem['status'], { id: string; defaultMessage: string }> = {
+  pending: { id: 'admin.settings.imports.status.queued', defaultMessage: 'Queued' },
+  running: { id: 'admin.settings.imports.status.exporting', defaultMessage: 'Exporting' },
+  completed: { id: 'portal.status.lifecycle.completed', defaultMessage: 'Completed' },
+  failed: { id: 'admin.settings.imports.status.failed', defaultMessage: 'Failed' },
 }
 
 const STATUS_VARIANT: Record<
@@ -50,7 +52,8 @@ export function formatBytes(bytes: number): string {
 /** "1,204 posts · 5,632 votes · 86 tags +4 more" */
 export function summarizeEntityCounts(
   counts: Record<string, number>,
-  formatNumber: NumberFormatter = (n) => formatNumberIn(DEFAULT_LOCALE, n)
+  formatNumber: NumberFormatter = (n) => formatNumberIn(DEFAULT_LOCALE, n),
+  intl?: IntlShape
 ): string {
   const entries = Object.entries(counts)
   if (entries.length === 0) return '-'
@@ -58,7 +61,14 @@ export function summarizeEntityCounts(
     .slice(0, 3)
     .map(([key, count]) => `${formatNumber(count)} ${key.replace(/_/g, ' ')}`)
   const rest = entries.length - shown.length
-  return rest > 0 ? `${shown.join(' · ')} +${rest} more` : shown.join(' · ')
+  if (rest <= 0) return shown.join(' · ')
+  const more = intl
+    ? intl.formatMessage(
+        { id: 'admin.settings.imports.exportHistory.more', defaultMessage: '+{count} more' },
+        { count: rest }
+      )
+    : `+${rest} more`
+  return `${shown.join(' · ')} ${more}`
 }
 
 function isExpired(run: ExportRunListItem): boolean {
@@ -66,6 +76,7 @@ function isExpired(run: ExportRunListItem): boolean {
 }
 
 export function ExportHistoryList() {
+  const intl = useOptionalIntl()
   const formatNumber = useFormatNumber()
   const { data: runs, isLoading } = useQuery({
     ...settingsQueries.exportRuns(),
@@ -76,15 +87,28 @@ export function ExportHistoryList() {
   })
 
   if (isLoading) {
-    return <p className="text-sm text-muted-foreground">Loading export history...</p>
+    return (
+      <p className="text-sm text-muted-foreground">
+        {intl.formatMessage({
+          id: 'admin.settings.imports.exportHistory.loading',
+          defaultMessage: 'Loading export history...',
+        })}
+      </p>
+    )
   }
 
   if (!runs || runs.length === 0) {
     return (
       <EmptyState
         icon={ArchiveBoxIcon}
-        title="No exports yet"
-        description="Workspace exports you start above show up here with a download link."
+        title={intl.formatMessage({
+          id: 'admin.settings.imports.exportHistory.emptyTitle',
+          defaultMessage: 'No exports yet',
+        })}
+        description={intl.formatMessage({
+          id: 'admin.settings.imports.exportHistory.emptyDescription',
+          defaultMessage: 'Workspace exports you start above show up here with a download link.',
+        })}
         className="py-8"
       />
     )
@@ -95,11 +119,36 @@ export function ExportHistoryList() {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Started</TableHead>
-            <TableHead>Size</TableHead>
-            <TableHead>Contents</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead className="text-right">Download</TableHead>
+            <TableHead>
+              {intl.formatMessage({
+                id: 'admin.settings.imports.started',
+                defaultMessage: 'Started',
+              })}
+            </TableHead>
+            <TableHead>
+              {intl.formatMessage({
+                id: 'admin.settings.imports.columnSize',
+                defaultMessage: 'Size',
+              })}
+            </TableHead>
+            <TableHead>
+              {intl.formatMessage({
+                id: 'admin.settings.imports.exportHistory.contents',
+                defaultMessage: 'Contents',
+              })}
+            </TableHead>
+            <TableHead>
+              {intl.formatMessage({
+                id: 'admin.changelog.filters.status',
+                defaultMessage: 'Status',
+              })}
+            </TableHead>
+            <TableHead className="text-right">
+              {intl.formatMessage({
+                id: 'admin.settings.imports.download',
+                defaultMessage: 'Download',
+              })}
+            </TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -115,20 +164,30 @@ export function ExportHistoryList() {
                 className="max-w-[260px] truncate text-sm text-muted-foreground"
                 title={
                   run.error ??
-                  (run.entityCounts ? summarizeEntityCounts(run.entityCounts, formatNumber) : '')
+                  (run.entityCounts
+                    ? summarizeEntityCounts(run.entityCounts, formatNumber, intl)
+                    : '')
                 }
               >
                 {run.status === 'failed'
-                  ? (run.error ?? 'Export failed')
+                  ? (run.error ??
+                    intl.formatMessage({
+                      id: 'admin.settings.imports.exportHistory.exportFailed',
+                      defaultMessage: 'Export failed',
+                    }))
                   : run.entityCounts
-                    ? summarizeEntityCounts(run.entityCounts, formatNumber)
+                    ? summarizeEntityCounts(run.entityCounts, formatNumber, intl)
                     : '-'}
               </TableCell>
               <TableCell>
                 {run.status === 'completed' ? (
-                  <span className="text-sm text-muted-foreground">{STATUS_LABEL[run.status]}</span>
+                  <span className="text-sm text-muted-foreground">
+                    {intl.formatMessage(STATUS_LABEL[run.status])}
+                  </span>
                 ) : (
-                  <Badge variant={STATUS_VARIANT[run.status]}>{STATUS_LABEL[run.status]}</Badge>
+                  <Badge variant={STATUS_VARIANT[run.status]}>
+                    {intl.formatMessage(STATUS_LABEL[run.status])}
+                  </Badge>
                 )}
               </TableCell>
               <TableCell className="text-right">
@@ -140,7 +199,9 @@ export function ExportHistoryList() {
                     </a>
                   </Button>
                 ) : run.status === 'completed' && isExpired(run) ? (
-                  <span className="text-sm text-muted-foreground">Expired</span>
+                  <span className="text-sm text-muted-foreground">
+                    {intl.formatMessage({ id: 'apiKeys.expired', defaultMessage: 'Expired' })}
+                  </span>
                 ) : (
                   <span className="text-sm text-muted-foreground">-</span>
                 )}

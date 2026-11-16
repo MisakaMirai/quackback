@@ -11,6 +11,7 @@ import { useEffect, useId, useMemo, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import {
   Dialog,
   DialogContent,
@@ -85,6 +86,7 @@ export function ClaimRowDialog({
   const [target, setTarget] = useState<ClaimRowDialogTarget | null>(lockedTarget ?? null)
   const [path, setPath] = useState(initialPath ?? '')
   const descriptionId = useId()
+  const intl = useOptionalIntl()
 
   const firstAvailable = (item: AddClaimTarget | undefined): ClaimRowDialogTarget | null => {
     if (!item) return null
@@ -127,10 +129,25 @@ export function ClaimRowDialog({
 
   const title =
     mode === 'add'
-      ? 'Add mapping'
-      : profileField
-        ? `Edit ${PROFILE_FIELD_SPECS[profileField].label} mapping`
-        : `Edit ${peopleDef?.label ?? 'attribute'} mapping`
+      ? intl.formatMessage({
+          id: 'admin.settings.security.idp.dialog.addTitle',
+          defaultMessage: 'Add mapping',
+        })
+      : intl.formatMessage(
+          {
+            id: 'admin.settings.security.idp.editMapping',
+            defaultMessage: 'Edit {field} mapping',
+          },
+          {
+            field: profileField
+              ? PROFILE_FIELD_SPECS[profileField].label
+              : (peopleDef?.label ??
+                intl.formatMessage({
+                  id: 'admin.settings.security.idp.dialog.attribute',
+                  defaultMessage: 'attribute',
+                })),
+          }
+        )
 
   const canSubmit = (() => {
     if (!resolvedTarget) return false
@@ -184,14 +201,25 @@ export function ClaimRowDialog({
               the picker. */}
           {!lockedTarget && (
             <div className="space-y-1.5">
-              <Label>Set from this provider</Label>
+              <Label>
+                {intl.formatMessage({
+                  id: 'admin.settings.security.idp.dialog.setFromProvider',
+                  defaultMessage: 'Set from this provider',
+                })}
+              </Label>
               {availableTargets.length === 0 ? (
                 <div className="space-y-2 text-sm">
                   <p className="text-muted-foreground">
-                    Define an attribute under Users to map another claim.
+                    {intl.formatMessage({
+                      id: 'admin.settings.security.idp.dialog.defineAttribute',
+                      defaultMessage: 'Define an attribute under Users to map another claim.',
+                    })}
                   </p>
                   <Link to="/admin/settings/people" className={INLINE_LINK}>
-                    Open Users settings
+                    {intl.formatMessage({
+                      id: 'admin.settings.security.idp.dialog.openUsers',
+                      defaultMessage: 'Open Users settings',
+                    })}
                   </Link>
                 </div>
               ) : (
@@ -204,8 +232,18 @@ export function ClaimRowDialog({
                     setTarget({ type: 'people', attributeKey: key })
                   }}
                 >
-                  <SelectTrigger aria-label="Set from this provider">
-                    <SelectValue placeholder="Choose what to set" />
+                  <SelectTrigger
+                    aria-label={intl.formatMessage({
+                      id: 'admin.settings.security.idp.dialog.setFromProvider',
+                      defaultMessage: 'Set from this provider',
+                    })}
+                  >
+                    <SelectValue
+                      placeholder={intl.formatMessage({
+                        id: 'admin.settings.security.idp.dialog.chooseTarget',
+                        defaultMessage: 'Choose what to set',
+                      })}
+                    />
                   </SelectTrigger>
                   <SelectContent>
                     {availableTargets.map((item) => (
@@ -235,7 +273,12 @@ export function ClaimRowDialog({
             />
           ) : resolvedTarget ? (
             <div className="space-y-1.5">
-              <Label>Provider claim</Label>
+              <Label>
+                {intl.formatMessage({
+                  id: 'admin.settings.security.idp.providerClaim',
+                  defaultMessage: 'Provider claim',
+                })}
+              </Label>
               <ClaimPathInput
                 value={path}
                 onChange={setPath}
@@ -246,7 +289,10 @@ export function ClaimRowDialog({
                     ? OIDC_PROFILE_DEFAULTS[resolvedTarget.field]
                     : 'org.department'
                 }
-                ariaLabel="Provider claim"
+                ariaLabel={intl.formatMessage({
+                  id: 'admin.settings.security.idp.providerClaim',
+                  defaultMessage: 'Provider claim',
+                })}
                 capture={capture}
                 suggestionsFor={identityField ? 'identity' : 'attribute'}
                 providerKind={providerKind}
@@ -260,15 +306,29 @@ export function ClaimRowDialog({
           {mode === 'edit' && profileField && (
             <Button type="button" variant="outline" className="mr-auto" onClick={resetProfile}>
               {profileField === 'username'
-                ? 'Use standard claims'
-                : `Use ${OIDC_PROFILE_DEFAULTS[profileField]}`}
+                ? intl.formatMessage({
+                    id: 'admin.settings.security.idp.dialog.useStandardClaims',
+                    defaultMessage: 'Use standard claims',
+                  })
+                : intl.formatMessage(
+                    {
+                      id: 'admin.settings.security.idp.dialog.usePath',
+                      defaultMessage: 'Use {path}',
+                    },
+                    { path: OIDC_PROFILE_DEFAULTS[profileField] }
+                  )}
             </Button>
           )}
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
+            {intl.formatMessage({ id: 'common.cancel', defaultMessage: 'Cancel' })}
           </Button>
           <Button type="button" onClick={apply} disabled={!canSubmit}>
-            {mode === 'add' ? 'Add' : 'Apply'}
+            {mode === 'add'
+              ? intl.formatMessage({ id: 'common.add', defaultMessage: 'Add' })
+              : intl.formatMessage({
+                  id: 'admin.settings.security.idp.apply',
+                  defaultMessage: 'Apply',
+                })}
           </Button>
         </DialogFooter>
       </DialogContent>

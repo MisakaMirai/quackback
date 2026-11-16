@@ -1,5 +1,6 @@
 import { FORM_WIDTH_CLASS } from '@/components/admin/settings/settings-page'
 import { useNavigate } from '@tanstack/react-router'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { PortalAuthTab } from './portal-auth-tab'
 import { SignInProvidersTab } from './sign-in-providers-tab'
@@ -48,6 +49,7 @@ export function AuthSettings({
   // to a route would just append paths under TanStack Router's
   // relative-resolution rules. Same goes for useSearch.
   const navigate = useNavigate()
+  const intl = useOptionalIntl()
 
   return (
     <Tabs
@@ -69,9 +71,24 @@ export function AuthSettings({
       className="space-y-6"
     >
       <TabsList className={FORM_WIDTH_CLASS}>
-        <TabsTrigger value="portal-access">Portal access</TabsTrigger>
-        <TabsTrigger value="sign-in">Sign-in</TabsTrigger>
-        <TabsTrigger value="audit-log">Audit log</TabsTrigger>
+        <TabsTrigger value="portal-access">
+          {intl.formatMessage({
+            id: 'admin.settings.security.tabs.portalAccess',
+            defaultMessage: 'Portal access',
+          })}
+        </TabsTrigger>
+        <TabsTrigger value="sign-in">
+          {intl.formatMessage({
+            id: 'admin.settings.security.tabs.signIn',
+            defaultMessage: 'Sign-in',
+          })}
+        </TabsTrigger>
+        <TabsTrigger value="audit-log">
+          {intl.formatMessage({
+            id: 'admin.settings.security.tabs.auditLog',
+            defaultMessage: 'Audit log',
+          })}
+        </TabsTrigger>
       </TabsList>
 
       <TabsContent value="portal-access">

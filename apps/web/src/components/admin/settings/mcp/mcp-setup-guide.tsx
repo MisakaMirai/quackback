@@ -1,5 +1,6 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, type ReactNode } from 'react'
 import { Link } from '@tanstack/react-router'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import {
   ClipboardDocumentIcon,
   CheckIcon,
@@ -183,8 +184,9 @@ interface ClientDef {
   label: string
   filename: string
   lang: SyntaxLang
+  noteId: string
   note: string
-  variants?: { id: string; label: string; code: (url: string) => string }[]
+  variants?: { id: string; labelId?: string; label: string; code: (url: string) => string }[]
   code?: (url: string) => string
 }
 
@@ -194,10 +196,16 @@ const CLIENTS: ClientDef[] = [
     label: 'Claude Code',
     filename: '.mcp.json',
     lang: 'js',
+    noteId: 'admin.settings.mcp.setup.noteClaudeCode',
     note: 'Add to your project root.',
     variants: [
       { id: 'oauth', label: 'OAuth', code: claudeCodeOAuthConfig },
-      { id: 'api-key', label: 'API key', code: claudeCodeApiKeyConfig },
+      {
+        id: 'api-key',
+        labelId: 'admin.settings.mcp.setup.apiKey',
+        label: 'API key',
+        code: claudeCodeApiKeyConfig,
+      },
     ],
   },
   {
@@ -205,6 +213,7 @@ const CLIENTS: ClientDef[] = [
     label: 'Cursor',
     filename: '.cursor/mcp.json',
     lang: 'js',
+    noteId: 'admin.settings.mcp.setup.noteCursor',
     note: 'Set QUACKBACK_API_KEY in your environment. OAuth is not supported.',
     code: cursorConfig,
   },
@@ -213,6 +222,7 @@ const CLIENTS: ClientDef[] = [
     label: 'VS Code',
     filename: '.vscode/mcp.json',
     lang: 'js',
+    noteId: 'admin.settings.mcp.setup.noteVSCode',
     note: 'VS Code prompts for the API key on first use. Uses "servers" not "mcpServers". OAuth is not supported.',
     code: vscodeConfig,
   },
@@ -221,6 +231,7 @@ const CLIENTS: ClientDef[] = [
     label: 'Windsurf',
     filename: '~/.codeium/windsurf/mcp_config.json',
     lang: 'js',
+    noteId: 'admin.settings.mcp.setup.noteWindsurf',
     note: 'Set QUACKBACK_API_KEY in your environment. Uses "serverUrl" not "url". OAuth is not supported.',
     code: windsurfConfig,
   },
@@ -229,10 +240,16 @@ const CLIENTS: ClientDef[] = [
     label: 'Claude Desktop',
     filename: 'claude_desktop_config.json',
     lang: 'js',
+    noteId: 'admin.settings.mcp.setup.noteClaudeDesktop',
     note: 'Requires mcp-remote bridge (Node.js must be installed).',
     variants: [
       { id: 'oauth', label: 'OAuth', code: claudeDesktopOAuthConfig },
-      { id: 'api-key', label: 'API key', code: claudeDesktopApiKeyConfig },
+      {
+        id: 'api-key',
+        labelId: 'admin.settings.mcp.setup.apiKey',
+        label: 'API key',
+        code: claudeDesktopApiKeyConfig,
+      },
     ],
   },
 ]
@@ -267,6 +284,7 @@ const MCP_TOOLS = [
 // ——————————————————————————————————————————————————
 
 export function McpSetupGuide({ endpointUrl }: McpSetupGuideProps) {
+  const intl = useOptionalIntl()
   const [selectedClient, setSelectedClient] = useState('claude-code')
   const [selectedVariant, setSelectedVariant] = useState('oauth')
   const { copied: copiedCode, copy: copyCode } = useCopyToClipboard()
@@ -309,9 +327,17 @@ export function McpSetupGuide({ endpointUrl }: McpSetupGuideProps) {
         <div className="flex flex-col divide-y divide-border">
           {/* Header */}
           <div className="px-4 py-3 sm:px-6 sm:py-4">
-            <h2 className="text-base font-semibold">Setup guide</h2>
+            <h2 className="text-base font-semibold">
+              {intl.formatMessage({
+                id: 'admin.settings.mcp.setup.title',
+                defaultMessage: 'Setup guide',
+              })}
+            </h2>
             <p className="text-xs text-muted-foreground mt-1">
-              Connect an AI tool to your MCP server
+              {intl.formatMessage({
+                id: 'admin.settings.mcp.setup.subtitle',
+                defaultMessage: 'Connect an AI tool to your MCP server',
+              })}
             </p>
           </div>
 
@@ -321,7 +347,12 @@ export function McpSetupGuide({ endpointUrl }: McpSetupGuideProps) {
               <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary/10 text-primary text-[11px] font-bold shrink-0">
                 1
               </span>
-              <span className="text-xs font-medium text-foreground">Endpoint</span>
+              <span className="text-xs font-medium text-foreground">
+                {intl.formatMessage({
+                  id: 'admin.settings.mcp.setup.endpoint',
+                  defaultMessage: 'Endpoint',
+                })}
+              </span>
             </div>
             <div className="ml-7">
               <button
@@ -349,18 +380,32 @@ export function McpSetupGuide({ endpointUrl }: McpSetupGuideProps) {
               <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary/10 text-primary text-[11px] font-bold shrink-0">
                 2
               </span>
-              <span className="text-xs font-medium text-foreground">Authentication</span>
+              <span className="text-xs font-medium text-foreground">
+                {intl.formatMessage({
+                  id: 'admin.settings.mcp.setup.authentication',
+                  defaultMessage: 'Authentication',
+                })}
+              </span>
             </div>
             <p className="text-[11px] text-muted-foreground ml-7">
-              Use an{' '}
-              <Link
-                to="/admin/settings/developers"
-                search={{ tab: 'keys' as const }}
-                className={INLINE_LINK}
-              >
-                API key
-              </Link>{' '}
-              or OAuth (browser login, recommended). Claude Code and Claude Desktop support both.
+              {intl.formatMessage(
+                {
+                  id: 'admin.settings.mcp.setup.authBody',
+                  defaultMessage:
+                    'Use an <link>API key</link> or OAuth (browser login, recommended). Claude Code and Claude Desktop support both.',
+                },
+                {
+                  link: (chunks: ReactNode) => (
+                    <Link
+                      to="/admin/settings/developers"
+                      search={{ tab: 'keys' as const }}
+                      className={INLINE_LINK}
+                    >
+                      {chunks}
+                    </Link>
+                  ),
+                }
+              )}
             </p>
           </div>
 
@@ -371,8 +416,18 @@ export function McpSetupGuide({ endpointUrl }: McpSetupGuideProps) {
                 3
               </span>
               <div>
-                <span className="text-xs font-medium text-foreground">Choose your client</span>
-                <p className="text-[11px] text-muted-foreground">Add the config to your project</p>
+                <span className="text-xs font-medium text-foreground">
+                  {intl.formatMessage({
+                    id: 'admin.settings.mcp.setup.chooseClient',
+                    defaultMessage: 'Choose your client',
+                  })}
+                </span>
+                <p className="text-[11px] text-muted-foreground">
+                  {intl.formatMessage({
+                    id: 'admin.settings.mcp.setup.addConfig',
+                    defaultMessage: 'Add the config to your project',
+                  })}
+                </p>
               </div>
             </div>
 
@@ -415,7 +470,9 @@ export function McpSetupGuide({ endpointUrl }: McpSetupGuideProps) {
                           : 'text-muted-foreground hover:text-foreground'
                       )}
                     >
-                      {v.label}
+                      {v.labelId
+                        ? intl.formatMessage({ id: v.labelId, defaultMessage: v.label })
+                        : v.label}
                     </button>
                   ))}
                 </div>
@@ -441,12 +498,22 @@ export function McpSetupGuide({ endpointUrl }: McpSetupGuideProps) {
                     {copiedCode ? (
                       <>
                         <CheckIcon className="h-3 w-3 text-success" />
-                        <span className="text-success">Copied</span>
+                        <span className="text-success">
+                          {intl.formatMessage({
+                            id: 'common.dns.copied',
+                            defaultMessage: 'Copied',
+                          })}
+                        </span>
                       </>
                     ) : (
                       <>
                         <ClipboardDocumentIcon className="h-3 w-3" />
-                        <span>Copy</span>
+                        <span>
+                          {intl.formatMessage({
+                            id: 'admin.settings.security.recoveryCodes.copy',
+                            defaultMessage: 'Copy',
+                          })}
+                        </span>
                       </>
                     )}
                   </button>
@@ -459,7 +526,9 @@ export function McpSetupGuide({ endpointUrl }: McpSetupGuideProps) {
               </div>
 
               {/* Client note */}
-              <p className="text-[11px] text-muted-foreground">{client.note}</p>
+              <p className="text-[11px] text-muted-foreground">
+                {intl.formatMessage({ id: client.noteId, defaultMessage: client.note })}
+              </p>
             </div>
           </div>
 
@@ -467,7 +536,14 @@ export function McpSetupGuide({ endpointUrl }: McpSetupGuideProps) {
           <div className="p-4 sm:p-6 space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-xs font-medium text-foreground">
-                {MCP_TOOLS.length} tools available
+                {intl.formatMessage(
+                  {
+                    id: 'admin.settings.mcp.setup.toolsAvailable',
+                    defaultMessage:
+                      '{count, plural, one {# tool available} other {# tools available}}',
+                  },
+                  { count: MCP_TOOLS.length }
+                )}
               </span>
               <a
                 href="https://www.quackback.io/docs/mcp/reference"
@@ -475,7 +551,10 @@ export function McpSetupGuide({ endpointUrl }: McpSetupGuideProps) {
                 rel="noopener noreferrer"
                 className={`${INLINE_LINK} inline-flex items-center gap-1 text-[11px]`}
               >
-                Reference
+                {intl.formatMessage({
+                  id: 'common.reference',
+                  defaultMessage: 'Reference',
+                })}
                 <NewTabHint />
                 <ArrowTopRightOnSquareIcon className="h-3 w-3" />
               </a>

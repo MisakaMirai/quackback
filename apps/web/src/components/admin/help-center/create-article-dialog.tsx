@@ -18,6 +18,7 @@ import { Dialog, DialogContent, DialogTitle, DialogTrigger } from '@/components/
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 import { NewButton } from '@/components/shared/new-button'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { Cog6ToothIcon } from '@heroicons/react/24/solid'
 import { Form } from '@/components/ui/form'
 import { HelpCenterFormFields } from './help-center-form-fields'
@@ -45,6 +46,7 @@ export function CreateArticleDialog({
   onOpenChange,
   onPublished,
 }: CreateArticleDialogProps = {}) {
+  const intl = useOptionalIntl()
   const [internalOpen, setInternalOpen] = useState(false)
   const isControlled = openProp !== undefined
   const open = isControlled ? openProp : internalOpen
@@ -110,7 +112,15 @@ export function CreateArticleDialog({
           articleId = (await createArticleMutation.mutateAsync(content)).id
         }
       } catch (error) {
-        setSaveError(errorText(error, "Couldn't save article"))
+        setSaveError(
+          errorText(
+            error,
+            intl.formatMessage({
+              id: 'admin.helpCenter.create.saveError',
+              defaultMessage: "Couldn't save article",
+            })
+          )
+        )
         return
       }
       try {
@@ -119,7 +129,15 @@ export function CreateArticleDialog({
         const message = error instanceof Error ? error.message : String(error)
         setSavedDraftId(articleId)
         // Stay open, so whoever clicked Publish sees it is not live yet.
-        setSaveError(`Saved as a draft, but not published: ${message}`)
+        setSaveError(
+          intl.formatMessage(
+            {
+              id: 'admin.helpCenter.create.draftNotPublished',
+              defaultMessage: 'Saved as a draft, but not published: {message}',
+            },
+            { message }
+          )
+        )
         return
       }
       handleOpenChange(false)
@@ -164,7 +182,12 @@ export function CreateArticleDialog({
         onKeyDown={handleKeyDown}
         showCloseButton={false}
       >
-        <DialogTitle className="sr-only">Create help article</DialogTitle>
+        <DialogTitle className="sr-only">
+          {intl.formatMessage({
+            id: 'admin.helpCenter.create.title',
+            defaultMessage: 'Create help article',
+          })}
+        </DialogTitle>
 
         <Form {...form}>
           <form onSubmit={handleSubmit} className="flex flex-col h-full">
@@ -188,25 +211,51 @@ export function CreateArticleDialog({
 
             <ModalFooter
               onCancel={() => handleOpenChange(false)}
-              submitLabel={isPending ? 'Saving...' : canPublish ? 'Publish' : 'Save draft'}
+              submitLabel={
+                isPending
+                  ? intl.formatMessage({
+                      id: 'admin.helpCenter.actions.saving',
+                      defaultMessage: 'Saving...',
+                    })
+                  : canPublish
+                    ? intl.formatMessage({
+                        id: 'admin.helpCenter.actions.publish',
+                        defaultMessage: 'Publish',
+                      })
+                    : intl.formatMessage({
+                        id: 'admin.helpCenter.actions.saveDraft',
+                        defaultMessage: 'Save draft',
+                      })
+              }
               isPending={isPending}
               {...(canPublish ? { submitType: 'button' as const, onSubmit: handlePublish } : {})}
             >
               {canPublish && (
                 <Button type="submit" variant="outline" size="sm" disabled={isPending}>
-                  Save draft
+                  {intl.formatMessage({
+                    id: 'admin.helpCenter.actions.saveDraft',
+                    defaultMessage: 'Save draft',
+                  })}
                 </Button>
               )}
               <Sheet open={mobileSettingsOpen} onOpenChange={setMobileSettingsOpen}>
                 <SheetTrigger asChild>
                   <Button type="button" variant="outline" size="sm" className="lg:hidden">
                     <Cog6ToothIcon className="h-4 w-4 mr-1.5" />
-                    Settings
+                    {intl.formatMessage({
+                      id: 'admin.helpCenter.actions.settings',
+                      defaultMessage: 'Settings',
+                    })}
                   </Button>
                 </SheetTrigger>
                 <SheetContent side="bottom" className="h-[70vh]">
                   <SheetHeader>
-                    <SheetTitle>Article settings</SheetTitle>
+                    <SheetTitle>
+                      {intl.formatMessage({
+                        id: 'admin.helpCenter.settings.title',
+                        defaultMessage: 'Article settings',
+                      })}
+                    </SheetTitle>
                   </SheetHeader>
                   <div className="py-4 overflow-y-auto">
                     <HelpCenterMetadataSidebarContent

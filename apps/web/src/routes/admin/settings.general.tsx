@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useIntl } from 'react-intl'
 import { PERMISSIONS } from '@/lib/shared/permissions'
 import { assertRoutePermission } from '@/lib/shared/route-permission'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
@@ -34,8 +35,32 @@ const searchSchema = z.object({
   focus: z.enum(['logo']).optional().catch(undefined),
 })
 
+/** Message ids for the product module rows; the shared definitions keep the English source. */
+const PRODUCT_COPY: Record<ProductId, { labelId: string; descriptionId: string }> = {
+  feedback: {
+    labelId: 'admin.settings.general.product.feedback.label',
+    descriptionId: 'admin.settings.general.product.feedback.description',
+  },
+  support: {
+    labelId: 'admin.settings.general.product.support.label',
+    descriptionId: 'admin.settings.general.product.support.description',
+  },
+  helpCenter: {
+    labelId: 'admin.settings.general.product.helpCenter.label',
+    descriptionId: 'admin.settings.general.product.helpCenter.description',
+  },
+  changelog: {
+    labelId: 'admin.settings.general.product.changelog.label',
+    descriptionId: 'admin.settings.general.product.changelog.description',
+  },
+  status: {
+    labelId: 'admin.settings.general.product.status.label',
+    descriptionId: 'admin.settings.general.product.status.description',
+  },
+}
+
 export const Route = createFileRoute('/admin/settings/general')({
-  head: adminPageHead('General settings'),
+  head: adminPageHead('General settings', 'admin.pageTitle.generalSettings'),
   validateSearch: searchSchema,
   loader: async ({ context }) => {
     assertRoutePermission(context.permissions, PERMISSIONS.SETTINGS_MANAGE)
@@ -47,6 +72,7 @@ export const Route = createFileRoute('/admin/settings/general')({
 })
 
 function GeneralSettingsPage() {
+  const intl = useIntl()
   const settings = useWorkspaceSettings()
   const managedFieldPaths = useManagedFieldPaths()
   const { focus } = Route.useSearch()
@@ -125,24 +151,40 @@ function GeneralSettingsPage() {
       />
 
       <SettingsCard
-        title="Modules"
-        description="Choose the Quackback modules available to your team and customers."
+        title={intl.formatMessage({
+          id: 'admin.settings.general.modules.title',
+          defaultMessage: 'Modules',
+        })}
+        description={intl.formatMessage({
+          id: 'admin.settings.general.modules.description',
+          defaultMessage: 'Choose the Quackback modules available to your team and customers.',
+        })}
       >
         <SettingRows>
           {PRODUCT_DEFINITIONS.map((product) => {
             // The public portal homepage is the feedback board, so turning this
             // one off leaves the portal root with nothing to render.
             const alwaysOn = product.id === 'feedback'
+            const copy = PRODUCT_COPY[product.id]
             return (
               <SettingRow
                 key={product.id}
-                label={product.label}
-                description={product.description}
+                label={intl.formatMessage({
+                  id: copy.labelId,
+                  defaultMessage: product.label,
+                })}
+                description={intl.formatMessage({
+                  id: copy.descriptionId,
+                  defaultMessage: product.description,
+                })}
                 htmlFor={alwaysOn ? undefined : `product-${product.id}`}
                 control={
                   alwaysOn ? (
                     <Badge id={`product-${product.id}`} variant="secondary">
-                      Always on
+                      {intl.formatMessage({
+                        id: 'admin.settings.general.modules.alwaysOn',
+                        defaultMessage: 'Always on',
+                      })}
                     </Badge>
                   ) : (
                     <Switch

@@ -9,6 +9,7 @@
  */
 
 import { useState, useRef, useMemo, useEffect, type ReactNode, type CSSProperties } from 'react'
+import type { IntlShape } from 'react-intl'
 import {
   ArrowPathIcon,
   XMarkIcon,
@@ -39,6 +40,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { cn } from '@/lib/shared/utils'
 import {
   useAddNotificationChannel,
@@ -96,6 +98,7 @@ interface NotificationChannelRouterProps<TChannel extends Channel> {
 export function NotificationChannelRouter<TChannel extends Channel>(
   props: NotificationChannelRouterProps<TChannel>
 ) {
+  const intl = useOptionalIntl()
   const [addDialogOpen, setAddDialogOpen] = useState(false)
   const existingChannelIds = useMemo(
     () => props.notificationChannels.map((c) => c.channelId),
@@ -108,7 +111,12 @@ export function NotificationChannelRouter<TChannel extends Channel>(
 
       {props.notificationChannels.length === 0 ? (
         <div className="rounded-lg border border-dashed border-border/50 p-8 text-center">
-          <p className="text-sm text-muted-foreground">No notification channels configured yet.</p>
+          <p className="text-sm text-muted-foreground">
+            {intl.formatMessage({
+              id: 'admin.integrations.routing.empty',
+              defaultMessage: 'No notification channels configured yet.',
+            })}
+          </p>
           <Button
             variant="outline"
             size="sm"
@@ -117,7 +125,10 @@ export function NotificationChannelRouter<TChannel extends Channel>(
             disabled={!props.enabled}
           >
             <PlusIcon className="h-3.5 w-3.5" />
-            Add your first channel
+            {intl.formatMessage({
+              id: 'admin.integrations.routing.addFirstChannel',
+              defaultMessage: 'Add your first channel',
+            })}
           </Button>
         </div>
       ) : (
@@ -153,14 +164,44 @@ export function NotificationChannelRouter<TChannel extends Channel>(
 // Helpers
 // ============================================
 
-function getBoardSummary(channel: NotificationChannel, boards: Board[]): string {
-  if (!channel.boardIds?.length) return 'All boards'
-  if (channel.boardIds.length === 1) {
-    return boards.find((b) => b.id === channel.boardIds![0])?.name ?? '1 board'
+function getBoardSummary(intl: IntlShape, channel: NotificationChannel, boards: Board[]): string {
+  const boardIds = channel.boardIds
+  if (!boardIds || boardIds.length === 0) {
+    return intl.formatMessage({
+      id: 'admin.integrations.routing.allBoards',
+      defaultMessage: 'All boards',
+    })
   }
-  const firstName = boards.find((b) => b.id === channel.boardIds![0])?.name
-  if (firstName) return `${firstName} + ${channel.boardIds.length - 1} more`
-  return `${channel.boardIds.length} boards`
+  const count = boardIds.length
+  if (count === 1) {
+    return (
+      boards.find((b) => b.id === boardIds[0])?.name ??
+      intl.formatMessage(
+        {
+          id: 'admin.integrations.routing.boardCount',
+          defaultMessage: '{count, plural, one {# board} other {# boards}}',
+        },
+        { count }
+      )
+    )
+  }
+  const firstName = boards.find((b) => b.id === boardIds[0])?.name
+  if (firstName) {
+    return intl.formatMessage(
+      {
+        id: 'admin.integrations.routing.boardAndMore',
+        defaultMessage: '{name} + {count} more',
+      },
+      { name: firstName, count: count - 1 }
+    )
+  }
+  return intl.formatMessage(
+    {
+      id: 'admin.integrations.routing.boardCount',
+      defaultMessage: '{count, plural, one {# board} other {# boards}}',
+    },
+    { count }
+  )
 }
 
 /**
@@ -214,7 +255,7 @@ function ChannelPicker<TChannel extends Channel>({
   loading,
   onRefresh,
   renderChannelIcon,
-  placeholder = 'Select a channel...',
+  placeholder,
 }: {
   channels: TChannel[]
   value: string
@@ -224,11 +265,18 @@ function ChannelPicker<TChannel extends Channel>({
   renderChannelIcon: (channel: TChannel | undefined) => ReactNode
   placeholder?: string
 }) {
+  const intl = useOptionalIntl()
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
 
   const selected = channels.find((c) => c.id === value)
+  const placeholderText =
+    placeholder ??
+    intl.formatMessage({
+      id: 'admin.integrations.routing.channelPlaceholder',
+      defaultMessage: 'Select a channel...',
+    })
   const filtered = useMemo(
     () =>
       search
@@ -243,14 +291,20 @@ function ChannelPicker<TChannel extends Channel>({
         <Button
           variant="outline"
           role="combobox"
-          aria-label="Channel"
+          aria-label={intl.formatMessage({
+            id: 'admin.integrations.config.channel',
+            defaultMessage: 'Channel',
+          })}
           aria-expanded={open}
           className="w-full justify-between font-normal"
         >
           {loading ? (
             <span className="flex items-center gap-2 text-muted-foreground">
               <ArrowPathIcon className="h-4 w-4 animate-spin" />
-              Loading channels...
+              {intl.formatMessage({
+                id: 'admin.integrations.config.loadingChannels',
+                defaultMessage: 'Loading channels...',
+              })}
             </span>
           ) : selected ? (
             <span className="flex items-center gap-2">
@@ -258,7 +312,7 @@ function ChannelPicker<TChannel extends Channel>({
               {selected.name}
             </span>
           ) : (
-            <span className="text-muted-foreground">{placeholder}</span>
+            <span className="text-muted-foreground">{placeholderText}</span>
           )}
           <ChevronUpDownIcon className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
@@ -270,7 +324,10 @@ function ChannelPicker<TChannel extends Channel>({
             ref={inputRef}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search channels..."
+            placeholder={intl.formatMessage({
+              id: 'admin.integrations.routing.searchChannels',
+              defaultMessage: 'Search channels...',
+            })}
             className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
           />
           {onRefresh && (
@@ -279,7 +336,10 @@ function ChannelPicker<TChannel extends Channel>({
               onClick={onRefresh}
               disabled={loading}
               className="text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
-              title="Refresh channels"
+              title={intl.formatMessage({
+                id: 'admin.integrations.routing.refreshChannels',
+                defaultMessage: 'Refresh channels',
+              })}
             >
               <ArrowPathIcon className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
             </button>
@@ -288,7 +348,15 @@ function ChannelPicker<TChannel extends Channel>({
         <div className="max-h-[200px] overflow-y-auto p-1">
           {filtered.length === 0 ? (
             <div className="px-2 py-4 text-center text-sm text-muted-foreground">
-              {search ? 'No channels match your search.' : 'No channels available.'}
+              {search
+                ? intl.formatMessage({
+                    id: 'admin.integrations.routing.noChannelsMatch',
+                    defaultMessage: 'No channels match your search.',
+                  })
+                : intl.formatMessage({
+                    id: 'admin.integrations.routing.noChannelsAvailable',
+                    defaultMessage: 'No channels available.',
+                  })}
             </div>
           ) : (
             filtered.map((channel) => {
@@ -298,7 +366,14 @@ function ChannelPicker<TChannel extends Channel>({
                   key={channel.id}
                   type="button"
                   disabled={blocked}
-                  title={blocked ? 'Give the bot access to this channel, then refresh' : undefined}
+                  title={
+                    blocked
+                      ? intl.formatMessage({
+                          id: 'admin.integrations.routing.grantBotAccess',
+                          defaultMessage: 'Give the bot access to this channel, then refresh',
+                        })
+                      : undefined
+                  }
                   className={cn(
                     'flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm transition-colors',
                     channel.id === value ? 'bg-accent text-accent-foreground' : 'hover:bg-muted/50',
@@ -312,7 +387,14 @@ function ChannelPicker<TChannel extends Channel>({
                 >
                   {renderChannelIcon(channel)}
                   <span className="truncate">{channel.name}</span>
-                  {blocked && <span className="ml-auto shrink-0 text-xs">No access</span>}
+                  {blocked && (
+                    <span className="ml-auto shrink-0 text-xs">
+                      {intl.formatMessage({
+                        id: 'admin.integrations.routing.noAccess',
+                        defaultMessage: 'No access',
+                      })}
+                    </span>
+                  )}
                 </button>
               )
             })
@@ -332,7 +414,7 @@ function BoardFilterCombobox({
   boards,
   onBoardIdsChange,
   disabled,
-  ariaLabel = 'Board filter',
+  ariaLabel,
 }: {
   boardIds: string[] | null
   boards: Board[]
@@ -340,17 +422,29 @@ function BoardFilterCombobox({
   disabled?: boolean
   ariaLabel?: string
 }) {
+  const intl = useOptionalIntl()
   const [open, setOpen] = useState(false)
   const isAllBoards = !boardIds?.length
   const selectedSet = useMemo(() => new Set(boardIds ?? []), [boardIds])
 
-  const triggerLabel = useMemo(() => {
-    if (isAllBoards) return 'All boards'
-    if (boardIds!.length === 1) {
-      return boards.find((b) => b.id === boardIds![0])?.name ?? '1 board'
-    }
-    return `${boardIds!.length} boards`
-  }, [isAllBoards, boardIds, boards])
+  const allBoardsLabel = intl.formatMessage({
+    id: 'admin.integrations.routing.allBoards',
+    defaultMessage: 'All boards',
+  })
+  const countLabel = (count: number) =>
+    intl.formatMessage(
+      {
+        id: 'admin.integrations.routing.boardCount',
+        defaultMessage: '{count, plural, one {# board} other {# boards}}',
+      },
+      { count }
+    )
+
+  const triggerLabel = isAllBoards
+    ? allBoardsLabel
+    : boardIds!.length === 1
+      ? (boards.find((b) => b.id === boardIds![0])?.name ?? countLabel(1))
+      : countLabel(boardIds!.length)
 
   const toggleBoard = (id: string) => {
     if (selectedSet.has(id)) {
@@ -368,7 +462,13 @@ function BoardFilterCombobox({
           type="button"
           variant="outline"
           role="combobox"
-          aria-label={ariaLabel}
+          aria-label={
+            ariaLabel ??
+            intl.formatMessage({
+              id: 'admin.integrations.routing.boardFilter',
+              defaultMessage: 'Board filter',
+            })
+          }
           aria-expanded={open}
           disabled={disabled}
           className="w-full justify-between font-normal"
@@ -382,9 +482,19 @@ function BoardFilterCombobox({
       <PopoverContent align="start" className="w-(--anchor-width) p-0">
         {open && (
           <Command>
-            <CommandInput placeholder="Search boards..." />
+            <CommandInput
+              placeholder={intl.formatMessage({
+                id: 'admin.integrations.routing.searchBoards',
+                defaultMessage: 'Search boards...',
+              })}
+            />
             <CommandList>
-              <CommandEmpty>No boards found.</CommandEmpty>
+              <CommandEmpty>
+                {intl.formatMessage({
+                  id: 'admin.integrations.routing.noBoardsFound',
+                  defaultMessage: 'No boards found.',
+                })}
+              </CommandEmpty>
               <CommandGroup>
                 <CommandItem
                   value="__all_boards__"
@@ -396,7 +506,7 @@ function BoardFilterCombobox({
                   <CheckIcon
                     className={cn('mr-2 h-4 w-4', isAllBoards ? 'opacity-100' : 'opacity-0')}
                   />
-                  All boards
+                  {allBoardsLabel}
                 </CommandItem>
               </CommandGroup>
               {boards.length > 0 && <CommandSeparator />}
@@ -452,6 +562,7 @@ function ChannelRow<TChannel extends Channel>({
   events: EventConfig[]
   renderChannelIcon: (c: TChannel | undefined) => ReactNode
 }) {
+  const intl = useOptionalIntl()
   const updateMutation = useUpdateNotificationChannel()
   const removeMutation = useRemoveNotificationChannel()
   const [confirmRemove, setConfirmRemove] = useState(false)
@@ -519,7 +630,7 @@ function ChannelRow<TChannel extends Channel>({
               <span className="max-w-full text-sm font-medium truncate">{channelName}</span>
               {hasFilter && (
                 <span className="max-w-full text-[11px] text-muted-foreground truncate">
-                  {getBoardSummary(channel, boards)}
+                  {getBoardSummary(intl, channel, boards)}
                 </span>
               )}
             </div>
@@ -534,7 +645,13 @@ function ChannelRow<TChannel extends Channel>({
                 onClick={(e) => e.stopPropagation()}
               >
                 <Checkbox
-                  aria-label={`${event.label} for #${channelName}`}
+                  aria-label={intl.formatMessage(
+                    {
+                      id: 'admin.integrations.routing.eventToggleAria',
+                      defaultMessage: '{event} for #{channel}',
+                    },
+                    { event: event.label, channel: channelName }
+                  )}
                   checked={enabled}
                   onCheckedChange={(checked) => handleEventToggle(event.id, checked === true)}
                   disabled={disabled || saving}
@@ -546,7 +663,11 @@ function ChannelRow<TChannel extends Channel>({
 
         {updateMutation.isError && (
           <p className="px-4 pb-3 pl-11 text-sm text-destructive">
-            {updateMutation.error.message || "Couldn't save the change. Try again."}
+            {updateMutation.error.message ||
+              intl.formatMessage({
+                id: 'admin.integrations.routing.saveFailed',
+                defaultMessage: "Couldn't save the change. Try again.",
+              })}
           </p>
         )}
 
@@ -554,7 +675,12 @@ function ChannelRow<TChannel extends Channel>({
           <div className="border-t border-border/30 bg-muted/5 px-4 pb-4">
             <div className="pl-10 pt-3 space-y-3">
               <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">Board filter</Label>
+                <Label className="text-xs text-muted-foreground">
+                  {intl.formatMessage({
+                    id: 'admin.integrations.routing.boardFilter',
+                    defaultMessage: 'Board filter',
+                  })}
+                </Label>
                 <BoardFilterCombobox
                   boardIds={channel.boardIds}
                   boards={boards}
@@ -571,7 +697,10 @@ function ChannelRow<TChannel extends Channel>({
                   disabled={disabled}
                 >
                   <XMarkIcon className="h-3.5 w-3.5 mr-1" />
-                  Remove channel
+                  {intl.formatMessage({
+                    id: 'admin.integrations.routing.removeChannel',
+                    defaultMessage: 'Remove channel',
+                  })}
                 </Button>
               </div>
             </div>
@@ -582,27 +711,47 @@ function ChannelRow<TChannel extends Channel>({
       <Dialog open={confirmRemove} onOpenChange={handleConfirmRemoveChange}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Remove notification channel</DialogTitle>
+            <DialogTitle>
+              {intl.formatMessage({
+                id: 'admin.integrations.routing.removeTitle',
+                defaultMessage: 'Remove notification channel',
+              })}
+            </DialogTitle>
             <DialogDescription>
-              Stop sending notifications to #{channelName}? This will delete all event mappings for
-              this channel.
+              {intl.formatMessage(
+                {
+                  id: 'admin.integrations.routing.removeDescription',
+                  defaultMessage:
+                    'Stop sending notifications to #{channel}? This will delete all event mappings for this channel.',
+                },
+                { channel: channelName }
+              )}
             </DialogDescription>
           </DialogHeader>
           {removeMutation.isError && (
             <p className="text-sm text-destructive">
-              {removeMutation.error.message || "Couldn't remove the channel. Try again."}
+              {removeMutation.error.message ||
+                intl.formatMessage({
+                  id: 'admin.integrations.routing.removeFailed',
+                  defaultMessage: "Couldn't remove the channel. Try again.",
+                })}
             </p>
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => handleConfirmRemoveChange(false)}>
-              Cancel
+              {intl.formatMessage({ id: 'common.cancel', defaultMessage: 'Cancel' })}
             </Button>
             <Button
               variant="destructive"
               onClick={handleRemove}
               disabled={removeMutation.isPending}
             >
-              {removeMutation.isPending ? 'Removing...' : 'Remove'}
+              {removeMutation.isPending
+                ? intl.formatMessage({
+                    id: 'admin.integrations.routing.removing',
+                    defaultMessage: 'Removing...',
+                  })
+                : intl.formatMessage({ id: 'common.remove', defaultMessage: 'Remove' })}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -625,13 +774,17 @@ function RoutingTable<TChannel extends Channel>({
   renderChannelIcon,
   onAddChannel,
 }: RoutingTableProps<TChannel>) {
+  const intl = useOptionalIntl()
   const [expandedId, setExpandedId] = useState<string | null>(null)
 
   return (
     <div
       className="rounded-lg border border-border/50 overflow-x-auto"
       role="region"
-      aria-label="Notification channel routing"
+      aria-label={intl.formatMessage({
+        id: 'admin.integrations.routing.tableAria',
+        defaultMessage: 'Notification channel routing',
+      })}
       tabIndex={0}
     >
       <div style={{ minWidth: `${12 + events.length * 5}rem` }}>
@@ -640,7 +793,10 @@ function RoutingTable<TChannel extends Channel>({
           style={tableGridStyle(events.length)}
         >
           <div className="px-4 py-2 text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
-            Channel
+            {intl.formatMessage({
+              id: 'admin.integrations.config.channel',
+              defaultMessage: 'Channel',
+            })}
           </div>
           {events.map((event) => (
             <div
@@ -679,7 +835,10 @@ function RoutingTable<TChannel extends Channel>({
             disabled={disabled}
           >
             <PlusIcon className="h-3.5 w-3.5" />
-            Add channel
+            {intl.formatMessage({
+              id: 'admin.integrations.routing.addChannel',
+              defaultMessage: 'Add channel',
+            })}
           </button>
         )}
       </div>
@@ -703,6 +862,7 @@ function AddChannelDialog<TChannel extends Channel>({
   renderChannelIcon,
   onRefreshChannels,
 }: AddChannelDialogProps<TChannel>) {
+  const intl = useOptionalIntl()
   const addMutation = useAddNotificationChannel()
   const [selectedChannelId, setSelectedChannelId] = useState('')
   const [selectedEvents, setSelectedEvents] = useState<Record<string, boolean>>(() =>
@@ -754,13 +914,28 @@ function AddChannelDialog<TChannel extends Channel>({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Add notification channel</DialogTitle>
-          <DialogDescription>Route events to a channel.</DialogDescription>
+          <DialogTitle>
+            {intl.formatMessage({
+              id: 'admin.integrations.routing.addTitle',
+              defaultMessage: 'Add notification channel',
+            })}
+          </DialogTitle>
+          <DialogDescription>
+            {intl.formatMessage({
+              id: 'admin.integrations.routing.addDescription',
+              defaultMessage: 'Route events to a channel.',
+            })}
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
           <div className="space-y-1.5">
-            <Label>Channel</Label>
+            <Label>
+              {intl.formatMessage({
+                id: 'admin.integrations.config.channel',
+                defaultMessage: 'Channel',
+              })}
+            </Label>
             <ChannelPicker<TChannel>
               channels={availableChannels}
               value={channelId}
@@ -776,7 +951,12 @@ function AddChannelDialog<TChannel extends Channel>({
 
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <Label>Events</Label>
+              <Label>
+                {intl.formatMessage({
+                  id: 'admin.integrations.config.events',
+                  defaultMessage: 'Events',
+                })}
+              </Label>
               <button
                 type="button"
                 onClick={() => {
@@ -785,7 +965,15 @@ function AddChannelDialog<TChannel extends Channel>({
                 }}
                 className="text-xs text-muted-foreground hover:text-foreground transition-colors"
               >
-                {allEventsSelected ? 'Deselect all' : 'Select all'}
+                {allEventsSelected
+                  ? intl.formatMessage({
+                      id: 'admin.integrations.routing.deselectAll',
+                      defaultMessage: 'Deselect all',
+                    })
+                  : intl.formatMessage({
+                      id: 'admin.integrations.routing.selectAll',
+                      defaultMessage: 'Select all',
+                    })}
               </button>
             </div>
             <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
@@ -812,7 +1000,12 @@ function AddChannelDialog<TChannel extends Channel>({
           </div>
 
           <div className="space-y-1.5">
-            <Label>Board filter</Label>
+            <Label>
+              {intl.formatMessage({
+                id: 'admin.integrations.routing.boardFilter',
+                defaultMessage: 'Board filter',
+              })}
+            </Label>
             <BoardFilterCombobox
               boardIds={boardIds}
               boards={boards}
@@ -823,20 +1016,32 @@ function AddChannelDialog<TChannel extends Channel>({
 
           {addMutation.isError && (
             <p className="text-sm text-destructive">
-              {addMutation.error.message || "Couldn't add the channel. Try again."}
+              {addMutation.error.message ||
+                intl.formatMessage({
+                  id: 'admin.integrations.routing.addFailed',
+                  defaultMessage: "Couldn't add the channel. Try again.",
+                })}
             </p>
           )}
         </div>
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
+            {intl.formatMessage({ id: 'common.cancel', defaultMessage: 'Cancel' })}
           </Button>
           <Button
             onClick={handleSave}
             disabled={!channelId || noEventsSelected || addMutation.isPending}
           >
-            {addMutation.isPending ? 'Adding...' : 'Add channel'}
+            {addMutation.isPending
+              ? intl.formatMessage({
+                  id: 'admin.integrations.routing.adding',
+                  defaultMessage: 'Adding...',
+                })
+              : intl.formatMessage({
+                  id: 'admin.integrations.routing.addChannel',
+                  defaultMessage: 'Add channel',
+                })}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -50,11 +50,6 @@ import { TimeAgo } from '@/components/ui/time-ago'
 import { FormattedMessage, useIntl } from 'react-intl'
 import type { KbArticleId } from '@quackback/ids'
 
-const SORT_OPTIONS = [
-  { value: 'newest', label: 'Newest' },
-  { value: 'oldest', label: 'Oldest' },
-]
-
 function HelpCenterListSkeleton() {
   return (
     <div className="overflow-hidden divide-y divide-border/50 border-y border-t-transparent border-border/50">
@@ -107,6 +102,26 @@ function LiveHelpCenterFinder({
 }: HelpCenterFinderProps) {
   const intl = useIntl()
   const { filters, setFilters, clearFilters, hasActiveFilters } = useHelpCenterFilters()
+
+  const sortOptions = useMemo(
+    () => [
+      {
+        value: 'newest',
+        label: intl.formatMessage({
+          id: 'admin.helpCenter.sort.newest',
+          defaultMessage: 'Newest',
+        }),
+      },
+      {
+        value: 'oldest',
+        label: intl.formatMessage({
+          id: 'admin.helpCenter.sort.oldest',
+          defaultMessage: 'Oldest',
+        }),
+      },
+    ],
+    [intl]
+  )
 
   const [createArticleOpen, setCreateArticleOpen] = useState(false)
   // Kept mounted after the first open so closing animates.
@@ -179,9 +194,20 @@ function LiveHelpCenterFinder({
         searchValue={searchValue}
         onSearchChange={setSearchValue}
         searchPlaceholder={
-          currentCategory ? `Search in ${currentCategory.name}...` : 'Search articles...'
+          currentCategory
+            ? intl.formatMessage(
+                {
+                  id: 'admin.helpCenter.finder.searchInCategory',
+                  defaultMessage: 'Search in {category}...',
+                },
+                { category: currentCategory.name }
+              )
+            : intl.formatMessage({
+                id: 'admin.helpCenter.searchPlaceholder',
+                defaultMessage: 'Search articles...',
+              })
         }
-        sortOptions={SORT_OPTIONS}
+        sortOptions={sortOptions}
         activeSort={filters.sort}
         onSortChange={(sort) => setFilters({ sort: sort as 'newest' | 'oldest' })}
         filters={
@@ -214,9 +240,21 @@ function LiveHelpCenterFinder({
         <div>
           {!isLoading && articles.length > 0 && (
             <div className="flex items-center justify-end px-4 pt-3 text-xs text-muted-foreground">
-              {articles.length}
-              {hasNextPage && filters.category ? '+' : ''} article
-              {articles.length === 1 ? '' : 's'}
+              {hasNextPage && filters.category
+                ? intl.formatMessage(
+                    {
+                      id: 'admin.helpCenter.finder.articleCountMore',
+                      defaultMessage: '{count}+ articles',
+                    },
+                    { count: articles.length }
+                  )
+                : intl.formatMessage(
+                    {
+                      id: 'admin.helpCenter.articleCount',
+                      defaultMessage: '{count, plural, one {# article} other {# articles}}',
+                    },
+                    { count: articles.length }
+                  )}
             </div>
           )}
           {isLoading ? (
@@ -236,11 +274,20 @@ function LiveHelpCenterFinder({
                 icon={QuestionMarkCircleIcon}
                 title={
                   filters.search
-                    ? 'No articles match your search'
+                    ? intl.formatMessage({
+                        id: 'admin.helpCenter.finder.emptySearch',
+                        defaultMessage: 'No articles match your search',
+                      })
                     : hasActiveFilters
-                      ? 'No articles match your filters'
+                      ? intl.formatMessage({
+                          id: 'admin.helpCenter.finder.emptyFilters',
+                          defaultMessage: 'No articles match your filters',
+                        })
                       : currentCategory
-                        ? 'No articles in this category yet'
+                        ? intl.formatMessage({
+                            id: 'admin.helpCenter.finder.emptyCategory',
+                            defaultMessage: 'No articles in this category yet',
+                          })
                         : intl.formatMessage({
                             id: 'admin.empty.helpCenter.title',
                             defaultMessage: 'No articles yet',
@@ -249,7 +296,10 @@ function LiveHelpCenterFinder({
                 action={
                   hasActiveFilters ? (
                     <Button variant="outline" size="sm" onClick={clearFilters}>
-                      Clear all filters
+                      {intl.formatMessage({
+                        id: 'admin.helpCenter.finder.clearFilters',
+                        defaultMessage: 'Clear all filters',
+                      })}
                     </Button>
                   ) : !filters.search && !currentCategory ? (
                     <NewButton
@@ -305,7 +355,15 @@ function LiveHelpCenterFinder({
                 disabled={isFetchingNextPage}
                 className="w-full text-center py-2 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
               >
-                {isFetchingNextPage ? 'Loading…' : 'Load more articles'}
+                {isFetchingNextPage
+                  ? intl.formatMessage({
+                      id: 'admin.helpCenter.finder.loadingMore',
+                      defaultMessage: 'Loading…',
+                    })
+                  : intl.formatMessage({
+                      id: 'admin.helpCenter.finder.loadMore',
+                      defaultMessage: 'Load more articles',
+                    })}
               </button>
             </div>
           )}
@@ -326,6 +384,7 @@ function LiveHelpCenterFinder({
 // ---------------------------------------------------------------------------
 
 function DeletedItemsView() {
+  const intl = useIntl()
   const { data: deletedCategories = [], isLoading: categoriesLoading } = useQuery(
     helpCenterQueries.categories({ showDeleted: true })
   )
@@ -341,16 +400,31 @@ function DeletedItemsView() {
 
   return (
     <div className="max-w-5xl w-full">
-      <AdminListHeader searchValue="" onSearchChange={() => {}} searchPlaceholder="Deleted items" />
+      <AdminListHeader
+        searchValue=""
+        onSearchChange={() => {}}
+        searchPlaceholder={intl.formatMessage({
+          id: 'admin.helpCenter.deleted.title',
+          defaultMessage: 'Deleted items',
+        })}
+      />
 
       <div className="px-3 pb-3 flex items-center justify-between">
-        <h1 className="text-lg font-semibold">Deleted items</h1>
+        <h1 className="text-lg font-semibold">
+          {intl.formatMessage({
+            id: 'admin.helpCenter.deleted.title',
+            defaultMessage: 'Deleted items',
+          })}
+        </h1>
       </div>
 
       {/* Deleted categories */}
       <section className="px-3 pb-4">
         <h2 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
-          Deleted categories
+          {intl.formatMessage({
+            id: 'admin.helpCenter.deleted.categories',
+            defaultMessage: 'Deleted categories',
+          })}
         </h2>
         {categoriesLoading ? (
           <div className="flex justify-center py-8">
@@ -359,7 +433,10 @@ function DeletedItemsView() {
         ) : deletedCategories.length === 0 ? (
           <EmptyState
             icon={QuestionMarkCircleIcon}
-            title="No deleted categories"
+            title={intl.formatMessage({
+              id: 'admin.helpCenter.deleted.noCategories',
+              defaultMessage: 'No deleted categories',
+            })}
             className="h-32"
           />
         ) : (
@@ -371,7 +448,11 @@ function DeletedItemsView() {
                   <p className="text-sm font-medium text-foreground truncate">{cat.name}</p>
                   {cat.deletedAt && (
                     <p className="text-xs text-muted-foreground">
-                      Deleted <TimeAgo date={cat.deletedAt as string} locale="en" />
+                      {intl.formatMessage({
+                        id: 'admin.helpCenter.deleted.deleted',
+                        defaultMessage: 'Deleted',
+                      })}{' '}
+                      <TimeAgo date={cat.deletedAt as string} />
                     </p>
                   )}
                 </div>
@@ -382,7 +463,10 @@ function DeletedItemsView() {
                   disabled={restoreCategoryMutation.isPending}
                 >
                   <ArrowUturnLeftIcon className="h-3.5 w-3.5 mr-1" />
-                  Restore
+                  {intl.formatMessage({
+                    id: 'admin.helpCenter.deleted.restore',
+                    defaultMessage: 'Restore',
+                  })}
                 </Button>
               </div>
             ))}
@@ -393,14 +477,24 @@ function DeletedItemsView() {
       {/* Deleted articles */}
       <section className="px-3 pb-4">
         <h2 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
-          Deleted articles
+          {intl.formatMessage({
+            id: 'admin.helpCenter.deleted.articles',
+            defaultMessage: 'Deleted articles',
+          })}
         </h2>
         {articlesLoading ? (
           <div className="flex justify-center py-8">
             <Spinner />
           </div>
         ) : deletedArticles.length === 0 ? (
-          <EmptyState icon={QuestionMarkCircleIcon} title="No deleted articles" className="h-32" />
+          <EmptyState
+            icon={QuestionMarkCircleIcon}
+            title={intl.formatMessage({
+              id: 'admin.helpCenter.deleted.noArticles',
+              defaultMessage: 'No deleted articles',
+            })}
+            className="h-32"
+          />
         ) : (
           <div className="overflow-hidden divide-y divide-border/50 border-y border-t-transparent border-border/50">
             {deletedArticles.map((article) => (
@@ -411,7 +505,12 @@ function DeletedItemsView() {
                     <span className="mr-2">{article.category.name}</span>
                     {article.deletedAt && (
                       <>
-                        &middot; Deleted <TimeAgo date={article.deletedAt} locale="en" />
+                        &middot;{' '}
+                        {intl.formatMessage({
+                          id: 'admin.helpCenter.deleted.deleted',
+                          defaultMessage: 'Deleted',
+                        })}{' '}
+                        <TimeAgo date={article.deletedAt} />
                       </>
                     )}
                   </p>
@@ -423,7 +522,10 @@ function DeletedItemsView() {
                   disabled={restoreArticleMutation.isPending}
                 >
                   <ArrowUturnLeftIcon className="h-3.5 w-3.5 mr-1" />
-                  Restore
+                  {intl.formatMessage({
+                    id: 'admin.helpCenter.deleted.restore',
+                    defaultMessage: 'Restore',
+                  })}
                 </Button>
               </div>
             ))}
@@ -444,6 +546,7 @@ interface CategoryActionsDropdownProps {
 }
 
 function CategoryActionsDropdown({ onEdit, onDelete }: CategoryActionsDropdownProps) {
+  const intl = useIntl()
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -454,12 +557,18 @@ function CategoryActionsDropdown({ onEdit, onDelete }: CategoryActionsDropdownPr
       <DropdownMenuContent align="end">
         <DropdownMenuItem onClick={onEdit}>
           <PencilIcon className="h-4 w-4 mr-2" />
-          Edit category
+          {intl.formatMessage({
+            id: 'admin.helpCenter.category.editTitle',
+            defaultMessage: 'Edit category',
+          })}
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={onDelete} className="text-destructive focus:text-destructive">
           <TrashIcon className="h-4 w-4 mr-2" />
-          Delete category
+          {intl.formatMessage({
+            id: 'admin.helpCenter.category.deleteTitle',
+            defaultMessage: 'Delete category',
+          })}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

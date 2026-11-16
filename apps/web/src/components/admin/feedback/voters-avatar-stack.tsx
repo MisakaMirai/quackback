@@ -4,6 +4,7 @@ import { PlusIcon, MagnifyingGlassIcon, ArrowLeftIcon } from '@heroicons/react/2
 import { toast } from 'sonner'
 import { Avatar } from '@/components/ui/avatar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { VotersModal } from '@/components/admin/feedback/voters-modal'
 import { adminQueries } from '@/lib/client/queries/admin'
 import type { VotersQuerySource } from '@/lib/client/queries/post-voters'
@@ -53,6 +54,7 @@ export function VotersAvatarStack({
   canCreateUser = true,
   onVotersInvalidate,
 }: VotersAvatarStackProps) {
+  const intl = useOptionalIntl()
   const [votersOpen, setVotersOpen] = useState(false)
   const [addVoterOpen, setAddVoterOpen] = useState(false)
   const [search, setSearch] = useState('')
@@ -110,14 +112,24 @@ export function VotersAvatarStack({
 
   function handleProxyVote(principalId: string) {
     if (voters?.some((v) => v.principalId === principalId)) {
-      toast.info('This user has already voted')
+      toast.info(
+        intl.formatMessage({
+          id: 'portal.voters.alreadyVoted',
+          defaultMessage: 'This user has already voted',
+        })
+      )
       setAddVoterOpen(false)
       return
     }
     proxyVote.mutate(principalId as PrincipalId, {
       onSuccess: (data) => {
         if (!data.voted) {
-          toast.info('This user has already voted')
+          toast.info(
+            intl.formatMessage({
+              id: 'portal.voters.alreadyVoted',
+              defaultMessage: 'This user has already voted',
+            })
+          )
         }
         onVotersInvalidate?.()
         setAddVoterOpen(false)
@@ -129,7 +141,12 @@ export function VotersAvatarStack({
     if (!newName.trim()) return
     const trimmedEmail = newEmail.trim()
     if (trimmedEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
-      setFormError('Invalid email address')
+      setFormError(
+        intl.formatMessage({
+          id: 'common.authorSelector.invalidEmail',
+          defaultMessage: 'Invalid email address',
+        })
+      )
       return
     }
     setFormError(null)
@@ -140,7 +157,13 @@ export function VotersAvatarStack({
       })
       handleProxyVote(result.principalId)
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Failed to create user'
+      const msg =
+        err instanceof Error
+          ? err.message
+          : intl.formatMessage({
+              id: 'common.authorSelector.createFailed',
+              defaultMessage: 'Failed to create user',
+            })
       setFormError(msg)
     }
   }
@@ -172,7 +195,12 @@ export function VotersAvatarStack({
           )}
         </button>
       ) : (
-        <span className="text-xs text-muted-foreground/50 italic">No voters yet</span>
+        <span className="text-xs text-muted-foreground/50 italic">
+          {intl.formatMessage({
+            id: 'portal.voters.none',
+            defaultMessage: 'No voters yet',
+          })}
+        </span>
       )}
 
       <VotersModal
@@ -198,7 +226,12 @@ export function VotersAvatarStack({
               )}
             >
               <PlusIcon className="h-3 w-3" />
-              <span>Add voter</span>
+              <span>
+                {intl.formatMessage({
+                  id: 'portal.voters.add',
+                  defaultMessage: 'Add voter',
+                })}
+              </span>
             </button>
           </PopoverTrigger>
           <PopoverContent className="w-64 p-0" align="end" sideOffset={4}>
@@ -211,7 +244,10 @@ export function VotersAvatarStack({
                     type="text"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Search members..."
+                    placeholder={intl.formatMessage({
+                      id: 'common.authorSelector.searchPlaceholder',
+                      defaultMessage: 'Search members...',
+                    })}
                     className="flex-1 text-[13px] bg-transparent border-0 outline-none placeholder:text-muted-foreground/50"
                   />
                 </div>
@@ -221,7 +257,10 @@ export function VotersAvatarStack({
                 >
                   {filteredSearchResults.length === 0 ? (
                     <p className="text-xs text-muted-foreground/60 text-center py-4">
-                      No members found
+                      {intl.formatMessage({
+                        id: 'common.authorSelector.noMembers',
+                        defaultMessage: 'No members found',
+                      })}
                     </p>
                   ) : (
                     filteredSearchResults.map((member) => (
@@ -243,7 +282,13 @@ export function VotersAvatarStack({
                           className="h-5 w-5 text-xs shrink-0"
                         />
                         <div className="min-w-0 flex-1">
-                          <div className="font-medium truncate">{member.name || 'Unnamed'}</div>
+                          <div className="font-medium truncate">
+                            {member.name ||
+                              intl.formatMessage({
+                                id: 'common.authorSelector.unnamed',
+                                defaultMessage: 'Unnamed',
+                              })}
+                          </div>
                           {member.email && (
                             <div className="text-muted-foreground/60 truncate">{member.email}</div>
                           )}
@@ -260,7 +305,10 @@ export function VotersAvatarStack({
                       className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-left text-[13px] text-muted-foreground hover:bg-muted/60 hover:text-foreground transition-colors"
                     >
                       <PlusIcon className="size-4" />
-                      New user
+                      {intl.formatMessage({
+                        id: 'common.authorSelector.newTitle',
+                        defaultMessage: 'New user',
+                      })}
                     </button>
                   </div>
                 )}
@@ -278,7 +326,12 @@ export function VotersAvatarStack({
                   >
                     <ArrowLeftIcon className="h-3.5 w-3.5" />
                   </button>
-                  <span className="text-xs font-medium">New user</span>
+                  <span className="text-xs font-medium">
+                    {intl.formatMessage({
+                      id: 'common.authorSelector.newTitle',
+                      defaultMessage: 'New user',
+                    })}
+                  </span>
                 </div>
                 <div className="space-y-2">
                   <input
@@ -286,7 +339,10 @@ export function VotersAvatarStack({
                     type="text"
                     value={newName}
                     onChange={(e) => setNewName(e.target.value)}
-                    placeholder="Name"
+                    placeholder={intl.formatMessage({
+                      id: 'common.authorSelector.namePlaceholder',
+                      defaultMessage: 'Name',
+                    })}
                     className="w-full text-xs px-2.5 py-1.5 rounded-md border border-border/50 bg-transparent outline-none placeholder:text-muted-foreground/50 focus:border-border"
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') {
@@ -299,7 +355,10 @@ export function VotersAvatarStack({
                     type="email"
                     value={newEmail}
                     onChange={(e) => setNewEmail(e.target.value)}
-                    placeholder="Email (optional)"
+                    placeholder={intl.formatMessage({
+                      id: 'common.authorSelector.emailOptional',
+                      defaultMessage: 'Email (optional)',
+                    })}
                     className="w-full text-xs px-2.5 py-1.5 rounded-md border border-border/50 bg-transparent outline-none placeholder:text-muted-foreground/50 focus:border-border"
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') {
@@ -320,7 +379,15 @@ export function VotersAvatarStack({
                     'disabled:opacity-50 disabled:cursor-not-allowed'
                   )}
                 >
-                  {createUser.isPending ? 'Creating...' : 'Create & add vote'}
+                  {createUser.isPending
+                    ? intl.formatMessage({
+                        id: 'common.authorSelector.creating',
+                        defaultMessage: 'Creating...',
+                      })
+                    : intl.formatMessage({
+                        id: 'portal.voters.createAndVote',
+                        defaultMessage: 'Create & add vote',
+                      })}
                 </button>
               </div>
             )}
