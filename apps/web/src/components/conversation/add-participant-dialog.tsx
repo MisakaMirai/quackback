@@ -8,6 +8,7 @@
  * remove affordance.
  */
 import { memo, useState } from 'react'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { XMarkIcon } from '@heroicons/react/24/solid'
@@ -38,6 +39,7 @@ export const AddParticipantDialog = memo(function AddParticipantDialog({
   onOpenChange: (open: boolean) => void
   conversationId: ConversationId
 }) {
+  const intl = useOptionalIntl()
   const [email, setEmail] = useState('')
   const [pending, setPending] = useState(false)
   const [removingId, setRemovingId] = useState<string | null>(null)
@@ -82,10 +84,18 @@ export const AddParticipantDialog = memo(function AddParticipantDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Conversation customers</DialogTitle>
+          <DialogTitle>
+            {intl.formatMessage({
+              id: 'inbox.participants.title',
+              defaultMessage: 'Conversation customers',
+            })}
+          </DialogTitle>
           <DialogDescription>
-            Add another customer to this conversation. They receive every future reply by email
-            until removed.
+            {intl.formatMessage({
+              id: 'inbox.participants.description',
+              defaultMessage:
+                'Add another customer to this conversation. They receive every future reply by email until removed.',
+            })}
           </DialogDescription>
         </DialogHeader>
         <form
@@ -101,7 +111,10 @@ export const AddParticipantDialog = memo(function AddParticipantDialog({
             placeholder="customer@example.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            aria-label="Customer email"
+            aria-label={intl.formatMessage({
+              id: 'inbox.participants.emailAria',
+              defaultMessage: 'Customer email',
+            })}
           />
           {participants.length > 0 && (
             <ul className="flex flex-col gap-1 text-sm text-muted-foreground">
@@ -109,12 +122,33 @@ export const AddParticipantDialog = memo(function AddParticipantDialog({
                 <li key={p.principalId} className="flex items-center gap-2">
                   <span className="min-w-0 flex-1 truncate">
                     {p.displayName ? `${p.displayName} — ` : ''}
-                    {p.email ?? 'no email'}
+                    {p.email ??
+                      intl.formatMessage({
+                        id: 'inbox.participants.noEmail',
+                        defaultMessage: 'no email',
+                      })}
                   </span>
                   <button
                     type="button"
-                    aria-label={`Remove ${p.email ?? p.displayName ?? 'customer'}`}
-                    title="Remove from conversation"
+                    aria-label={intl.formatMessage(
+                      {
+                        id: 'inbox.participants.removeAria',
+                        defaultMessage: 'Remove {name}',
+                      },
+                      {
+                        name:
+                          p.email ??
+                          p.displayName ??
+                          intl.formatMessage({
+                            id: 'inbox.participants.customer',
+                            defaultMessage: 'customer',
+                          }),
+                      }
+                    )}
+                    title={intl.formatMessage({
+                      id: 'inbox.participants.removeTitle',
+                      defaultMessage: 'Remove from conversation',
+                    })}
                     disabled={removingId === p.principalId}
                     onClick={() => void remove(p.principalId)}
                     className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-50"

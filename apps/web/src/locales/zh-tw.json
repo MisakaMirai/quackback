@@ -5455,5 +5455,17 @@
   "workspaceUnavailable.signIn": "登入 Quackback",
   "workspaceUnavailable.unknown.body": "{host} 上沒有設定任何內容。請檢查網址，或詢問傳送連結給您的人。",
   "workspaceUnavailable.unknown.owner": "正在設定工作區？請登入 Quackback。",
-  "workspaceUnavailable.unknown.title": "這裡沒有工作區"
+  "workspaceUnavailable.unknown.title": "這裡沒有工作區",
+  "inbox.participants.title": "對話客戶",
+  "inbox.participants.description": "對此對話新增另一位客戶。他們將透過電子郵件收到之後的每則回覆，直到被移除。",
+  "inbox.participants.emailAria": "客戶電子郵件",
+  "inbox.participants.noEmail": "無電子郵件",
+  "inbox.participants.removeAria": "移除 {name}",
+  "inbox.participants.customer": "客戶",
+  "inbox.participants.removeTitle": "從對話中移除",
+  "inbox.macros.search": "搜尋巨集…",
+  "inbox.macros.empty": "找不到巨集。",
+  "inbox.snooze.typeTime": "輸入時間",
+  "inbox.snooze.placeholder": "明天上午、下週、週五下午…",
+  "helpCenter.searchCompact": "搜尋..."
 }

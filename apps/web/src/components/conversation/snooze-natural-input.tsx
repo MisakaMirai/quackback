@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { parseSnoozeTime } from '@/lib/shared/snooze-parse'
@@ -15,6 +16,7 @@ interface SnoozeNaturalInputProps {
  * unparseable input is flagged inline, never guessed at.
  */
 export function SnoozeNaturalInput({ onResolve, disabled }: SnoozeNaturalInputProps) {
+  const intl = useOptionalIntl()
   const [text, setText] = useState('')
   const [resolved, setResolved] = useState<Date | null>(null)
   const [failed, setFailed] = useState(false)
@@ -33,11 +35,16 @@ export function SnoozeNaturalInput({ onResolve, disabled }: SnoozeNaturalInputPr
 
   return (
     <div className="space-y-1.5">
-      <Label htmlFor="snooze-natural-input">Type a time</Label>
+      <Label htmlFor="snooze-natural-input">
+        {intl.formatMessage({ id: 'inbox.snooze.typeTime', defaultMessage: 'Type a time' })}
+      </Label>
       <Input
         id="snooze-natural-input"
         value={text}
-        placeholder="tomorrow morning, next week, friday afternoon…"
+        placeholder={intl.formatMessage({
+          id: 'inbox.snooze.placeholder',
+          defaultMessage: 'tomorrow morning, next week, friday afternoon…',
+        })}
         onChange={(e) => {
           setText(e.target.value)
           setFailed(false)

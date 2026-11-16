@@ -5455,5 +5455,17 @@
   "workspaceUnavailable.signIn": "Sign in to Quackback",
   "workspaceUnavailable.unknown.body": "Nothing is set up at {host}. Check the address, or ask whoever sent you the link.",
   "workspaceUnavailable.unknown.owner": "Setting up a workspace? Sign in to Quackback.",
-  "workspaceUnavailable.unknown.title": "There's no workspace here"
+  "workspaceUnavailable.unknown.title": "There's no workspace here",
+  "inbox.participants.title": "Conversation customers",
+  "inbox.participants.description": "Add another customer to this conversation. They receive every future reply by email until removed.",
+  "inbox.participants.emailAria": "Customer email",
+  "inbox.participants.noEmail": "no email",
+  "inbox.participants.removeAria": "Remove {name}",
+  "inbox.participants.customer": "customer",
+  "inbox.participants.removeTitle": "Remove from conversation",
+  "inbox.macros.search": "Search macros…",
+  "inbox.macros.empty": "No macros found.",
+  "inbox.snooze.typeTime": "Type a time",
+  "inbox.snooze.placeholder": "tomorrow morning, next week, friday afternoon…",
+  "helpCenter.searchCompact": "Search..."
 }
