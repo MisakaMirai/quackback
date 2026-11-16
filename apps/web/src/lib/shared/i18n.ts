@@ -4,28 +4,6 @@ export const SUPPORTED_LOCALES = ['en', 'zh-cn', 'zh-tw'] as const
 
 export type SupportedLocale = (typeof SUPPORTED_LOCALES)[number]
 
-/** The viewer's explicit language choice, if they made one in Settings. */
-export const LOCALE_COOKIE = 'qb_locale'
-
-/** Read the language cookie from a raw `Cookie` header. */
-export function localeFromCookieHeader(header: string | null | undefined): SupportedLocale | null {
-  if (!header) return null
-  for (const part of header.split(';')) {
-    const separator = part.indexOf('=')
-    if (separator === -1) continue
-    if (part.slice(0, separator).trim() !== LOCALE_COOKIE) continue
-    const raw = part.slice(separator + 1).trim()
-    let decoded = raw
-    try {
-      decoded = decodeURIComponent(raw)
-    } catch {
-      /* keep the raw value */
-    }
-    return normalizeLocale(decoded)
-  }
-  return null
-}
-
 const RTL_LOCALES = new Set(['ar', 'he', 'fa', 'ur'])
 
 /**

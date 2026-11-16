@@ -26,7 +26,6 @@ import {
 import { Switch } from '@/components/ui/switch'
 import { WorkspaceDataCard } from '@/components/admin/settings/workspace-data-card'
 import { WorkspaceIdentityCard } from '@/components/admin/settings/workspace-identity-card'
-import { LanguageCard } from '@/components/admin/settings/language-card'
 import { readBatch } from '@/lib/client/queries/read-batch'
 import { useManagedFieldPaths, useWorkspaceSettings } from '@/lib/client/hooks/use-root-context'
 import { adminPageHead } from '@/lib/client/admin-head'
@@ -150,8 +149,6 @@ function GeneralSettingsPage() {
         onWorkspaceNameChange={handleNameChange}
         focusLogo={focus === 'logo'}
       />
-
-      <LanguageCard />
 
       <SettingsCard
         title={intl.formatMessage({
