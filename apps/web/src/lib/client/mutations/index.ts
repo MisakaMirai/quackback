@@ -117,12 +117,5 @@ export {
   useDeleteUserAttribute,
 } from './user-attributes'
 
-// Company attribute mutations
-export {
-  useCreateCompanyAttribute,
-  useUpdateCompanyAttribute,
-  useDeleteCompanyAttribute,
-} from './company-attributes'
-
 // Admin subscription mutations
 export { useUpdateVoterSubscription } from './admin-subscriptions'

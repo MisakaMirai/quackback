@@ -43,10 +43,6 @@ export const conversationPanelEntries = {
     queryKey: conversationKeys.agentUserConversationsFor(principalId),
     staleTime: 30_000,
   }),
-  company: (principalId: string) => ({
-    queryKey: ['admin', 'company', 'for-principal', principalId] as const,
-    staleTime: 60_000,
-  }),
   languagePreference: () => ({
     queryKey: ['teammate', 'language-preference'] as const,
     staleTime: 5 * 60_000,
@@ -85,7 +81,6 @@ function panelEntries(
     blockStatus: forVisitor(e.blockStatus),
     contact: shown ? forVisitor(e.contact) : 'skip',
     history: shown ? forVisitor(e.history) : 'skip',
-    company: shown ? forVisitor(e.company) : 'skip',
     languagePreference: e.languagePreference(),
     macros: e.macros(),
     teamMembers: e.teamMembers(),
@@ -117,7 +112,6 @@ export function seedConversationPanels(
       blockStatus: e.blockStatus(visitor),
       contact: e.contact(visitor),
       history: e.history(visitor),
-      company: e.company(visitor),
       languagePreference: e.languagePreference(),
       macros: e.macros(),
       teamMembers: e.teamMembers(),

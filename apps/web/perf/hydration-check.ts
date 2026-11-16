@@ -81,7 +81,6 @@ const PAGES: { path: string | (() => Promise<string>); as: 'anon' | 'admin' }[] 
   { path: '/admin/settings/members', as: 'admin' },
   { path: '/admin/settings/security/audit-log', as: 'admin' },
   { path: '/admin/settings/portal', as: 'admin' },
-  { path: '/admin/settings/widget', as: 'admin' },
 ]
 
 // Hydration mismatch in React's minified production errors, or the

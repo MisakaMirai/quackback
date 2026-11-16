@@ -57,14 +57,6 @@ vi.mock('@/lib/server/functions/changelog-subscriptions', () => ({
   setChangelogSubscriptionFn: vi.fn(),
 }))
 
-vi.mock('@/lib/server/functions/companies', () => ({
-  getCompanyForPrincipalFn: vi.fn().mockResolvedValue(null),
-  listCompaniesFn: vi.fn().mockResolvedValue([]),
-  createCompanyFn: vi.fn(),
-  attachPrincipalToCompanyFn: vi.fn(),
-  detachPrincipalFromCompanyFn: vi.fn(),
-}))
-
 vi.mock('@/lib/client/hooks/use-user-tags', () => ({
   useUserTags: () => ({ data: [] }),
   useUserTagsForPrincipal: () => ({ data: [] }),

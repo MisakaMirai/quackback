@@ -442,7 +442,6 @@ export interface EventTicketData extends EventTicketRef {
   /** Customer-facing public stage, or null when the status projects no stage. */
   stage: string | null
   requesterPrincipalId: string | null
-  companyId: string | null
   createdAt: string
   updatedAt: string
   resolvedAt: string | null

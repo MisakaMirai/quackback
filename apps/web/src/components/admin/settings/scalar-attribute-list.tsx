@@ -275,7 +275,7 @@ function AttributeFormDialog({
 const byLabel = (a: { label: string }, b: { label: string }) => a.label.localeCompare(b.label)
 
 /**
- * The attribute list behind Users and Companies: built-in fields first, then
+ * The attribute list behind Users and Conversations: built-in fields first, then
  * the custom attributes, with create, edit and confirmed delete. Each entity
  * passes its own built-in fields, copy and mutations.
  */

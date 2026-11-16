@@ -24,8 +24,7 @@ export type TourStopId =
   | 'view-portal'
   | 'search'
 
-export type TourRoute =
-  '/admin' | '/admin/help-center' | '/admin/status' | '/admin/settings/widget/install'
+export type TourRoute = '/admin' | '/admin/help-center' | '/admin/status'
 
 /** A stop's Try it: the page that does the job. */
 export type TourTryIt = { kind: 'link'; to: TourRoute; label: MessageDescriptor }
@@ -124,10 +123,6 @@ const COPY = {
 } satisfies Record<TourStopId, { lead: MessageDescriptor; line: MessageDescriptor }>
 
 const TRY = {
-  install: {
-    id: 'onboarding.tour.stop.try.install',
-    defaultMessage: 'Put Messenger on your site',
-  },
   article: { id: 'onboarding.tour.stop.try.article', defaultMessage: 'Write your first article' },
   service: { id: 'onboarding.tour.stop.try.service', defaultMessage: 'Add a service' },
 } satisfies Record<string, MessageDescriptor>
@@ -170,14 +165,7 @@ function moduleStop(key: ModuleKey, ctx: TourContext): TourStop {
     case 'changelog':
       return stop('changelog', 'nav-changelog')
     case 'support':
-      return stop(
-        'support',
-        'nav-support',
-        undefined,
-        ctx.empty.support && ctx.permissions.has(PERMISSIONS.SETTINGS_MANAGE)
-          ? { kind: 'link', to: '/admin/settings/widget/install', label: TRY.install }
-          : undefined
-      )
+      return stop('support', 'nav-support')
     case 'helpCenter':
       return stop(
         'help-center',

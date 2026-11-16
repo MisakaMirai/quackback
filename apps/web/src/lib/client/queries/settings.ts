@@ -10,8 +10,7 @@ import {
   fetchUserProfile,
   fetchCustomCssFn,
   fetchDeveloperConfig,
-  fetchWidgetConfig,
-  fetchWidgetSecret,
+  fetchMessengerConfig,
   fetchWorkflowAbandonedAutoCloseFn,
   fetchWorkflowCloseSpamFn,
   fetchDefaultSlaPolicyFn,
@@ -170,17 +169,10 @@ export const settingsQueries = {
       staleTime: STALE_TIME_MEDIUM,
     }),
 
-  widgetConfig: () =>
+  messengerConfig: () =>
     queryOptions({
-      queryKey: ['settings', 'widgetConfig'],
-      queryFn: fetchWidgetConfig,
-      staleTime: STALE_TIME_LONG,
-    }),
-
-  widgetSecret: () =>
-    queryOptions({
-      queryKey: ['settings', 'widgetSecret'],
-      queryFn: fetchWidgetSecret,
+      queryKey: ['settings', 'messengerConfig'],
+      queryFn: fetchMessengerConfig,
       staleTime: STALE_TIME_LONG,
     }),
 

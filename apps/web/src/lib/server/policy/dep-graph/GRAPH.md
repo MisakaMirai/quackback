@@ -7,7 +7,7 @@ Edges come from static analysis of import / export-from / string-literal dynamic
 
 ## 1. Workspace packages
 
-Nodes (6): apps/web, packages/db, packages/email, packages/ids, packages/logger, packages/widget
+Nodes (5): apps/web, packages/db, packages/email, packages/ids, packages/logger
 
 | From | To | Evidence |
 | --- | --- | --- |
@@ -57,8 +57,8 @@ Edges (27):
 
 ## 3. Server domains (lib/server/domains)
 
-Nodes (48): activity, admin-overview, analytics, api, api-keys, attribute-definitions, boards, changelog, channel-accounts, channels, comments, companies, company-attributes, conversation, conversation-attributes, conversation-views, domain-proof, export, files, help-center, import, inbox, macros, moderation, notifications, office-hours, onboarding, platform-credentials, post-tags, post-views, posts, principals, push-devices, roadmaps, roles, search, segments, settings, settings-registry, sla, status, statuses, subscriptions, teams, tickets, user-attributes, users, webhooks
-Edges (88):
+Nodes (46): activity, admin-overview, analytics, api, api-keys, attribute-definitions, boards, changelog, channel-accounts, channels, comments, conversation, conversation-attributes, conversation-views, domain-proof, export, files, help-center, import, inbox, macros, moderation, notifications, office-hours, onboarding, platform-credentials, post-tags, post-views, posts, principals, push-devices, roadmaps, roles, search, segments, settings, settings-registry, sla, status, statuses, subscriptions, teams, tickets, user-attributes, users, webhooks
+Edges (85):
 
 - activity -> principals
 - admin-overview -> changelog
@@ -82,8 +82,6 @@ Edges (88):
 - comments -> posts
 - comments -> settings
 - comments -> subscriptions
-- companies -> principals
-- company-attributes -> attribute-definitions
 - conversation -> changelog
 - conversation -> channel-accounts
 - conversation -> channels
@@ -98,7 +96,6 @@ Edges (88):
 - conversation-attributes -> conversation
 - conversation-attributes -> settings
 - domain-proof -> channel-accounts
-- export -> companies
 - export -> conversation
 - export -> users
 - files -> principals

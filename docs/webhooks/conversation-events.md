@@ -16,11 +16,11 @@ are opt-in: a webhook only receives the event types listed in its subscription.
 | `message.created`                 | A visitor or agent sends a public message.                                                                       |
 | `message.note_created`            | An agent adds an **internal note**. Private content — subscribe only if your endpoint should receive it.         |
 | `message.deleted`                 | A public message is soft-deleted.                                                                                |
-| `message.updated`                 | The author edits a public message. The payload carries the new body. Internal-note edits are not emitted.       |
+| `message.updated`                 | The author edits a public message. The payload carries the new body. Internal-note edits are not emitted.        |
 
 Internal-note deletions are not emitted. System messages (e.g. "chat ended") are
 represented by `conversation.*` events, not `message.created`. Anonymous visitors'
-emails are never included (synthetic addresses are stripped to `null`). The widget
+emails are never included (synthetic addresses are stripped to `null`). The portal
 submits a CSAT rating and its optional comment as two separate calls, so they map to
 two events: `conversation.csat_submitted` fires once when the rating is recorded, and
 `conversation.csat_comment_added` fires once if the visitor later leaves a comment

@@ -37,15 +37,12 @@ export const SETTINGS_PAGES = {
   '/admin/settings/domains': { label: 'Domains' },
   '/admin/settings/notifications': { label: 'Notifications' },
   '/admin/settings/portal': { label: 'Portal' },
-  '/admin/settings/widget': { label: 'Widget' },
-  '/admin/settings/widget/install': { label: 'Install' },
   '/admin/settings/members': { label: 'Members & Teams' },
   '/admin/settings/security/authentication': { label: 'Access & Security' },
   '/admin/settings/developers': { label: 'Developers' },
   '/admin/settings/integrations': { label: 'Integrations' },
   // Data
   '/admin/settings/people': { label: 'Users' },
-  '/admin/settings/companies': { label: 'Companies' },
   '/admin/settings/conversation-data': { label: 'Conversations' },
   '/admin/settings/imports': { label: 'Imports & exports' },
 } as const satisfies Record<string, SettingsPageEntry>

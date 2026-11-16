@@ -1,8 +1,7 @@
 /**
  * "New user" dialog: ad-hoc contact creation from the Users view.
  *
- * Cloned from NewCompanyDialog's conventions (companies-view.tsx). Email is
- * optional; the "Email is verified" checkbox asserts trust (it grants the
+ * Email is optional; the "Email is verified" checkbox asserts trust (it grants the
  * same portal access as a confirmed email) and is only enabled when an email
  * is entered.
  *

@@ -10,7 +10,6 @@ import type { Role } from '@/lib/shared/roles'
  * Phase 3: accepted portal email-invite grant (verified email required).
  * Phase 4: allowed segment grant (authenticated; emailVerified required to
  *          prevent unverified email-rule matches from granting access).
- * Phase 5: widget sign-in grant (any portal-signed-in user when admin enables widgetSignIn).
  */
 
 // =============================================================================
@@ -54,33 +53,10 @@ export interface PortalAccessContext {
    * whose email matches their verified session email.
    *
    * Populated by the resolver via a DB lookup. Defaults to `false` so callers
-   * that don't consult the invite table (e.g. the widget gate, legacy code)
-   * remain valid without changes.
+   * that don't consult the invite table (e.g. legacy code) remain valid
+   * without changes.
    */
   hasAcceptedPortalInvite?: boolean
-  /**
-   * True when the workspace admin has enabled widget sign-in on this
-   * private portal. When set, portal sessions that originated from the
-   * widget OTT handoff route gain access (requires both
-   * `hasViaWidgetMarker` and `identifyVerificationEnabled`).
-   * Defaults to `false`.
-   */
-  widgetSignInEnabled?: boolean
-  /**
-   * True when the current session has a row in `widget_origin_session`,
-   * meaning it was created via the `/auth/widget-handoff` OTT exchange.
-   * Prevents any self-registered portal user from gaining the widget
-   * grant without going through the handoff flow. Defaults to `false`.
-   */
-  hasViaWidgetMarker?: boolean
-  /**
-   * True when the workspace widget requires HMAC-verified identity
-   * (i.e. `identifyVerification=true` in the widget config). When off,
-   * anyone who typed an email in the widget becomes "identified" and
-   * could mint an OTT — granting portal access in that case would
-   * bypass the verified-identity intent. Defaults to `false`.
-   */
-  identifyVerificationEnabled?: boolean
   /**
    * True when the authenticated visitor is a member of at least one
    * segment the admin has listed in `portalConfig.access.allowedSegmentIds`.
@@ -99,7 +75,7 @@ export interface PortalAccessContext {
 
 /** Discriminated union — narrows cleanly in if/switch. */
 export type PortalAccessResult =
-  | { granted: true; reason: 'public' | 'team' | 'domain' | 'invite' | 'widget' | 'segment' }
+  | { granted: true; reason: 'public' | 'team' | 'domain' | 'invite' | 'segment' }
   | { granted: false; reason: 'unauthenticated' | 'unauthorized' }
 
 // =============================================================================
@@ -130,21 +106,11 @@ function emailDomain(email: string | null): string | null {
  * 3. Verified email on allowed-domain list → granted.
  * 4. Accepted portal invite (email match, verified) → granted.
  * 5. Allowed segment grant (authenticated member of an allowed segment) → granted.
- * 6. Widget sign-in: enabled + authenticated + via-widget marker + HMAC mode → granted.
- * 7. No real session → unauthenticated (redirect to login).
- * 8. Authenticated but no matching grant → unauthorized (show access-denied screen).
+ * 6. No real session → unauthenticated (redirect to login).
+ * 7. Authenticated but no matching grant → unauthorized (show access-denied screen).
  *
- * Ordering: team > domain > invite > segment > widget. The widget branch is intentionally
- * last among grant paths so that a more-specific grant (team, domain, invite, segment)
- * is preferred when the user qualifies for multiple paths.
- *
- * Widget branch requires THREE conditions beyond `isAuthenticated`:
- *   - `widgetSignInEnabled` — admin explicitly enabled widget sign-in.
- *   - `hasViaWidgetMarker` — the session was created via the handoff route
- *     (prevents self-registered portal users from gaining the grant).
- *   - `identifyVerificationEnabled` — workspace requires HMAC-verified
- *     widget identity (prevents email-capture mode from granting portal
- *     access, which would bypass the verified-identity intent).
+ * Ordering: team > domain > invite > segment, so a more-specific grant is
+ * preferred when the user qualifies for multiple paths.
  */
 export function evaluatePortalAccess(ctx: PortalAccessContext): PortalAccessResult {
   // 1. Public portal — open to everyone.
@@ -187,28 +153,11 @@ export function evaluatePortalAccess(ctx: PortalAccessContext): PortalAccessResu
     return { granted: true, reason: 'segment' }
   }
 
-  // 6. Widget sign-in grant.
-  //    Three guards beyond authentication:
-  //      - widgetSignInEnabled: admin opted in.
-  //      - hasViaWidgetMarker: session was minted by the handoff route, not by
-  //        any other sign-up path. Blocks self-registered users from using this branch.
-  //      - identifyVerificationEnabled: workspace enforces HMAC-verified widget
-  //        identity. Blocks email-capture (unverified) widget sessions from gaining
-  //        portal access — email-capture mode was never meant to imply portal trust.
-  if (
-    (ctx.widgetSignInEnabled ?? false) &&
-    ctx.isAuthenticated &&
-    (ctx.hasViaWidgetMarker ?? false) &&
-    (ctx.identifyVerificationEnabled ?? false)
-  ) {
-    return { granted: true, reason: 'widget' }
-  }
-
-  // 7. No real authentication → redirect to login.
+  // 6. No real authentication → redirect to login.
   if (!ctx.isAuthenticated) {
     return { granted: false, reason: 'unauthenticated' }
   }
 
-  // 8. Authenticated but no matching grant → show access-denied UI.
+  // 7. Authenticated but no matching grant → show access-denied UI.
   return { granted: false, reason: 'unauthorized' }
 }

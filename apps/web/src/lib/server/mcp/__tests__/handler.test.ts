@@ -735,13 +735,12 @@ describe('MCP HTTP Handler', () => {
       expect(toolNames).toContain('link_ticket')
       expect(toolNames).toContain('unlink_ticket')
       expect(toolNames).toContain('upload_file')
-      expect(toolNames).toContain('widget_install_status')
       expect(toolNames).toContain('get_settings')
       expect(toolNames).toContain('update_settings')
       expect(toolNames).toContain('navigate_workspace')
       // Settings change directly through update_settings; no tool files a settings card.
       expect(toolNames).not.toContain('propose_settings_change')
-      expect(toolNames).toHaveLength(40)
+      expect(toolNames).toHaveLength(39)
     })
 
     it('should handle resources/list request', async () => {

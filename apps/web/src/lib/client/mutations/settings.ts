@@ -15,13 +15,9 @@ import {
   saveLogoKeyFn,
   saveHeaderLogoKeyFn,
   saveFaviconKeyFn,
-  saveWidgetHeroImageKeyFn,
-  deleteWidgetHeroImageFn,
   updatePortalConfigFn,
   updateModerationDefaultFn,
-  updateWidgetConfigFn,
-  regenerateWidgetSecretFn,
-  mintWidgetInstallCodeFn,
+  updateMessengerConfigFn,
   updateThemeFn,
   updateCustomCssFn,
   updateWorkflowAbandonedAutoCloseFn,
@@ -47,11 +43,9 @@ import {
 import {
   getLogoUploadUrlFn,
   getHeaderLogoUploadUrlFn,
-  getWidgetHeroUploadUrlFn,
   getFaviconUploadUrlFn,
 } from '@/lib/server/functions/uploads'
 import { settingsQueries } from '@/lib/client/queries/settings'
-import { adminQueries } from '@/lib/client/queries/admin'
 import { downscaleSquareImage } from '@/lib/client/downscale-square-image'
 
 // ============================================================================
@@ -171,59 +165,6 @@ export function useDeleteWorkspaceHeaderLogo() {
   })
 }
 
-// ============================================================================
-// Widget Hero Image Mutation Hooks
-// ============================================================================
-
-export function useUploadWidgetHeroImage() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: async (file: Blob) => {
-      // 1. Get presigned URL from server
-      const { uploadUrl, key } = await getWidgetHeroUploadUrlFn({
-        data: {
-          filename: (file as File).name || 'widget-hero.png',
-          contentType: file.type,
-          fileSize: file.size,
-        },
-      })
-
-      // 2. Upload directly to S3
-      const uploadResponse = await fetch(uploadUrl, {
-        method: 'PUT',
-        body: file,
-        headers: {
-          'Content-Type': file.type,
-        },
-      })
-
-      if (!uploadResponse.ok) {
-        throw new Error('Failed to upload hero image to storage')
-      }
-
-      // 3. Save the S3 key (also switches the Home header style to 'image')
-      await saveWidgetHeroImageKeyFn({ data: { key } })
-    },
-    onSuccess: () => {
-      // Loaders read via ensureQueryData — invalidate AND return the promise
-      // so callers awaiting the mutation see fresh config (see note above).
-      return queryClient.invalidateQueries({ queryKey: settingsQueries.widgetConfig().queryKey })
-    },
-  })
-}
-
-export function useDeleteWidgetHeroImage() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: () => deleteWidgetHeroImageFn(),
-    onSuccess: () => {
-      return queryClient.invalidateQueries({ queryKey: settingsQueries.widgetConfig().queryKey })
-    },
-  })
-}
-
 export function useUpdateHeaderDisplayMode() {
   const queryClient = useQueryClient()
 
@@ -248,7 +189,7 @@ export function useUpdateHeaderDisplayName() {
 }
 
 // ============================================================================
-// Portal / widget / help-center config mutation hooks
+// Portal / messenger / help-center config mutation hooks
 //
 // These configs are read via `settingsQueries.*` with a long staleTime, and the
 // route loaders warm them with `ensureQueryData` (which returns the cached value
@@ -292,36 +233,15 @@ export function useUpdateModerationDefault() {
   })
 }
 
-export function useUpdateWidgetConfig() {
+export function useUpdateMessengerConfig() {
   const queryClient = useQueryClient()
 
   return useMutation({
     meta: AUTOSAVE,
-    mutationFn: (data: Parameters<typeof updateWidgetConfigFn>[0]['data']) =>
-      updateWidgetConfigFn({ data }),
+    mutationFn: (data: Parameters<typeof updateMessengerConfigFn>[0]['data']) =>
+      updateMessengerConfigFn({ data }),
     onSuccess: () =>
-      Promise.all([
-        queryClient.invalidateQueries({ queryKey: settingsQueries.widgetConfig().queryKey }),
-        queryClient.invalidateQueries({ queryKey: adminQueries.onboardingStatus().queryKey }),
-      ]),
-  })
-}
-
-export function useRegenerateWidgetSecret() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: () => regenerateWidgetSecretFn(),
-    onSuccess: (secret) => {
-      queryClient.setQueryData(settingsQueries.widgetSecret().queryKey, secret)
-      return queryClient.invalidateQueries({ queryKey: settingsQueries.widgetSecret().queryKey })
-    },
-  })
-}
-
-export function useMintWidgetInstallCode() {
-  return useMutation({
-    mutationFn: () => mintWidgetInstallCodeFn(),
+      queryClient.invalidateQueries({ queryKey: settingsQueries.messengerConfig().queryKey }),
   })
 }
 

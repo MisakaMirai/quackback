@@ -31,7 +31,7 @@ export async function handleExportConversations(request: Request): Promise<Respo
       return Response.json({ error: 'Only admins can export conversations' }, { status: 403 })
     }
 
-    // Tier gate: data exports are a Pro+ feature (same gate as posts/users/companies).
+    // Tier gate: data exports are a Pro+ feature (same gate as posts/users).
     const { assertTierFeature } = await import('@/lib/server/domains/settings/tier-enforce')
     await assertTierFeature('analyticsExports', 'Data export')
 

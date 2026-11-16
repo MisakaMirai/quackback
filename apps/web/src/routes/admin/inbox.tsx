@@ -8,7 +8,6 @@ import type {
   ConversationId,
   ConversationMessageId,
   ConversationViewId,
-  CompanyId,
   TicketId,
   TicketStatusId,
 } from '@quackback/ids'
@@ -107,7 +106,6 @@ import {
   type InboxItemDTO,
   type InboxTriageFacet,
 } from '@/lib/shared/inbox/items'
-import { listCompaniesFn } from '@/lib/server/functions/companies'
 import type { TicketDTO } from '@/lib/server/domains/tickets'
 import { useConversationStream } from '@/lib/client/hooks/use-conversation-stream'
 import { useConversationTyping } from '@/lib/client/hooks/use-conversation-typing'
@@ -192,13 +190,6 @@ function validateInboxSearch(search: Record<string, unknown>): InboxSearch {
       typeof search.post === 'string' && isValidTypeId(search.post, 'post')
         ? search.post
         : undefined,
-    // Company refinement (deep-linked from the conversation CompanyCard). Only a
-    // well-formed company id is accepted — a malformed `?company=` would reach a
-    // uuid-backed subquery and 500 the conversation list.
-    company:
-      typeof search.company === 'string' && isValidTypeId(search.company, 'company')
-        ? search.company
-        : undefined,
   }
 }
 
@@ -241,9 +232,6 @@ export const Route = createFileRoute('/admin/inbox')({
     // views list), so — like Saved — it hydrates client-side, not here.
     const skipListPrefetch = isSaved || nav.kind === 'custom'
     const useUnified = usesUnifiedInboxList(nav)
-    // A `?company=` deep link SSR-prefetches the FILTERED list under the same
-    // factory key the component reads, so the filtered view hydrates too.
-    const company = search.company as CompanyId | undefined
     // Best-effort: a failed prefetch (e.g. a stale `?i=`) must never break the
     // page — each is caught independently and the component's useQuery still
     // fetches client-side.
@@ -261,7 +249,6 @@ export const Route = createFileRoute('/admin/inbox')({
               facet,
               priority,
               searchTerm,
-              company,
               sort,
               undefined,
               search.ttype,
@@ -278,7 +265,6 @@ export const Route = createFileRoute('/admin/inbox')({
             facetToStatusFilter(facet),
             priority,
             searchTerm,
-            company,
             sort,
             undefined,
             search.channel
@@ -286,8 +272,8 @@ export const Route = createFileRoute('/admin/inbox')({
         )
       )
     }
-    // Nav badges, the company and ticket-type pickers, the team roster and
-    // the attribute definitions are read on every load whatever is selected.
+    // Nav badges, the ticket-type picker, the team roster and the attribute
+    // definitions are read on every load whatever is selected.
     // Prefetched here, they arrive with the document rather than as one
     // client round trip (and one more session resolution) each.
     const showTickets = !!flags?.supportTickets
@@ -298,12 +284,6 @@ export const Route = createFileRoute('/admin/inbox')({
       warm(queryClient.ensureQueryData(conversationInboxQueries.views())),
       warm(queryClient.ensureQueryData(inboxQueries.counts())),
       warm(queryClient.ensureQueryData(inboxTeamsQueryOptions())),
-      warm(
-        queryClient.ensureQueryData({
-          queryKey: ['admin', 'companies'],
-          queryFn: () => listCompaniesFn(),
-        })
-      ),
       warm(queryClient.ensureQueryData(conversationAttributeQueries.live())),
       // The status catalogue backs every ticket-kind row's badge, not just a
       // tickets-scoped view, so it's warmed whenever tickets are on at all.
@@ -420,7 +400,6 @@ function InboxPage() {
     ttype: urlTicketType,
     q: urlQ,
     channel: urlChannel,
-    company: urlCompany,
     post: urlPost,
   } = Route.useSearch()
 
@@ -474,9 +453,6 @@ function InboxPage() {
         segment: item.kind === 'segment' ? item.segmentId : undefined,
         team: item.kind === 'team' ? item.teamId : undefined,
         viewId: item.kind === 'custom' ? item.viewId : undefined,
-        // A scope without refinements has no company control, so the filter
-        // does not follow the agent into it.
-        ...(!inboxScopeHasRefinements(item) && { company: undefined }),
         i: scopeMemory.current.get(inboxNavKey(item)),
         m: undefined,
       }),
@@ -495,7 +471,7 @@ function InboxPage() {
   )
   // The tickets-branch registry-type dropdown (Phase 4). Selecting a type
   // clears the open item (it may fall outside the filtered list), mirroring
-  // the company filter's `i: undefined` behavior.
+  // the channel filter's `i: undefined` behavior.
   const setTicketTypeFilter = useCallback(
     (id: string | undefined) => updateSearch({ ttype: id, i: undefined, m: undefined }),
     [updateSearch]
@@ -587,26 +563,6 @@ function InboxPage() {
   // conversation-list query is idle there. The query options come from the shared
   // factory so the route loader's SSR prefetch (same key) hydrates this read.
   const isSaved = nav.kind === 'view' && nav.view === 'saved'
-
-  // Company refinement: a picker in the list header + the deep-link from the
-  // conversation CompanyCard. The picker only appears when companies exist.
-  const { data: companies } = useQuery({
-    queryKey: ['admin', 'companies'],
-    queryFn: () => listCompaniesFn(),
-    staleTime: 60_000,
-  })
-  // A deep link can carry `?company=` into a scope that cannot filter by it.
-  useEffect(() => {
-    if (urlCompany && !showRefinements) updateSearch({ company: undefined })
-  }, [urlCompany, showRefinements, updateSearch])
-  // Drop a stale `?company=` (deleted / no longer visible) so the filter never
-  // strands the list on an unselectable company — mirrors the tag/segment
-  // scope-cleanup effect.
-  useEffect(() => {
-    if (urlCompany && companies && !companies.some((co) => co.id === urlCompany)) {
-      updateSearch({ company: undefined })
-    }
-  }, [urlCompany, companies, updateSearch])
 
   // Targeted cache refresh, split so each surface only pays for what actually
   // moved (a broad invalidate-everything on every SSE event/solo mutation was
@@ -777,7 +733,6 @@ function InboxPage() {
     facet,
     priorityFilter,
     search,
-    companyId: urlCompany as CompanyId | undefined,
     sort,
     ticketTypeId: urlTicketType,
     activeViewFilters: activeView?.filters,
@@ -919,9 +874,9 @@ function InboxPage() {
   }, [])
 
   // Reset the selection when the visible list changes (scope / facet / priority
-  // / company / search) — the checked ids belong to the previous list. The
-  // first-mount clear is harmless (the selection starts empty).
-  const selectionScopeKey = `${inboxNavKey(nav)}|${facet}|${priorityFilter}|${urlCompany ?? ''}|${search}`
+  // / search) — the checked ids belong to the previous list. The first-mount
+  // clear is harmless (the selection starts empty).
+  const selectionScopeKey = `${inboxNavKey(nav)}|${facet}|${priorityFilter}|${search}`
   useEffect(() => {
     clearSelection()
   }, [selectionScopeKey, clearSelection])
@@ -1437,21 +1392,6 @@ function InboxPage() {
     [isTestView, refreshInbox, setNav]
   )
 
-  // The company refinement, offered only when the workspace has companies.
-  // Memoized for the same reason as the header slot.
-  const companyFilter = useMemo(
-    () =>
-      companies && companies.length > 0
-        ? {
-            companies,
-            value: urlCompany,
-            onChange: (id: string | undefined) =>
-              updateSearch({ company: id, i: undefined, m: undefined }),
-          }
-        : undefined,
-    [companies, urlCompany, updateSearch]
-  )
-
   // The floating bar shows for a real multi-selection, or when a value menu was
   // popped for the single open item.
   const bulkBarVisible = hasSelection || (bulkMenu !== null && hasActiveConversation)
@@ -1489,7 +1429,6 @@ function InboxPage() {
           scopeLabel={scopeLabel}
           showRefinements={showRefinements}
           headerSlot={listHeaderSlot}
-          companyFilter={companyFilter}
           searchInput={searchInput}
           onSearchInput={setSearchInput}
           facet={facet}

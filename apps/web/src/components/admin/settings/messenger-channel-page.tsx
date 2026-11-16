@@ -2,7 +2,7 @@ import { useState, useTransition } from 'react'
 import { useRouter, Link } from '@tanstack/react-router'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { settingsQueries } from '@/lib/client/queries/settings'
-import { useUpdatePortalConfig, useUpdateWidgetConfig } from '@/lib/client/mutations/settings'
+import { useUpdatePortalConfig, useUpdateMessengerConfig } from '@/lib/client/mutations/settings'
 import { SettingsPage } from '@/components/admin/settings/settings-page'
 import { moduleCrumb } from '@/components/admin/settings/settings-nav-sections'
 import { SettingsCard } from '@/components/admin/settings/settings-card'
@@ -13,20 +13,22 @@ import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/shared/utils'
 import { SUPPORTED_LOCALES } from '@/lib/shared/i18n'
-import { WIDGET_LOCALE_LABELS, type WidgetTranslations } from '@/lib/shared/widget/translations'
+import {
+  MESSENGER_LOCALE_LABELS,
+  type MessengerTranslations,
+} from '@/lib/shared/messenger/translations'
 import { INLINE_LINK } from '@/components/admin/settings/inline-link'
 
 export function MessengerChannelPage() {
   const router = useRouter()
-  const updateWidgetConfig = useUpdateWidgetConfig()
+  const updateMessengerConfig = useUpdateMessengerConfig()
   const updatePortalConfig = useUpdatePortalConfig()
-  const widgetConfigQuery = useSuspenseQuery(settingsQueries.widgetConfig())
+  const messengerConfigQuery = useSuspenseQuery(settingsQueries.messengerConfig())
   const portalConfigQuery = useSuspenseQuery(settingsQueries.portalConfig())
-  const config = widgetConfigQuery.data
+  const config = messengerConfigQuery.data
   const messengerConfig = config.messenger
   const [isPending, startTransition] = useTransition()
   const [savingField, setSavingField] = useState<string | null>(null)
-  const [widgetMessenger, setWidgetMessenger] = useState(config.tabs?.messenger ?? true)
   const [portalSupportEnabled, setPortalSupportEnabled] = useState(
     portalConfigQuery.data?.support?.enabled ?? true
   )
@@ -37,17 +39,17 @@ export function MessengerChannelPage() {
   const [welcomeMessage, setWelcomeMessage] = useState(messengerConfig?.welcomeMessage ?? '')
   const [offlineMessage, setOfflineMessage] = useState(messengerConfig?.offlineMessage ?? '')
   const [teamName, setTeamName] = useState(messengerConfig?.teamName ?? '')
-  const [translations, setTranslations] = useState<WidgetTranslations>(config.translations ?? {})
+  const [translations, setTranslations] = useState<MessengerTranslations>(config.translations ?? {})
   const [translationLocale, setTranslationLocale] = useState<string>('en')
 
   async function persist(
     field: string,
-    data: Parameters<typeof updateWidgetConfig.mutateAsync>[0],
+    data: Parameters<typeof updateMessengerConfig.mutateAsync>[0],
     revert?: () => void
   ) {
     setSavingField(field)
     try {
-      await updateWidgetConfig.mutateAsync(data)
+      await updateMessengerConfig.mutateAsync(data)
       startTransition(() => router.invalidate())
     } catch {
       revert?.()
@@ -61,7 +63,7 @@ export function MessengerChannelPage() {
   return (
     <SettingsPage
       page="/admin/settings/channels/messenger"
-      description="Live chat in the widget and on the portal."
+      description="Live chat on the portal."
       crumbs={[
         moduleCrumb('/admin/settings/support'),
         { label: 'Channels', to: '/admin/settings/channels' },
@@ -69,24 +71,6 @@ export function MessengerChannelPage() {
     >
       <SettingsCard title="Surfaces" description="Where customers can start conversations.">
         <SettingRows>
-          <SettingRow
-            label="Widget"
-            description="Show the Messages tab in the widget."
-            htmlFor="widget-messenger-tab"
-            control={
-              <Switch
-                id="widget-messenger-tab"
-                checked={widgetMessenger}
-                onCheckedChange={(checked) => {
-                  setWidgetMessenger(checked)
-                  persist('widgetMessenger', { tabs: { messenger: checked } }, () =>
-                    setWidgetMessenger(!checked)
-                  )
-                }}
-                disabled={isBusy}
-              />
-            }
-          />
           <SettingRow
             label="Portal chats"
             description="Let signed-in customers start new conversations from the portal's Support tab."
@@ -222,11 +206,11 @@ function MessengerTranslations({
   disabled,
   onCommit,
 }: {
-  translations: WidgetTranslations
+  translations: MessengerTranslations
   selectedLocale: string
   onSelectLocale: (locale: string) => void
   disabled: boolean
-  onCommit: (next: WidgetTranslations) => void
+  onCommit: (next: MessengerTranslations) => void
 }) {
   const isDefault = selectedLocale === 'en'
   const entry = translations[selectedLocale] ?? {}
@@ -261,7 +245,7 @@ function MessengerTranslations({
                 : 'border-border/50 text-muted-foreground hover:text-foreground'
             )}
           >
-            {WIDGET_LOCALE_LABELS[locale] ?? locale}
+            {MESSENGER_LOCALE_LABELS[locale] ?? locale}
           </button>
         ))}
       </div>

@@ -37,13 +37,12 @@ import {
   updateWorkspaceName,
 } from '@/lib/server/domains/settings/settings.media'
 import { updateFeatureFlags } from '@/lib/server/domains/settings/settings.service'
-import { updateWidgetConfig } from '@/lib/server/domains/settings/settings.widget'
+import { updateMessengerConfig } from '@/lib/server/domains/settings/settings.messenger'
 import { updateOfficeHoursSchedule } from '@/lib/server/domains/settings/settings.office-hours'
 import { updateChangelogSettings } from '@/lib/server/domains/settings/settings.changelog'
 import {
   deepMerge,
   parseJsonOrNull,
-  parseWidgetConfig,
   requireSettings,
   type SettingsRecord,
 } from '@/lib/server/domains/settings/settings.helpers'
@@ -96,24 +95,16 @@ export async function prepareSettingsChanges(
 const MESSENGER_SWITCH = 'messenger.enabled'
 
 /**
- * Messenger is live when Support is on, the widget is on and its Messages tab
- * is shown. Turning it off flips only the Messages tab, as the Messenger
- * page's own switch does; turning it on also turns on what it needs.
+ * Messenger is live when the Support product (`supportInbox`) is on. Turning it
+ * on from the Messenger area therefore turns Support on too; turning it off
+ * leaves nothing else to derive.
  */
 function messengerEffects(row: SettingsRecord, enabled: boolean): MessengerEffect[] {
-  if (!enabled) return ['messengerTab']
-  const effects: MessengerEffect[] = ['messengerTab']
-  if (!parseWidgetConfig(row.widgetConfig).enabled) effects.push('widget')
-  if (!resolveFeatureFlags(row.featureFlags).supportInbox) effects.push('supportInbox')
-  return effects
+  if (enabled && !resolveFeatureFlags(row.featureFlags).supportInbox) return ['supportInbox']
+  return []
 }
 
-async function writeArea(
-  tx: Transaction,
-  area: SettingsArea,
-  patch: Record<string, unknown>,
-  effects: ReadonlySet<MessengerEffect>
-) {
+async function writeArea(tx: Transaction, area: SettingsArea, patch: Record<string, unknown>) {
   const options = { executor: tx }
   switch (area) {
     case 'branding': {
@@ -143,16 +134,9 @@ async function writeArea(
     }
     case 'messenger': {
       const { enabled, welcomeMessage } = settingsPatchSchemas.messenger.parse(patch)
-      if (enabled === true && effects.has('supportInbox'))
-        await updateFeatureFlags({ supportInbox: true }, options)
-      await updateWidgetConfig(
-        {
-          ...(enabled !== undefined ? { tabs: { messenger: enabled } } : {}),
-          ...(enabled === true && effects.has('widget') ? { enabled: true } : {}),
-          ...(welcomeMessage !== undefined ? { messenger: { welcomeMessage } } : {}),
-        },
-        options
-      )
+      if (enabled !== undefined) await updateFeatureFlags({ supportInbox: enabled }, options)
+      if (welcomeMessage !== undefined)
+        await updateMessengerConfig({ messenger: { welcomeMessage } }, options)
       break
     }
     case 'modules':
@@ -207,8 +191,6 @@ export async function applySettingsChangesInTransaction(
       'INVALID_SETTINGS_PROPOSAL',
       'Choose matching Messenger and Support settings.'
     )
-  const effects = new Set(selected.flatMap((change) => change.effects ?? []))
-  // Validate every selected area before the first write.
   for (const [area, patch] of patches) {
     if (area === 'branding' && 'logoKey' in patch) {
       const { logoKey, ...configPatch } = patch
@@ -221,7 +203,7 @@ export async function applySettingsChangesInTransaction(
       })
     else settingsPatchSchemas[area].parse(patch)
   }
-  for (const [area, patch] of patches) await writeArea(tx, area, patch, effects)
+  for (const [area, patch] of patches) await writeArea(tx, area, patch)
   const after = await requireSettings(tx)
   return {
     kind: 'settings',

@@ -59,10 +59,7 @@ export function getRequestSession(): Promise<RequestSession | null> {
   return memoizePerRequest(SESSION_KEY, async () => {
     // Lazy: the auth instance's module graph stays out of every importer.
     const { auth } = await import('@/lib/server/auth/index')
-    const { healStrandedPortalSession } = await import('@/lib/server/auth/session-audience')
-    const headers = getRequestHeaders()
-    const session = await auth.api.getSession({ headers })
-    return session ? healStrandedPortalSession(session, headers) : null
+    return auth.api.getSession({ headers: getRequestHeaders() })
   })
 }
 

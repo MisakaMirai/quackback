@@ -58,7 +58,7 @@ function parseUserAgent(userAgent: string): ParsedUa {
 const beaconSchema = z.object({
   url: z.string().max(2000),
   referrer: z.string().max(2000).optional().default(''),
-  surface: z.enum(['portal', 'widget']),
+  surface: z.enum(['portal']),
   /** Layer-2 durable id; an untrusted opaque token, length-capped. */
   deviceId: z.string().max(128).optional(),
 })

@@ -34,10 +34,9 @@ interface PortalAuthTabProps {
 /**
  * Portal access tab — first of three concern-scoped tabs on the
  * /authentication page. Sole purpose is to control WHO can view the
- * portal: visibility (public/private), and the four authorization
+ * portal: visibility (public/private), and the three authorization
  * channels that grant access to additional visitors when private
- * (allowed email domains, email invites, allowed segments, widget
- * sign-in).
+ * (allowed email domains, email invites, allowed segments).
  *
  * HOW visitors authenticate (password / magic link / social / OIDC)
  * lives on the sibling 'Sign-in providers' tab. WHO on the team has
@@ -84,12 +83,6 @@ export function PortalAuthTab({ portalConfig, teamOpenSignup }: PortalAuthTabPro
   )
   const allowedDomainsRef = useRef(allowedDomains)
   allowedDomainsRef.current = allowedDomains
-
-  const [widgetSignIn, setWidgetSignIn] = useState<boolean>(
-    portalConfig.access?.widgetSignIn ?? false
-  )
-  const widgetSignInRef = useRef(widgetSignIn)
-  widgetSignInRef.current = widgetSignIn
 
   const [allowedSegmentIds, setAllowedSegmentIds] = useState<string[]>(
     portalConfig.access?.allowedSegmentIds ?? []
@@ -170,7 +163,7 @@ export function PortalAuthTab({ portalConfig, teamOpenSignup }: PortalAuthTabPro
   const signupBusy = signupMutation.isPending
 
   /**
-   * Single save path for visibility, domain, and widget sign-in changes.
+   * Single save path for visibility and domain changes.
    *
    * The changed field is supplied explicitly by the caller; all peer fields
    * are read from their refs so stale-closure captures are impossible. This
@@ -184,20 +177,17 @@ export function PortalAuthTab({ portalConfig, teamOpenSignup }: PortalAuthTabPro
     mutationFn: (next: {
       visibility: Visibility
       allowedDomains: string[]
-      widgetSignIn: boolean
       allowedSegmentIds: string[]
     }) => updatePortalAccessFn({ data: next }),
     onMutate: (next) => {
       const previous = {
         visibility: visibilityRef.current,
         allowedDomains: allowedDomainsRef.current,
-        widgetSignIn: widgetSignInRef.current,
         allowedSegmentIds: allowedSegmentIdsRef.current,
       }
       // Optimistic update
       setVisibility(next.visibility)
       setAllowedDomains(next.allowedDomains)
-      setWidgetSignIn(next.widgetSignIn)
       setAllowedSegmentIds(next.allowedSegmentIds)
       return { previous }
     },
@@ -211,7 +201,6 @@ export function PortalAuthTab({ portalConfig, teamOpenSignup }: PortalAuthTabPro
       if (!context) return
       setVisibility(context.previous.visibility)
       setAllowedDomains(context.previous.allowedDomains)
-      setWidgetSignIn(context.previous.widgetSignIn)
       setAllowedSegmentIds(context.previous.allowedSegmentIds)
     },
   })
@@ -221,13 +210,11 @@ export function PortalAuthTab({ portalConfig, teamOpenSignup }: PortalAuthTabPro
   function applyAccess(
     nextVisibility: Visibility,
     nextDomains: string[],
-    nextWidgetSignIn?: boolean,
     nextSegmentIds?: string[]
   ) {
     accessMutation.mutate({
       visibility: nextVisibility,
       allowedDomains: nextDomains,
-      widgetSignIn: nextWidgetSignIn ?? widgetSignInRef.current,
       allowedSegmentIds: nextSegmentIds ?? allowedSegmentIdsRef.current,
     })
   }
@@ -464,12 +451,7 @@ export function PortalAuthTab({ portalConfig, teamOpenSignup }: PortalAuthTabPro
                   segments={segmentsQuery.data ?? []}
                   value={allowedSegmentIds}
                   onChange={(next) => {
-                    applyAccess(
-                      visibilityRef.current,
-                      allowedDomainsRef.current,
-                      widgetSignInRef.current,
-                      next
-                    )
+                    applyAccess(visibilityRef.current, allowedDomainsRef.current, next)
                   }}
                   disabled={isAccessBusy}
                 />
@@ -481,25 +463,6 @@ export function PortalAuthTab({ portalConfig, teamOpenSignup }: PortalAuthTabPro
                 )}
               </div>
             )}
-          </SettingsCard>
-
-          <SettingsCard>
-            <SettingRow
-              label="Widget sign-in"
-              description="Let users signed in through the widget continue in the full portal."
-              htmlFor="widget-signin-toggle"
-              className="py-0"
-              control={
-                <Switch
-                  id="widget-signin-toggle"
-                  checked={widgetSignIn}
-                  onCheckedChange={(checked) => {
-                    applyAccess(visibilityRef.current, allowedDomainsRef.current, checked)
-                  }}
-                  disabled={isAccessBusy}
-                />
-              }
-            />
           </SettingsCard>
         </>
       )}

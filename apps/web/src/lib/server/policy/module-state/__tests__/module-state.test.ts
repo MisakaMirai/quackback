@@ -99,7 +99,6 @@ describe('the scanner is looking at something', () => {
       'apps/web/src/lib/server/domains/workflows/workflow-actor-permissions.ts#AUTOMATION_PERMISSIONS',
       'apps/web/src/lib/server/policy/authz-matrix/scan.ts#HTTP_METHODS',
       'apps/web/src/lib/server/markdown-tiptap.ts#IMAGE_NODE_TYPES',
-      'apps/web/src/routes/api/widget/identify.ts#RESERVED_JWT_CLAIMS',
       'packages/db/src/types.ts#INTERACTIVE_BLOCK_KINDS',
     ]) {
       expect(ids.has(id), `${id} should be treated as a frozen constant`).toBe(false)

@@ -8,9 +8,6 @@ const base: LaunchStatus = {
   maxBoards: null,
   memberCount: 1,
   hasBranding: false,
-  hasWidgetInstalled: false,
-  hasWidgetEnabled: false,
-  hasMessengerEnabled: false,
   hasHelpArticle: false,
   hasPublishedChangelog: false,
   hasStatusComponent: false,
@@ -100,36 +97,7 @@ describe('buildLaunchTasks', () => {
     })
       .filter((task) => task.classification === 'prerequisite')
       .map((task) => task.id)
-    expect(ids).toEqual([
-      'create-board',
-      'publish-changelog',
-      'connect-messenger',
-      'help-article',
-      'add-status-service',
-    ])
-  })
-
-  it('keeps Connect Messenger pending until installation is externally observed', () => {
-    const configured = buildLaunchTasks({
-      ...base,
-      features: { ...noExtraModules, supportInbox: true },
-      hasWidgetEnabled: true,
-      hasWidgetInstalled: false,
-    })
-    expect(configured.find((task) => task.id === 'connect-messenger')?.isCompleted).toBe(false)
-    expect(
-      configured.filter((task) => task.classification === 'prerequisite').map((t) => t.id)
-    ).toEqual(['create-board', 'connect-messenger'])
-  })
-
-  it('completes Connect Messenger when the SDK is observed and the widget is on', () => {
-    const task = buildLaunchTasks({
-      ...base,
-      hasWidgetInstalled: true,
-      hasWidgetEnabled: true,
-      features: { ...noExtraModules, supportInbox: true },
-    }).find((row) => row.id === 'connect-messenger')
-    expect(task?.isCompleted).toBe(true)
+    expect(ids).toEqual(['create-board', 'publish-changelog', 'help-article', 'add-status-service'])
   })
 
   it('blocks the board step at the plan limit', () => {
@@ -183,7 +151,7 @@ describe('buildLaunchTasks', () => {
     expect(tasks.find((task) => task.id === 'create-board')!.isSkipped).toBe(true)
   })
 
-  it('links Connect Messenger to its install page, opens Invite in place, and completes Invite on the first invite sent', () => {
+  it('links Invite in place and completes it on the first invite sent', () => {
     const support: LaunchStatus = {
       ...base,
       features: { ...noExtraModules, supportInbox: true },
@@ -198,8 +166,7 @@ describe('buildLaunchTasks', () => {
     }
     const find = (status: LaunchStatus, id: string) =>
       buildLaunchTasks(status, 'customer_support').find((task) => task.id === id)
-    expect(find(support, 'connect-messenger')?.sheet).toBeUndefined()
-    expect(find(support, 'connect-messenger')?.href).toBe('/admin/settings/widget/install')
+    expect(find(support, 'connect-messenger')).toBeUndefined()
     expect(find(support, 'invite-team')?.sheet).toBe('invite-team')
     expect(find(support, 'invite-team')?.isCompleted).toBe(false)
     expect(find({ ...support, hasTeamInvite: true }, 'invite-team')?.isCompleted).toBe(true)
@@ -220,19 +187,18 @@ describe('buildLaunchTasks', () => {
     ).toBe('prerequisite')
   })
 
-  it.each([
-    { publicBoardLinkCopiedAt: '2026-08-14T10:00:00.000Z' },
-    { hasWidgetInstalled: true, hasWidgetEnabled: true },
-    { hasFirstWin: true },
-  ])('accepts any real distribution signal: %o', (signal) => {
-    const task = buildLaunchTasks({
-      ...base,
-      hasPublicBoard: true,
-      features: noExtraModules,
-      ...signal,
-    }).find((candidate) => candidate.id === 'distribute-feedback')
-    expect(task?.isCompleted).toBe(true)
-  })
+  it.each([{ publicBoardLinkCopiedAt: '2026-08-14T10:00:00.000Z' }, { hasFirstWin: true }])(
+    'accepts any real distribution signal: %o',
+    (signal) => {
+      const task = buildLaunchTasks({
+        ...base,
+        hasPublicBoard: true,
+        features: noExtraModules,
+        ...signal,
+      }).find((candidate) => candidate.id === 'distribute-feedback')
+      expect(task?.isCompleted).toBe(true)
+    }
+  )
 })
 
 describe('launchPlanLeadsHome', () => {

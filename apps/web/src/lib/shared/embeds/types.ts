@@ -34,7 +34,7 @@ export interface EmbedPostPreview {
   authorAvatarUrl: string | null
   createdAt: string | null
   /** Absolute, viewer-shareable portal URL for the post — built server-side from
-   *  the canonical base so an embed can open it in a new tab (e.g. in the widget,
+   *  the canonical base so an embed can open it in a new tab,
    *  whose iframe origin may differ from the portal's). */
   url: string
 }

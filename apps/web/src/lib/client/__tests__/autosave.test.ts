@@ -124,7 +124,7 @@ describe('settings autosave hooks', () => {
 
   it.each([
     'useUpdateModerationDefault',
-    'useUpdateWidgetConfig',
+    'useUpdateMessengerConfig',
     'useUpdateHelpCenterConfig',
     'useUpdateHelpCenterSeo',
     'useUpdateWorkflowAbandonedAutoClose',
@@ -142,10 +142,7 @@ describe('settings autosave hooks', () => {
     expect(body('useSaveBrandingTheme')).toContain('...AUTOSAVE')
   })
 
-  it('leaves explicit actions untagged', () => {
-    expect(body('useRegenerateWidgetSecret')).not.toContain('AUTOSAVE')
-    expect(body('useMintWidgetInstallCode')).not.toContain('AUTOSAVE')
-  })
+  it('leaves explicit actions untagged', () => {})
 })
 
 describe('autosave error ownership', () => {

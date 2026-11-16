@@ -48,18 +48,8 @@ import type { KbCategoryId } from '@quackback/ids'
 import type { SupportedLocale } from '@/lib/shared/i18n'
 
 const LOCALE_LABELS: Record<string, string> = {
-  de: 'Deutsch',
-  fr: 'Français',
-  es: 'Español',
-  ar: 'العربية',
-  ru: 'Русский',
-  'pt-br': 'Português (Brasil)',
   'zh-cn': '简体中文',
   'zh-tw': '繁體中文',
-  nl: 'Nederlands',
-  pl: 'Polski',
-  th: 'ภาษาไทย',
-  uk: 'Українська',
 }
 
 /** Compact per-locale name/description editor (domains/languages §2). No

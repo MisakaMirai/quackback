@@ -1,4 +1,3 @@
-import { userAttributeDefinitions } from '@/lib/server/db'
 import type { UserAttributeId } from '@quackback/ids'
 import { createAttributeDefinitionService } from '@/lib/server/domains/attribute-definitions/attribute-definition.service'
 import type {
@@ -8,8 +7,6 @@ import type {
 } from './user-attribute.types'
 
 const service = createAttributeDefinitionService({
-  table: userAttributeDefinitions,
-  idPrefix: 'user_attr',
   singular: 'User attribute',
   plural: 'user attributes',
   logComponent: 'user-attributes',

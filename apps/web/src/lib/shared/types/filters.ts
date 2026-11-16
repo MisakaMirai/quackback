@@ -168,11 +168,8 @@ export interface UsersFilters {
   commentCount?: string
   /** Custom attribute filters: "key:op:value,key2:op:value2" */
   customAttrs?: string
-  /** Companies-tab filters, same encoding (reserved keys: plan, mrr). */
-  companyAttrs?: string
-  /** Lifecycle view: identified users (default), engaged anonymous leads, or
-   *  the companies directory. */
-  lifecycle?: 'users' | 'leads' | 'companies'
+  /** Lifecycle view: identified users (default) or engaged anonymous leads. */
+  lifecycle?: 'users' | 'leads'
   sort?:
     | 'newest'
     | 'oldest'

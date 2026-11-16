@@ -16,9 +16,11 @@ export const pageViews = pgTable(
   {
     id: typeIdWithDefault('pv')('id').notNull(),
     occurredAt: timestamp('occurred_at', { withTimezone: true }).notNull().defaultNow(),
-    /** The surface's origin (portal origin, or the widget host page's origin). */
+    /** The surface's origin (the portal origin). */
     siteOrigin: text('site_origin').notNull(),
-    surface: text('surface', { enum: ['portal', 'widget'] }).notNull(),
+    // Historical pre-removal rows keep the retired 'widget' value; no CHECK
+    // constraint exists on this column, so new writes are portal-only.
+    surface: text('surface', { enum: ['portal'] }).notNull(),
     path: text('path').notNull(),
     /** Referrer domain or UTM-derived source; null = direct. */
     source: text('source'),
@@ -74,7 +76,7 @@ export const visitorDevices = pgTable(
 )
 
 /** Surface values stored on rollup rows; 'all' is the cross-surface aggregate. */
-export const VISITOR_SURFACES = ['all', 'portal', 'widget'] as const
+export const VISITOR_SURFACES = ['all', 'portal'] as const
 
 /** Breakdown dimensions snapshotted into visitor_top_stats. */
 export const VISITOR_TOP_DIMENSIONS = [
@@ -95,7 +97,7 @@ export const visitorStatsDaily = pgTable(
   'visitor_stats_daily',
   {
     date: date('date', { mode: 'string' }).notNull(),
-    surface: text('surface').notNull(), // 'all' | 'portal' | 'widget'
+    surface: text('surface').notNull(), // 'all' | 'portal' (historical 'widget' rows persist)
     uniqueVisitors: integer('unique_visitors').default(0).notNull(),
     pageviews: integer('pageviews').default(0).notNull(),
     /** Sessions: a visit ends after 30 minutes of inactivity. */
@@ -113,7 +115,7 @@ export const visitorTopStats = pgTable(
   'visitor_top_stats',
   {
     period: text('period').notNull(), // '7d' | '30d' | '90d' | '12m'
-    surface: text('surface').notNull(), // 'all' | 'portal' | 'widget'
+    surface: text('surface').notNull(), // 'all' | 'portal' (historical 'widget' rows persist)
     dimension: text('dimension').notNull(), // VISITOR_TOP_DIMENSIONS
     rank: integer('rank').notNull(), // 1-10
     label: text('label').notNull(),

@@ -19,8 +19,8 @@ import { LaunchTaskLabel, launchTaskMessage } from './launch-task-label'
 import { LaunchTaskLink } from './launch-task-link'
 import { FirstWinShareAction } from './goal-actions'
 
-/** Languages whose step titles start lowercase inside a sentence; German nouns, for one, do not. */
-const SENTENCE_CASE = new Set(['en', 'es', 'fr', 'nl', 'pl', 'pt', 'ru', 'uk'])
+/** Languages whose step titles start lowercase inside a sentence; English does, Chinese does not. */
+const SENTENCE_CASE = new Set(['en'])
 
 /** Items after the first continue the sentence, so they start lowercase where that is right. */
 function continueSentence(text: string, locale: string, index: number): string {

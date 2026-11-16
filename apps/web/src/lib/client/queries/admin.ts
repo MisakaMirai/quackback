@@ -21,7 +21,6 @@ import {
   fetchAuthProviderCredentialsMaskedFn,
 } from '@/lib/server/functions/auth-provider-credentials'
 import { listAuditEventsFn } from '@/lib/server/functions/audit-log'
-import { listCompanyAttributesFn } from '@/lib/server/functions/company-attributes'
 import { listRecoveryCodesFn } from '@/lib/server/functions/recovery-codes'
 import { getModerationStatus } from '@/lib/server/functions/moderation'
 import { fetchApiKeys } from '@/lib/server/functions/api-keys'
@@ -429,16 +428,6 @@ export const adminQueries = {
     queryOptions({
       queryKey: ['admin', 'userAttributes'],
       queryFn: () => listUserAttributesFn(),
-      staleTime: 60 * 1000,
-    }),
-
-  /**
-   * List all company attribute definitions
-   */
-  companyAttributes: () =>
-    queryOptions({
-      queryKey: ['admin', 'companyAttributes'],
-      queryFn: () => listCompanyAttributesFn(),
       staleTime: 60 * 1000,
     }),
 

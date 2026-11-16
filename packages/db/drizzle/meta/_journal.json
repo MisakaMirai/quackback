@@ -2010,6 +2010,20 @@
       "when": 1791001700000,
       "tag": "0312_drop_quackback_ai",
       "breakpoints": true
+    },
+    {
+      "idx": 290,
+      "version": "7",
+      "when": 1791001800000,
+      "tag": "0313_drop_companies",
+      "breakpoints": true
+    },
+    {
+      "idx": 291,
+      "version": "7",
+      "when": 1791001900000,
+      "tag": "0314_drop_widget",
+      "breakpoints": true
     }
   ]
 }

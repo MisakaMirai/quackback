@@ -221,10 +221,6 @@ export function buildNavSections(flags?: Partial<FeatureFlags>): NavSection[] {
           permission: PERMISSIONS.SETTINGS_BRANDING,
         },
         {
-          ...navPage('/admin/settings/widget'),
-          permission: PERMISSIONS.SETTINGS_MANAGE,
-        },
-        {
           ...navPage('/admin/settings/members'),
           permission: PERMISSIONS.MEMBER_VIEW,
         },
@@ -248,10 +244,6 @@ export function buildNavSections(flags?: Partial<FeatureFlags>): NavSection[] {
         {
           ...navPage('/admin/settings/people'),
           permission: PERMISSIONS.USER_ATTRIBUTE_VIEW,
-        },
-        {
-          ...navPage('/admin/settings/companies'),
-          permission: PERMISSIONS.COMPANY_VIEW,
         },
         ...(isProductEnabled(flags, 'support')
           ? [

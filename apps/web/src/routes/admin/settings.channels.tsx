@@ -27,7 +27,7 @@ export const Route = createFileRoute('/admin/settings/channels')({
     // own fetch and its defaults, as before.
     const ensure = readBatch(queryClient)
     await Promise.all([
-      ensure(settingsQueries.widgetConfig()),
+      ensure(settingsQueries.messengerConfig()),
       ensure(settingsQueries.portalConfig()),
       warmQuery(ensure, channels.emailStatus()),
       warmQuery(ensure, githubStatus()),

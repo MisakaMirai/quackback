@@ -1,26 +1,14 @@
 /**
- * Generic attribute-definition service (§K2).
+ * User attribute-definition service (§K2).
  *
- * User attributes (`user_attribute_definitions`) and company attributes
- * (`company_attribute_definitions`) are structurally identical tables with
- * identical lifecycles (list/create/update/hard-delete) and identical
- * validation. The company domain header documents itself as a wholesale
- * clone of the user domain — this module is the single implementation both
- * thin wrappers delegate to, so validation, key normalization, and error
- * mapping can no longer drift apart.
- *
- * Typing note: the two tables differ only in their id column's TypeID prefix
- * (`user_attr_*` vs `company_attr_*`), which is a compile-time-only
- * distinction — at runtime the columns are identical text keys. The factory
- * therefore operates on one concrete table type with a documented cast at
- * the boundary rather than a Drizzle generic (whose overloads collapse a
- * table union to `never`).
+ * Owns the `user_attribute_definitions` lifecycle (list/create/update/
+ * hard-delete) and its validation, key normalization, and error mapping.
  *
  * Conversation attributes stay separate: different table shape (options,
  * AI-detect), archive/restore lifecycle, and no hard delete.
  */
 import { z } from 'zod'
-import { db, eq, asc, userAttributeDefinitions, companyAttributeDefinitions } from '@/lib/server/db'
+import { db, eq, asc, userAttributeDefinitions } from '@/lib/server/db'
 import { createId } from '@quackback/ids'
 import { NotFoundError, ValidationError, ConflictError, InternalError } from '@/lib/shared/errors'
 import { normalizeAttributeKey } from '@/lib/shared/normalize-attribute-key'
@@ -40,7 +28,7 @@ export type {
 
 export { normalizeAttributeKey }
 
-/** Attribute value type + ISO-4217 selectors shared by the user/company fn schemas. */
+/** Attribute value type + ISO-4217 selectors used by the user-attribute fn schemas. */
 export const AttributeTypeSchema = z.enum(['string', 'number', 'boolean', 'date', 'currency'])
 
 export const CurrencyCodeSchema = z.enum([
@@ -83,11 +71,9 @@ type AttributeDefinitionUpdate = UpdateAttributeDefinitionInput
 type AttributeDefinition = AttributeDefinitionRecord
 
 export interface AttributeDefinitionServiceConfig {
-  table: typeof userAttributeDefinitions | typeof companyAttributeDefinitions
-  idPrefix: 'user_attr' | 'company_attr'
-  /** 'User attribute' / 'Company attribute' — preserved verbatim in error messages. */
+  /** 'User attribute' — appears verbatim in error messages. */
   singular: string
-  /** 'user attributes' / 'company attributes' — preserved verbatim in log lines. */
+  /** 'user attributes' — appears verbatim in log lines. */
   plural: string
   logComponent: string
 }
@@ -108,9 +94,8 @@ function validateCreate(input: AttributeDefinitionInput): void {
 }
 
 export function createAttributeDefinitionService(config: AttributeDefinitionServiceConfig) {
-  const { idPrefix, singular, plural, logComponent } = config
-  // Structurally identical tables; only the id TypeID prefix differs.
-  const table = config.table as typeof userAttributeDefinitions
+  const { singular, plural, logComponent } = config
+  const table = userAttributeDefinitions
   const log = logger.child({ component: logComponent })
 
   type Row = typeof table.$inferSelect
@@ -156,7 +141,7 @@ export function createAttributeDefinitionService(config: AttributeDefinitionServ
         const [row] = await db
           .insert(table)
           .values({
-            id: createId(idPrefix) as Row['id'],
+            id: createId('user_attr') as Row['id'],
             key: normalizeAttributeKey(input.key),
             label: input.label.trim(),
             description: input.description?.trim() || null,

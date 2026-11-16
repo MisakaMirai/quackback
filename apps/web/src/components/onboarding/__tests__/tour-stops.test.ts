@@ -104,7 +104,7 @@ describe('resolveTourStops', () => {
       })
     )
     expect(full.feedback).toBeNull()
-    expect(full.support).toMatchObject({ kind: 'link', to: '/admin/settings/widget/install' })
+    expect(full.support).toBeNull()
     expect(full['help-center']).toMatchObject({ kind: 'link', to: '/admin/help-center' })
     expect(tries(context()).roadmap).toBeNull()
     const none = tries(

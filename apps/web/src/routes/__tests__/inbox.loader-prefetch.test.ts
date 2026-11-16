@@ -1,6 +1,6 @@
 /**
  * The inbox route loader prefetches its nav/sidebar plumbing (nav-badge
- * counts, the company/ticket-type filter pickers, the team roster, the
+ * counts, the ticket-type filter picker, the team roster, the
  * attribute definitions the detail panel's editor and the standalone
  * create-ticket dialog both read unconditionally) so those reads ride the
  * document request instead of firing as separate client round trips that
@@ -44,9 +44,8 @@ async function runLoader(
 }
 
 describe('inbox route loader, nav/sidebar prefetch', () => {
-  it('warms the nav-badge counts, company picker, team roster, and attribute definitions', async () => {
+  it('warms the nav-badge counts, ticket-type picker, team roster, and attribute definitions', async () => {
     const keys = await runLoader({ supportInbox: true, supportTickets: false })
-    expect(keys).toContain(JSON.stringify(['admin', 'companies']))
     expect(keys).toContain(JSON.stringify(['admin', 'inbox', 'unified', 'counts']))
     expect(keys).toContain(JSON.stringify(['admin', 'inbox', 'teams']))
     expect(keys).toContain(JSON.stringify(['admin', 'conversation-attributes', 'live']))

@@ -28,13 +28,13 @@ afterEach(cleanup)
 
 const task = (extra: Partial<LaunchTask>) =>
   ({
-    id: 'connect-messenger',
-    title: 'Connect Messenger',
+    id: 'invite-team',
+    title: 'Invite your team',
     classification: 'prerequisite',
     isCompleted: false,
     isSkipped: false,
     availability: 'available',
-    href: '/admin/settings/widget/install',
+    href: '/admin/settings/members',
     ...extra,
   }) as LaunchTask
 
@@ -60,7 +60,7 @@ describe('a launch step done in place', () => {
   it('still links to the page when the step has no sheet', () => {
     show(task({}))
     expect(screen.getByRole('link', { name: 'Start' }).getAttribute('href')).toBe(
-      '/admin/settings/widget/install'
+      '/admin/settings/members'
     )
   })
 })

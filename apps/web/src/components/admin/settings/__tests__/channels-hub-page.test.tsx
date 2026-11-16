@@ -41,9 +41,6 @@ const { githubChannelStatusQuery } =
 let client: QueryClient
 
 function seed(github: Record<string, unknown>) {
-  client.setQueryData(settingsQueries.widgetConfig().queryKey, {
-    tabs: { messenger: true },
-  } as never)
   client.setQueryData(settingsQueries.portalConfig().queryKey, {
     support: { enabled: true },
   } as never)

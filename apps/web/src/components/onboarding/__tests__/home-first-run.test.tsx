@@ -242,8 +242,6 @@ describe('Home first-run cards', () => {
     const skipped = { resolution: 'dismissed' as const, resolvedAt: new Date(NOW).toISOString() }
     hoisted.status = status({
       hasFirstWin: true,
-      hasWidgetInstalled: true,
-      hasWidgetEnabled: true,
       hasBranding: true,
       memberCount: 2,
       publicBoardLinkCopiedAt: new Date(NOW).toISOString(),

@@ -70,8 +70,10 @@ vi.mock('@/components/conversation/thread', async (importOriginal) => {
 })
 
 vi.mock('@/lib/client/hooks/use-conversation-stream', () => ({ useConversationStream: () => {} }))
-vi.mock('@/lib/server/functions/widget-capabilities', () => ({
-  getWidgetCapabilitiesFn: vi.fn(async () => ({ chat: { mode: 'poll', pollIntervalMs: 60_000 } })),
+vi.mock('@/lib/server/functions/conversation-capabilities', () => ({
+  getConversationCapabilitiesFn: vi.fn(async () => ({
+    chat: { mode: 'poll', pollIntervalMs: 60_000 },
+  })),
 }))
 // The portal's default RPC; every call in these tests goes to the one the test provides.
 vi.mock('@/lib/server/functions/conversation', () => ({
@@ -300,15 +302,12 @@ describe('VisitorConversationThread reading', () => {
     await waitFor(() => expect(probe.markRead?.readThrough).toBe(VISITOR_READ_AT))
   })
 
-  it('refreshes the unread lists and badges once the thread is marked read', async () => {
+  it('refreshes the unread list once the thread is marked read', async () => {
     const queryClient = new QueryClient()
-    const list = conversationKeys.widgetConversationList(0)
-    const badge = conversationKeys.widgetMessengerUnread(0)
+    const list = conversationKeys.portalConversationList()
     queryClient.setQueryData(list, { conversations: [] })
-    queryClient.setQueryData(badge, { total: 1 })
     await renderThread({ existing: true, queryClient })
     act(() => probe.markRead?.onMarked?.())
     expect(queryClient.getQueryState(list)?.isInvalidated).toBe(true)
-    expect(queryClient.getQueryState(badge)?.isInvalidated).toBe(true)
   })
 })

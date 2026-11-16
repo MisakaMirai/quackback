@@ -50,9 +50,6 @@ interface FilterEventOption {
   group?: string
   excludeByDefault?: boolean
 }
-
-const WIDGET_ACTIVITY_GROUP = 'Widget activity'
-
 const FILTER_EVENT_TYPES: FilterEventOption[] = [
   { label: 'All events', value: 'all' },
   { label: 'SSO enforcement enabled (domain)', value: 'sso.enforcement.domain.enabled' },
@@ -91,20 +88,6 @@ const FILTER_EVENT_TYPES: FilterEventOption[] = [
   { group: 'API and MCP', label: 'MCP tool call', value: 'mcp.tool_call' },
   { group: 'Settings', label: 'Settings applied', value: 'settings.applied' },
   { group: 'Settings', label: 'Settings undone', value: 'settings.undone' },
-  { group: 'Portal', label: 'Widget sign-in changed', value: 'portal.widget_signin.changed' },
-  // Widget activity, separated because handshake events are high-volume on active workspaces.
-  // portal.widget_handshake.consumed is flagged excludeByDefault for future multi-select support.
-  {
-    group: WIDGET_ACTIVITY_GROUP,
-    label: 'Handshake consumed',
-    value: 'portal.widget_handshake.consumed',
-    excludeByDefault: true,
-  },
-  {
-    group: WIDGET_ACTIVITY_GROUP,
-    label: 'Handshake invalid',
-    value: 'portal.widget_handshake.invalid',
-  },
 ]
 
 const TIME_RANGES = [
@@ -423,11 +406,6 @@ export function AuditLogPage() {
               ).map((group) => (
                 <SelectGroup key={group}>
                   <SelectLabel className="text-muted-foreground px-2 py-1">{group}</SelectLabel>
-                  {group === WIDGET_ACTIVITY_GROUP && (
-                    <p className="px-2 pb-1 text-xs text-muted-foreground leading-snug">
-                      High-volume on active workspaces. Pick a specific event to view it.
-                    </p>
-                  )}
                   {FILTER_EVENT_TYPES.filter((o) => o.group === group).map((opt) => (
                     <SelectItem key={opt.value} value={opt.value}>
                       {opt.label}

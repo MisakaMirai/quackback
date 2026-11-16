@@ -83,8 +83,8 @@ export const posts = pgTable(
     })
       .default('published')
       .notNull(),
-    // Key-value metadata attached by the widget SDK
-    widgetMetadata: jsonb('widget_metadata').$type<Record<string, string>>(),
+    // Key-value metadata attached by the submitting client
+    clientMetadata: jsonb('client_metadata').$type<Record<string, string>>(),
     // Validated answers to the board's configured custom fields
     // (boards.settings.customFields), keyed by field key. Null when the board
     // configures no fields.

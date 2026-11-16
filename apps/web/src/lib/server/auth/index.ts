@@ -739,7 +739,7 @@ async function createAuth() {
       // One-time token plugin for cross-domain session transfer.
       // expiresIn is in MINUTES (the plugin multiplies by 60 000 ms internally).
       // 10 min: the OTT sign-in flow needs more headroom than the default —
-      // the user may take time between clicking the widget CTA and the portal
+      // the user may take time between clicking the sign-in CTA and the portal
       // page loading (slow connection, tab restore, etc.).
       oneTimeToken({
         expiresIn: 10,
@@ -878,7 +878,7 @@ async function createAuth() {
       }),
 
       // Bearer token plugin — converts Authorization: Bearer headers to session lookups.
-      // Used by the widget iframe which can't set cookies in cross-origin contexts.
+      // Used by cross-origin clients which can't set cookies.
       bearer(),
 
       // TOTP-based 2FA. Adds /two-factor/enable, /two-factor/verify, etc.

@@ -83,7 +83,7 @@ beforeEach(async () => {
         title: 'Acme marked idea',
         content: '',
         principalId: ordinary,
-        widgetMetadata: { test: 'true' },
+        clientMetadata: { test: 'true' },
       },
       { boardId: board.id, title: 'Acme test identity idea', content: '', principalId: customer },
     ])

@@ -2,9 +2,9 @@ import type { SVGProps } from 'react'
 
 /*
  * Small solid icons for the setup screens, drawn here rather than imported.
- * The widget loads the same icon modules eagerly; importing them from these
+ * The portal loads the same icon modules eagerly; importing them from these
  * lazy routes too would split each into a chunk of its own and add a request
- * to every widget load. Paths are Heroicons' 20px solid set.
+ * to every portal load. Paths are Heroicons' 20px solid set.
  */
 
 function SolidIcon({ d, ...props }: SVGProps<SVGSVGElement> & { d: string }) {

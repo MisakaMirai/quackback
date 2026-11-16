@@ -110,7 +110,7 @@ it.each([{ test: true }, { test: 'true' }, { onboardingGenerated: true }])(
   async (metadata) => {
     await testDb
       .update(posts)
-      .set({ widgetMetadata: sql`${JSON.stringify(metadata)}::jsonb` })
+      .set({ clientMetadata: sql`${JSON.stringify(metadata)}::jsonb` })
       .where(eq(posts.id, source))
     await expect(mergePost(source, target, owner)).resolves.toMatchObject({
       canonicalPost: { id: target, voteCount: 2 },

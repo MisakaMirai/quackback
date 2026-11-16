@@ -14,7 +14,7 @@ import { waitForToast } from '../../utils/helpers'
  *
  * The conversation is seeded directly in the DB (visitor = fresh anonymous
  * principal, channel 'messenger') so the spec has no cross-surface dependency
- * on the widget.
+ * on the portal.
  */
 test.describe('Admin Support Inbox', { tag: '@smoke' }, () => {
   // The Properties aside is `hidden min-[1680px]:flex`. Pin a desktop size so it is always shown.

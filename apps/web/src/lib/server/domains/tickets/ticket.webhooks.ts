@@ -70,7 +70,6 @@ function ticketData(
     status: status.category,
     stage: status.stage,
     requesterPrincipalId: t.requesterPrincipalId ?? null,
-    companyId: t.companyId ?? null,
     createdAt: t.createdAt.toISOString(),
     updatedAt: t.updatedAt.toISOString(),
     resolvedAt: t.resolvedAt ? t.resolvedAt.toISOString() : null,

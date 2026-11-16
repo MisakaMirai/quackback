@@ -100,8 +100,6 @@ vi.mock('@/lib/server/config', () => ({
 vi.mock('@/lib/server/auth/signin-rate-limit', () => ({
   checkCredentialSignInRateLimit: async () => ({ allowed: true }),
   checkMagicLinkSendRateLimit: async () => ({ allowed: true }),
-}))
-vi.mock('@/lib/server/auth/widget-rate-limit', () => ({
   checkAnonMintRateLimit: async () => ({ allowed: true }),
 }))
 vi.mock('@/lib/server/audit/log', () => ({ recordAuditEvent: async () => undefined }))

@@ -14,7 +14,6 @@ import {
   type FeatureFlags,
 } from '@/lib/server/domains/settings/settings.types'
 import { featureFlagsWrite } from '@/lib/server/domains/settings/settings.service'
-import { parseWidgetConfig } from '@/lib/server/domains/settings/settings.helpers'
 import { ensureDefaultHelpCategory } from '@/lib/server/domains/help-center/help-center.default-category'
 import { LAUNCH_WINDOW_DAYS } from '@/lib/shared/launch-window'
 import { accessForPreset } from '@/lib/shared/schemas/boards'
@@ -76,7 +75,7 @@ function changesStoredJson(stored: string | null, next: string): boolean {
 
 type GoalRow = Pick<
   typeof settings.$inferSelect,
-  'id' | 'name' | 'featureFlags' | 'createdAt' | 'metadata' | 'widgetConfig' | 'portalConfig'
+  'id' | 'name' | 'featureFlags' | 'createdAt' | 'metadata' | 'portalConfig'
 >
 
 /**
@@ -105,7 +104,7 @@ export async function applyOnboardingGoals(
   let modulesChanged = JSON.stringify(flags) !== JSON.stringify(before)
   // A new workspace may have been provisioned with its goal modules already
   // on but without what turning them on does (Messenger, the portal support
-  // surface, the help tab), so for it those modules count as turning on now.
+  // surface), so for it those modules count as turning on now.
   const from: FeatureFlags = isNew
     ? {
         ...flags,
@@ -125,17 +124,6 @@ export async function applyOnboardingGoals(
       { ...row, featureFlags: JSON.stringify(from) },
       input
     ).patch
-    // A new workspace without the Feedback goal has no board to send
-    // Messenger visitors to, so it starts without the idea tab.
-    if (isNew && !goals.includes('product_feedback')) {
-      const widget = parseWidgetConfig(patch.widgetConfig ?? row.widgetConfig)
-      if (widget.tabs?.feedback !== false) {
-        patch.widgetConfig = JSON.stringify({
-          ...widget,
-          tabs: { ...widget.tabs, feedback: false },
-        })
-      }
-    }
     if (isNew && goals.includes('product_feedback')) {
       const portal = openToVisitors(patch.portalConfig ?? row.portalConfig)
       if (portal) patch.portalConfig = portal

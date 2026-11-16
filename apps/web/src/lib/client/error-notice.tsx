@@ -5,7 +5,7 @@
  *
  * The app's entry loads this module (the autosave mutation cache uses it), so
  * the toast library is fetched on the first toast instead of imported here:
- * a static import would put it on every page, the widget included.
+ * a static import would put it on every page.
  */
 import { describeError } from '@/lib/shared/describe-error'
 import { errorAudience } from '@/lib/client/error-text'

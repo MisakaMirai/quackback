@@ -51,7 +51,7 @@ describe('launch-plan skips live under one key', () => {
     expect(task(status, 'invite-team').isSkipped).toBe(true)
   })
 
-  it.each(['invite-team', 'connect-messenger', 'customize-branding'])(
+  it.each(['invite-team', 'customize-branding'])(
     'a skip of %s saved for private feedback and Support hides it, and undo brings it back',
     (taskId) => {
       expect(task(privateFeedbackAndSupport, taskId).isSkipped).toBe(false)

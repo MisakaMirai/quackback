@@ -94,7 +94,6 @@ export function mockPrincipal(
     avatarKey: null,
     serviceMetadata: null,
     contactEmail: null,
-    companyId: null,
     testOwnerPrincipalId: null,
     blockedAt: null,
     blockedByPrincipalId: null,

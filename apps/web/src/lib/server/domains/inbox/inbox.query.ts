@@ -35,14 +35,7 @@ import {
   ticketConversations,
   type TicketType,
 } from '@/lib/server/db'
-import type {
-  ConversationId,
-  TicketId,
-  TicketTypeId,
-  PrincipalId,
-  TeamId,
-  CompanyId,
-} from '@quackback/ids'
+import type { ConversationId, TicketId, TicketTypeId, PrincipalId, TeamId } from '@quackback/ids'
 import type { ConversationPriority, TicketStage } from '@/lib/shared/db-types'
 import type { Channel } from '@/lib/shared/channels'
 import { PRIORITY_RANK } from '@/lib/shared/conversation/priority-meta'
@@ -95,7 +88,6 @@ export interface InboxListFilter {
    *  `TicketAssigneeFilter`; the conversation branch translates it. */
   assignee?: TicketAssigneeFilter
   teamId?: TeamId
-  companyId?: CompanyId
   sort?: InboxSort
   limit?: number
   cursor?: string
@@ -355,7 +347,6 @@ async function fetchConversationBranch(
       assignedAgentPrincipalId,
       unassignedOnly: filter.assignee === 'unassigned',
       teamId: filter.teamId,
-      companyId: filter.companyId,
       search: filter.search,
       channel: filter.channel,
       // Convergence alias semantics: the Tickets-section scopes list a linked
@@ -406,7 +397,6 @@ async function fetchTicketBranch(
       priority: filter.priority,
       assignee: filter.assignee,
       teamId: filter.teamId,
-      companyId: filter.companyId,
       search: filter.search,
       // Ticket rows carry no relevance score, so this branch runs its own
       // default order and the merge fuses the two by within-branch rank.

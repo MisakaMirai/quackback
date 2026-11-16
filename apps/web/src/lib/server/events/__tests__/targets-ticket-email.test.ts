@@ -125,7 +125,6 @@ const createdTicket = {
   stage: 'received',
   requesterPrincipalId: 'principal_requester',
   assignedTeamId: null,
-  companyId: null,
   createdAt: '2026-01-01T00:00:00Z',
   updatedAt: '2026-01-01T00:00:00Z',
   resolvedAt: null,

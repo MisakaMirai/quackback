@@ -17,14 +17,9 @@ const searchSchema = z.object({
   voteCount: z.string().optional(),
   commentCount: z.string().optional(),
   customAttrs: z.string().optional(),
-  // Companies-tab filters, "key:op:value" parts (reserved keys: plan, mrr).
-  companyAttrs: z.string().optional(),
   // Lifecycle view: absent = identified users, 'leads' = engaged anonymous
-  // principals (the "All leads" nav entry), 'companies' = the companies
-  // directory tab.
-  lifecycle: z.enum(['leads', 'companies']).optional(),
-  // Selected company id — flips the companies view to the company profile.
-  company: z.string().optional(),
+  // principals (the "All leads" nav entry).
+  lifecycle: z.enum(['leads']).optional(),
   sort: z
     .enum([
       'newest',

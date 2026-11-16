@@ -9,12 +9,12 @@ const AREA_QUERY_KEYS: Record<SettingsArea, readonly (readonly string[])[]> = {
   ],
   portal: [['settings', 'publicPortalConfig']],
   messenger: [
-    ['settings', 'widgetConfig'],
+    ['settings', 'messengerConfig'],
     ['settings', 'portalConfig'],
     ['settings', 'publicPortalConfig'],
   ],
   modules: [
-    ['settings', 'widgetConfig'],
+    ['settings', 'messengerConfig'],
     ['settings', 'portalConfig'],
     ['settings', 'publicPortalConfig'],
     ['settings', 'helpCenterConfig'],

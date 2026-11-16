@@ -3,7 +3,7 @@ import type { SunIcon } from '@heroicons/react/24/solid'
 
 /**
  * One segment of a live-preview toolbar toggle (light/dark, desktop/mobile).
- * Shared by the Branding and Widget settings pages so their preview chrome
+ * Shared by the Branding settings page so its preview chrome
  * reads as one control.
  */
 export function PreviewToggleButton({

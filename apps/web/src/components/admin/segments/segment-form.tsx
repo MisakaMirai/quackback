@@ -33,7 +33,7 @@ import {
 import type { FieldOperator } from '@/lib/shared/segment-builtin-fields'
 import { SearchableInput } from '@/components/ui/searchable-input'
 import { fetchSegmentAttributeValuesFn } from '@/lib/server/functions/admin'
-import { CUSTOM_ATTR_PREFIX, COMPANY_ATTR_PREFIX } from './segment-utils'
+import { CUSTOM_ATTR_PREFIX } from './segment-utils'
 
 // Attributes with DB-backed value typeahead. Matches SEARCHABLE_ATTRIBUTES
 // in segment-attribute-values.ts; kept duplicated here to avoid pulling
@@ -94,24 +94,12 @@ function getCustomAttrKey(attribute: string): string | null {
     : null
 }
 
-function getCompanyAttrKey(attribute: string): string | null {
-  return attribute.startsWith(COMPANY_ATTR_PREFIX)
-    ? attribute.slice(COMPANY_ATTR_PREFIX.length)
-    : null
-}
-
 /** Resolve operator list for any attribute string (built-in, custom, or metadata_key) */
 function getOperatorsForAttribute(
   attribute: string,
-  customAttributes?: CustomAttrDef[],
-  companyAttributes?: CustomAttrDef[]
+  customAttributes?: CustomAttrDef[]
 ): { value: RuleOperator; label: string }[] {
   if (attribute === 'metadata_key') return METADATA_KEY_OPERATORS
-  const companyKey = getCompanyAttrKey(attribute)
-  if (companyKey !== null) {
-    const def = companyAttributes?.find((a) => a.key === companyKey)
-    return def ? CUSTOM_ATTR_OPERATORS[def.type] : CUSTOM_ATTR_OPERATORS.string
-  }
   const customKey = getCustomAttrKey(attribute)
   if (customKey !== null) {
     const def = customAttributes?.find((a) => a.key === customKey)
@@ -134,28 +122,19 @@ function RuleConditionRow({
   onChange,
   onRemove,
   customAttributes,
-  companyAttributes,
 }: {
   condition: RuleCondition
   onChange: (updated: RuleCondition) => void
   onRemove: () => void
   customAttributes?: CustomAttrDef[]
-  companyAttributes?: CustomAttrDef[]
 }) {
   const customAttrKey = getCustomAttrKey(condition.attribute)
-  const companyAttrKey = getCompanyAttrKey(condition.attribute)
   const customAttrDef = customAttrKey
     ? (customAttributes?.find((a) => a.key === customAttrKey) ?? null)
-    : companyAttrKey
-      ? (companyAttributes?.find((a) => a.key === companyAttrKey) ?? null)
-      : null
+    : null
   const builtinField = BUILTIN_FIELD_MAP.get(condition.attribute)
 
-  const operators = getOperatorsForAttribute(
-    condition.attribute,
-    customAttributes,
-    companyAttributes
-  )
+  const operators = getOperatorsForAttribute(condition.attribute, customAttributes)
 
   // Value input type classification
   const isNumericBuiltIn = builtinField?.type === 'number'
@@ -182,8 +161,7 @@ function RuleConditionRow({
   const isPresenceOp = condition.operator === 'is_set' || condition.operator === 'is_not_set'
 
   const getFirstOperator = (attr: string): RuleOperator => {
-    return (getOperatorsForAttribute(attr, customAttributes, companyAttributes)[0]?.value ??
-      'eq') as RuleOperator
+    return (getOperatorsForAttribute(attr, customAttributes)[0]?.value ?? 'eq') as RuleOperator
   }
 
   return (
@@ -197,7 +175,7 @@ function RuleConditionRow({
             attribute: val,
             operator: getFirstOperator(val),
             value: '',
-            metadataKey: getCustomAttrKey(val) ?? getCompanyAttrKey(val) ?? undefined,
+            metadataKey: getCustomAttrKey(val) ?? undefined,
           })
         }
       >
@@ -210,7 +188,6 @@ function RuleConditionRow({
               { group: 'attribute', label: 'Built-in fields' },
               { group: 'account', label: 'Account' },
               { group: 'activity', label: 'Activity' },
-              { group: 'company', label: 'Company' },
             ] as const
           ).map(({ group, label }, i) => {
             const fields = BUILTIN_FIELDS.filter((f) => f.group === group)
@@ -244,24 +221,6 @@ function RuleConditionRow({
                   <SelectItem
                     key={`${CUSTOM_ATTR_PREFIX}${attr.key}`}
                     value={`${CUSTOM_ATTR_PREFIX}${attr.key}`}
-                  >
-                    {attr.label}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            </>
-          )}
-          {companyAttributes && companyAttributes.length > 0 && (
-            <>
-              <SelectSeparator />
-              <SelectGroup>
-                <SelectLabel className="uppercase tracking-wider px-2 py-1.5">
-                  Company attributes
-                </SelectLabel>
-                {companyAttributes.map((attr) => (
-                  <SelectItem
-                    key={`${COMPANY_ATTR_PREFIX}${attr.key}`}
-                    value={`${COMPANY_ATTR_PREFIX}${attr.key}`}
                   >
                     {attr.label}
                   </SelectItem>
@@ -382,14 +341,12 @@ function RuleBuilder({
   onMatchChange,
   onConditionsChange,
   customAttributes,
-  companyAttributes,
 }: {
   match: 'all' | 'any'
   conditions: RuleCondition[]
   onMatchChange: (v: 'all' | 'any') => void
   onConditionsChange: (v: RuleCondition[]) => void
   customAttributes?: CustomAttrDef[]
-  companyAttributes?: CustomAttrDef[]
 }) {
   const handleAdd = () => {
     const firstField = BUILTIN_FIELDS[0]
@@ -433,7 +390,6 @@ function RuleBuilder({
             onChange={(updated) => handleChange(idx, updated)}
             onRemove={() => handleRemove(idx)}
             customAttributes={customAttributes}
-            companyAttributes={companyAttributes}
           />
         ))}
       </div>
@@ -463,7 +419,6 @@ interface SegmentFormDialogProps {
   onSubmit: (values: SegmentFormValues) => Promise<void>
   isPending?: boolean
   customAttributes?: CustomAttrDef[]
-  companyAttributes?: CustomAttrDef[]
 }
 
 export function SegmentFormDialog({
@@ -473,7 +428,6 @@ export function SegmentFormDialog({
   onSubmit,
   isPending,
   customAttributes,
-  companyAttributes,
 }: SegmentFormDialogProps) {
   const isEditing = !!initialValues?.id
 
@@ -588,7 +542,6 @@ export function SegmentFormDialog({
                 onMatchChange={setRuleMatch}
                 onConditionsChange={setConditions}
                 customAttributes={customAttributes}
-                companyAttributes={companyAttributes}
               />
             </div>
           )}

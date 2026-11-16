@@ -24,7 +24,6 @@ vi.mock('@/components/admin/inbox/ticket-controls', () => ({
   TicketWatchControl: () => null,
 }))
 vi.mock('@/components/admin/inbox/ticket-links', () => ({ TicketLinks: () => null }))
-vi.mock('@/components/admin/conversation/company-card', () => ({ CompanyCard: () => null }))
 vi.mock('@/components/admin/users/block-person-control', () => ({
   usePersonBlockStatus: () => ({ blocked: false, isLoading: false }),
 }))
@@ -63,7 +62,6 @@ const ticket = {
   priority: 'high',
   requester: null,
   assignee: { principalId: null, displayName: null, teamId: null, teamName: null },
-  company: null,
   firstResponseAt: null,
   dueAt: null,
   resolvedAt: null,

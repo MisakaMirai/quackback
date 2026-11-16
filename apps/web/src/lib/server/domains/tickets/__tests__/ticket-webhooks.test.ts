@@ -35,7 +35,6 @@ const baseTicket = {
   requesterPrincipalId: 'principal_r',
   assigneePrincipalId: null,
   assigneeTeamId: null,
-  companyId: 'company_1',
   firstResponseAt: null,
   dueAt: null,
   resolvedAt: null,
@@ -89,7 +88,6 @@ describe('ticket.webhooks emit helpers', () => {
       stage: 'received',
       priority: 'high',
       requesterPrincipalId: 'principal_r',
-      companyId: 'company_1',
       createdAt: '2026-07-04T00:00:00.000Z',
       resolvedAt: null,
     })

@@ -151,6 +151,3 @@ export function usePortalMediaUpload(
 ) {
   return useMediaUpload({ ...options, prefix: 'portal-media', endpoint: '/api/portal/upload' })
 }
-
-// The widget flavour lives in `@/components/widget/use-widget-image-upload`:
-// it needs the widget auth context to mint a session before uploading.

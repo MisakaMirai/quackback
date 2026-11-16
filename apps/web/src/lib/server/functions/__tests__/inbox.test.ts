@@ -101,7 +101,6 @@ describe('listInboxItemsSchema', () => {
         search: 'billing',
         assignee: 'me',
         teamId: 'team_1',
-        companyId: 'company_1',
         sort: 'priority',
         limit: 50,
         cursor: 'opaque-cursor',
@@ -169,11 +168,10 @@ describe('listInboxItemsFn', () => {
     expect(hoisted.listInboxItems.mock.calls[0][1].assignee).toBeUndefined()
   })
 
-  it('drops a junk teamId/companyId rather than reaching the query', async () => {
-    await call({ facet: 'all', teamId: 'nope', companyId: 'nope' })
+  it('drops a junk teamId rather than reaching the query', async () => {
+    await call({ facet: 'all', teamId: 'nope' })
     const filterArg = hoisted.listInboxItems.mock.calls[0][1]
     expect(filterArg.teamId).toBeUndefined()
-    expect(filterArg.companyId).toBeUndefined()
   })
 
   it('passes kinds/sort/cursor/limit through untouched', async () => {

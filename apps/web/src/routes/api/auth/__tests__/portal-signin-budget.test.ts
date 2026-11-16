@@ -110,9 +110,6 @@ vi.mock('@/lib/server/config', () => ({
   config: { baseUrl: 'https://acme.quackback.io', trustedProxyHops: 1 },
 }))
 vi.mock('@/lib/server/audit/log', () => ({ recordAuditEvent: async () => undefined }))
-vi.mock('@/lib/server/auth/widget-rate-limit', () => ({
-  checkAnonMintRateLimit: async () => ({ allowed: true }),
-}))
 vi.mock('@tanstack/react-start/server', () => ({
   getRequestHeaders: () => new Headers({ 'x-forwarded-for': IP }),
 }))

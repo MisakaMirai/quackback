@@ -28,7 +28,6 @@ vi.mock('@/components/admin/conversation/conversation-attributes-editor', () => 
   ConversationAttributesEditor: () => null,
 }))
 vi.mock('@/components/admin/conversation/status-control', () => ({ StatusControl: () => null }))
-vi.mock('@/components/admin/conversation/company-card', () => ({ CompanyCard: () => null }))
 vi.mock('@/components/admin/inbox/ticket-links', () => ({ TicketLinks: () => null }))
 vi.mock('@/components/admin/users/block-person-control', () => ({
   usePersonBlockStatus: () => ({ blocked: false, isLoading: false }),

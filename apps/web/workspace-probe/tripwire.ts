@@ -78,9 +78,9 @@ function buildVocabulary(markers: WorkspaceMarkers): VocabularyEntry[] {
       out.push({ owner: markers.slot, name, value, sensitive: false })
     }
   }
-  // Credentials are scanned exactly like ids — a widget signing secret turning
-  // up in a response is among the worst things this suite could find — but the
-  // value is withheld from the hit, because a report file gets pasted around.
+  // Credentials are scanned exactly like ids — a signing secret turning up in a
+  // response is among the worst things this suite could find — but the value is
+  // withheld from the hit, because a report file gets pasted around.
   for (const [name, value] of Object.entries(markers.sensitive ?? {})) {
     if (typeof value === 'string' && value.length >= MIN_MARKER_LENGTH) {
       out.push({ owner: markers.slot, name, value, sensitive: true })
@@ -102,7 +102,7 @@ const ENCODED_SEGMENT = /[A-Za-z0-9_-]{16,}/g
  * out of base64url-decoding the token-shaped parts of it.
  *
  * The decode matters because a marker can travel by a route a literal
- * substring check cannot see: a widget SSO token carries `sub` inside a
+ * substring check cannot see: a signed token carries `sub` inside a
  * base64url payload, so the id is genuinely present in the request while
  * appearing nowhere in it verbatim. Without the decode, an error body echoing
  * that id back would be counted as a leak on a perfectly isolated fleet — and

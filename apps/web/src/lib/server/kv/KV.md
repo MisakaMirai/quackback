@@ -132,16 +132,16 @@ are the record of that run.
 **What these would have shown had the hypothesis been false.** The hypothesis is
 that Postgres costs more per operation than Redis on these paths. A ratio ≤ 1 in
 (1), or a delta ≤ 0 in (2), is a real possible outcome — and one cell produced
-exactly that: the widget single-bucket delta came out at **−0.205 ms**, i.e. below
+exactly that: the anonymous-mint single-bucket delta came out at **−0.205 ms**, i.e. below
 the measurement floor. The scripts printed every ratio unconditionally and had no
 threshold to pass.
 
 ### Rate limiting — §7.4's first regression
 
-|                             | Redis (loopback) | Postgres (loopback) | ratio |
-| --------------------------- | ---------------- | ------------------- | ----- |
-| sign-in shape, 2 buckets    | **0.154 ms** p50 | 3.461 ms p50        | 22.5× |
-| widget mint shape, 1 bucket | **0.130 ms** p50 | 3.272 ms p50        | 25.2× |
+|                                | Redis (loopback) | Postgres (loopback) | ratio |
+| ------------------------------ | ---------------- | ------------------- | ----- |
+| sign-in shape, 2 buckets       | **0.154 ms** p50 | 3.461 ms p50        | 22.5× |
+| anonymous mint shape, 1 bucket | **0.130 ms** p50 | 3.272 ms p50        | 25.2× |
 
 Round trips are **1 in both** — Redis pipelined; Postgres uses one statement.
 
@@ -149,10 +149,10 @@ The loopback Postgres figure is dominated by a WAL fsync to a Docker volume, and
 that is **not** what a workspace database pays. On the dedicated compute, paired
 against `SELECT 1` on the same connection:
 
-|                             | delta over `SELECT 1`, p50   | p95      |
-| --------------------------- | ---------------------------- | -------- |
-| sign-in shape, 2 buckets    | **+0.545 ms**                | +13.2 ms |
-| widget mint shape, 1 bucket | **−0.205 ms** (at the floor) | +17.4 ms |
+|                                | delta over `SELECT 1`, p50   | p95      |
+| ------------------------------ | ---------------------------- | -------- |
+| sign-in shape, 2 buckets       | **+0.545 ms**                | +13.2 ms |
+| anonymous mint shape, 1 bucket | **−0.205 ms** (at the floor) | +17.4 ms |
 
 Server-side execution alone, timed in a PL/pgSQL loop with the network amortised
 away: **0.019 ms/op** for the bucket upsert against **0.0009 ms/op** for
@@ -162,11 +162,11 @@ away: **0.019 ms/op** for the bucket upsert against **0.0009 ms/op** for
 On the deployed pairing (Railway `us-east4` ↔ the workspace database `us-east-1`, measured at 0–3 ms
 RTT with a 7 ms tail over 217 samples), a rate-checked request pays roughly
 **1–4 ms p50** where a Railway-private Redis would have paid a few hundred
-microseconds. **Net: about 1–3 ms p50 added to the sign-in and widget hot paths,
+microseconds. **Net: about 1–3 ms p50 added to the sign-in and anonymous-mint hot paths,
 one round trip, unchanged in count.**
 
 That is a real cost and it is worth stating plainly rather than defending: it is
-per _rate-checked_ request, so it lands on sign-in and on the widget's
+per _rate-checked_ request, so it lands on sign-in and on the anonymous mint's
 unauthenticated entry points, not on ordinary page renders.
 
 ### Presence — §7.4's "most expensive item"

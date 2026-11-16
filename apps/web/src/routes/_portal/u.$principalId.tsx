@@ -157,29 +157,6 @@ function PublicProfilePage() {
               <FormattedMessage id="portal.profile.teamStrip.label" defaultMessage="Team only" />
             </span>
             {teamContext.email && <span className="text-foreground">{teamContext.email}</span>}
-            {teamContext.company && (
-              <span className="text-foreground">
-                {teamContext.company.name}
-                {teamContext.company.plan && (
-                  <span className="text-muted-foreground"> · {teamContext.company.plan}</span>
-                )}
-                {teamContext.company.mrrCents != null && (
-                  <span className="text-muted-foreground">
-                    {' '}
-                    ·{' '}
-                    {(teamContext.company.mrrCents / 100).toLocaleString('en-US', {
-                      style: 'currency',
-                      currency: 'USD',
-                      maximumFractionDigits: 0,
-                    })}
-                    <FormattedMessage
-                      id="portal.profile.teamStrip.mrrSuffix"
-                      defaultMessage="/mo"
-                    />
-                  </span>
-                )}
-              </span>
-            )}
             {teamContext.segments.length > 0 && (
               <span className="flex flex-wrap items-center gap-1.5">
                 {teamContext.segments.map((segment) => (

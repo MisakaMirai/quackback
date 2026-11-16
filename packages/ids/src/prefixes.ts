@@ -60,9 +60,6 @@ export const ID_PREFIXES = {
   kb_article_translation: 'kb_article_translation',
   kb_category_translation: 'kb_category_translation',
 
-  // Companies (B2B customer accounts)
-  company: 'company',
-
   // Teams (inbox assignment groups)
   team: 'team',
   team_member: 'team_member',
@@ -144,7 +141,6 @@ export const ID_PREFIXES = {
   // Users
   segment: 'segment',
   user_attr: 'user_attr',
-  company_attr: 'company_attr',
   user_tag: 'user_tag',
 
   // AI

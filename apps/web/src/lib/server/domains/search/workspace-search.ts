@@ -14,8 +14,8 @@
  *   gates) for everyone else
  * - changelog: drafts and scheduled entries only with changelog.view_draft
  *   or changelog.manage
- * - people, teammates and companies: people.view, member.view, and
- *   people.view with company.view; test customers never appear
+ * - people and teammates: people.view and member.view; test customers never
+ *   appear
  *
  * Ranking follows the rule in lib/shared/assistant/ask-search.ts: each query
  * returns score = titleTier + textScore, computed here in SQL so each kind's
@@ -33,7 +33,6 @@ import {
   tickets,
   principal,
   user,
-  companies,
   and,
   eq,
   ne,
@@ -141,7 +140,6 @@ export const SEARCH_HREF: Record<
     row.subtitle
       ? `/admin/settings/members?q=${encodeURIComponent(row.subtitle)}`
       : '/admin/settings/members',
-  company: (id) => `/admin/users?lifecycle=companies&company=${encodeURIComponent(id)}`,
 }
 
 async function searchPosts({ text, tsq, depth, actor }: KindSearch): Promise<Row[]> {
@@ -353,24 +351,6 @@ function searchPrincipals(team: boolean) {
   }
 }
 
-async function searchCompanies({ text, depth }: KindSearch): Promise<Row[]> {
-  if (text.length < MIN_CONTAINS_LENGTH) return []
-  const contains = `%${likeText(text)}%`
-  const score = sql<number>`${titleTier(text, sql`${companies.name}`, sql`${companies.domain}`)}`
-  return db
-    .select({
-      id: companies.id,
-      title: companies.name,
-      subtitle: companies.domain,
-      updatedAt: companies.updatedAt,
-      score,
-    })
-    .from(companies)
-    .where(sql`(${companies.name} ilike ${contains} or ${companies.domain} ilike ${contains})`)
-    .orderBy(...bestFirst(score, sql`${companies.updatedAt}`, sql`${companies.id}`))
-    .limit(depth)
-}
-
 const SEARCHERS: Record<SearchKind, (search: KindSearch) => Promise<Row[]>> = {
   post: searchPosts,
   conversation: searchConversations,
@@ -379,7 +359,6 @@ const SEARCHERS: Record<SearchKind, (search: KindSearch) => Promise<Row[]>> = {
   changelog: searchChangelog,
   person: searchPrincipals(false),
   teammate: searchPrincipals(true),
-  company: searchCompanies,
 }
 
 export function toSearchResult(kind: SearchKind, row: Row, text: string): SearchResult {

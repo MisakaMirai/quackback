@@ -19,7 +19,6 @@ export function useSearchKindLabels(): {
       changelog: f('ask.results.kind.changelog', 'Changelog'),
       person: f('ask.results.kind.person', 'Person'),
       teammate: f('ask.results.kind.teammate', 'Teammate'),
-      company: f('ask.results.kind.company', 'Company'),
     }
     const many: Record<SearchKind, string> = {
       post: f('ask.results.filter.post', 'Posts'),
@@ -29,7 +28,6 @@ export function useSearchKindLabels(): {
       changelog: f('ask.results.filter.changelog', 'Changelog'),
       person: f('ask.results.filter.person', 'People'),
       teammate: f('ask.results.filter.teammate', 'Teammates'),
-      company: f('ask.results.filter.company', 'Companies'),
     }
     const untitled = f('ask.results.untitled', 'Untitled')
     return { one, many, title: (result) => result.title || untitled }

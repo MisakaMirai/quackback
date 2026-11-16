@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import { readdirSync, readFileSync } from 'node:fs'
 import { join, relative } from 'node:path'
+import zhCn from '@/locales/zh-cn.json'
+import zhTw from '@/locales/zh-tw.json'
 import {
   normalizeLocale,
   resolveLocale,
@@ -13,7 +15,6 @@ import {
   loadMessages,
   loadPortalMessages,
   loadViewerMessages,
-  loadWidgetMessages,
   loadAskMessages,
   isAskMessage,
   adminSeedMessages,
@@ -37,17 +38,23 @@ import {
 describe('normalizeLocale', () => {
   it('returns exact match for supported locale', () => {
     expect(normalizeLocale('en')).toBe('en')
-    expect(normalizeLocale('de')).toBe('de')
-    expect(normalizeLocale('ru')).toBe('ru')
+    expect(normalizeLocale('zh-cn')).toBe('zh-cn')
+    expect(normalizeLocale('zh-tw')).toBe('zh-tw')
   })
   it('strips region to find base locale', () => {
-    expect(normalizeLocale('fr-FR')).toBe('fr')
-    expect(normalizeLocale('de-AT')).toBe('de')
-    expect(normalizeLocale('ru-RU')).toBe('ru')
+    expect(normalizeLocale('en-GB')).toBe('en')
+    expect(normalizeLocale('en-US')).toBe('en')
+    // Chinese resolves by script/region rather than collapsing to a "zh" catalog.
+    expect(normalizeLocale('zh-Hant-TW')).toBe('zh-tw')
   })
   it('returns null for locales without message catalogs', () => {
     expect(normalizeLocale('ja-JP')).toBeNull()
     expect(normalizeLocale('it')).toBeNull()
+  })
+  it('returns null for removed locale catalogs', () => {
+    for (const tag of ['de', 'de-AT', 'fr-FR', 'es', 'ru', 'pt-BR', 'pt', 'nl', 'pl', 'th', 'uk']) {
+      expect(normalizeLocale(tag), tag).toBeNull()
+    }
   })
   it('returns null for unsupported locale', () => {
     expect(normalizeLocale('zz')).toBeNull()
@@ -55,7 +62,8 @@ describe('normalizeLocale', () => {
   })
   it('handles case insensitivity', () => {
     expect(normalizeLocale('EN')).toBe('en')
-    expect(normalizeLocale('FR-fr')).toBe('fr')
+    expect(normalizeLocale('EN-gb')).toBe('en')
+    expect(normalizeLocale('ZH-CN')).toBe('zh-cn')
   })
   it('returns null for empty or invalid input', () => {
     expect(normalizeLocale('')).toBeNull()
@@ -94,45 +102,13 @@ describe('normalizeLocale', () => {
     expect(normalizeLocale('zh-min-nan')).toBe('zh-cn')
     expect(normalizeLocale('zh-yue')).toBe('zh-cn')
   })
-  it('maps Dutch and Flemish tags to nl', () => {
-    expect(normalizeLocale('nl')).toBe('nl')
-    expect(normalizeLocale('nl-NL')).toBe('nl')
-    expect(normalizeLocale('nl-BE')).toBe('nl')
-    expect(normalizeLocale('NL-nl')).toBe('nl')
-  })
-  it('maps Polish tags to pl', () => {
-    expect(normalizeLocale('pl')).toBe('pl')
-    expect(normalizeLocale('pl-PL')).toBe('pl')
-    expect(normalizeLocale('PL-pl')).toBe('pl')
-  })
-  it('maps Thai tags to th', () => {
-    expect(normalizeLocale('th')).toBe('th')
-    expect(normalizeLocale('th-TH')).toBe('th')
-    expect(normalizeLocale('TH-th')).toBe('th')
-  })
-  it('maps Ukrainian tags to uk', () => {
-    expect(normalizeLocale('uk')).toBe('uk')
-    expect(normalizeLocale('uk-UA')).toBe('uk')
-    expect(normalizeLocale('UK-ua')).toBe('uk')
-  })
-  it('keeps "uk" (Ukrainian) and "en-GB" (British English) apart', () => {
-    // "uk" is the ISO 639-1 language code for Ukrainian, not a region subtag —
-    // British English arrives as "en-GB" and strips to "en", never to "uk".
-    expect(normalizeLocale('en-GB')).toBe('en')
-  })
-  it('maps every Portuguese tag to pt-br, the only Portuguese catalog', () => {
-    expect(normalizeLocale('pt-BR')).toBe('pt-br')
-    expect(normalizeLocale('pt')).toBe('pt-br')
-    expect(normalizeLocale('pt-PT')).toBe('pt-br')
-    expect(normalizeLocale('PT-ao')).toBe('pt-br')
-  })
 })
 
 describe('resolveLocale', () => {
   it('returns first supported locale from Accept-Language header', () => {
-    expect(resolveLocale('fr-FR,fr;q=0.9,en;q=0.8')).toBe('fr')
-    expect(resolveLocale('de,en;q=0.5')).toBe('de')
-    expect(resolveLocale('ru-RU,ru;q=0.9,en;q=0.8')).toBe('ru')
+    expect(resolveLocale('zh-CN,zh;q=0.9,en;q=0.8')).toBe('zh-cn')
+    expect(resolveLocale('zh-TW,zh;q=0.9,en;q=0.8')).toBe('zh-tw')
+    expect(resolveLocale('en-GB,en;q=0.9')).toBe('en')
   })
   it('falls back to default when no supported locale found', () => {
     expect(resolveLocale('zz,xx;q=0.5')).toBe('en')
@@ -140,43 +116,28 @@ describe('resolveLocale', () => {
     expect(resolveLocale(null)).toBe('en')
   })
   it('respects quality weights', () => {
-    expect(resolveLocale('en;q=0.5,de;q=0.9')).toBe('de')
+    expect(resolveLocale('en;q=0.5,zh-cn;q=0.9')).toBe('zh-cn')
   })
   it('ignores entries marked not-acceptable with q=0', () => {
     // RFC 7231: q=0 means the client explicitly rejects that language.
-    expect(resolveLocale('de;q=0')).toBe('en')
-    expect(resolveLocale('de;q=0,fr;q=0.5')).toBe('fr')
+    expect(resolveLocale('zh-cn;q=0')).toBe('en')
+    expect(resolveLocale('zh-cn;q=0,zh-tw;q=0.5')).toBe('zh-tw')
   })
   it('returns explicit locale when provided', () => {
-    expect(resolveLocale('de,en;q=0.5', 'fr')).toBe('fr')
+    expect(resolveLocale('zh-cn,en;q=0.5', 'zh-tw')).toBe('zh-tw')
   })
   it('falls back to header when explicit locale is unsupported', () => {
-    expect(resolveLocale('de,en;q=0.5', 'zz')).toBe('de')
+    expect(resolveLocale('zh-cn,en;q=0.5', 'zz')).toBe('zh-cn')
+    expect(resolveLocale('zh-cn,en;q=0.5', 'de')).toBe('zh-cn')
   })
   it('resolves Chinese variants from the header', () => {
     expect(resolveLocale('zh-CN,zh;q=0.9,en;q=0.8')).toBe('zh-cn')
     expect(resolveLocale('zh-TW,zh;q=0.9,en;q=0.8')).toBe('zh-tw')
     expect(resolveLocale('zh-Hant-HK,zh;q=0.8')).toBe('zh-tw')
   })
-  it('resolves Dutch from the header', () => {
-    expect(resolveLocale('nl-NL,nl;q=0.9,en-US;q=0.8,en;q=0.7')).toBe('nl')
-    expect(resolveLocale('nl-BE,fr-BE;q=0.8')).toBe('nl')
-    expect(resolveLocale('en', 'nl')).toBe('nl')
-  })
-  it('resolves Polish from the header', () => {
-    expect(resolveLocale('pl-PL,pl;q=0.9,en-US;q=0.8,en;q=0.7')).toBe('pl')
-    expect(resolveLocale('pl,de;q=0.8')).toBe('pl')
-    expect(resolveLocale('en', 'pl')).toBe('pl')
-  })
-  it('resolves Thai from the header and explicit override', () => {
-    expect(resolveLocale('th-TH,th;q=0.9,en;q=0.8')).toBe('th')
-    expect(resolveLocale('en', 'th-TH')).toBe('th')
-    expect(resolveLocale('th;q=0,en;q=0.5')).toBe('en')
-  })
-  it('resolves Portuguese from the header', () => {
-    expect(resolveLocale('pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7')).toBe('pt-br')
-    expect(resolveLocale('pt,en;q=0.8')).toBe('pt-br')
-    expect(resolveLocale('pt-PT,pt;q=0.9,en;q=0.8')).toBe('pt-br')
+  it('skips removed languages and takes the next supported one', () => {
+    expect(resolveLocale('de-DE,fr;q=0.9,zh-cn;q=0.5')).toBe('zh-cn')
+    expect(resolveLocale('pl,uk;q=0.8,zh-tw;q=0.4')).toBe('zh-tw')
   })
   it('respects an explicit Chinese locale override', () => {
     expect(resolveLocale('en', 'zh-Hant')).toBe('zh-tw')
@@ -191,32 +152,16 @@ describe('isRtlLocale', () => {
     expect(isRtlLocale('fa')).toBe(true)
     expect(isRtlLocale('ur')).toBe(true)
   })
-  it('returns false for LTR locales', () => {
+  it('returns false for the shipped locales', () => {
     expect(isRtlLocale('en')).toBe(false)
-    expect(isRtlLocale('fr')).toBe(false)
-    expect(isRtlLocale('de')).toBe(false)
+    expect(isRtlLocale('zh-cn')).toBe(false)
+    expect(isRtlLocale('zh-tw')).toBe(false)
   })
 })
 
 describe('SUPPORTED_LOCALES', () => {
-  it('includes en as default', () => {
-    expect(SUPPORTED_LOCALES).toContain('en')
-  })
-  it('includes ru', () => {
-    expect(SUPPORTED_LOCALES).toContain('ru')
-  })
-  it('includes Simplified and Traditional Chinese', () => {
-    expect(SUPPORTED_LOCALES).toContain('zh-cn')
-    expect(SUPPORTED_LOCALES).toContain('zh-tw')
-  })
-  it('includes nl', () => {
-    expect(SUPPORTED_LOCALES).toContain('nl')
-  })
-  it('includes pl', () => {
-    expect(SUPPORTED_LOCALES).toContain('pl')
-  })
-  it('includes uk', () => {
-    expect(SUPPORTED_LOCALES).toContain('uk')
+  it('ships English and both Chinese catalogs, and nothing else', () => {
+    expect(SUPPORTED_LOCALES).toEqual(['en', 'zh-cn', 'zh-tw'])
   })
   it('DEFAULT_LOCALE is en', () => {
     expect(DEFAULT_LOCALE).toBe('en')
@@ -225,17 +170,17 @@ describe('SUPPORTED_LOCALES', () => {
 
 describe('viewer strings', () => {
   it('are left out of the catalogs pages seed and kept for the viewer', async () => {
-    const [all, widget, portal, viewer] = await Promise.all([
-      loadMessages('de'),
-      loadWidgetMessages('de'),
-      loadPortalMessages('de'),
-      loadViewerMessages('de'),
+    const [all, portal, viewer] = await Promise.all([
+      loadMessages('zh-cn'),
+      loadPortalMessages('zh-cn'),
+      loadViewerMessages('zh-cn'),
     ])
-    for (const seeded of [widget, portal, adminSeedMessages(all)]) {
+    for (const seeded of [portal, adminSeedMessages(all)]) {
       expect(Object.keys(seeded).filter(isViewerMessage)).toEqual([])
       expect(seeded['files.download']).toBe(all['files.download'])
     }
-    expect(viewer['files.viewer.close']).toBe('Schließen')
+    expect(viewer['files.viewer.close']).toBe(zhCn['files.viewer.close'])
+    expect(viewer['files.viewer.close']).not.toBe('Close')
     expect(Object.keys(viewer).length).toBeGreaterThan(0)
     expect(Object.keys(viewer).every(isViewerMessage)).toBe(true)
   })
@@ -243,24 +188,24 @@ describe('viewer strings', () => {
 
 describe('unsubscribe page strings', () => {
   it('are seeded by that page alone, translated, and by no shared surface', async () => {
-    const [all, widget, portal, unsubscribe] = await Promise.all([
-      loadMessages('de'),
-      loadWidgetMessages('de'),
-      loadPortalMessages('de'),
-      loadUnsubscribeMessages('de'),
+    const [all, portal, unsubscribe] = await Promise.all([
+      loadMessages('zh-cn'),
+      loadPortalMessages('zh-cn'),
+      loadUnsubscribeMessages('zh-cn'),
     ])
-    for (const seeded of [widget, portal, adminSeedMessages(all)]) {
+    for (const seeded of [portal, adminSeedMessages(all)]) {
       expect(Object.keys(seeded).filter(isUnsubscribeMessage)).toEqual([])
     }
-    expect(unsubscribe['unsubscribe.button']).toBe('Abmelden')
+    expect(unsubscribe['unsubscribe.button']).toBe(zhCn['unsubscribe.button'])
+    expect(unsubscribe['unsubscribe.button']).not.toBe('Unsubscribe')
     expect(Object.keys(unsubscribe).every(isUnsubscribeMessage)).toBe(true)
   })
 
   it('are seeded by that page alone', async () => {
     const [all, portal, page] = await Promise.all([
-      loadMessages('de'),
-      loadPortalMessages('de'),
-      loadUnsubscribeMessages('de'),
+      loadMessages('zh-cn'),
+      loadPortalMessages('zh-cn'),
+      loadUnsubscribeMessages('zh-cn'),
     ])
     const isUnsubscribe = (key: string) => key.startsWith('unsubscribe.')
     expect(Object.keys(page).length).toBeGreaterThan(30)
@@ -273,7 +218,7 @@ describe('unsubscribe page strings', () => {
   })
 
   it('leaves nothing out of the admin catalog but the page-scoped strings', async () => {
-    const all = await loadMessages('de')
+    const all = await loadMessages('zh-cn')
     const keys = Object.keys(all)
     const pageScoped = [
       isViewerMessage,
@@ -294,7 +239,10 @@ describe('unsubscribe page strings', () => {
 
 describe('setup wizard strings', () => {
   it('are seeded by the wizard and left out of the admin catalog', async () => {
-    const [all, onboarding] = await Promise.all([loadMessages('de'), loadOnboardingMessages('de')])
+    const [all, onboarding] = await Promise.all([
+      loadMessages('zh-cn'),
+      loadOnboardingMessages('zh-cn'),
+    ])
     expect(Object.keys(adminSeedMessages(all)).filter(isSetupWizardMessage)).toEqual([])
     const wizard = Object.keys(all).filter(isSetupWizardMessage)
     expect(wizard.length).toBeGreaterThan(0)
@@ -333,9 +281,9 @@ describe('setup wizard strings', () => {
 
 describe('Copilot and search strings', () => {
   it('leaves Copilot and search strings to the chunks that render them', async () => {
-    const all = await loadMessages('fr')
+    const all = await loadMessages('zh-cn')
     const seeded = adminSeedMessages(all)
-    const ask = await loadAskMessages('fr')
+    const ask = await loadAskMessages('zh-cn')
     expect(Object.keys(seeded).filter(isAskMessage)).toEqual([])
     // The sidebar Search row renders on every admin page.
     expect(seeded['ask.search.row']).toBe(all['ask.search.row'])
@@ -347,7 +295,7 @@ describe('Copilot and search strings', () => {
 
 describe('admin seed', () => {
   it('leaves out the viewer, tour overlay and wizard strings and keeps the rest', async () => {
-    const [all, tour] = await Promise.all([loadMessages('de'), loadTourMessages('de')])
+    const [all, tour] = await Promise.all([loadMessages('zh-cn'), loadTourMessages('zh-cn')])
     const seeded = adminSeedMessages(all)
     expect(Object.keys(seeded).filter(isViewerMessage)).toEqual([])
     expect(Object.keys(seeded).filter(isTourMessage)).toEqual([])
@@ -372,25 +320,19 @@ describe('admin seed', () => {
 describe('public pages in English', () => {
   // As on admin pages: the code holds every message's English, so no page in
   // English seeds a catalog (see useIntlSetup, which then loads nothing either).
-  it('seed nothing on the portal, widget, unsubscribe page or setup wizard', async () => {
+  it('seed nothing on the portal, unsubscribe page or setup wizard', async () => {
     expect(await loadPortalMessages(DEFAULT_LOCALE)).toEqual({})
-    expect(await loadWidgetMessages(DEFAULT_LOCALE)).toEqual({})
     expect(await loadUnsubscribeMessages(DEFAULT_LOCALE)).toEqual({})
     expect(await loadOnboardingMessages(DEFAULT_LOCALE)).toEqual({})
     expect(await seedAreaMessages(DEFAULT_LOCALE, 'helpCenter')).toEqual({})
   })
 
   it('seed the same slices as before in any other language', async () => {
-    for (const load of [
-      loadPortalMessages,
-      loadWidgetMessages,
-      loadUnsubscribeMessages,
-      loadOnboardingMessages,
-    ]) {
-      expect(Object.keys(await load('de')).length).toBeGreaterThan(10)
+    for (const load of [loadPortalMessages, loadUnsubscribeMessages, loadOnboardingMessages]) {
+      expect(Object.keys(await load('zh-cn')).length).toBeGreaterThan(10)
     }
-    expect(await seedAreaMessages('de', 'helpCenter')).toEqual(
-      await loadAreaMessages('de', 'helpCenter')
+    expect(await seedAreaMessages('zh-cn', 'helpCenter')).toEqual(
+      await loadAreaMessages('zh-cn', 'helpCenter')
     )
   })
 })
@@ -403,20 +345,20 @@ describe('admin catalog in English', () => {
   })
 
   it('seeds the admin catalog in any other language', async () => {
-    const [all, seeded] = await Promise.all([loadMessages('de'), loadAdminMessages('de')])
+    const [all, seeded] = await Promise.all([loadMessages('zh-cn'), loadAdminMessages('zh-cn')])
     expect(seeded).toEqual(adminSeedMessages(all))
     expect(Object.keys(seeded).length).toBeGreaterThan(1000)
   })
 
   it("leaves Home's and the Launch plan's strings to the code in English", async () => {
     expect(await loadLaunchMessages(DEFAULT_LOCALE)).toEqual({})
-    expect(Object.keys(await loadLaunchMessages('de')).length).toBeGreaterThan(60)
+    expect(Object.keys(await loadLaunchMessages('zh-cn')).length).toBeGreaterThan(60)
   })
 })
 
 describe('setup sheet strings', () => {
   it('load with the sheet, and no page seeds them', async () => {
-    const [all, sheets] = await Promise.all([loadMessages('de'), loadSheetMessages('de')])
+    const [all, sheets] = await Promise.all([loadMessages('zh-cn'), loadSheetMessages('zh-cn')])
     const seeded = adminSeedMessages(all)
     expect(Object.keys(seeded).filter(isSheetMessage)).toEqual([])
     expect(seeded['onboarding.live.invite.title']).toBeUndefined()
@@ -428,7 +370,7 @@ describe('setup sheet strings', () => {
 
 describe('launch plan strings', () => {
   it('are left to Home and the Launch plan page, while the dock keeps its own', async () => {
-    const [all, launch] = await Promise.all([loadMessages('de'), loadLaunchMessages('de')])
+    const [all, launch] = await Promise.all([loadMessages('zh-cn'), loadLaunchMessages('zh-cn')])
     const seeded = adminSeedMessages(all)
     expect(Object.keys(seeded).filter(isLaunchMessage)).toEqual([])
     expect(seeded['onboarding.win.generic']).toBeUndefined()
@@ -448,7 +390,7 @@ describe('launch plan strings', () => {
   })
 
   it("keep Home's counts and the first win's copy-link buttons out of other pages", async () => {
-    const [all, launch] = await Promise.all([loadMessages('de'), loadLaunchMessages('de')])
+    const [all, launch] = await Promise.all([loadMessages('zh-cn'), loadLaunchMessages('zh-cn')])
     const seeded = adminSeedMessages(all)
     expect(Object.keys(seeded).filter((key) => key.startsWith('admin.overview.'))).toEqual([])
     for (const key of [
@@ -471,18 +413,21 @@ describe('launch plan strings', () => {
 
 describe('area strings', () => {
   it('are left out of the catalogs pages seed and load for their area', async () => {
-    const [all, widget, portal, settings] = await Promise.all([
-      loadMessages('pl'),
-      loadWidgetMessages('pl'),
-      loadPortalMessages('pl'),
-      loadAreaMessages('pl', 'settings', 'notificationPreferences'),
+    const [all, portal, settings] = await Promise.all([
+      loadMessages('zh-tw'),
+      loadPortalMessages('zh-tw'),
+      loadAreaMessages('zh-tw', 'settings', 'notificationPreferences'),
     ])
-    for (const seeded of [widget, portal, withoutPageScopedMessages(all)]) {
+    for (const seeded of [portal, withoutPageScopedMessages(all)]) {
       expect(Object.keys(seeded).filter((key) => messageArea(key) !== null)).toEqual([])
     }
     expect(portal['portal.header.nav.feedback']).toBe(all['portal.header.nav.feedback'])
-    expect(settings['portal.settings.profile.avatar.title']).toBe('Awatar')
-    expect(settings['portal.settings.notifications.channel.inApp']).toBe('W aplikacji')
+    expect(settings['portal.settings.profile.avatar.title']).toBe(
+      zhTw['portal.settings.profile.avatar.title']
+    )
+    expect(settings['portal.settings.notifications.channel.inApp']).toBe(
+      zhTw['portal.settings.notifications.channel.inApp']
+    )
     expect(
       Object.keys(settings).every((key) =>
         ['settings', 'notificationPreferences'].includes(messageArea(key) ?? '')

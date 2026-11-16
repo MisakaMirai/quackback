@@ -85,7 +85,7 @@ it('refuses a portal identity as an owner', async () => {
   await expect(getOrCreateTestCustomer(owner, 'en')).rejects.toThrow(/team member/i)
 })
 
-it('mints a short one-time token for a widget session and consumes it once without changing the owner', async () => {
+it('mints a short one-time token for a portal session and consumes it once without changing the owner', async () => {
   const before = await testDb.query.principal.findFirst({ where: eq(principal.id, owner) })
   const issued = await mintTestCustomerToken(owner, 'en')
   expect(new Date(issued.expiresAt).getTime() - Date.now()).toBeGreaterThan(9 * 60_000)
@@ -96,7 +96,7 @@ it('mints a short one-time token for a widget session and consumes it once witho
   const stored = await testDb.query.session.findFirst({
     where: eq(session.token, redeemed!.bearerToken),
   })
-  expect(stored).toMatchObject({ scope: 'widget', userId: redeemed!.user.id })
+  expect(stored).toMatchObject({ scope: 'portal', userId: redeemed!.user.id })
   expect(stored!.userId).not.toBe(before!.userId)
   expect(await consumeTestCustomerToken(issued.token)).toBeNull()
   expect(await testDb.query.principal.findFirst({ where: eq(principal.id, owner) })).toEqual(before)

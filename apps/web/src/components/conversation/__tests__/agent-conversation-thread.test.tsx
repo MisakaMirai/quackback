@@ -322,7 +322,6 @@ const {
     priority: 'none',
     requester: null,
     assignee: { principalId: null, displayName: null, teamId: null, teamName: null },
-    company: null,
     firstResponseAt: null,
     dueAt: null,
     resolvedAt: null,

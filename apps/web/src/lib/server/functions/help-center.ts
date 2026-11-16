@@ -598,12 +598,12 @@ export const searchPublicArticlesFn = createServerFn({ method: 'GET' })
 export const resolvePublicArticleRefFn = createServerFn({ method: 'GET' })
   .validator(z.object({ ref: z.string().min(1), locale: z.string().optional() }))
   .handler(async ({ data }) => {
-    const { canonicalArticleTypeId } = await import('@/lib/shared/widget/article-ref')
+    const { canonicalArticleTypeId } = await import('@/lib/shared/help-center/article-ref')
     const { getPublicArticleByIdForLocale, getPublicArticleBySlugForLocale } =
       await import('@/lib/server/domains/help-center/help-center-locale.query')
     const { DEFAULT_LOCALE } = await import('@/lib/shared/i18n')
     const { NotFoundError } = await import('@/lib/shared/errors')
-    const { withDefaultLocaleFallback } = await import('@/lib/shared/widget/article-locale')
+    const { withDefaultLocaleFallback } = await import('@/lib/shared/help-center/article-locale')
     const viewer = await publicViewer()
     const locale = data.locale ?? DEFAULT_LOCALE
     try {

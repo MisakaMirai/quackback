@@ -55,8 +55,6 @@ export type Capability =
   | 'storage-secret'
   /** Per-workspace REST API keys. */
   | 'api-key'
-  /** Per-workspace widget identify signing secrets. */
-  | 'widget-secret'
 
 /**
  * A single checked assertion inside a probe.
@@ -185,8 +183,8 @@ export interface WorkspaceMarkers {
   /** Runtime-discovered ids unique to this workspace (workspace, user, principal, board, post). */
   ids: Record<string, string>
   /**
-   * Markers that are themselves credentials — the widget signing secret, for
-   * instance. Scanned by the tripwire exactly like `ids`, because a secret
+   * Markers that are themselves credentials — a signing secret, for instance.
+   * Scanned by the tripwire exactly like `ids`, because a secret
    * appearing in a response is a serious leak, but NEVER serialized into the
    * report and always redacted in evidence. A report file is an artifact people
    * paste into tickets and chat.
@@ -411,8 +409,6 @@ export interface ProbeConfig {
   bravoStorageSecret?: string
   alphaApiKey?: string
   bravoApiKey?: string
-  alphaWidgetSecret?: string
-  bravoWidgetSecret?: string
   /**
    * The per-workspace identity token planted into a settings-derived field that a
    * public surface renders (the workspace name, or the portal welcome-card

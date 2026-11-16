@@ -21,7 +21,7 @@
 import { PERMISSIONS, type PermissionKey } from '@/lib/shared/permissions'
 
 export type SurfaceIntent =
-  /** Bare `requireAuth()`: any authenticated principal (team, portal, or widget). */
+  /** Bare `requireAuth()`: any authenticated principal (team or portal). */
   | 'END_USER'
   /** Bare `withApiKeyAuth(req)`: any valid API key, no permission; public-tier data. */
   | 'PUBLIC_DATA'
@@ -125,7 +125,6 @@ export const BARE_GATE_CLASSIFICATIONS: Record<string, Classification> = {
       PERMISSIONS.TICKET_VIEW_ALL,
       PERMISSIONS.PEOPLE_VIEW,
       PERMISSIONS.MEMBER_VIEW,
-      PERMISSIONS.COMPANY_VIEW,
     ],
     "team dashboard search: each kind needs its page permission and reads through that kind's row visibility (posts, conversations, tickets, help center audience, changelog drafts) for the effective actor, full text and semantic alike"
   ),
@@ -180,7 +179,7 @@ export const BARE_GATE_CLASSIFICATIONS: Record<string, Classification> = {
   'lib/server/functions/status-subscriptions.ts::getMyStatusSubscriptionFn': END_USER(
     'signed-in caller reads their own status-page subscription status'
   ),
-  // Visitor conversations (widget + portal): any authenticated principal; team-vs-visitor
+  // Visitor conversations (portal): any authenticated principal; team-vs-visitor
   // scope is refined inside each handler (see NOT_A_GATE entries below).
   'lib/server/functions/conversation.ts::sendConversationMessageFn': END_USER(
     'visitor sends a conversation message'
@@ -214,8 +213,8 @@ export const BARE_GATE_CLASSIFICATIONS: Record<string, Classification> = {
   // Requester tickets (converged Messages surface): a signed-in requester's
   // ticket surface is their conversation pair; these fns feed the shared
   // thread's ticket header (linked-ticket read, stage labels, intake-form
-  // labels) and the watch bell, plus the own-ticket create behind the widget
-  // New-Ticket form. Ownership is enforced in the requester service.
+  // labels) and the watch bell, plus the own-ticket create behind the ticket
+  // form. Ownership is enforced in the requester service.
   'lib/server/functions/tickets.ts::createMyTicketFn': END_USER(
     'requester files their own customer ticket (flag-gated; forced requester = caller; anonymous tier requires a contact email)'
   ),
@@ -292,70 +291,8 @@ export const BARE_GATE_CLASSIFICATIONS: Record<string, Classification> = {
     'admin home aggregation — each product section still gates on its own permission'
   ),
 
-  // Widget BFF: Bearer-only surfaces. Site `requireAuth` denies widget; these
-  // call `requireWidgetAuth` and reuse the same domain run* helpers.
-  'lib/server/functions/widget/posts.ts::widgetCreatePublicPostFn': END_USER(
-    'widget visitor submits a post'
-  ),
-  'lib/server/functions/widget/posts.ts::widgetToggleVoteFn': END_USER(
-    'widget visitor votes on a post'
-  ),
-  'lib/server/functions/widget/comments.ts::widgetCreateCommentFn': END_USER(
-    'widget visitor posts a comment'
-  ),
-  'lib/server/functions/widget/comments.ts::widgetAddReactionFn': END_USER(
-    'widget visitor adds a reaction'
-  ),
-  'lib/server/functions/widget/comments.ts::widgetRemoveReactionFn': END_USER(
-    'widget visitor removes their reaction'
-  ),
-  'lib/server/functions/widget/tickets.ts::widgetGetMyTicketsFn': END_USER(
-    'widget visitor lists their own tickets'
-  ),
-  'lib/server/functions/widget/tickets.ts::widgetGetMyTicketStageLabelsFn': END_USER(
-    'widget visitor reads ticket stage labels'
-  ),
-  'lib/server/functions/widget/tickets.ts::widgetGetMyTicketFormFn': END_USER(
-    'widget visitor reads intake form labels'
-  ),
-  'lib/server/functions/widget/tickets.ts::widgetGetMyTicketWatchStatusFn': END_USER(
-    'widget visitor reads watch state of their ticket'
-  ),
-  'lib/server/functions/widget/tickets.ts::widgetGetConversationLinkedTicketFn': END_USER(
-    "widget visitor reads their conversation's linked ticket"
-  ),
-  'lib/server/functions/widget/tickets.ts::widgetCreateMyTicketFn': END_USER(
-    'widget visitor files their own ticket'
-  ),
-  'lib/server/functions/widget/tickets.ts::widgetWatchMyTicketFn': END_USER(
-    'widget visitor watches their own ticket'
-  ),
-  'lib/server/functions/widget/tickets.ts::widgetUnwatchMyTicketFn': END_USER(
-    'widget visitor unwatches their own ticket'
-  ),
-  'lib/server/functions/widget/conversation.ts::widgetSendConversationMessageFn': END_USER(
-    'widget visitor sends a conversation message'
-  ),
-  'lib/server/functions/widget/conversation.ts::widgetListConversationMessagesFn': END_USER(
-    'widget visitor pages their own conversation'
-  ),
-  'lib/server/functions/widget/conversation.ts::widgetMarkConversationReadFn': END_USER(
-    'widget visitor marks their conversation read'
-  ),
-  'lib/server/functions/widget/conversation.ts::widgetSendConversationTypingFn': END_USER(
-    'widget visitor typing indicator'
-  ),
-  'lib/server/functions/widget/conversation.ts::widgetSubmitCsatFn': END_USER(
-    'widget visitor submits a CSAT rating'
-  ),
-  'lib/server/functions/widget/conversation.ts::widgetMintConversationStreamTokenFn': END_USER(
-    'widget visitor mints their SSE stream token'
-  ),
-  'lib/server/functions/widget/user.ts::widgetGetUserStatsFn': END_USER(
-    'widget visitor reads own engagement stats'
-  ),
   'lib/server/functions/user.ts::updateNotificationPreferencesFn': END_USER(
-    'update own notification preferences; widget scope is refused separately'
+    'update own notification preferences'
   ),
   'lib/server/functions/teammate-preferences.ts::getMyLanguagePreferenceFn': END_USER(
     'teammate reads their own language preference'
@@ -539,12 +476,6 @@ export const INLINE_CLASSIFICATIONS: Record<string, Classification> = {
   // Behavior refinements sitting behind an already-present entry gate.
   'lib/server/functions/admin.ts::checkOnboardingState::isAdmin': NOT_A_GATE(
     'race-safe first-user promotion — not an access check'
-  ),
-  'routes/api/widget/identify.ts::POST::isTeamMember': NOT_A_GATE(
-    'skips overwriting a teammate dashboard profile from the host-app JWT; identify still mints a widget-scoped customer session'
-  ),
-  'lib/server/functions/widget-auth.ts::getWidgetSession::isTeamMember': NOT_A_GATE(
-    'sets canPortalHandoff from the stored role; presented session role stays portal-tier'
   ),
   'lib/server/functions/conversation.ts::assertVisitorConversationAccess::isTeamMember': NOT_A_GATE(
     'team bypasses the portal-access check; entry is the bare requireAuth on each caller'

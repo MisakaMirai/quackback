@@ -5,7 +5,6 @@ import { Link } from '@tanstack/react-router'
 import {
   ArrowTopRightOnSquareIcon,
   BellIcon,
-  BuildingOffice2Icon,
   CalendarIcon,
   CheckBadgeIcon,
   CheckCircleIcon,
@@ -41,7 +40,6 @@ import { StatusControl } from '@/components/admin/conversation/status-control'
 import { UnreachableBadge, CHANNEL_LABEL } from '@/components/admin/conversation/channel-badge'
 import { getChannelDescriptor, githubIssueRefFromUrl } from '@/lib/shared/channels'
 import { TONE_CLASSES } from '@/components/admin/conversation/sla-chip'
-import { CompanyCard } from '@/components/admin/conversation/company-card'
 import { supportContactName } from '@/lib/shared/support-contact-name'
 import { usePersonBlockStatus } from '@/components/admin/users/block-person-control'
 import { TicketStageChip, TicketTypeBadge } from '@/components/admin/inbox/ticket-chips'
@@ -443,9 +441,6 @@ export const InboxDetailPanel = memo(function InboxDetailPanel({
               </div>
             )}
 
-            {/* Company context (plan / MRR); renders nothing when unset. */}
-            {principalId && <CompanyCard principalId={principalId} enabled={isVisible} />}
-
             {/* Previous conversations (this principal's other threads). */}
             {previous.length > 0 && (
               <div className="space-y-1.5 border-t border-border/30 pt-3">
@@ -672,13 +667,6 @@ export const InboxDetailPanel = memo(function InboxDetailPanel({
               <div className="flex flex-wrap justify-end gap-1">
                 <ConversationTagsEditor conversationId={conversation.id} tags={conversation.tags} />
               </div>
-            </Row>
-          )}
-          {ticket && (
-            <Row icon={BuildingOffice2Icon} label="Ticket company">
-              <span className="truncate text-sm font-medium text-foreground">
-                {ticket.company?.name ?? 'None'}
-              </span>
             </Row>
           )}
           {!isTicketItem && conversation && (

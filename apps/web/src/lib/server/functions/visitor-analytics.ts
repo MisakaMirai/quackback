@@ -39,7 +39,7 @@ export const getVisitorAnalyticsData = createServerFn({ method: 'GET' })
   .validator(
     z.object({
       period: z.enum(['7d', '30d', '90d', '12m']),
-      surface: z.enum(['all', 'portal', 'widget']).optional().default('all'),
+      surface: z.enum(['all', 'portal']).optional().default('all'),
     })
   )
   .handler(async ({ data: { period, surface } }) => {

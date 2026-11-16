@@ -17,7 +17,6 @@ import type {
   TicketExternalLinkId,
   PrincipalId,
   TeamId,
-  CompanyId,
   ConversationId,
   ConversationMessageId,
 } from '@quackback/ids'
@@ -64,7 +63,6 @@ const listTicketsSchema = z.object({
   assignee: z.string().optional(),
   teamId: z.string().optional(),
   requesterPrincipalId: z.string().optional(),
-  companyId: z.string().optional(),
   search: z.string().optional(),
   sort: z.enum(['recent', 'oldest', 'created', 'priority']).optional(),
   cursor: z.string().optional(),
@@ -98,10 +96,6 @@ export const listTicketsFn = createServerFn({ method: 'GET' })
       requesterPrincipalId:
         data.requesterPrincipalId && isValidTypeId(data.requesterPrincipalId, 'principal')
           ? (data.requesterPrincipalId as PrincipalId)
-          : undefined,
-      companyId:
-        data.companyId && isValidTypeId(data.companyId, 'company')
-          ? (data.companyId as CompanyId)
           : undefined,
       search: data.search,
       sort: data.sort,
@@ -162,7 +156,6 @@ const createTicketSchema = z.object({
   // linkTicketToConversationFn step).
   conversationId: z.string().optional(),
   priority: prioritySchema.optional(),
-  companyId: z.string().optional(),
   customAttributes: z.record(z.string(), z.unknown()).optional(),
 })
 
@@ -216,10 +209,6 @@ export const createTicketFn = createServerFn({ method: 'POST' })
             ? (data.conversationId as ConversationId)
             : undefined,
         priority: data.priority,
-        companyId:
-          data.companyId && isValidTypeId(data.companyId, 'company')
-            ? (data.companyId as CompanyId)
-            : undefined,
         customAttributes,
       },
       actor

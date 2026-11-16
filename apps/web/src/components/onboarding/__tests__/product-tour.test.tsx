@@ -4,7 +4,7 @@ import { IntlProvider } from 'react-intl'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import en from '@/locales/en.json'
-import de from '@/locales/de.json'
+import zhCn from '@/locales/zh-cn.json'
 import { adminSeedMessages } from '@/lib/shared/i18n'
 import { PERMISSIONS } from '@/lib/shared/permissions'
 
@@ -249,25 +249,25 @@ describe('guided tour', () => {
   })
 
   it("runs a stop's Try it: the tour closes and the page that does it opens", async () => {
-    hoisted.context = { ...hoisted.context, goals: ['customer_support'] }
-    hoisted.flags = { ...hoisted.flags, supportInbox: true }
-    hoisted.permissions = new Set([PERMISSIONS.SETTINGS_MANAGE])
+    hoisted.context = { ...hoisted.context, goals: ['help_center'] }
+    hoisted.flags = { ...hoisted.flags, helpCenter: true }
+    hoisted.permissions = new Set([PERMISSIONS.HELP_CENTER_MANAGE])
     mount()
     await startTour()
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'Put Messenger on your site' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Write your first article' }))
     })
-    expect(hoistedPath.navigations).toContain('/admin/settings/widget/install')
+    expect(hoistedPath.navigations).toContain('/admin/help-center')
     expect(screen.queryByRole('dialog')).toBeNull()
   })
 
   it('offers no Try it to someone who cannot do it', async () => {
-    hoisted.flags = { ...hoisted.flags, supportInbox: true }
-    hoisted.context = { ...hoisted.context, goals: ['customer_support'] }
+    hoisted.flags = { ...hoisted.flags, helpCenter: true }
+    hoisted.context = { ...hoisted.context, goals: ['help_center'] }
     hoisted.permissions = new Set()
     mount()
     await startTour()
-    expect(screen.queryByRole('button', { name: 'Put Messenger on your site' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Write your first article' })).toBeNull()
   })
 
   it('has no stops on a phone', async () => {
@@ -307,13 +307,15 @@ describe('guided tour', () => {
 
 describe('strings', () => {
   it('loads the overlay strings an admin page leaves out of its seed', async () => {
-    const seeded = adminSeedMessages(de)
+    const seeded = adminSeedMessages(zhCn)
     expect(seeded['onboarding.tour.next']).toBeUndefined()
-    mount(undefined, { locale: 'de', messages: seeded })
+    mount(undefined, { locale: 'zh-cn', messages: seeded })
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: 'Start tour' }))
     })
-    await waitFor(() => expect(dialog()).toHaveTextContent('Weiter'), { timeout: 5000 })
-    expect(dialog()).toHaveTextContent(de['onboarding.tour.stop.feedback.lead'])
+    await waitFor(() => expect(dialog()).toHaveTextContent(zhCn['onboarding.tour.next']), {
+      timeout: 5000,
+    })
+    expect(dialog()).toHaveTextContent(zhCn['onboarding.tour.stop.feedback.lead'])
   })
 })

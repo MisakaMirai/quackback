@@ -28,10 +28,7 @@ import { TicketStatusChip, TICKET_TYPE_CLASS } from '@/components/admin/inbox/ti
 import { NewButton } from '@/components/shared/new-button'
 import { ActivationActionButton } from '@/components/admin/activation-action-button'
 import { SearchInput } from '@/components/shared/search-input'
-import {
-  ConversationListToolbar,
-  type CompanyFilter,
-} from '@/components/admin/conversation/conversation-list-toolbar'
+import { ConversationListToolbar } from '@/components/admin/conversation/conversation-list-toolbar'
 import { Avatar } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 
@@ -140,8 +137,8 @@ interface ConversationListColumnProps {
   nav: InboxNavItem
   onSelectNav: (item: InboxNavItem) => void
   scopeLabel: string
-  /** Optional content rendered directly under the header (e.g. the company
-   *  filter), above the search + refinement chips. */
+  /** Optional content rendered directly under the header, above the search +
+   *  refinement chips. */
   headerSlot?: ReactNode
   /** Whether to show the status/priority filter chips (hidden for the Mentions feed). */
   showRefinements: boolean
@@ -163,8 +160,6 @@ interface ConversationListColumnProps {
   ticketTypeOptions?: Array<{ id: string; name: string; icon: string | null; color: string }>
   channelFilter?: Channel
   onChannelFilter?: (value: Channel | undefined) => void
-  /** The company refinement; offered only when the workspace has companies. */
-  companyFilter?: CompanyFilter
   sort: ConversationSort
   onSort: (value: ConversationSort) => void
   loading: boolean
@@ -198,7 +193,6 @@ export function ConversationListColumn({
   ticketTypeOptions,
   channelFilter,
   onChannelFilter,
-  companyFilter,
   sort,
   onSort,
   loading,
@@ -256,7 +250,6 @@ export function ConversationListColumn({
         ticketTypeOptions={ticketTypeOptions}
         channelFilter={channelFilter}
         onChannelFilter={onChannelFilter}
-        companyFilter={companyFilter}
         sort={sort}
         onSort={onSort}
       />
@@ -331,7 +324,6 @@ const ConversationListHeader = memo(function ConversationListHeader({
   ticketTypeOptions,
   channelFilter,
   onChannelFilter,
-  companyFilter,
   sort,
   onSort,
 }: ConversationListHeaderProps) {
@@ -373,7 +365,6 @@ const ConversationListHeader = memo(function ConversationListHeader({
         ticketTypeOptions={ticketTypeOptions}
         channelFilter={channelFilter}
         onChannelFilter={onChannelFilter}
-        companyFilter={companyFilter}
         sort={sort}
         onSort={onSort}
       />

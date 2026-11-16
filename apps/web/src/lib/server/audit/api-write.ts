@@ -54,7 +54,6 @@ export const API_ROUTE_SEGMENTS: ReadonlySet<string> = new Set([
   'changelog',
   'columns',
   'comments',
-  'companies',
   'components',
   'conversations',
   'dismiss',

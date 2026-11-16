@@ -10,7 +10,7 @@
  *    you".
  *
  *  - getProfileTeamContextFn: people.view-gated. Returns the team-only
- *    context strip (sanitized email, company, segments, lastSeenAt,
+ *    context strip (sanitized email, segments, lastSeenAt,
  *    verified/blocked). Never called by the client unless the viewer holds
  *    the permission; enforced here regardless.
  */
@@ -55,7 +55,6 @@ export interface PublicUserProfileView {
 /** Serialized team-context payload for the client (dates as ISO strings). */
 export interface ProfileTeamContextView {
   email: PublicProfileTeamContext['email']
-  company: PublicProfileTeamContext['company']
   segments: PublicProfileTeamContext['segments']
   lastSeenAt: string | null
   emailVerified: boolean
@@ -117,8 +116,8 @@ export const getPublicUserProfileFn = createServerFn({ method: 'GET' })
   })
 
 /**
- * Team-only context strip for a profile: sanitized email, company summary,
- * segment chips, lastSeenAt, verified/blocked flags, for viewers holding
+ * Team-only context strip for a profile: sanitized email, segment chips,
+ * lastSeenAt, verified/blocked flags, for viewers holding
  * people.view. The client only queries this when `can('people.view')`; the
  * permission is enforced server-side here regardless. Returns null when
  * the principal isn't profile-eligible.
@@ -135,7 +134,6 @@ export const getProfileTeamContextFn = createServerFn({ method: 'GET' })
     if (!context) return null
     return {
       email: context.email,
-      company: context.company,
       segments: context.segments,
       lastSeenAt: context.lastSeenAt ? context.lastSeenAt.toISOString() : null,
       emailVerified: context.emailVerified,

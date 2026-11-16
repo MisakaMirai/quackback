@@ -462,14 +462,6 @@ export const MODULE_STATE_LEDGER: readonly LedgerEntry[] = [
       'that timezone and the fixed format options, so it carries nothing about who asked for it.',
   },
   {
-    file: 'apps/web/src/routes/api/widget/sdk[.]js.ts',
-    name: 'encodedCache',
-    category: 'content-addressed',
-    reason:
-      'Pre-compressed gzip/brotli variants keyed by the response body string itself, which already ' +
-      "bakes in the workspace's base URL and widget config.",
-  },
-  {
     file: 'apps/web/src/lib/server/config.ts',
     name: '_config',
     category: 'process-lifetime',
@@ -1223,15 +1215,6 @@ export const MODULE_STATE_LEDGER: readonly LedgerEntry[] = [
       'A stateless closure bundle from createAttributeDefinitionService. Every method reads and ' +
       'writes the ACTIVE workspace\u2019s user_attribute_definitions rows through the db proxy on ' +
       'each call; it caches nothing, so a cross-workspace hit cannot return another tenant\u2019s data.',
-  },
-  {
-    file: 'apps/web/src/lib/server/domains/company-attributes/company-attribute.service.ts',
-    name: 'service',
-    category: 'process-lifetime',
-    reason:
-      'A stateless closure bundle from createAttributeDefinitionService. Every method reads and ' +
-      'writes the ACTIVE workspace\u2019s company_attribute_definitions rows through the db proxy ' +
-      'on each call; it caches nothing, so a cross-workspace hit cannot return another tenant\u2019s data.',
   },
   {
     file: 'apps/web/src/lib/server/auth/provider-trust.ts',

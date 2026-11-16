@@ -1,7 +1,7 @@
 # Live Chat AI Layer — Design
 
 Status: **design only (not implemented)**. This document plans the AI layer for
-widget live chat: an agent **copilot** (reply suggestions + conversation
+portal live chat: an agent **copilot** (reply suggestions + conversation
 summaries) and a customer-facing **resolution agent** (KB-grounded answers with
 human handoff). It builds entirely on infrastructure that already exists in the
 repo, and is gated behind feature flags (default off), so it can ship
@@ -99,7 +99,7 @@ citedArticleSlugs: string[] }` (JSON, `stripCodeFences`).
   5. Else: leave the conversation for a human, set `conversation.aiHandled` →
      `'escalated'`, and fire the existing agent notification (`notifyVisitorMessage`).
 - **Handoff & escape hatches.** Always render a "Talk to a human" affordance in
-  the widget. A visitor message matching escalation intents (or any message
+  the portal messenger. A visitor message matching escalation intents (or any message
   after N AI turns) forces `needsHuman`. An agent replying at any time
   permanently disables the bot for that conversation (`aiHandled:'human'`).
 
@@ -139,11 +139,11 @@ Copilot phase 1 needs **no** schema changes.
   `liveChatAiAgent` — separate so copilot can ship before the customer-facing
   agent. Surfaced in Labs like `liveChat`.
 - **`LiveChatConfig` additions** (agent-only, not in the public projection
-  except where the widget needs it):
+  except where the portal messenger needs it):
   - `ai?: { copilotEnabled; agentEnabled; trigger: 'always' | 'offline-only';
 confidenceThreshold; persona?; maxBotTurns; knowledgeSources: ('articles' |
 'posts')[] }`.
-  - The widget only needs to know "an AI may respond" to show an AI badge / the
+  - The portal messenger only needs to know "an AI may respond" to show an AI badge / the
     "Talk to a human" button — project just that boolean.
 
 ## 7. Prompt design (sketch)
@@ -153,7 +153,7 @@ confidenceThreshold; persona?; maxBotTurns; knowledgeSources: ('articles' |
   answer, set needsHuman=true and don't guess."), output contract (JSON).
 - **Context:** retrieved KB passages (numbered, with slugs for citation) + last
   N transcript turns. Cap context tokens to control cost.
-- **Citations:** require the model to return `citedArticleSlugs`; the widget
+- **Citations:** require the model to return `citedArticleSlugs`; the portal messenger
   renders them as the existing article links (reuse the deflection UI).
 - **Copilot suggest-reply** is the same retrieval + a "draft a reply the agent
   can edit" instruction; returns prose, not JSON.
@@ -177,7 +177,7 @@ confidenceThreshold; persona?; maxBotTurns; knowledgeSources: ('articles' |
 
 ## 9. Real-time UX
 
-- AI messages flow through the existing `message` stream event → both the widget
+- AI messages flow through the existing `message` stream event → both the portal messenger
   and the agent inbox render them live, with an "AI" badge (`aiGenerated`).
 - Show the existing typing indicator while the bot is "thinking" (publish a
   `typing` event with `side:'agent'` from the worker).
@@ -218,6 +218,6 @@ Each phase is independently shippable behind its flag and measurable
 New: `domains/chat/chat.ai.ts` (copilot + agent pipeline), a BullMQ
 `chat-ai-queue`, `sendAiMessage` in `chat.service.ts`, 2-4 server functions,
 one migration (`ai_generated`, `ai_handled`), flag + `LiveChatConfig.ai`
-settings, an "AI" badge + "Talk to a human" affordance in the widget, and a
+settings, an "AI" badge + "Talk to a human" affordance in the portal messenger, and a
 "Summarize / Suggest reply" affordance in the admin thread. All composing the
 modules in §2 — no new infrastructure.

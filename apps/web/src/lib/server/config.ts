@@ -518,7 +518,7 @@ export const config = {
    * Under pooled tenancy the fleet has no single origin: one process serves
    * many hostnames, and `BASE_URL` is the platform's own domain. Every absolute
    * URL the app produces resolves from here — email links, asset URLs,
-   * `__QUACKBACK_URL__` in the widget SDK, OAuth callbacks, the MCP resource
+   * OAuth callbacks, the MCP resource
    * metadata — as do better-auth's `trustedOrigins` and the cookie `secure`
    * flag. So a fleet-wide value means **every workspace emails links to another
    * workspace's hostname** (SAAS-HOSTING-STACK.md §9).
@@ -741,9 +741,9 @@ export const config = {
     return process.env.PLATFORM_CREDENTIALS_SOURCE === 'env' ? 'env' : 'db'
   },
 
-  // Realtime chat transport, surfaced to clients via getWidgetCapabilitiesFn.
+  // Realtime chat transport, surfaced to clients via getConversationCapabilitiesFn.
   //   'live' (default) — SSE stream at /api/chat/stream.
-  //   'poll' — force the widget/portal onto the polling fallback for a
+  //   'poll' — force the portal onto the polling fallback for a
   //            deployment behind a proxy that buffers or drops event streams.
   // Direct process.env read (like helpCenterDev) so it works without a full config load.
   get chatTransportMode(): 'live' | 'poll' {

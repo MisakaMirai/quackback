@@ -17,7 +17,7 @@ export const Route = createFileRoute('/admin/settings/channels_/messenger')({
     assertRoutePermission(context.permissions, PERMISSIONS.SETTINGS_MANAGE)
     const ensure = readBatch(context.queryClient)
     await Promise.all([
-      ensure(settingsQueries.widgetConfig()),
+      ensure(settingsQueries.messengerConfig()),
       ensure(settingsQueries.portalConfig()),
     ])
     return {}

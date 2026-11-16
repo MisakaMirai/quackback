@@ -22,24 +22,16 @@ export type Role = 'admin' | 'member' | 'user'
 export type PrincipalType = 'user' | 'anonymous' | 'service' | 'support'
 
 /** Session audience. Only 'dashboard' may satisfy team/permission gates. */
-export type SessionScope = 'dashboard' | 'widget' | 'portal'
+export type SessionScope = 'dashboard' | 'portal'
 
 /**
- * Request header the portal sets when it mints an anonymous session, so the
- * session is tagged for the portal rather than the widget. Absent means widget.
+ * Normalize a stored scope; unmarked values are dashboard. The retired
+ * 'widget' value maps to the portal audience, the only visitor audience left —
+ * migration 0314 rewrites the stored rows, and this keeps a row read during a
+ * rolling upgrade from being treated as a dashboard session.
  */
-export const SESSION_AUDIENCE_HEADER = 'x-quackback-session-audience'
-
-/** Normalize a stored scope; unmarked values are dashboard. */
 export function toSessionScope(value: unknown): SessionScope {
-  return value === 'widget' || value === 'portal' ? value : 'dashboard'
-}
-
-/** Widget Bearers cannot mutate the signed-in account. Portal and dashboard may. */
-export function assertNotWidgetScope(scope: SessionScope): void {
-  if (scope === 'widget') {
-    throw new Error('Access denied: Widget sessions cannot update this account')
-  }
+  return value === 'widget' || value === 'portal' ? 'portal' : 'dashboard'
 }
 
 /** Team roles only apply to dashboard sessions; every other audience is portal-tier. */

@@ -31,11 +31,11 @@ vi.mock('@/lib/client/hooks/use-activation-action', () => ({
   useActivationAction: (surface: string) =>
     surface === 'conversation_empty' && activation.firstRun
       ? {
-          id: 'connect-messenger',
+          id: 'open-inbox',
           outcome: 'customer_support',
-          label: 'Connect Messenger',
+          label: 'Open the inbox',
           kind: 'link',
-          destination: '/admin/settings/widget/install',
+          destination: '/admin/inbox',
         }
       : null,
 }))
@@ -96,7 +96,7 @@ const PROPS: ComponentProps<typeof ConversationListColumn> = {
 }
 
 describe('ConversationListColumn', () => {
-  it('offers putting Messenger on the site on a fresh Support inbox', () => {
+  it('shows the fresh Support inbox without a Messenger install CTA', () => {
     activation.firstRun = true
     const client = new QueryClient()
     render(
@@ -104,9 +104,9 @@ describe('ConversationListColumn', () => {
         <IntlProvider
           locale="fr"
           messages={{
-            // The admin inbox owns its title; the widget's string must not leak in.
+            // The admin inbox owns its title; the visitor string must not leak in.
             'inbox.empty.firstRun.title': 'Aucune conversation pour le moment',
-            'widget.messages.empty': 'Widget string',
+            'portal.messages.empty': 'Visitor string',
           }}
           onError={() => {}}
         >
@@ -115,11 +115,7 @@ describe('ConversationListColumn', () => {
       </QueryClientProvider>
     )
     expect(screen.getByText('Aucune conversation pour le moment')).toBeVisible()
-    expect(screen.queryByText('Widget string')).not.toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Connect Messenger' })).toHaveAttribute(
-      'href',
-      '/admin/settings/widget/install'
-    )
+    expect(screen.queryByText('Visitor string')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /test message/i })).not.toBeInTheDocument()
     expect(
       screen.queryByText('When customers message you, conversations show up here.')

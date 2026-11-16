@@ -383,8 +383,8 @@ describe('notifyAgentReply', () => {
       to: 'account@x.com',
       direction: 'agent_reply',
       senderName: 'Agent',
-      // Token-free deep link straight to the widget's messenger view.
-      ctaUrl: expect.stringContaining('https://acme.example.com/widget/?c='),
+      // Token-free deep link straight to the portal Support thread.
+      ctaUrl: expect.stringContaining('https://acme.example.com/support/conversation_1'),
       workspaceName: 'Acme',
     })
   })

@@ -22,7 +22,6 @@ vi.mock('@/lib/client/auth-client', () => ({
 }))
 
 const { useEnsureAnonSession } = await import('../use-ensure-anon-session')
-const { SESSION_AUDIENCE_HEADER } = await import('@/lib/shared/roles')
 
 afterEach(() => {
   cleanup()
@@ -92,9 +91,7 @@ describe('useEnsureAnonSession', () => {
     expect(anonymousSignIn).toHaveBeenCalledTimes(1)
   })
 
-  // Without the marker the server tags the session for the widget, and every
-  // portal write (post, vote, comment) is then refused by requireAuth.
-  it('marks its anonymous mint as the portal audience', async () => {
+  it('signs in anonymously without extra audience options', async () => {
     const router = buildRouter(null)
     render(<RouterProvider router={router} />)
     await screen.findByText('card')
@@ -102,7 +99,7 @@ describe('useEnsureAnonSession', () => {
     await act(async () => {
       await ensure()
     })
-    const [opts] = anonymousSignIn.mock.calls[0] as [{ fetchOptions?: RequestInit } | undefined]
-    expect(new Headers(opts?.fetchOptions?.headers).get(SESSION_AUDIENCE_HEADER)).toBe('portal')
+    expect(anonymousSignIn).toHaveBeenCalledTimes(1)
+    expect(anonymousSignIn.mock.calls[0]).toEqual([undefined])
   })
 })

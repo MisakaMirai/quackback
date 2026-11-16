@@ -156,9 +156,6 @@ export type UserAttributeId = TypeId<'user_attr'>
 /** User tag ID - e.g., user_tag_01h455vb4pex5vsknk084sn02q */
 export type UserTagId = TypeId<'user_tag'>
 
-/** Company attribute definition ID - e.g., company_attr_01h455vb4pex5vsknk084sn02q */
-export type CompanyAttributeId = TypeId<'company_attr'>
-
 /** Billing provider webhook event ID - e.g., billing_event_01h455vb4pex5vsknk084sn02q */
 export type BillingEventId = TypeId<'billing_event'>
 
@@ -192,9 +189,6 @@ export type PostActivityId = TypeId<'post_activity'>
 
 /** Visitor analytics pageview ID - e.g., pv_01h455vb4pex5vsknk084sn02q */
 export type PageViewId = TypeId<'pv'>
-
-/** Company (B2B customer account) ID - e.g., company_01h455vb4pex5vsknk084sn02q */
-export type CompanyId = TypeId<'company'>
 
 /** Assistant involvement ID - e.g., assistant_involvement_01h455vb4pex5vsknk084sn02q */
 export type AssistantInvolvementId = TypeId<'assistant_involvement'>
@@ -434,7 +428,6 @@ export interface EntityIdMap {
   segment: SegmentId
   user_attr: UserAttributeId
   user_tag: UserTagId
-  company_attr: CompanyAttributeId
   role: RoleId
   permission: PermissionId
   role_permission: RolePermissionId
@@ -447,7 +440,6 @@ export interface EntityIdMap {
   page_view: PageViewId
   billing_event: BillingEventId
   billing_usage: BillingUsageId
-  company: CompanyId
   assistant_involvement: AssistantInvolvementId
   assistant_guidance: AssistantGuidanceRuleId
   assistant_action: AssistantPendingActionId

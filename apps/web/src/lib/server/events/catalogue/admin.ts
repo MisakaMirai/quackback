@@ -6,7 +6,7 @@
  * in the same transaction as the mutation.
  *
  * This is the first slice of coverage for the ~30 previously-silent entity
- * families; the remaining families (boards, tags, companies, segments, teams,
+ * families; the remaining families (boards, tags, segments, teams,
  * moderation, ...) follow the same pattern in WO-6b/6c.
  */
 import { decl } from './helpers'

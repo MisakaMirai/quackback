@@ -1,14 +1,15 @@
 /**
  * CLI: idempotently enable (or disable) the conversation surfaces for e2e runs.
  *
- * "on" turns on everything the three conversation surfaces need:
+ * "on" turns on everything the conversation surfaces need:
  *   - featureFlags.supportInbox        (gates /admin/inbox + all conversation paths)
- *   - widgetConfig.enabled             (widget master switch)
- *   - widgetConfig.tabs.messenger      (widget Messages tab)
  *   - portalConfig.support.enabled     (portal /support tab)
  *
- * "off" flips the flag + messenger + portal support back off (the widget
- * master switch is left alone so unrelated widget specs are not disturbed).
+ * "on all" also enables the neighbouring products the performance bench loads
+ * (supportTickets, helpCenter, changelog, feedback) so its pages render instead
+ * of redirecting. Plain "on" leaves those flags alone for e2e specs.
+ *
+ * "off" flips the flag and portal support back off.
  *
  * The settings JSON columns are *text*, so we read -> patch -> write, then
  * drop the Redis-cached workspace settings (settings:workspace) so the running dev
@@ -24,21 +25,25 @@ if (mode !== 'on' && mode !== 'off') {
   process.exit(1)
 }
 const enabled = mode === 'on'
+/** The performance bench visits every product page, so it enables them all. */
+const allSurfaces = (process.argv[3] || '').toLowerCase() === 'all'
 
 const sql = openDb()
 
 try {
   const rows =
-    await sql`SELECT id, feature_flags, widget_config, portal_config FROM settings ORDER BY created_at ASC LIMIT 1`
+    await sql`SELECT id, feature_flags, portal_config FROM settings ORDER BY created_at ASC LIMIT 1`
   if (rows.length === 0) throw new Error('No settings row found (run the seed first)')
   const id = rows[0].id as string
 
   const flags = parseJson(rows[0].feature_flags)
   flags.supportInbox = enabled
-
-  const widget = parseJson(rows[0].widget_config)
-  if (enabled) widget.enabled = true
-  widget.tabs = { ...((widget.tabs as object) ?? {}), messenger: enabled }
+  if (enabled && allSurfaces) {
+    flags.supportTickets = true
+    flags.helpCenter = true
+    flags.changelog = true
+    flags.feedback = true
+  }
 
   const portal = parseJson(rows[0].portal_config)
   portal.support = { ...((portal.support as object) ?? {}), enabled }
@@ -46,7 +51,6 @@ try {
   await sql`
     UPDATE settings
     SET feature_flags = ${JSON.stringify(flags)},
-        widget_config = ${JSON.stringify(widget)},
         portal_config = ${JSON.stringify(portal)}
     WHERE id = ${id}`
 

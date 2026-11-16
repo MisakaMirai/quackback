@@ -16,7 +16,7 @@ export function periodRange(period: AnalyticsPeriod, now: Date = new Date()): Da
   return { from: from.toISOString(), to: now.toISOString() }
 }
 
-export type VisitorSurface = 'all' | 'portal' | 'widget'
+export type VisitorSurface = 'all' | 'portal'
 
 export const analyticsQueries = {
   data: (period: AnalyticsPeriod) =>

@@ -67,15 +67,12 @@ vi.mock('@/lib/server/domains/settings/settings.service', () => ({
 
 const mockCheckSignInRateLimit = vi.fn()
 const mockCheckMagicLinkRateLimit = vi.fn()
+const mockCheckAnonMintRateLimit = vi.fn()
 vi.mock('@/lib/server/auth/signin-rate-limit', () => ({
   checkCredentialSignInRateLimit: (ip: string, email: string) =>
     mockCheckSignInRateLimit(ip, email),
   checkMagicLinkSendRateLimit: (ip: string, email: string) =>
     mockCheckMagicLinkRateLimit(ip, email),
-}))
-
-const mockCheckAnonMintRateLimit = vi.fn()
-vi.mock('@/lib/server/auth/widget-rate-limit', () => ({
   checkAnonMintRateLimit: (ip: string) => mockCheckAnonMintRateLimit(ip),
 }))
 
@@ -694,7 +691,7 @@ describe('handleSignInPreCheck — sign-in rate-limit', () => {
 })
 
 // ============================================================
-// Anonymous-mint rate limit (widget /sign-in/anonymous)
+// Anonymous-mint rate limit (/sign-in/anonymous)
 // ============================================================
 
 describe('handleSignInPreCheck — anonymous-mint rate-limit', () => {

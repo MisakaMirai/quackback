@@ -135,7 +135,6 @@ const COMMON_PRODUCT_WORDS = new Set([
   'user',
   'users',
   'welcome',
-  'widget',
   'workspace',
 ])
 

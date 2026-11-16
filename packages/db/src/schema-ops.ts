@@ -123,16 +123,6 @@ export const CONCURRENT_INDEX_SPECS: readonly ConcurrentIndexSpec[] = [
     ddl: 'CREATE INDEX CONCURRENTLY IF NOT EXISTS user_email_trgm_idx ON "user" USING gin (email gin_trgm_ops)',
   },
   {
-    name: 'companies_name_trgm_idx',
-    concurrent: true,
-    ddl: 'CREATE INDEX CONCURRENTLY IF NOT EXISTS companies_name_trgm_idx ON companies USING gin (name gin_trgm_ops)',
-  },
-  {
-    name: 'companies_domain_trgm_idx',
-    concurrent: true,
-    ddl: 'CREATE INDEX CONCURRENTLY IF NOT EXISTS companies_domain_trgm_idx ON companies USING gin (domain gin_trgm_ops)',
-  },
-  {
     name: 'kb_articles_title_trgm_idx',
     concurrent: true,
     ddl: 'CREATE INDEX CONCURRENTLY IF NOT EXISTS kb_articles_title_trgm_idx ON kb_articles USING gin (title gin_trgm_ops)',

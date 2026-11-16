@@ -6,13 +6,13 @@
  *
  *   score = titleTier + textScore
  *
- * - titleTier (0 to 3) says how well the title (a person's name or email, a
- *   company's name or domain) matches the whole query, ignoring case:
+ * - titleTier (0 to 3) says how well the title (a person's name or email)
+ *   matches the whole query, ignoring case:
  *   3 = the same, 2 = starts with it, 1 = contains it, 0 = otherwise.
  * - textScore (0 to just under 1) says how well the text matches: Postgres
  *   ts_rank normalised as rank / (rank + 1) for full-text kinds, or the
- *   meaning similarity (cosine) of a semantic match. People and companies
- *   have no body text, so theirs is 0.
+ *   meaning similarity (cosine) of a semantic match. People have no body
+ *   text, so theirs is 0.
  *
  * A record is a candidate when its text matches the query (full text, or
  * meaning on the results page) or its title contains the query, so `fund`
@@ -37,7 +37,6 @@ export const SEARCH_KINDS = [
   'changelog',
   'person',
   'teammate',
-  'company',
 ] as const
 export type SearchKind = (typeof SEARCH_KINDS)[number]
 
@@ -48,7 +47,7 @@ export interface SearchResult {
   href: string
   /** A short plain-text passage around the first matched word. */
   excerpt?: string
-  /** A second line: an email address or a company domain. */
+  /** A second line: an email address. */
   subtitle?: string
   updatedAt?: string
   /** titleTier + textScore; see the ranking rule above. */
@@ -87,7 +86,6 @@ export function searchableKinds(
     changelog: isProductEnabled(features, 'changelog') && has(PERMISSIONS.CHANGELOG_VIEW_DRAFT),
     person: has(PERMISSIONS.PEOPLE_VIEW),
     teammate: has(PERMISSIONS.MEMBER_VIEW),
-    company: has(PERMISSIONS.PEOPLE_VIEW) && has(PERMISSIONS.COMPANY_VIEW),
   }
   return SEARCH_KINDS.filter((kind) => allowed[kind])
 }

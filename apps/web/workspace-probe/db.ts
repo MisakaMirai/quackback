@@ -98,8 +98,8 @@ export function markerSearchForms(value: string): string[] {
  * "first row by creation" is the whole workspace identity.
  */
 export const SETTINGS_ROW_SQL = `
-  SELECT id, slug, name, widget_secret, feature_flags, branding_config, custom_css,
-         portal_config, widget_config, auth_config_version
+  SELECT id, slug, name, feature_flags, branding_config, custom_css,
+         portal_config, auth_config_version
   FROM settings
   ORDER BY created_at ASC
   LIMIT 1
@@ -110,12 +110,10 @@ export interface SettingsRow {
   id: string
   slug: string
   name: string
-  widget_secret: string | null
   feature_flags: string | null
   branding_config: string | null
   custom_css: string | null
   portal_config: string | null
-  widget_config: string | null
   auth_config_version: number | null
 }
 

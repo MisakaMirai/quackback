@@ -94,7 +94,7 @@ describe('uploadFile', () => {
 
   it('sends the extra headers it was given', async () => {
     const f = file('a.txt', 1, 'text/plain')
-    void uploadFile(f, { endpoint: '/api/widget/files', headers: { Authorization: 'Bearer tok' } })
+    void uploadFile(f, { endpoint: '/api/portal/files', headers: { Authorization: 'Bearer tok' } })
     expect(lastXhr().headers.Authorization).toBe('Bearer tok')
   })
 
@@ -148,21 +148,21 @@ describe('uploadFile', () => {
     await expect(promise).rejects.toMatchObject({ message: 'Upload failed', reason: undefined })
   })
 
-  it('reads the message out of a widget error response, which answers { error: { code, message } }', async () => {
+  it('reads the message out of a portal error response, which answers { error: { code, message } }', async () => {
     const f = file('a.png', 1, 'image/png')
-    const promise = uploadFile(f, { endpoint: '/api/widget/files' })
+    const promise = uploadFile(f, { endpoint: '/api/portal/files' })
     const xhr = lastXhr()
     xhr.status = 401
     xhr.responseText = JSON.stringify({
-      error: { code: 'AUTH_REQUIRED', message: 'Valid widget session required' },
+      error: { code: 'AUTH_REQUIRED', message: 'Valid portal session required' },
     })
     xhr.onload?.()
-    await expect(promise).rejects.toMatchObject({ message: 'Valid widget session required' })
+    await expect(promise).rejects.toMatchObject({ message: 'Valid portal session required' })
   })
 
   it('never surfaces "[object Object]" when the error body is an object with no message', async () => {
     const f = file('a.png', 1, 'image/png')
-    const promise = uploadFile(f, { endpoint: '/api/widget/files' })
+    const promise = uploadFile(f, { endpoint: '/api/portal/files' })
     const xhr = lastXhr()
     xhr.status = 503
     xhr.responseText = JSON.stringify({ error: { code: 'WORKSPACE_UNAVAILABLE' } })
@@ -172,7 +172,7 @@ describe('uploadFile', () => {
 
   it('maps a 429 to a rate-limited reason regardless of the body shape', async () => {
     const f = file('a.png', 1, 'image/png')
-    const promise = uploadFile(f, { endpoint: '/api/widget/files' })
+    const promise = uploadFile(f, { endpoint: '/api/portal/files' })
     const xhr = lastXhr()
     xhr.status = 429
     xhr.responseText = JSON.stringify({

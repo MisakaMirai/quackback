@@ -31,7 +31,7 @@ bun run worktree:bootstrap
 The bootstrap script:
 
 - Installs dependencies with a real `bun install`, not a symlink to the main checkout's `node_modules` (a symlink would silently resolve `packages/*` back to the main checkout, so edits to a package there never show up in the worktree)
-- Builds the widget bundle and generates `apps/web/src/routeTree.gen.ts`, both gitignored artifacts the app needs before it can run
+- Generates `apps/web/src/routeTree.gen.ts`, a gitignored artifact the app needs before it can run
 - Creates a `.env` for the worktree from the main checkout's `.env`, then assigns it a free port, its own Postgres database (`quackback_<worktree-directory-name>`), and its own Redis DB index, so it can run alongside other worktrees without touching their dev data
 - Runs migrations against that new database
 
@@ -57,7 +57,6 @@ quackback/
 │   ├── db/                # Database (Drizzle schema, migrations)
 │   ├── ids/               # TypeID system (branded UUIDs)
 │   └── email/             # Email service (Amazon SES + React Email)
-├── packages/widget/       # Embeddable widget package
 └── docker-compose.yml     # Local PostgreSQL, Silo (S3), and Mailpit
 ```
 

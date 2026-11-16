@@ -58,7 +58,6 @@ const CreateTicketBodySchema = createRequestBodySchema({
     .meta({ description: 'Opening message as markdown', example: 'Steps to reproduce…' }),
   priority: z.enum(TICKET_PRIORITIES).optional().meta({ example: 'high' }),
   requesterPrincipalId: z.string().optional().meta({ description: 'Requester principal ID' }),
-  companyId: z.string().optional().meta({ description: 'Associated company ID' }),
   attachments: z.array(TicketWriteAttachmentSchema).optional(),
 })
 

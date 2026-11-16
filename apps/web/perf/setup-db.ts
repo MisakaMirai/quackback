@@ -35,12 +35,12 @@ await sql.end()
 const scripts = 'apps/web/e2e/scripts'
 run('migrate', ['bun', 'run', '--cwd', 'packages/db', 'db:migrate'])
 run('seed (pinned generator)', ['bun', 'apps/web/perf/seed.ts'])
-run('enable widget, support, help center and changelog', [
+run('enable support, help center and changelog', [
   'bun',
-  `${scripts}/set-widget-surfaces.ts`,
+  `${scripts}/set-support-surfaces.ts`,
   'on',
+  'all',
 ])
-run('seed identified-customer fixtures', ['bun', `${scripts}/seed-widget-identified.ts`])
 for (let i = 1; i <= 5; i++) {
   run(`seed conversation ${i}`, [
     'bun',

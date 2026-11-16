@@ -45,7 +45,7 @@ vi.mock('@tanstack/react-start', () => ({
   },
 }))
 
-const WIDGET_SECRET = 'wsec_must_not_leave_the_server'
+const SETTINGS_SENTINEL = '{"secret":"must_not_leave_the_server"}'
 
 describe('requireWorkspaceRole response', () => {
   it('carries the caller identity and none of the settings row', async () => {
@@ -57,7 +57,7 @@ describe('requireWorkspaceRole response', () => {
     })
     hoisted.findSettingsCached.mockResolvedValue({
       id: 'workspace_1',
-      widgetSecret: WIDGET_SECRET,
+      metadata: SETTINGS_SENTINEL,
     })
     vi.mocked(db.query.principal.findFirst).mockResolvedValue({
       id: 'principal_visitor',
@@ -69,7 +69,7 @@ describe('requireWorkspaceRole response', () => {
       unknown
     >
 
-    expect(JSON.stringify(result)).not.toContain(WIDGET_SECRET)
+    expect(JSON.stringify(result)).not.toContain(SETTINGS_SENTINEL)
     expect(Object.keys(result).sort()).toEqual(['permissions', 'principal', 'user'])
     expect(result.permissions).toEqual(['post.vote'])
   })

@@ -16,7 +16,6 @@ export type {
   TicketStatusRef,
   TicketStageRef,
   TicketAssigneeRef,
-  TicketCompanyRef,
   TicketDTO,
   RequesterTicketDTO,
   TicketTypeRef,

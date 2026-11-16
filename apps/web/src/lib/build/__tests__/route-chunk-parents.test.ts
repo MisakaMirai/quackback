@@ -34,7 +34,6 @@ describe.skipIf(!haveTree)('readRouteParents', () => {
   it('maps a route directly under the root to null', () => {
     expect(parents.get(route('admin.tsx'))).toBeNull()
     expect(parents.get(route('_portal.tsx'))).toBeNull()
-    expect(parents.get(route('widget.tsx'))).toBeNull()
   })
 })
 

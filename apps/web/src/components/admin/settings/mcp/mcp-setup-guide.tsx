@@ -5,10 +5,7 @@ import {
   CheckIcon,
   ArrowTopRightOnSquareIcon,
 } from '@heroicons/react/24/solid'
-import {
-  HighlightedCode,
-  type SyntaxLang,
-} from '@/components/admin/settings/widget/highlighted-code'
+import { HighlightedCode, type SyntaxLang } from '@/components/admin/settings/highlighted-code'
 import { cn } from '@/lib/shared/utils'
 import { useCopyToClipboard } from '@/lib/client/hooks/use-copy-to-clipboard'
 import { INLINE_LINK } from '@/components/admin/settings/inline-link'

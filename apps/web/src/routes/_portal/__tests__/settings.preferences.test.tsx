@@ -19,6 +19,7 @@ vi.mock('@/lib/server/functions/user', () => ({
 }))
 
 import { Route } from '../settings.preferences'
+import zhCn from '@/locales/zh-cn.json'
 
 beforeEach(() => {
   getNotificationPreferencesFn.mockReset()
@@ -49,11 +50,11 @@ describe('settings/preferences loader', () => {
 
   it("reads the matrix's strings in the visitor's language", async () => {
     const data = await (Route as unknown as { loader: Loader }).loader({
-      context: { acceptLanguageLocale: 'pl' },
+      context: { acceptLanguageLocale: 'zh-cn' },
     })
 
     expect(data.messages['portal.settings.notifications.pauseAll.label']).toBe(
-      'Wstrzymaj wszystkie e-maile'
+      zhCn['portal.settings.notifications.pauseAll.label']
     )
     const ids = Object.keys(data.messages)
     expect(ids.filter((id) => !id.startsWith('portal.settings.notifications.'))).toEqual([])

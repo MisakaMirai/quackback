@@ -55,8 +55,6 @@ describe('the launch path', () => {
       hasBranding: true,
       memberCount: 3,
       hasPublishedChangelog: true,
-      hasWidgetInstalled: true,
-      hasWidgetEnabled: true,
       hasHelpArticle: true,
       hasStatusComponent: true,
     }
@@ -75,7 +73,7 @@ describe('the launch path', () => {
 
   it('follows each goal with its own step and win', () => {
     const cases: [LaunchStatus['goals'], string, string, string][] = [
-      [['customer_support'], 'support', 'connect-messenger', 'A customer starts a conversation'],
+      [['customer_support'], 'feedback', 'distribute-feedback', 'A customer starts a conversation'],
       [['help_center'], 'helpCenter', 'help-article', 'A customer finds it helpful'],
       [['status_page'], 'status', 'share-status-page', 'A customer subscribes'],
     ]
@@ -130,7 +128,7 @@ describe('the launch path', () => {
     expect(later).not.toContain('first-win')
     expect(later).not.toContain('create-board')
     expect(later).toEqual(
-      expect.arrayContaining(['connect-messenger', 'invite-team', 'customize-branding'])
+      expect.arrayContaining(['publish-changelog', 'invite-team', 'customize-branding'])
     )
   })
 

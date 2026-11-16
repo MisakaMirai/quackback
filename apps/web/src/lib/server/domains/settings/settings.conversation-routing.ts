@@ -2,7 +2,7 @@
  * Shared conversation routing: which agent a new conversation is assigned to.
  *
  * Canonical storage is the settings.metadata bag (`conversationRouting`).
- * Read-time fallback from the released `widgetConfig.messenger.routing` so
+ * Read-time fallback from the released `messengerConfig.messenger.routing` so
  * existing installs keep their toggle until an admin saves the hub card.
  */
 import { logger } from '@/lib/server/logger'
@@ -24,7 +24,7 @@ export const DEFAULT_CONVERSATION_ROUTING: ConversationRoutingConfig = {
 
 export function resolveConversationRouting(
   metadataJson: string | null,
-  widgetConfigJson: string | null
+  messengerConfigJson: string | null
 ): ConversationRoutingConfig {
   if (metadataJson) {
     try {
@@ -40,15 +40,15 @@ export function resolveConversationRouting(
       // Fall through to the legacy key / default.
     }
   }
-  const legacy = readLegacyRouting(widgetConfigJson)
+  const legacy = readLegacyRouting(messengerConfigJson)
   if (legacy) return legacy
   return DEFAULT_CONVERSATION_ROUTING
 }
 
-function readLegacyRouting(widgetConfigJson: string | null): ConversationRoutingConfig | null {
-  if (!widgetConfigJson) return null
+function readLegacyRouting(messengerConfigJson: string | null): ConversationRoutingConfig | null {
+  if (!messengerConfigJson) return null
   try {
-    const wc = JSON.parse(widgetConfigJson) as {
+    const wc = JSON.parse(messengerConfigJson) as {
       messenger?: { routing?: { enabled?: unknown; strategy?: unknown } }
     }
     const routing = wc.messenger?.routing
@@ -65,7 +65,7 @@ function readLegacyRouting(widgetConfigJson: string | null): ConversationRouting
 export async function getConversationRouting(): Promise<ConversationRoutingConfig> {
   try {
     const org = await requireSettingsCached()
-    return resolveConversationRouting(org.metadata, org.widgetConfig)
+    return resolveConversationRouting(org.metadata, org.messengerConfig)
   } catch (error) {
     log.error({ err: error }, 'get conversation routing failed')
     wrapDbError('fetch conversation routing', error)

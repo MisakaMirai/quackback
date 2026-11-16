@@ -6,12 +6,12 @@ import { adminSeedMessages, loadLaunchMessages, loadMessages } from '@/lib/share
 import { LaunchMessages } from '../launch-messages'
 
 it('adds the route-loaded launch strings to the page seed', async () => {
-  const all = await loadMessages('fr')
+  const all = await loadMessages('zh-cn')
   const seeded = adminSeedMessages(all)
   expect(seeded['onboarding.win.generic']).toBeUndefined()
   render(
-    <IntlProvider locale="fr" messages={seeded} onError={() => {}}>
-      <LaunchMessages messages={await loadLaunchMessages('fr')}>
+    <IntlProvider locale="zh-cn" messages={seeded} onError={() => {}}>
+      <LaunchMessages messages={await loadLaunchMessages('zh-cn')}>
         <p>
           <FormattedMessage id="onboarding.win.generic" defaultMessage="First win" />
         </p>

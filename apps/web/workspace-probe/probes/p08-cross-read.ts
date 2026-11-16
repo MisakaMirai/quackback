@@ -22,15 +22,7 @@ import {
   type ScanResult,
 } from '../db-scan'
 import { markerSearchForms } from '../db'
-import {
-  control,
-  crossOriginRedirectControl,
-  decide,
-  dirFrom,
-  describeResponse,
-  halt,
-  markersPresent,
-} from './helpers'
+import { control, crossOriginRedirectControl, decide, dirFrom, markersPresent } from './helpers'
 import type { ControlOutcome, Probe, ProbeContext, ProbeResponse } from '../types'
 import { FIXTURE } from '../fixtures'
 
@@ -38,123 +30,23 @@ const READ_LEAK_REASON =
   'bravo returned or stored data belonging to alpha. Because the two workspaces collide on every ' +
   'human-readable field, this would be invisible to any check that did not compare ids.'
 
-interface WidgetSearchBody {
-  data?: { posts?: Array<{ id: string; title: string; board?: { id: string; slug: string } }> }
-}
-
 export const p08CrossRead: Probe = {
   id: 'P08',
   name: 'cross-workspace-row-object-and-presence-read',
   family: 'read',
   proves:
     'No public surface on bravo returns a row, id or canary belonging to alpha — including the ' +
-    'search endpoint queried with a title that exists identically in both workspaces, and (with database ' +
-    'access) any row anywhere in bravo’s schema.',
+    'portal documents and (with database access) any row anywhere in bravo’s schema.',
   requires: ['http'],
 
   async run(ctx: ProbeContext) {
     const { alpha, bravo } = ctx
     const attempted =
-      `search bravo's public endpoints for the colliding post title "${FIXTURE.postTitle}" and for ` +
-      `alpha's canary, read bravo's portal root and its own board-scoped post document, and scan ` +
-      `bravo's database for every one of alpha's markers`
+      `read bravo's portal root and its own board-scoped post document for alpha's markers, ` +
+      `and scan bravo's database for every one of alpha's markers`
 
     const controls: ControlOutcome[] = []
     const evidence: Record<string, unknown> = {}
-
-    const searchPath = (q: string) => `/api/widget/search?q=${encodeURIComponent(q)}&limit=25`
-
-    // --- positive control: the colliding search works at all ----------------
-    const ownSearch = await alpha.http.request(searchPath(FIXTURE.postTitle), { omitCookies: true })
-    const ownPosts = ownSearch.json<WidgetSearchBody>()?.data?.posts ?? []
-    const ownFound = ownPosts.some((p) => p.id === alpha.fixture?.postId)
-    controls.push(
-      control(
-        'positive',
-        `alpha search for "${FIXTURE.postTitle}" returns alpha's fixture post`,
-        ownFound,
-        ownFound
-          ? `found post ${alpha.fixture?.postId} among ${ownPosts.length} result(s)`
-          : `alpha's own fixture post was NOT returned (${ownPosts.length} result(s), ${describeResponse(ownSearch, 160)}) — ` +
-              `the search surface is blind, so an empty result from bravo would prove nothing`
-      )
-    )
-    if (!ownFound) {
-      return halt({
-        attempted,
-        controls,
-        stopped: {
-          label: `alpha search for "${FIXTURE.postTitle}" returns alpha's fixture post`,
-          detail: describeResponse(ownSearch, 300),
-        },
-        reason:
-          'the positive control failed: alpha’s public search does not return alpha’s own fixture ' +
-          'post. Either the board is not publicly visible or the post has not been indexed. Until ' +
-          'that is fixed, a clean result from bravo is not evidence of isolation.',
-        leakReason: READ_LEAK_REASON,
-        evidence,
-      })
-    }
-
-    // --- negative: the colliding title on BOTH hosts -------------------------
-    //
-    // Both directions, like every other cross-workspace attempt in this suite.
-    // This check was once bravo-only: an asymmetric leak — one workspace's index
-    // poisoning the other's results but not the reverse — would have sailed
-    // through, hidden by the probe's other symmetric checks.
-    for (const [fromSlot, from, to] of [
-      ['alpha', alpha, bravo],
-      ['bravo', bravo, alpha],
-    ] as const) {
-      const crossSearch = await to.http.request(searchPath(FIXTURE.postTitle), {
-        omitCookies: true,
-      })
-      const crossPosts = crossSearch.json<WidgetSearchBody>()?.data?.posts ?? []
-      const foreignIds = new Set(
-        [from.fixture?.postId, from.fixture?.boardId].filter(Boolean) as string[]
-      )
-      const foreignResults = crossPosts.filter(
-        (p) => foreignIds.has(p.id) || (p.board?.id && foreignIds.has(p.board.id))
-      )
-      const foundOwn = crossPosts.some((p) => p.id === to.fixture?.postId)
-      controls.push(
-        control(
-          'negative',
-          `${to.slot} search for the colliding title "${FIXTURE.postTitle}" returns only ${to.slot}'s rows`,
-          foreignResults.length === 0,
-          foreignResults.length === 0
-            ? `${crossPosts.length} result(s), all ${to.slot}'s${foundOwn ? ` (including ${to.slot}'s own fixture post)` : ''}`
-            : `${fromSlot.toUpperCase()}'S ROWS RETURNED: ${foreignResults.map((p) => p.id).join(', ')}`,
-          dirFrom(fromSlot),
-          'colliding-title-search'
-        )
-      )
-      evidence[`${to.slot}SearchResultIds`] = crossPosts.map((p) => p.id)
-    }
-
-    // --- negative: each workspace's canary searched on the other ---------------
-    for (const [fromSlot, from, to] of [
-      ['alpha', alpha, bravo],
-      ['bravo', bravo, alpha],
-    ] as const) {
-      const canarySearch = await to.http.request(searchPath(from.markers.canary), {
-        omitCookies: true,
-        expectsForeignMarkers: true,
-      })
-      const canaryPosts = canarySearch.json<WidgetSearchBody>()?.data?.posts ?? []
-      controls.push(
-        control(
-          'negative',
-          `${to.slot} search for ${fromSlot}'s canary returns nothing`,
-          canaryPosts.length === 0,
-          canaryPosts.length === 0
-            ? 'no results'
-            : `RETURNED ${canaryPosts.length} result(s): ${canaryPosts.map((p) => p.id).join(', ')}`,
-          dirFrom(fromSlot),
-          'canary-search'
-        )
-      )
-    }
 
     // --- negative: portal documents on the shared board slug, both ways -----
     //
@@ -298,8 +190,8 @@ export const p08CrossRead: Probe = {
       leakReason: READ_LEAK_REASON,
       onPass: {
         observed:
-          `bravo's search for the colliding title returned only bravo's rows; alpha's canary matched ` +
-          `nothing on bravo's public surfaces${bravo.db ? ' or anywhere in its database' : ''}`,
+          `bravo's public surfaces carried no marker belonging to alpha` +
+          `${bravo.db ? ', and neither did any row in its database' : ''}`,
         reason: 'no row, id or canary belonging to either workspace is reachable from the other',
       },
       evidence,

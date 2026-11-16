@@ -22,7 +22,7 @@ import {
   DEFAULT_AUTH_CONFIG,
   newWorkspaceBaseFlags,
   DEFAULT_PORTAL_CONFIG,
-  DEFAULT_WIDGET_CONFIG,
+  DEFAULT_MESSENGER_SETTINGS,
   flagsForGoals,
   resolveFeatureFlags,
 } from '@/lib/server/domains/settings/settings.types'
@@ -265,7 +265,7 @@ export async function setupWorkspaceForUser(input: {
             slug,
             createdAt: new Date(),
             portalConfig: JSON.stringify(DEFAULT_PORTAL_CONFIG),
-            widgetConfig: JSON.stringify(DEFAULT_WIDGET_CONFIG),
+            messengerConfig: JSON.stringify(DEFAULT_MESSENGER_SETTINGS),
             authConfig: JSON.stringify({ ...DEFAULT_AUTH_CONFIG, openSignup: true }),
             setupState: JSON.stringify(initialState),
             featureFlags: JSON.stringify(baseFlags),

@@ -5,7 +5,7 @@
  * That snapshot lags the serving image (SAAS-HOSTING-STACK vendor-lag: "broken
  * newborns"). Drizzle emits explicit column lists, so a build that postdates an
  * additive migration throws on ordinary reads — the settings fetch that 500s
- * every page when `widget_installed_sdk_version` is absent.
+ * every page when a newly declared settings column is absent.
  *
  * The hourly fleet-migrator pass will catch these up, but a mint is Ready and
  * routed immediately. This runs once per pool, after identity checks, and is a

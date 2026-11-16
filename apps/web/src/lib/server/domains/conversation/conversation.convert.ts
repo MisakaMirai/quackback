@@ -93,7 +93,7 @@ export async function createPostFromConversation(
         boardId: input.boardId,
         title,
         content: input.content,
-        widgetMetadata: { source: 'live_chat', conversationId: input.conversationId },
+        clientMetadata: { source: 'live_chat', conversationId: input.conversationId },
         trackedByPrincipalId: ctx.agentPrincipalId,
       },
       { principalId: visitorPrincipalId, actor: ctx.agentActor }

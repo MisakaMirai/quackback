@@ -56,13 +56,7 @@ export async function notifyConversationClosed(opts: {
     const ctx = await buildHookContext()
     if (!ctx) return
 
-    const { isPortalSupportEnabled } =
-      await import('@/lib/server/domains/settings/settings.support')
-    const ctaUrl = visitorConversationLink(
-      ctx.portalBaseUrl,
-      opts.conversationId,
-      await isPortalSupportEnabled()
-    )
+    const ctaUrl = visitorConversationLink(ctx.portalBaseUrl, opts.conversationId)
 
     const replyTo = isEmailInboundConfigured()
       ? (inboundReplyToAddress(opts.conversationId, currentMailSlug()) ?? undefined)

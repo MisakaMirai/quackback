@@ -304,19 +304,15 @@ export async function discoverMarkers(handle: WorkspaceHandle): Promise<Workspac
     if (settings) {
       const workspaceId = typeId('workspace', settings.id)
       if (workspaceId) ids.workspaceId = workspaceId
-      // The name and slug are what a leaked settings blob actually carries —
-      // `/api/widget/config.json` has no identifier in it at all and the portal
-      // document carries the name. They are admitted as CANDIDATES only:
+      // The name and slug are what a leaked settings blob actually carries, and
+      // the portal document carries the name. They are admitted as CANDIDATES
+      // only:
       // preflight drops any that are generic (a workspace called `Support`
       // appears in the other workspace's own navigation) or shared between the
       // workspaces. `vocabulary.ts` reads this module's fixture constants, so the
       // filter deliberately lives there and not here.
       if (settings.name) ids.workspaceName = settings.name
       if (settings.slug) ids.workspaceSlug = settings.slug
-      // Scanned like any other marker — a signing secret in a response body is
-      // among the worst findings available — but held in `sensitive` so it is
-      // redacted in hits and never serialized into the report.
-      if (settings.widget_secret) sensitive.widgetSecret = settings.widget_secret
     }
     const [assistant] = await handle.db.query<{ id: string }>(ASSISTANT_PRINCIPAL_SQL)
     if (assistant) {

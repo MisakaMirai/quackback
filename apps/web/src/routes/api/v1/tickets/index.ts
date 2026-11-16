@@ -21,7 +21,7 @@ import {
 } from './-validation'
 import type { TicketType, TicketStatusCategory, TicketStage } from '@/lib/server/db'
 import type { TicketSort } from '@/lib/server/domains/tickets/ticket.types'
-import type { PrincipalId, CompanyId, TicketTypeId } from '@quackback/ids'
+import type { PrincipalId, TicketTypeId } from '@quackback/ids'
 
 const createTicketSchema = z.object({
   // Optional since Phase 4: derivable from ticketTypeId (a mismatched explicit
@@ -33,7 +33,6 @@ const createTicketSchema = z.object({
   description: z.string().max(4000).optional(),
   priority: priorityEnum.optional(),
   requesterPrincipalId: z.string().optional(),
-  companyId: z.string().optional(),
   attachments: attachmentsSchema,
 })
 
@@ -60,7 +59,6 @@ export const Route = createFileRoute('/api/v1/tickets/')({
           const stage = (url.searchParams.get('stage') as TicketStage | null) ?? undefined
           const requesterPrincipalId =
             (url.searchParams.get('requesterPrincipalId') as PrincipalId | null) ?? undefined
-          const companyId = (url.searchParams.get('companyId') as CompanyId | null) ?? undefined
           const sort = (url.searchParams.get('sort') as TicketSort | null) ?? undefined
 
           const actor = serviceActorFromApiAuth(auth)
@@ -75,7 +73,6 @@ export const Route = createFileRoute('/api/v1/tickets/')({
               statusCategory,
               stage,
               requesterPrincipalId,
-              companyId,
               sort,
               limit,
             },
@@ -105,11 +102,6 @@ export const Route = createFileRoute('/api/v1/tickets/')({
             'principal',
             'requester principal ID'
           )
-          const companyId = parseOptionalTypeId<CompanyId>(
-            parsed.data.companyId,
-            'company',
-            'company ID'
-          )
           const ticketTypeId = parseOptionalTypeId<TicketTypeId>(
             parsed.data.ticketTypeId,
             'ticket_type',
@@ -131,7 +123,6 @@ export const Route = createFileRoute('/api/v1/tickets/')({
                 : undefined,
               priority: parsed.data.priority,
               requesterPrincipalId,
-              companyId,
               attachments: toAttachments(parsed.data.attachments),
               // CONVERGENCE PHASE 1b: a customer-intake path — a CUSTOMER ticket
               // created WITH a requester gets its backing conversation + link in

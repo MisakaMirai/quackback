@@ -103,3 +103,22 @@ export const checkContactEmailSendRateLimit = (
   ip: string,
   principalId: string
 ): Promise<SignInRateLimitResult> => check(CONTACT_EMAIL, ip, principalId)
+
+const ANON_MINT_LIMIT = 100
+const ANON_MINT_WINDOW_S = 10 * 60
+
+/**
+ * Bound how many anonymous sessions one client can mint — the session-table
+ * flood defence for the open `/sign-in/anonymous` endpoint. Keyed on the real
+ * client IP (getClientIp, per the operator's trusted-proxy settings), generous
+ * enough for a NAT'd office whose visitors share one public address.
+ */
+export async function checkAnonMintRateLimit(ip: string): Promise<SignInRateLimitResult> {
+  const spec: RateBucketSpec = {
+    key: `signin:anonymous:ip:${ip}`,
+    windowSeconds: ANON_MINT_WINDOW_S,
+  }
+  const [count] = await incrementBuckets([spec])
+  if (count === null || count <= ANON_MINT_LIMIT) return { allowed: true }
+  return { allowed: false, retryAfter: await bucketRetryAfter(spec) }
+}

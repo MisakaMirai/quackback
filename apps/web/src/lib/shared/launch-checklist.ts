@@ -35,14 +35,6 @@ export interface LaunchStatus {
   /** A teammate has been invited, whether or not they have joined yet. */
   hasTeamInvite?: boolean
   hasBranding: boolean
-  hasWidgetInstalled?: boolean
-  widgetOriginHost?: string | null
-  widgetLastDetectedAt?: string | null
-  widgetSdkVersion?: string | null
-  currentWidgetSdkVersion?: string
-  widgetSdkNeedsUpdate?: boolean
-  hasWidgetEnabled?: boolean
-  hasMessengerEnabled?: boolean
   /** The Agent is on and set to answer customers. */
   hasAgentAnswering?: boolean
   hasHelpArticle?: boolean
@@ -74,7 +66,6 @@ export type LaunchTaskHref =
   | '/admin/settings/members'
   | '/admin/settings/portal'
   | '/admin/settings/general'
-  | '/admin/settings/widget/install'
   | '/admin/settings/integrations'
   | '/admin/help-center'
   | '/admin/feedback'
@@ -312,17 +303,14 @@ function buildOutcomeTasks(
     actionLabel: 'Create board',
     completedLabel: 'View boards',
   }
-  const widgetDistributed = status.hasWidgetInstalled === true && status.hasWidgetEnabled === true
   const distributionComplete =
-    Boolean(status.publicBoardLinkCopiedAt) || widgetDistributed || status.hasFirstWin === true
+    Boolean(status.publicBoardLinkCopiedAt) || status.hasFirstWin === true
   const distributeFeedback: LaunchTaskInput = {
     id: 'distribute-feedback',
     title: 'Share your board link',
     description: status.publicBoardLinkCopiedAt
       ? 'Your public board link has been copied.'
-      : widgetDistributed
-        ? `Your feedback widget was found on ${status.widgetOriginHost ?? 'your site'}.`
-        : 'Copy the public board link and share it with customers.',
+      : 'Copy the public board link and share it with customers.',
     completed: distributionComplete,
     canAct: permissions.boardManage,
     classification: 'prerequisite',
@@ -339,22 +327,6 @@ function buildOutcomeTasks(
     href: '/admin/changelog',
     actionLabel: 'New update',
     completedLabel: 'Open changelog',
-  }
-  const connectMessenger: LaunchTaskInput = {
-    id: 'connect-messenger',
-    title: 'Put Messenger on your site',
-    description: status.hasWidgetInstalled
-      ? `Messenger was found on ${status.widgetOriginHost ?? 'your site'}.`
-      : 'We’ll mark this when the widget loads on your site.',
-    completed:
-      status.hasWidgetInstalled === true &&
-      status.hasWidgetEnabled === true &&
-      features.supportInbox,
-    canAct: permissions.settingsManage,
-    classification: 'prerequisite',
-    href: '/admin/settings/widget/install',
-    actionLabel: 'Connect Messenger',
-    completedLabel: 'View installation',
   }
   const helpDraft: LaunchTaskInput = {
     id: 'help-article',
@@ -406,7 +378,7 @@ function buildOutcomeTasks(
   const branding: LaunchTaskInput = {
     id: 'customize-branding',
     title: 'Add your logo',
-    description: 'Make your portal, widget, and emails feel like your brand.',
+    description: 'Make your portal and emails feel like your brand.',
     completed: status.hasBranding,
     canAct: permissions.brandingManage,
     classification: 'polish',
@@ -443,7 +415,6 @@ function buildOutcomeTasks(
   const inputs: LaunchTaskInput[] = [board]
   if (status.hasPublicBoard) inputs.push(distributeFeedback)
   if (features.changelog) inputs.push(publishChangelog)
-  if (features.supportInbox) inputs.push(connectMessenger)
   if (features.helpCenter) inputs.push(helpDraft)
   if (features.statusPage) inputs.push(addStatusService)
   if (features.statusPage && outcome === 'status_page') inputs.push(shareStatusPage)
@@ -477,7 +448,7 @@ export function buildLaunchTasks(
   const taskIds: Record<OnboardingOutcome, readonly string[]> = {
     product_feedback: ['create-board', 'distribute-feedback'],
     internal: ['create-board', 'invite-team'],
-    customer_support: ['connect-messenger'],
+    customer_support: [],
     help_center: ['help-article'],
     status_page: ['share-status-page', 'add-status-service'],
   }
@@ -530,7 +501,7 @@ const PATH_GOAL: Record<OnboardingOutcome, LaunchPathGoal> = {
 const GOAL_STEP: Record<LaunchPathGoal, readonly string[]> = {
   feedback: ['distribute-feedback', 'create-board'],
   private: ['invite-team'],
-  support: ['connect-messenger'],
+  support: [],
   helpCenter: ['help-article'],
   status: ['share-status-page'],
 }

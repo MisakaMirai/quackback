@@ -257,7 +257,7 @@ export async function createPost(
         contentJson,
         statusId,
         principalId: author.principalId,
-        widgetMetadata: input.widgetMetadata ?? null,
+        clientMetadata: input.clientMetadata ?? null,
         customFieldValues,
         trackedByPrincipalId: input.trackedByPrincipalId ?? null,
         voteCount: 1,

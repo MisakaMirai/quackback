@@ -105,7 +105,7 @@ describe.skipIf(!fixture.available)('setup emails (real DB)', () => {
     }
     expect(params.subject).toBe('Acme is ready, Sam')
     expect(params.lang).toBe('en')
-    expect(params.paragraphs).toContain('Your next step: Put Messenger on your site.')
+    expect(params.paragraphs).toContain('Your next step: Create a feedback board.')
     expect(params.cta.url).toBe('https://acme.quackback.test/admin')
     expect(params.unsubscribeUrl).toMatch(/^https:\/\/acme\.quackback\.test\/unsubscribe\?token=/)
 
@@ -165,8 +165,8 @@ describe.skipIf(!fixture.available)('setup emails (real DB)', () => {
     expect(mail.nudge.mock.calls[0][0]).toMatchObject({
       subject: 'Your next step in Acme',
       cta: {
-        label: 'Put Messenger on your site',
-        url: 'https://acme.quackback.test/admin/settings/widget/install',
+        label: 'Create a feedback board',
+        url: 'https://acme.quackback.test/admin/settings/boards',
       },
       secondary: null,
     })
@@ -259,23 +259,25 @@ describe.skipIf(!fixture.available)('setup emails (real DB)', () => {
   })
 
   it('writes in the language the owner chose, else the one their browser asked for', async () => {
-    expect(await sendOnboardingEmail('welcome', owner, new Date(), 'ar')).toEqual({ sent: true })
-    expect(mail.welcome.mock.calls[0][0]).toMatchObject({ lang: 'ar', dir: 'rtl' })
+    expect(await sendOnboardingEmail('welcome', owner, new Date(), 'zh-cn')).toEqual({
+      sent: true,
+    })
+    expect(mail.welcome.mock.calls[0][0]).toMatchObject({ lang: 'zh-CN', dir: 'ltr' })
 
     await testDb.delete(onboardingEmails)
     const [row] = await testDb.select().from(principal).where(eq(principal.id, owner))
-    await testDb.update(user).set({ preferredLanguage: 'de' }).where(eq(user.id, row.userId!))
-    expect(await sendOnboardingEmail('welcome', owner, new Date(), 'ar')).toEqual({ sent: true })
-    const german = mail.welcome.mock.calls[1][0] as { lang: string; subject: string }
-    expect(german.lang).toBe('de')
-    expect(german.subject).not.toBe('Acme is ready, Sam')
+    await testDb.update(user).set({ preferredLanguage: 'zh-tw' }).where(eq(user.id, row.userId!))
+    expect(await sendOnboardingEmail('welcome', owner, new Date(), 'zh-cn')).toEqual({ sent: true })
+    const chinese = mail.welcome.mock.calls[1][0] as { lang: string; subject: string }
+    expect(chinese.lang).toBe('zh-TW')
+    expect(chinese.subject).not.toBe('Acme is ready, Sam')
   })
 
   it('carries the browser language from the first landing into the queued jobs', async () => {
-    await scheduleOnboardingEmails(owner, new Date(), 'fr')
+    await scheduleOnboardingEmails(owner, new Date(), 'zh-cn')
     const jobs = (await testDb.execute(
       sql`select payload from job_queue where queue = ${ONBOARDING_EMAIL_QUEUE} and payload->>'principalId' = ${owner}`
     )) as unknown as { payload: { locale?: string } }[]
-    expect(jobs.map((job) => job.payload.locale)).toEqual(['fr', 'fr'])
+    expect(jobs.map((job) => job.payload.locale)).toEqual(['zh-cn', 'zh-cn'])
   })
 })

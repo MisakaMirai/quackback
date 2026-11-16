@@ -45,7 +45,6 @@ import { relations, sql } from 'drizzle-orm'
 import { typeIdWithDefault, typeIdColumn, typeIdColumnNullable } from '@quackback/ids/drizzle'
 import { principal } from './auth'
 import { teams } from './teams'
-import { companies } from './companies'
 import { conversations } from './conversation'
 import { ticketTypes } from './ticket-types'
 import {
@@ -112,8 +111,6 @@ export const tickets = pgTable(
     // unassigned). Independent of the team assignee, mirroring conversations.
     assigneePrincipalId: typeIdColumnNullable('principal')('assignee_principal_id'),
     assigneeTeamId: typeIdColumnNullable('team')('assignee_team_id'),
-    // B2B company context (plan / MRR) shown inline; `set null` on delete.
-    companyId: typeIdColumnNullable('company')('company_id'),
     // Extensible per-ticket custom fields; empty object by default.
     customAttributes: jsonb('custom_attributes')
       .$type<Record<string, unknown>>()
@@ -177,11 +174,6 @@ export const tickets = pgTable(
       columns: [table.assigneeTeamId],
       foreignColumns: [teams.id],
     }).onDelete('set null'),
-    foreignKey({
-      name: 'tickets_company_id_fkey',
-      columns: [table.companyId],
-      foreignColumns: [companies.id],
-    }).onDelete('set null'),
     // set null: a hard-deleted type leaves the ticket typeless (legacy shape)
     // rather than orphaned. The service archives instead of deleting, so this
     // only fires on the escape hatch.
@@ -199,7 +191,6 @@ export const tickets = pgTable(
       .on(table.assigneeTeamId)
       .where(sql`"assignee_team_id" IS NOT NULL`),
     index('tickets_requester_principal_id_idx').on(table.requesterPrincipalId),
-    index('tickets_company_id_idx').on(table.companyId),
     // Type-scoped status boards (e.g. all open customer tickets).
     index('tickets_type_status_id_idx').on(table.type, table.statusId),
     // Registry-type filter for the inbox tickets branch (Phase 4).
@@ -437,10 +428,6 @@ export const ticketsRelations = relations(tickets, ({ one, many }) => ({
   ticketType: one(ticketTypes, {
     fields: [tickets.ticketTypeId],
     references: [ticketTypes.id],
-  }),
-  company: one(companies, {
-    fields: [tickets.companyId],
-    references: [companies.id],
   }),
   requester: one(principal, {
     fields: [tickets.requesterPrincipalId],

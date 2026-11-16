@@ -110,7 +110,6 @@ function makeSettingsRow(overrides: Record<string, unknown> = {}) {
     headerLogoKey: null,
     headerDisplayMode: 'logo_and_name',
     headerDisplayName: null,
-    widgetSecret: null,
     createdAt: new Date('2025-01-01'),
     updatedAt: new Date('2025-01-01'),
     ...overrides,
@@ -194,6 +193,49 @@ describe('getHelpCenterConfig', () => {
     // Preserved from defaults
     expect(result.seo.structuredDataEnabled).toBe(true)
     expect(result.seo.ogImageKey).toBeNull()
+  })
+})
+
+describe('getHelpCenterConfig stale locales', () => {
+  // A workspace may have enabled a locale before its catalog was removed. The
+  // read has to drop it, or /hc/de keeps routing, the switcher lists it and the
+  // sitemap emits hreflang for a language the build cannot render.
+  it('drops unsupported additional locales and chrome, coercing the default to en', async () => {
+    const stored = JSON.stringify({
+      locales: {
+        default: 'de',
+        additional: ['de', 'zh-cn', 'fr'],
+        chrome: {
+          de: { homepageTitle: 'Hilfe' },
+          'zh-cn': { homepageTitle: '帮助' },
+          fr: { homepageTitle: 'Aide' },
+        },
+      },
+    })
+    mockFindFirst.mockResolvedValue(makeSettingsRow({ helpCenterConfig: stored }))
+
+    const result = await getHelpCenterConfig()
+
+    expect(result.locales.default).toBe('en')
+    expect(result.locales.additional).toEqual(['zh-cn'])
+    expect(Object.keys(result.locales.chrome)).toEqual(['zh-cn'])
+  })
+
+  it('keeps a supported default and supported additional locales untouched', async () => {
+    const stored = JSON.stringify({
+      locales: {
+        default: 'zh-tw',
+        additional: ['zh-cn'],
+        chrome: { 'zh-cn': { homepageTitle: '說明' } },
+      },
+    })
+    mockFindFirst.mockResolvedValue(makeSettingsRow({ helpCenterConfig: stored }))
+
+    const result = await getHelpCenterConfig()
+
+    expect(result.locales.default).toBe('zh-tw')
+    expect(result.locales.additional).toEqual(['zh-cn'])
+    expect(result.locales.chrome['zh-cn']).toEqual({ homepageTitle: '說明' })
   })
 })
 
@@ -290,6 +332,26 @@ describe('getWorkspaceSettings includes helpCenterConfig', () => {
     // Defaults merged
     expect(result!.helpCenterConfig.seo).toEqual(DEFAULT_HELP_CENTER_SEO_CONFIG)
   })
+
+  // /hc and /hc/{locale} read the help center config from this workspace
+  // snapshot, so the stale-locale filter has to run here as well.
+  it('filters stale help center locales from the snapshot the /hc routes read', async () => {
+    const stored = JSON.stringify({
+      locales: {
+        default: 'de',
+        additional: ['de', 'zh-cn'],
+        chrome: { de: { homepageTitle: 'Hilfe' }, 'zh-cn': { homepageTitle: '帮助' } },
+      },
+    })
+    mockCacheGet.mockResolvedValue(null)
+    mockFindFirst.mockResolvedValue(makeSettingsRow({ helpCenterConfig: stored }))
+
+    const result = await getWorkspaceSettings()
+
+    expect(result!.helpCenterConfig.locales.default).toBe('en')
+    expect(result!.helpCenterConfig.locales.additional).toEqual(['zh-cn'])
+    expect(Object.keys(result!.helpCenterConfig.locales.chrome)).toEqual(['zh-cn'])
+  })
 })
 
 // ============================================================================
@@ -302,7 +364,7 @@ describe('enableHelpCenterLocale', () => {
 
     await expect(
       enableHelpCenterLocale({
-        locale: 'de',
+        locale: 'zh-cn',
         chrome: { homepageTitle: '   ', homepageDescription: '', searchPlaceholder: '' },
       })
     ).rejects.toThrow(/title/i)
@@ -324,36 +386,40 @@ describe('enableHelpCenterLocale', () => {
     mockFindFirst.mockResolvedValue(makeSettingsRow({ helpCenterConfig: null }))
 
     const result = await enableHelpCenterLocale({
-      locale: 'de',
+      locale: 'zh-cn',
       chrome: {
-        homepageTitle: 'Wie können wir helfen?',
+        homepageTitle: '我们可以如何帮助你？',
         homepageDescription: '',
         searchPlaceholder: '',
       },
     })
 
-    expect(result.additional).toEqual(['de'])
-    expect(result.chrome.de.homepageTitle).toBe('Wie können wir helfen?')
+    expect(result.additional).toEqual(['zh-cn'])
+    expect(result.chrome['zh-cn'].homepageTitle).toBe('我们可以如何帮助你？')
   })
 
   it('is idempotent when re-enabling an already-enabled locale', async () => {
     const stored = JSON.stringify({
-      locales: { default: 'en', additional: ['de'], chrome: { de: { homepageTitle: 'Old' } } },
+      locales: {
+        default: 'en',
+        additional: ['zh-cn'],
+        chrome: { 'zh-cn': { homepageTitle: 'Old' } },
+      },
     })
     mockFindFirst.mockResolvedValue(makeSettingsRow({ helpCenterConfig: stored }))
 
     const result = await enableHelpCenterLocale({
-      locale: 'de',
+      locale: 'zh-cn',
       chrome: { homepageTitle: 'New title', homepageDescription: '', searchPlaceholder: '' },
     })
 
-    expect(result.additional).toEqual(['de'])
-    expect(result.chrome.de.homepageTitle).toBe('New title')
+    expect(result.additional).toEqual(['zh-cn'])
+    expect(result.chrome['zh-cn'].homepageTitle).toBe('New title')
   })
 })
 
 describe('enableHelpCenterLocale plan cap', () => {
-  const chrome = { homepageTitle: 'Hallo', homepageDescription: '', searchPlaceholder: '' }
+  const chrome = { homepageTitle: '你好', homepageDescription: '', searchPlaceholder: '' }
   const withLocales = (additional: string[]) =>
     JSON.stringify({
       locales: { default: 'en', additional, chrome: {} },
@@ -367,7 +433,7 @@ describe('enableHelpCenterLocale plan cap', () => {
     localeLimit.cap = 2
     mockFindFirst.mockResolvedValue(makeSettingsRow({ helpCenterConfig: null }))
 
-    await enableHelpCenterLocale({ locale: 'de', chrome })
+    await enableHelpCenterLocale({ locale: 'zh-cn', chrome })
 
     expect(mockExecute).toHaveBeenCalledOnce()
     expect(mockExecute.mock.invocationCallOrder[0]).toBeLessThan(
@@ -379,7 +445,7 @@ describe('enableHelpCenterLocale plan cap', () => {
     localeLimit.cap = 1
     mockFindFirst.mockResolvedValue(makeSettingsRow({ helpCenterConfig: null }))
 
-    await expect(enableHelpCenterLocale({ locale: 'de', chrome })).rejects.toBeInstanceOf(
+    await expect(enableHelpCenterLocale({ locale: 'zh-cn', chrome })).rejects.toBeInstanceOf(
       TierLimitError
     )
     expect(mockUpdate).not.toHaveBeenCalled()
@@ -389,17 +455,15 @@ describe('enableHelpCenterLocale plan cap', () => {
     localeLimit.cap = 2
     mockFindFirst.mockResolvedValue(makeSettingsRow({ helpCenterConfig: null }))
 
-    const result = await enableHelpCenterLocale({ locale: 'de', chrome })
-    expect(result.additional).toEqual(['de'])
+    const result = await enableHelpCenterLocale({ locale: 'zh-cn', chrome })
+    expect(result.additional).toEqual(['zh-cn'])
   })
 
   it('refuses a language past the cap once the plan is full', async () => {
-    localeLimit.cap = 3
-    mockFindFirst.mockResolvedValue(
-      makeSettingsRow({ helpCenterConfig: withLocales(['fr', 'de']) })
-    )
+    localeLimit.cap = 2
+    mockFindFirst.mockResolvedValue(makeSettingsRow({ helpCenterConfig: withLocales(['zh-cn']) }))
 
-    await expect(enableHelpCenterLocale({ locale: 'es', chrome })).rejects.toBeInstanceOf(
+    await expect(enableHelpCenterLocale({ locale: 'zh-tw', chrome })).rejects.toBeInstanceOf(
       TierLimitError
     )
     expect(mockUpdate).not.toHaveBeenCalled()
@@ -408,11 +472,11 @@ describe('enableHelpCenterLocale plan cap', () => {
   it('does not refuse re-enabling a locale that is already on', async () => {
     localeLimit.cap = 3
     mockFindFirst.mockResolvedValue(
-      makeSettingsRow({ helpCenterConfig: withLocales(['fr', 'de']) })
+      makeSettingsRow({ helpCenterConfig: withLocales(['zh-cn', 'zh-tw']) })
     )
 
-    const result = await enableHelpCenterLocale({ locale: 'fr', chrome })
-    expect(result.additional).toEqual(['fr', 'de'])
+    const result = await enableHelpCenterLocale({ locale: 'zh-cn', chrome })
+    expect(result.additional).toEqual(['zh-cn', 'zh-tw'])
   })
 })
 
@@ -421,16 +485,16 @@ describe('disableHelpCenterLocale', () => {
     const stored = JSON.stringify({
       locales: {
         default: 'en',
-        additional: ['de', 'fr'],
-        chrome: { de: { homepageTitle: 'Hallo' }, fr: { homepageTitle: 'Bonjour' } },
+        additional: ['zh-cn', 'zh-tw'],
+        chrome: { 'zh-cn': { homepageTitle: '帮助' }, 'zh-tw': { homepageTitle: '說明' } },
       },
     })
     mockFindFirst.mockResolvedValue(makeSettingsRow({ helpCenterConfig: stored }))
 
-    const result = await disableHelpCenterLocale('de')
+    const result = await disableHelpCenterLocale('zh-cn')
 
-    expect(result.additional).toEqual(['fr'])
-    expect(result.chrome.de.homepageTitle).toBe('Hallo')
+    expect(result.additional).toEqual(['zh-tw'])
+    expect(result.chrome['zh-cn'].homepageTitle).toBe('帮助')
   })
 })
 
@@ -439,7 +503,7 @@ describe('updateHelpCenterLocaleChrome', () => {
     mockFindFirst.mockResolvedValue(makeSettingsRow({ helpCenterConfig: null }))
 
     await expect(
-      updateHelpCenterLocaleChrome({ locale: 'de', chrome: { homepageTitle: 'Hallo' } })
+      updateHelpCenterLocaleChrome({ locale: 'zh-cn', chrome: { homepageTitle: '帮助' } })
     ).rejects.toThrow(/not enabled/i)
   })
 
@@ -447,20 +511,20 @@ describe('updateHelpCenterLocaleChrome', () => {
     const stored = JSON.stringify({
       locales: {
         default: 'en',
-        additional: ['de'],
+        additional: ['zh-cn'],
         chrome: {
-          de: { homepageTitle: 'Hallo', homepageDescription: 'x', searchPlaceholder: 'y' },
+          'zh-cn': { homepageTitle: '帮助', homepageDescription: 'x', searchPlaceholder: 'y' },
         },
       },
     })
     mockFindFirst.mockResolvedValue(makeSettingsRow({ helpCenterConfig: stored }))
 
     const result = await updateHelpCenterLocaleChrome({
-      locale: 'de',
-      chrome: { searchPlaceholder: 'Suchen...' },
+      locale: 'zh-cn',
+      chrome: { searchPlaceholder: '搜索...' },
     })
 
-    expect(result.chrome.de.searchPlaceholder).toBe('Suchen...')
-    expect(result.chrome.de.homepageTitle).toBe('Hallo')
+    expect(result.chrome['zh-cn'].searchPlaceholder).toBe('搜索...')
+    expect(result.chrome['zh-cn'].homepageTitle).toBe('帮助')
   })
 })

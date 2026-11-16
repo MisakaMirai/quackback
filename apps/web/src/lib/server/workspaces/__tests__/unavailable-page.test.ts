@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import zhCn from '@/locales/zh-cn.json'
 import { unavailableResponse } from '../unavailable-page'
 
 const browser = (acceptLanguage?: string) =>
@@ -64,25 +65,25 @@ describe('unavailableResponse', () => {
   })
 
   it("speaks the visitor's language, since there is no workspace to take one from", async () => {
-    const res = await unavailableResponse(browser('de-DE,de;q=0.9,en;q=0.5'), 'paused', {
+    const res = await unavailableResponse(browser('zh-CN,zh;q=0.9,en;q=0.5'), 'paused', {
       status: 503,
       host: 't1.example.com',
     })
     const html = await res.text()
-    expect(html).toContain('<html lang="de" dir="ltr">')
-    expect(html).toContain('Dieser Workspace ist pausiert')
+    expect(html).toContain('<html lang="zh-CN" dir="ltr">')
+    expect(html).toContain(zhCn['workspaceUnavailable.paused.title'])
   })
 
-  it('lays the page out right to left for Arabic', async () => {
+  it('falls back to English for a language with no catalog', async () => {
     const html = await (
       await unavailableResponse(browser('ar'), 'deleted', { status: 404, host: 't1.example.com' })
     ).text()
-    expect(html).toContain('dir="rtl"')
+    expect(html).toContain('<html lang="en" dir="ltr">')
   })
 
   it('escapes the host inside the translated sentence', async () => {
     const html = await (
-      await unavailableResponse(browser('fr'), 'unknown', {
+      await unavailableResponse(browser('zh-cn'), 'unknown', {
         status: 404,
         host: '<b>x</b>.example.com',
       })

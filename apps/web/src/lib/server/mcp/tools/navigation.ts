@@ -72,11 +72,6 @@ export const WORKSPACE_NAVIGATION = {
     permission: PERMISSIONS.INTEGRATION_MANAGE,
     scope: 'read:settings',
   },
-  install_messenger: {
-    href: '/admin/settings/widget/install',
-    permission: PERMISSIONS.SETTINGS_MANAGE,
-    scope: 'read:settings',
-  },
   boards: {
     href: '/admin/settings/boards',
     permission: PERMISSIONS.BOARD_MANAGE,
@@ -129,10 +124,9 @@ export function registerNavigationTools(server: McpServer, auth: McpAuthContext)
     permissions: ({ destination }, toolAuth) => [
       navigationPermission(WORKSPACE_NAVIGATION[destination], heldPermissions(toolAuth)),
     ],
-    description: `Return an allowed workspace deep link without changing anything. Use this for operator-managed workspace names, authentication or SSO, domains, members or roles, API keys, integration OAuth, installing a site snippet, creating a board, portal header customization, and every delete request. These areas cannot be changed from chat. Never invent a URL. A delete request opens its product page for a person to review.
+    description: `Return an allowed workspace deep link without changing anything. Use this for operator-managed workspace names, authentication or SSO, domains, members or roles, API keys, integration OAuth, creating a board, portal header customization, and every delete request. These areas cannot be changed from chat. Never invent a URL. A delete request opens its product page for a person to review.
 Examples:
 {"destination":"members"}
-{"destination":"install_messenger"}
 {"destination":"authentication"}`,
     schema: workspaceNavigationInputSchema.shape,
     annotations: READ_ONLY,

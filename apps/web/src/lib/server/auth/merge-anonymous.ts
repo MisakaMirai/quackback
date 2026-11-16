@@ -9,7 +9,7 @@
  * - mergeAnonymousToIdentified: the anonymous principal's activity moves onto
  *   an existing identified principal, then the anonymous identity is deleted.
  *   Used by portal sign-in to an existing account (onLinkAccount) and the
- *   widget identify previousToken merge.
+ *   identify previousToken merge.
  * - absorbSignupIntoAnonymous: a brand-new signup is absorbed INTO the
  *   anonymous user, which keeps its sessions/principal/activity and takes on
  *   the real identity. Used by onLinkAccount when the link target is a fresh

@@ -10,7 +10,7 @@
  *
  * Run it on demand and paste the plans it lets you read into the PR: a PR that
  * changes a hot read (the inbox list and counts for a team-scoped teammate,
- * ticket reports, company visibility, the SLA and first-response sweeps) runs
+ * ticket reports, the SLA and first-response sweeps) runs
  * `EXPLAIN (ANALYZE, BUFFERS)` on it by hand. Nothing in CI depends on it.
  */
 import type postgres from 'postgres'
@@ -82,17 +82,6 @@ export async function seedLargeWorkspace(
 
   await step(
     sql,
-    'companies',
-    `INSERT INTO companies (id, name, domain, plan, mrr_cents, source, created_at, updated_at)
-     SELECT gen_random_uuid(), 'Perf Company ' || g, 'perf' || g || '.example.com',
-            (ARRAY['free', 'pro', 'enterprise'])[1 + floor(random() * 3)::int],
-            floor(random() * 500000)::int, 'api', now(), now()
-     FROM generate_series(1, ${p.companies}) g`,
-    log
-  )
-
-  await step(
-    sql,
     'customer users',
     `INSERT INTO "user" (id, name, email, email_verified, created_at, updated_at)
      SELECT gen_random_uuid(), 'Perf Customer ' || g, 'perf-customer-' || g || '@example.com', true,
@@ -103,14 +92,10 @@ export async function seedLargeWorkspace(
   await step(
     sql,
     'customers',
-    `INSERT INTO principal (id, user_id, role, type, display_name, company_id, created_at)
-     SELECT gen_random_uuid(), u.id, 'user', 'user', u.name,
-            CASE WHEN random() < 0.7 THEN c.id END, u.created_at
-     FROM (SELECT id, name, created_at, row_number() OVER (ORDER BY email) AS n
-           FROM "user" WHERE email LIKE 'perf-customer-%@example.com') u
-     LEFT JOIN (SELECT id, row_number() OVER (ORDER BY name) AS n
-                FROM companies WHERE name LIKE 'Perf Company %') c
-       ON c.n = 1 + (u.n % ${p.companies})`,
+    `INSERT INTO principal (id, user_id, role, type, display_name, created_at)
+     SELECT gen_random_uuid(), u.id, 'user', 'user', u.name, u.created_at
+     FROM (SELECT id, name, created_at FROM "user"
+           WHERE email LIKE 'perf-customer-%@example.com') u`,
     log
   )
 
@@ -193,12 +178,11 @@ export async function seedLargeWorkspace(
        ORDER BY c.id LIMIT ${p.tickets}
      )
      INSERT INTO tickets (id, type, title, status_id, priority, requester_principal_id,
-                          assignee_principal_id, assignee_team_id, company_id, created_at, updated_at)
+                          assignee_principal_id, assignee_team_id, created_at, updated_at)
      SELECT gen_random_uuid(), 'customer', 'Perf ticket ' || p.n, s.id, p.priority,
-            p.visitor_principal_id, p.assigned_agent_principal_id, p.assigned_team_id, v.company_id,
+            p.visitor_principal_id, p.assigned_agent_principal_id, p.assigned_team_id,
             p.created_at, p.last_message_at
      FROM picked p
-     JOIN principal v ON v.id = p.visitor_principal_id
      JOIN statuses s ON s.n = 1 + (p.n % s.total)`,
     log
   )

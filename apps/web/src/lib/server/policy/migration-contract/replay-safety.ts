@@ -223,6 +223,13 @@ export const REPLAY_RETIRED: ReadonlySet<string> = new Set([
   '0294_workspace_copilot',
   '0296_validate_workspace_copilot_checks',
   '0312_drop_quackback_ai',
+  // Retired by 0314_drop_widget: it drops the widget_config column, the widget
+  // session tables and the widget scope these files replay against.
+  '0269_messenger_ai_default_on',
+  '0271_widget_installed_sdk_version',
+  '0277_widget_chat_to_messenger',
+  '0280_widget_session_scope',
+  '0291_legacy_surface_switches',
 ])
 
 export const REPLAY_OVERRIDES: readonly ReplayOverride[] = [
@@ -243,12 +250,6 @@ export const REPLAY_OVERRIDES: readonly ReplayOverride[] = [
     verdict: 'errors',
     why: '0312_drop_quackback_ai drops assistant_pending_actions, so the approvals-foundation replay has no relation to alter.',
     stillFailsWith: /assistant_pending_actions/,
-  },
-  {
-    tag: '0269_messenger_ai_default_on',
-    verdict: 'mutates',
-    why: '0274_slack_agent_gateway upgrades the assistant_config default to version 4. Replaying 0269 succeeds but downgrades that default to version 3, losing workspace assistant defaults for new settings rows.',
-    stillFailsWith: /assistant_config/,
   },
   {
     tag: '0091_drop_conversation_tags',

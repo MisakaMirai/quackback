@@ -8,7 +8,7 @@ import { loadBrandingFont, resolveBrandingFontId } from '@/lib/shared/theme'
  * other self-hosted family lives in its own CSS module and arrives via a
  * dynamic `import()` (see font-loader.ts), so a page only ever downloads the
  * one family it actually renders. Mount this once per branded surface
- * (portal layout, widget layout, admin branding preview) with the same
+ * (portal layout, admin branding preview) with the same
  * `customCss`/`configFontSans` inputs the surface already renders into a
  * `<style>` tag.
  *

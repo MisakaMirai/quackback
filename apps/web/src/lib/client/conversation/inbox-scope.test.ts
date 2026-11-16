@@ -1,11 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import type {
-  ConversationTagId,
-  SegmentId,
-  CompanyId,
-  TeamId,
-  ConversationViewId,
-} from '@quackback/ids'
+import type { ConversationTagId, SegmentId, TeamId, ConversationViewId } from '@quackback/ids'
 import {
   navFromSearch,
   buildListParams,
@@ -28,7 +22,6 @@ import {
 
 const tagId = 'conversation_tag_x' as ConversationTagId
 const segId = 'segment_y' as SegmentId
-const companyId = 'company_z' as CompanyId
 const teamId = 'team_t' as TeamId
 const viewId = 'conversation_view_v' as ConversationViewId
 
@@ -145,50 +138,29 @@ describe('buildListParams', () => {
     })
   })
 
-  it('carries the optional company refinement across scopes', () => {
-    expect(buildListParams(view('all'), 'open', 'all', '', companyId)).toMatchObject({
-      assignee: 'all',
-      companyId,
-    })
-    expect(buildListParams({ kind: 'tag', tagId }, 'open', 'all', '', companyId)).toMatchObject({
-      tagIds: [tagId],
-      companyId,
-    })
-  })
-
   it('carries a non-default sort but omits the implicit "recent" default', () => {
-    expect(buildListParams(view('all'), 'open', 'all', '', undefined, 'waiting')).toMatchObject({
+    expect(buildListParams(view('all'), 'open', 'all', '', 'waiting')).toMatchObject({
       assignee: 'all',
       sort: 'waiting',
     })
     // 'recent' is the server default, so it is dropped to keep params stable.
-    expect(
-      buildListParams(view('all'), 'open', 'all', '', undefined, 'recent').sort
-    ).toBeUndefined()
+    expect(buildListParams(view('all'), 'open', 'all', '', 'recent').sort).toBeUndefined()
   })
 
   it('swaps which sort is implicit once a search term is active', () => {
     // Relevance is the DEFAULT order for a searched list, so it is the value
     // that drops out — and 'recent' becomes an explicit choice that has to
     // reach the server, or a chronological scan of the matches is impossible.
-    expect(buildListParams(view('all'), 'open', 'all', 'refund', undefined, 'recent').sort).toBe(
-      'recent'
-    )
-    expect(buildListParams(view('all'), 'open', 'all', 'refund', undefined, 'oldest').sort).toBe(
-      'oldest'
-    )
-    expect(
-      buildListParams(view('all'), 'open', 'all', 'refund', undefined, 'relevance').sort
-    ).toBeUndefined()
+    expect(buildListParams(view('all'), 'open', 'all', 'refund', 'recent').sort).toBe('recent')
+    expect(buildListParams(view('all'), 'open', 'all', 'refund', 'oldest').sort).toBe('oldest')
+    expect(buildListParams(view('all'), 'open', 'all', 'refund', 'relevance').sort).toBeUndefined()
     // Without a term relevance has nothing to score, so it drops out too.
-    expect(
-      buildListParams(view('all'), 'open', 'all', '', undefined, 'relevance').sort
-    ).toBeUndefined()
+    expect(buildListParams(view('all'), 'open', 'all', '', 'relevance').sort).toBeUndefined()
   })
 
   it('carries an explicit channel filter on conversation scopes', () => {
     expect(
-      buildListParams(view('all'), 'open', 'all', '', undefined, undefined, undefined, 'email')
+      buildListParams(view('all'), 'open', 'all', '', undefined, undefined, 'email')
     ).toMatchObject({
       assignee: 'all',
       channel: 'email',
@@ -199,7 +171,6 @@ describe('buildListParams', () => {
         'open',
         'all',
         '',
-        undefined,
         undefined,
         undefined,
         'messenger'
@@ -231,23 +202,14 @@ describe('buildListParams', () => {
       tagIds: ['conversation_tag_x'],
     }
     // Even though status='open'/priority='high' chips are passed, a custom scope
-    // uses ONLY its own rule set (plus search/company/sort).
+    // uses ONLY its own rule set (plus search/sort).
     expect(
-      buildListParams(
-        { kind: 'custom', viewId },
-        'open',
-        'high',
-        'refund',
-        companyId,
-        'oldest',
-        customParams
-      )
+      buildListParams({ kind: 'custom', viewId }, 'open', 'high', 'refund', 'oldest', customParams)
     ).toEqual({
       status: 'closed',
       waitingOnly: true,
       tagIds: ['conversation_tag_x'],
       search: 'refund',
-      companyId,
       sort: 'oldest',
     })
   })
@@ -354,7 +316,6 @@ describe('buildInboxListParams', () => {
       assignee: 'me',
       priority: undefined,
       search: undefined,
-      companyId: undefined,
       sort: undefined,
     })
     expect(
@@ -365,7 +326,6 @@ describe('buildInboxListParams', () => {
       assignee: 'unassigned',
       priority: 'high',
       search: 'refund',
-      companyId: undefined,
       sort: undefined,
     })
   })
@@ -376,7 +336,6 @@ describe('buildInboxListParams', () => {
       kinds: ['conversation'],
       priority: undefined,
       search: undefined,
-      companyId: undefined,
       sort: undefined,
     })
   })
@@ -388,7 +347,6 @@ describe('buildInboxListParams', () => {
         'open',
         'all',
         '',
-        undefined,
         undefined,
         undefined,
         undefined,
@@ -412,7 +370,6 @@ describe('buildInboxListParams', () => {
           '',
           undefined,
           undefined,
-          undefined,
           TEST_CHANNEL_ID
         )
       ).toMatchObject({ channel: TEST_CHANNEL_ID })
@@ -425,7 +382,6 @@ describe('buildInboxListParams', () => {
           undefined,
           undefined,
           undefined,
-          undefined,
           TEST_CHANNEL_ID
         )
       ).toMatchObject({ channel: TEST_CHANNEL_ID })
@@ -435,13 +391,12 @@ describe('buildInboxListParams', () => {
   })
 
   it('maps a team scope to conversation-only kinds + teamId', () => {
-    expect(buildInboxListParams({ kind: 'team', teamId }, 'open', 'all', '', companyId)).toEqual({
+    expect(buildInboxListParams({ kind: 'team', teamId }, 'open', 'all', '')).toEqual({
       facet: 'open',
       kinds: ['conversation'],
       teamId,
       priority: undefined,
       search: undefined,
-      companyId,
       sort: undefined,
     })
   })
@@ -479,22 +434,19 @@ describe('buildInboxListParams', () => {
 
   it('carries a supported sort but clamps an unsupported (conversation-only) sort to undefined', () => {
     expect(
-      buildInboxListParams({ kind: 'view', view: 'all' }, 'open', 'all', '', undefined, 'priority')
-        .sort
+      buildInboxListParams({ kind: 'view', view: 'all' }, 'open', 'all', '', 'priority').sort
     ).toBe('priority')
     // 'waiting'/'sla' have no ticket-row equivalent and the endpoint's schema
     // rejects them — the client clamps rather than forwarding and 400ing.
     expect(
-      buildInboxListParams({ kind: 'view', view: 'all' }, 'open', 'all', '', undefined, 'waiting')
-        .sort
+      buildInboxListParams({ kind: 'view', view: 'all' }, 'open', 'all', '', 'waiting').sort
     ).toBeUndefined()
     expect(
-      buildInboxListParams({ kind: 'view', view: 'all' }, 'open', 'all', '', undefined, 'sla').sort
+      buildInboxListParams({ kind: 'view', view: 'all' }, 'open', 'all', '', 'sla').sort
     ).toBeUndefined()
     // The default 'recent' is omitted just like the legacy buildListParams.
     expect(
-      buildInboxListParams({ kind: 'view', view: 'all' }, 'open', 'all', '', undefined, 'recent')
-        .sort
+      buildInboxListParams({ kind: 'view', view: 'all' }, 'open', 'all', '', 'recent').sort
     ).toBeUndefined()
   })
 
@@ -502,24 +454,10 @@ describe('buildInboxListParams', () => {
     // Same contract as the legacy builder: relevance is the searched-list
     // default (so it drops out) and a pinned 'recent' must survive.
     expect(
-      buildInboxListParams(
-        { kind: 'view', view: 'all' },
-        'open',
-        'all',
-        'refund',
-        undefined,
-        'recent'
-      ).sort
+      buildInboxListParams({ kind: 'view', view: 'all' }, 'open', 'all', 'refund', 'recent').sort
     ).toBe('recent')
     expect(
-      buildInboxListParams(
-        { kind: 'view', view: 'all' },
-        'open',
-        'all',
-        'refund',
-        undefined,
-        'relevance'
-      ).sort
+      buildInboxListParams({ kind: 'view', view: 'all' }, 'open', 'all', 'refund', 'relevance').sort
     ).toBeUndefined()
   })
 
@@ -529,20 +467,12 @@ describe('buildInboxListParams', () => {
   // buildListParams ignores them for a custom view on the legacy path.
   it('a custom view with ticket rules ignores the URL facet/priority and uses its own rules', () => {
     expect(
-      buildInboxListParams(
-        { kind: 'custom', viewId },
-        'open',
-        'urgent',
-        'refund',
-        companyId,
-        undefined,
-        {
-          rules: [
-            { field: 'ticket_type', value: 'customer' },
-            { field: 'ticket_status_category', value: 'open' },
-          ],
-        }
-      )
+      buildInboxListParams({ kind: 'custom', viewId }, 'open', 'urgent', 'refund', undefined, {
+        rules: [
+          { field: 'ticket_type', value: 'customer' },
+          { field: 'ticket_status_category', value: 'open' },
+        ],
+      })
     ).toEqual({
       facet: 'open',
       kinds: ['ticket'],
@@ -552,27 +482,18 @@ describe('buildInboxListParams', () => {
       teamId: undefined,
       priority: undefined,
       search: 'refund',
-      companyId,
       sort: undefined,
     })
   })
 
   it('reproduces the old tickets page: kind=ticket, type=customer, category=open', () => {
-    const result = buildInboxListParams(
-      { kind: 'custom', viewId },
-      'all',
-      'all',
-      '',
-      undefined,
-      undefined,
-      {
-        rules: [
-          { field: 'kind', value: 'ticket' },
-          { field: 'ticket_type', value: 'customer' },
-          { field: 'ticket_status_category', value: 'open' },
-        ],
-      }
-    )
+    const result = buildInboxListParams({ kind: 'custom', viewId }, 'all', 'all', '', undefined, {
+      rules: [
+        { field: 'kind', value: 'ticket' },
+        { field: 'ticket_type', value: 'customer' },
+        { field: 'ticket_status_category', value: 'open' },
+      ],
+    })
     expect(result.kinds).toEqual(['ticket'])
     expect(result.ticketType).toBe('customer')
     expect(result.facet).toBe('open')

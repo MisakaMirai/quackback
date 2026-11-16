@@ -30,10 +30,6 @@ const PRIVATE_CONSEQUENCES = [
     heading: 'You must grant access',
     body: 'Configure who can get in, such as allowed email domains, or external users will not be able to reach the portal.',
   },
-  {
-    heading: 'Embedded widgets may be affected',
-    body: 'Widgets and embeds may stop working for visitors who are not signed in.',
-  },
 ]
 
 export function PortalPrivacyDialog({ open, onOpenChange, onConfirm }: PortalPrivacyDialogProps) {

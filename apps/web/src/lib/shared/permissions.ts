@@ -34,10 +34,6 @@ export const PERMISSIONS = {
   PEOPLE_VIEW: 'people.view',
   PEOPLE_MANAGE: 'people.manage',
 
-  // company
-  COMPANY_VIEW: 'company.view',
-  COMPANY_MANAGE: 'company.manage',
-
   // audience
   SEGMENT_VIEW: 'segment.view',
   SEGMENT_MANAGE: 'segment.manage',
@@ -134,7 +130,6 @@ export const PERMISSION_CATEGORIES = [
   'workspace',
   'members',
   'people',
-  'company',
   'audience',
   'feedback',
   'changelog',
@@ -224,7 +219,6 @@ export const SYSTEM_ROLE_PERMISSIONS: Record<SystemRoleKey, PermissionKey[]> = {
     PERMISSIONS.CONVERSATION_SET_TAGS,
     PERMISSIONS.CHANGELOG_VIEW_DRAFT,
     PERMISSIONS.PEOPLE_VIEW,
-    PERMISSIONS.COMPANY_VIEW,
     PERMISSIONS.MEMBER_VIEW,
     PERMISSIONS.SEGMENT_VIEW,
     PERMISSIONS.INTEGRATION_VIEW,
@@ -270,8 +264,6 @@ export const PERMISSION_CATALOGUE: ReadonlyArray<{
   { key: PERMISSIONS.MEMBER_MANAGE, category: 'members' },
   { key: PERMISSIONS.PEOPLE_VIEW, category: 'people' },
   { key: PERMISSIONS.PEOPLE_MANAGE, category: 'people' },
-  { key: PERMISSIONS.COMPANY_VIEW, category: 'company' },
-  { key: PERMISSIONS.COMPANY_MANAGE, category: 'company' },
   { key: PERMISSIONS.SEGMENT_VIEW, category: 'audience' },
   { key: PERMISSIONS.SEGMENT_MANAGE, category: 'audience' },
   { key: PERMISSIONS.USER_ATTRIBUTE_VIEW, category: 'audience' },

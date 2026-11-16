@@ -52,7 +52,6 @@ import type { ConversationDTO, ConversationStatus } from '@/lib/shared/conversat
 import type { FeatureFlags } from '@/lib/shared/types/settings'
 import { UserSegmentBadges } from '@/components/admin/users/user-segments'
 import { UserTagControl } from '@/components/admin/users/user-tag-control'
-import { UserCompanyControl } from '@/components/admin/users/user-company-control'
 import {
   BlockPersonControl,
   usePersonBlockActions,
@@ -947,12 +946,6 @@ export function UserDetail({
           </div>
 
           <div className="flex w-full shrink-0 flex-col gap-3 lg:w-[300px]">
-            <RailCard title="Company">
-              <UserCompanyControl
-                principalId={user.principalId as PrincipalId}
-                canManage={canManageUsers}
-              />
-            </RailCard>
             <RailCard title="Segments">
               <UserSegmentBadges
                 principalId={user.principalId as PrincipalId}

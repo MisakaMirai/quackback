@@ -34,10 +34,6 @@ Credentials (each unlocks probe families; missing ones produce BLOCKED, not skip
                              Required only under pooled tenancy, where the storage read
                              capability is bound to the workspace as well as to the object key.
                              Omit on a single-workspace deployment.
-  --alpha-widget-secret <s>  Widget signing secret for alpha          (env ALPHA_WIDGET_SECRET)
-  --bravo-widget-secret <s>  Widget signing secret for bravo          (env BRAVO_WIDGET_SECRET)
-                             (both widget secrets are read from the database automatically
-                              when --alpha-db / --bravo-db are supplied)
 
 Fixture identity (must be IDENTICAL for both workspaces — the collision is the point)
   --admin-email <email>      Default: admin@example.com               (env PROBE_ADMIN_EMAIL)
@@ -154,8 +150,6 @@ export function parseConfig(argv: string[], env: Record<string, string | undefin
     bravoWorkspaceKey: flags.get('bravo-workspace-id') ?? env.BRAVO_WORKSPACE_ID,
     alphaStorageSecret: flags.get('alpha-storage-secret') ?? env.ALPHA_S3_SECRET_ACCESS_KEY,
     bravoStorageSecret: flags.get('bravo-storage-secret') ?? env.BRAVO_S3_SECRET_ACCESS_KEY,
-    alphaWidgetSecret: flags.get('alpha-widget-secret') ?? env.ALPHA_WIDGET_SECRET,
-    bravoWidgetSecret: flags.get('bravo-widget-secret') ?? env.BRAVO_WIDGET_SECRET,
     alphaIdentityToken: flags.get('alpha-identity-token') ?? env.ALPHA_IDENTITY_TOKEN,
     bravoIdentityToken: flags.get('bravo-identity-token') ?? env.BRAVO_IDENTITY_TOKEN,
     allowBlocked: bare.has('allow-blocked'),
@@ -177,8 +171,6 @@ const KNOWN_FLAGS = new Set([
   'bravo-workspace-id',
   'alpha-storage-secret',
   'bravo-storage-secret',
-  'alpha-widget-secret',
-  'bravo-widget-secret',
   'alpha-identity-token',
   'bravo-identity-token',
   'admin-email',

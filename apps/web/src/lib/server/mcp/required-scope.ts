@@ -41,7 +41,6 @@ export const TOOL_SCOPES: Readonly<Record<string, McpScope>> = {
   link_ticket: 'write:chat',
   unlink_ticket: 'write:chat',
   upload_file: 'write:chat',
-  widget_install_status: 'read:feedback',
   get_settings: 'read:settings',
   update_settings: 'write:settings',
 }

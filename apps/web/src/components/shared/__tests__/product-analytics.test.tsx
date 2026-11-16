@@ -194,7 +194,6 @@ describe('ProductAnalytics', () => {
 
   it.each([
     [['__root__', '/_portal', '/_portal/']],
-    [['__root__', '/widget']],
     [['__root__', '/hc', '/hc/$']],
     [['__root__', '/auth/login']],
     // These URLs carry a credential: a one-time sign-in token, an invitation.

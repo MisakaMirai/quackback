@@ -89,48 +89,9 @@ describe('ConversationListColumn toolbar', () => {
 
   it('shows a removable chip per active filter', () => {
     const onPriorityFilter = vi.fn()
-    const onCompany = vi.fn()
-    renderColumn({
-      priorityFilter: 'high',
-      onPriorityFilter,
-      companyFilter: {
-        companies: [{ id: 'company_1', name: 'Acme' }],
-        value: 'company_1',
-        onChange: onCompany,
-      },
-    })
-    expect(screen.getByText('Acme')).toBeTruthy()
+    renderColumn({ priorityFilter: 'high', onPriorityFilter })
     fireEvent.click(screen.getByRole('button', { name: /Remove Priority High filter/ }))
     expect(onPriorityFilter).toHaveBeenCalledWith('all')
-    fireEvent.click(screen.getByRole('button', { name: /Remove Company Acme filter/ }))
-    expect(onCompany).toHaveBeenCalledWith(undefined)
-  })
-
-  it('keeps an active company filter visible and clearable where refinements are hidden', () => {
-    const onCompany = vi.fn()
-    renderColumn({
-      showRefinements: false,
-      companyFilter: {
-        companies: [{ id: 'company_1', name: 'Acme' }],
-        value: 'company_1',
-        onChange: onCompany,
-      },
-    })
-    expect(screen.getByText('Acme')).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: /Remove Company Acme filter/ }))
-    expect(onCompany).toHaveBeenCalledWith(undefined)
-  })
-
-  it('shows no company chip when no company is selected', () => {
-    renderColumn({
-      showRefinements: false,
-      companyFilter: {
-        companies: [{ id: 'company_1', name: 'Acme' }],
-        value: undefined,
-        onChange: noop,
-      },
-    })
-    expect(screen.queryByText('Acme')).toBeNull()
   })
 
   it('counts active filters on the Filter button', () => {

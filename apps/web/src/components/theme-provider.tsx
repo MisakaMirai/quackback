@@ -20,7 +20,7 @@ export function ThemeProvider({
   ...props
 }: React.ComponentProps<typeof NextThemesProvider> & {
   /**
-   * Persist the theme preference to the SSR cookie. Off in the widget iframe:
+   * Persist the theme preference to the SSR cookie. Off in a forced-theme document:
    * its document must never rewrite the visitor's own theme preference
    * (same-origin embeds share the cookie, and the preview forces a theme).
    */

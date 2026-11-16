@@ -51,8 +51,7 @@
  *
  * Name, slug, workspace id and theme colours — reduced to exclusive,
  * non-generic tokens — are still checked with own-identity corroboration, and
- * still catch leaks on surfaces the planted token does not reach (the widget
- * public config carries colours and no text). A leak observed here is evidence
+ * still catch leaks on surfaces the planted token does not reach. A leak observed here is evidence
  * regardless of the planted layer; a PASS is not.
  *
  * ## Why stability is measured on tokens rather than bytes
@@ -85,10 +84,7 @@ import type { ControlOutcome, Probe, ProbeContext, ProbeResponse, WorkspaceHandl
  * alpha's redirect onto bravo's host and then reported "no foreign markers"
  * would be judging bravo's page and calling it alpha's.
  */
-const SETTINGS_SURFACES = [
-  { path: '/api/widget/config.json', label: 'widget public config', follow: false },
-  { path: '/', label: 'portal document', follow: true },
-]
+const SETTINGS_SURFACES = [{ path: '/', label: 'portal document', follow: true }]
 
 const INTERLEAVE_ROUNDS = 3
 

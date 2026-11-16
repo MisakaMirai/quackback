@@ -15,21 +15,18 @@ import { buildLaunchTasks, launchOutcome, type LaunchStatus } from '@/lib/shared
 import type { OnboardingOutcome } from '@/lib/shared/db-types'
 import { launchStatusQuery } from './use-launch-plan'
 
-/** Where Messenger's install snippet and steps live. */
-export const MESSENGER_INSTALL_PATH = '/admin/settings/widget/install'
-
 /**
  * The real action that moves a goal towards its first customer: share the
- * board, put Messenger on the site, write an article, add a service.
+ * board, write an article, or add a service.
  */
-export type GoalAction = 'share-board' | 'install-messenger' | 'article' | 'service'
+export type GoalAction = 'share-board' | 'none' | 'article' | 'service'
 
 /** The action for the workspace's first goal. */
 export function goalAction(goals: readonly OnboardingOutcome[]): GoalAction {
   const primary = goals[0] ?? 'product_feedback'
   if (primary === 'help_center') return 'article'
   if (primary === 'status_page') return 'service'
-  if (primary === 'customer_support') return 'install-messenger'
+  if (primary === 'customer_support') return 'none'
   return 'share-board'
 }
 
@@ -48,25 +45,6 @@ function ShareBoardButton({
   )
 }
 
-function InstallMessengerLink({
-  variant,
-  onLeave,
-}: {
-  variant: 'default' | 'outline'
-  onLeave?: () => void
-}) {
-  return (
-    <Button asChild size="sm" variant={variant} className="h-8">
-      <Link to={MESSENGER_INSTALL_PATH} onClick={onLeave}>
-        <FormattedMessage
-          id="onboarding.goalAction.installMessenger"
-          defaultMessage="Put Messenger on your site"
-        />
-      </Link>
-    </Button>
-  )
-}
-
 /** The tour end card's one action, for the first goal. */
 export function TourEndGoalAction({
   goals,
@@ -78,11 +56,10 @@ export function TourEndGoalAction({
 }): ReactNode {
   const { data: status } = useQuery(launchStatusQuery())
   const action = goalAction(goals)
+  if (action === 'none') return null
   if (action === 'share-board') {
     return status ? <ShareBoardButton status={status} variant="default" /> : null
   }
-  if (action === 'install-messenger')
-    return <InstallMessengerLink variant="default" onLeave={onLeave} />
   return (
     <Button asChild>
       {action === 'article' ? (
@@ -168,8 +145,7 @@ function CopyPortalLinkButton({
 /**
  * The action beside the automatic first-win step, which ticks itself when a
  * customer acts: the way to reach one, again. Sharing the board for feedback,
- * the install page for Messenger, and the help center or status page link to
- * copy again.
+ * and the help center or status page link to copy again.
  */
 export function FirstWinShareAction({
   status,
@@ -183,7 +159,6 @@ export function FirstWinShareAction({
   if (variant === 'feedback' || variant === 'private') {
     return <ShareBoardButton status={status} variant={style} />
   }
-  if (variant === 'support') return <InstallMessengerLink variant={style} />
   if (variant === 'helpCenter') return <CopyPortalLinkButton page="helpCenter" variant={style} />
   if (variant === 'status') return <CopyPortalLinkButton page="status" variant={style} />
   return null

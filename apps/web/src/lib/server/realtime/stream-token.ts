@@ -1,10 +1,9 @@
 /**
  * Short-lived signed tokens that authorize an SSE stream handshake.
  *
- * EventSource cannot set an Authorization header, and the widget authenticates
- * with an in-memory Bearer token (never a cookie), so the stream URL must carry
+ * EventSource cannot set an Authorization header, so the stream URL must carry
  * a credential. Rather than putting the long-lived session token in the URL
- * (logs, referrers), the widget mints a short-lived token bound to its current
+ * (logs, referrers), the client mints a short-lived token bound to its current
  * principal via an authenticated server function and passes that. The token is
  * an HMAC over `${principalId}.${expiry}` — it proves "this principal was
  * authenticated at mint time", which is all the stream needs to authorize a

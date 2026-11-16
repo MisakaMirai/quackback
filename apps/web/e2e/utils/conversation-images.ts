@@ -47,7 +47,6 @@ export function landscapePng(width = 60, height = 20): Buffer {
 
 export const LEGACY_WIDE_PNG = 'e2e-legacy-wide.png'
 export const PASTED_PNG = 'e2e-pasted.png'
-export const WIDGET_PNG = 'e2e-widget.png'
 export const CHANGELOG_PNG = 'e2e-changelog.png'
 export const POST_PNG = 'e2e-post.png'
 
@@ -74,18 +73,8 @@ export async function stubConversationImageNetwork(page: Page): Promise<Buffer> 
     })
   })
 
-  await page.route('**/api/widget/upload', async (route) => {
-    if (route.request().method() !== 'POST') return route.continue()
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({ publicUrl: `/api/storage/chat-images/${WIDGET_PNG}` }),
-    })
-  })
-
   await page.route(`**/api/storage/chat-images/${LEGACY_WIDE_PNG}*`, fulfillPng)
   await page.route(`**/api/storage/chat-images/${PASTED_PNG}*`, fulfillPng)
-  await page.route(`**/api/storage/chat-images/${WIDGET_PNG}*`, fulfillPng)
   await page.route(`**/api/storage/changelog-images/${CHANGELOG_PNG}*`, fulfillPng)
   await page.route(`**/api/storage/post-images/${POST_PNG}*`, fulfillPng)
 

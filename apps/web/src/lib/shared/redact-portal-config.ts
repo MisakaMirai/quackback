@@ -8,7 +8,7 @@ type RedactedAccess = Pick<PortalAccessConfig, 'visibility'>
 type RedactedPortalConfig = Omit<PortalConfig, 'access'> & { access?: RedactedAccess }
 
 /**
- * Strips the server-only access policy fields (allowedDomains, widgetSignIn,
+ * Strips the server-only access policy fields (allowedDomains,
  * allowedSegmentIds) from a parsed PortalConfig before returning it to a
  * client-bound context. Keeps access.visibility (already public via
  * publicPortalConfig.portalAccess).
@@ -18,8 +18,8 @@ function redactPortalConfig(portalConfig: PortalConfig): RedactedPortalConfig {
   return {
     ...portalConfig,
     access: {
-      // Only expose visibility — allowedDomains, widgetSignIn, and
-      // allowedSegmentIds are server-only policy enforced by evaluateMyPortalAccessFn.
+      // Only expose visibility — allowedDomains and allowedSegmentIds are
+      // server-only policy enforced by evaluateMyPortalAccessFn.
       visibility: portalConfig.access.visibility,
     },
   }
@@ -46,23 +46,15 @@ function statusConfigNeedsRedaction(statusConfig: StatusSettings): boolean {
 
 /**
  * Raw settings-row columns that must never reach a client-bound context.
- * `widgetSecret` is the HMAC key that signs widget identify ssoTokens —
- * exposing it lets anyone forge verified identities. The rest are
- * server-side state (tier enforcement, setup progress, metadata config
- * bags) with no client reader.
+ * The rest are server-side state (tier enforcement, setup progress, metadata
+ * config bags) with no client reader.
  *
  * `cloud` sits here alongside `tierLimits` for the same reason and one more:
  * its `billing` sub-block holds provider customer and subscription references,
  * which are account identifiers rather than product config and must never be
  * serialized into a router context or loader payload.
  */
-const SERVER_ONLY_SETTINGS_KEYS = [
-  'widgetSecret',
-  'metadata',
-  'tierLimits',
-  'cloud',
-  'setupState',
-] as const
+const SERVER_ONLY_SETTINGS_KEYS = ['metadata', 'tierLimits', 'cloud', 'setupState'] as const
 
 function stripServerOnlyKeys<T extends object>(row: T): T {
   if (!SERVER_ONLY_SETTINGS_KEYS.some((key) => key in row)) return row
@@ -76,9 +68,8 @@ function stripServerOnlyKeys<T extends object>(row: T): T {
  * a client-bound context (router context, loader data — both are dehydrated
  * into the SSR HTML):
  *
- * - server-only columns of the raw settings row ({@link SERVER_ONLY_SETTINGS_KEYS},
- *   most critically `widgetSecret`);
- * - the access policy fields (allowedDomains, widgetSignIn, allowedSegmentIds)
+ * - server-only columns of the raw settings row ({@link SERVER_ONLY_SETTINGS_KEYS});
+ * - the access policy fields (allowedDomains, allowedSegmentIds)
  *   of `portalConfig`, keeping only access.visibility (already public via
  *   publicPortalConfig.portalAccess);
  * - non-public status-page fields (`allowedSegmentIds`, `emailsDisabled`,
