@@ -1,11 +1,18 @@
 import { describe, expect, it } from 'vitest'
 import { createIntl } from 'react-intl'
 import type { SerializedNotification } from '@/lib/client/hooks/use-notifications-queries'
-import pl from '@/locales/pl.json'
+import zhCn from '@/locales/zh-cn.json'
 import { notificationText } from '../notification-text'
 
 const en = createIntl({ locale: 'en', defaultLocale: 'en' })
-const polish = createIntl({ locale: 'pl', defaultLocale: 'en', messages: pl })
+const chinese = createIntl({ locale: 'zh-cn', defaultLocale: 'en', messages: zhCn })
+
+// The catalog's wording for a message id, formatted as react-intl does. The
+// sentinel default makes a missing catalog entry fail loudly instead of
+// silently borrowing English.
+function zh(id: string, values?: Record<string, string>): string {
+  return chinese.formatMessage({ id, defaultMessage: `__missing:${id}` }, values)
+}
 
 function notification(overrides: Partial<SerializedNotification>): SerializedNotification {
   return {
@@ -35,8 +42,8 @@ describe('notificationText', () => {
   it('words a message notification in the reader language and keeps the preview', () => {
     const n = notification({ type: 'chat_message', actorName: 'Demo User', body: 'hello' })
     expect(notificationText(n, en)).toEqual({ title: 'New message from Demo User', body: 'hello' })
-    expect(notificationText(n, polish)).toEqual({
-      title: 'Nowa wiadomość od Demo User',
+    expect(notificationText(n, chinese)).toEqual({
+      title: zh('portal.notifications.text.chatMessage', { name: 'Demo User' }),
       body: 'hello',
     })
   })
@@ -50,7 +57,14 @@ describe('notificationText', () => {
       title: 'Status changed to Planned',
       body: '"Dark mode" moved from Open to Planned',
     })
-    expect(notificationText(n, polish).title).toBe('Nowy status: Planned')
+    expect(notificationText(n, chinese)).toEqual({
+      title: zh('portal.notifications.text.statusChanged.title', { status: 'Planned' }),
+      body: zh('portal.notifications.text.statusChanged.body', {
+        postTitle: 'Dark mode',
+        previousStatus: 'Open',
+        newStatus: 'Planned',
+      }),
+    })
   })
 
   it('tells maintenance from an incident by its kind', () => {
@@ -75,6 +89,13 @@ describe('notificationText', () => {
       title: 'Cannot log in is now Resolved',
       body: 'Open the ticket to see the latest update.',
     })
+    expect(notificationText(n, chinese)).toEqual({
+      title: zh('portal.notifications.text.ticketStatusChanged.title', {
+        title: 'Cannot log in',
+        stage: 'Resolved',
+      }),
+      body: zh('portal.notifications.text.ticketStatusChanged.bodyGeneric'),
+    })
   })
 
   it('keeps the stored text when a value it needs was never recorded', () => {
@@ -82,12 +103,12 @@ describe('notificationText', () => {
     const anonymousMessage = notification({ type: 'chat_message', actorName: null })
     const noParams = notification({ type: 'changelog_published', params: undefined })
     for (const n of [olderTicketRow, anonymousMessage, noParams]) {
-      expect(notificationText(n, polish)).toEqual({ title: 'stored title', body: 'stored body' })
+      expect(notificationText(n, chinese)).toEqual({ title: 'stored title', body: 'stored body' })
     }
   })
 
   it('leaves agent-only types as stored', () => {
     const n = notification({ type: 'ticket_assigned', actorName: 'Sarah' })
-    expect(notificationText(n, polish)).toEqual({ title: 'stored title', body: 'stored body' })
+    expect(notificationText(n, chinese)).toEqual({ title: 'stored title', body: 'stored body' })
   })
 })

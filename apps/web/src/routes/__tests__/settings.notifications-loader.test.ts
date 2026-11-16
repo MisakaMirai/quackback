@@ -37,9 +37,9 @@ describe('notifications settings loader', () => {
 
   // Admin settings render in English, so the matrix does too, whatever the
   // browser's language.
-  it("reads the matrix's English strings for a Polish browser", async () => {
+  it("reads the matrix's English strings for a Chinese browser", async () => {
     getNotificationPreferencesFn.mockResolvedValueOnce(null)
-    expect(await loader({ context: { acceptLanguageLocale: 'pl' } })).toEqual({
+    expect(await loader({ context: { acceptLanguageLocale: 'zh-tw' } })).toEqual({
       preferences: null,
       messages: expect.objectContaining({
         'portal.settings.notifications.pauseAll.label': 'Pause all email',

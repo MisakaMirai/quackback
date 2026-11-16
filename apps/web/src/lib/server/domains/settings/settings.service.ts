@@ -45,6 +45,7 @@ import {
   resolveFeatureFlags,
 } from './settings.types'
 import { signupOpenFor } from '@/lib/shared/signup-open'
+import { DEFAULT_LOCALE, SUPPORTED_LOCALES } from '@/lib/shared/i18n'
 import { parseMessengerSettings, publicMessengerConfig } from './settings.messenger'
 import { getSetupState, isOnboardingComplete } from '@/lib/shared/db-types'
 import { resolveStatusSettings } from './settings.status'
@@ -752,12 +753,37 @@ export async function updateDeveloperConfig(
   }
 }
 
+/**
+ * A stored help-center config may name locales this build no longer ships: a
+ * workspace that enabled `de` before its catalog was removed. Filter those on
+ * read so the code can't route /hc/de, list it in the switcher or emit
+ * hreflang. An unsupported default coerces to English, the only locale that is
+ * always available.
+ */
+function withSupportedHelpCenterLocales(config: HelpCenterConfig): HelpCenterConfig {
+  const isSupported = (locale: string) => (SUPPORTED_LOCALES as readonly string[]).includes(locale)
+  const { locales } = config
+  return {
+    ...config,
+    locales: {
+      ...locales,
+      default: isSupported(locales.default) ? locales.default : DEFAULT_LOCALE,
+      additional: locales.additional.filter(isSupported),
+      chrome: Object.fromEntries(
+        Object.entries(locales.chrome).filter(([locale]) => isSupported(locale))
+      ),
+    },
+  }
+}
+
 export async function getHelpCenterConfig(
   freshness: SettingsFreshness = 'cached'
 ): Promise<HelpCenterConfig> {
   try {
     const org = await readSettingsRow(freshness)
-    return parseJsonConfig(org.helpCenterConfig, DEFAULT_HELP_CENTER_CONFIG)
+    return withSupportedHelpCenterLocales(
+      parseJsonConfig(org.helpCenterConfig, DEFAULT_HELP_CENTER_CONFIG)
+    )
   } catch (error) {
     log.error({ err: error }, 'get help center config failed')
     wrapDbError('fetch help center config', error)
@@ -1011,7 +1037,11 @@ async function readWorkspaceSettings(): Promise<WorkspaceSettings | null> {
     const developerConfig = parseJsonConfig(org.developerConfig, DEFAULT_DEVELOPER_CONFIG)
 
     const messengerSettings = parseMessengerSettings(org.messengerConfig)
-    const helpCenterConfig = parseJsonConfig(org.helpCenterConfig, DEFAULT_HELP_CENTER_CONFIG)
+    // The portal's /hc routes read this copy, so stale locales have to be
+    // filtered here too, not only in getHelpCenterConfig (see above).
+    const helpCenterConfig = withSupportedHelpCenterLocales(
+      parseJsonConfig(org.helpCenterConfig, DEFAULT_HELP_CENTER_CONFIG)
+    )
     const statusConfig = resolveStatusSettings(org.metadata)
 
     const featureFlags = resolveFeatureFlags(org.featureFlags)

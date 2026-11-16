@@ -11,10 +11,8 @@ import { useToasterLocale } from '../use-toaster-locale'
 afterEach(cleanup)
 
 it('names the notifications region in the page language', () => {
-  const { container } = render(<Toaster locale="de" />)
-  expect(container.querySelector('section')?.getAttribute('aria-label')).toMatch(
-    /^Benachrichtigungen /
-  )
+  const { container } = render(<Toaster locale="zh-cn" />)
+  expect(container.querySelector('section')?.getAttribute('aria-label')).toMatch(/^通知/)
 })
 
 function AdminSurface({ locale }: { locale: string }) {
@@ -26,11 +24,11 @@ it('follows a surface that picks its own language, and lets go when it unmounts'
   const { container, rerender } = render(
     <>
       <Toaster locale="en" />
-      <AdminSurface locale="nl" />
+      <AdminSurface locale="zh-tw" />
     </>
   )
   const label = () => container.querySelector('section')?.getAttribute('aria-label')
-  await waitFor(() => expect(label()).toMatch(/^Meldingen /))
+  await waitFor(() => expect(label()).toMatch(/^通知/))
   rerender(<Toaster locale="en" />)
   expect(label()).toMatch(/^Notifications /)
 })

@@ -52,8 +52,8 @@ describe('hcArticlePath / hcCollectionPath', () => {
   })
 
   it('prefixes additional locales the same way', () => {
-    expect(hcArticlePath({ locale: 'de', urlId: 42, slug: 'intro' })).toBe(
-      '/hc/de/articles/42-intro'
+    expect(hcArticlePath({ locale: 'zh-cn', urlId: 42, slug: 'intro' })).toBe(
+      '/hc/zh-cn/articles/42-intro'
     )
   })
 })
@@ -68,20 +68,22 @@ describe('localizedHcPath', () => {
   })
 
   it('prefixes an additional locale', () => {
-    expect(localizedHcPath('de', '/hc/collections/billing')).toBe('/hc/de/collections/billing')
+    expect(localizedHcPath('zh-cn', '/hc/collections/billing')).toBe(
+      '/hc/zh-cn/collections/billing'
+    )
   })
 
   it('prefixes the bare homepage path for additional locales', () => {
-    expect(localizedHcPath('de', '/hc')).toBe('/hc/de')
+    expect(localizedHcPath('zh-cn', '/hc')).toBe('/hc/zh-cn')
   })
 
   it('prefixes an article path', () => {
-    expect(localizedHcPath('fr', '/hc/articles/id-slug')).toBe('/hc/fr/articles/id-slug')
+    expect(localizedHcPath('zh-tw', '/hc/articles/id-slug')).toBe('/hc/zh-tw/articles/id-slug')
   })
 })
 
 describe('parseHcLocalePath', () => {
-  const enabledLocales = ['de', 'fr']
+  const enabledLocales = ['zh-cn', 'zh-tw']
 
   it('treats an unprefixed path as the default locale', () => {
     expect(parseHcLocalePath('/hc/categories/billing', enabledLocales)).toEqual({
@@ -91,15 +93,15 @@ describe('parseHcLocalePath', () => {
   })
 
   it('recovers the locale and canonical path from a prefixed URL', () => {
-    expect(parseHcLocalePath('/hc/de/categories/billing', enabledLocales)).toEqual({
-      locale: 'de',
+    expect(parseHcLocalePath('/hc/zh-cn/categories/billing', enabledLocales)).toEqual({
+      locale: 'zh-cn',
       canonicalPath: '/hc/categories/billing',
     })
   })
 
   it('recovers the bare locale homepage', () => {
-    expect(parseHcLocalePath('/hc/de', enabledLocales)).toEqual({
-      locale: 'de',
+    expect(parseHcLocalePath('/hc/zh-tw', enabledLocales)).toEqual({
+      locale: 'zh-tw',
       canonicalPath: '/hc',
     })
   })
@@ -124,13 +126,13 @@ describe('parseHcLocalePath', () => {
 })
 
 describe('resolveHcLandingLocale', () => {
-  const base = { enabledAdditionalLocales: ['de', 'fr'], defaultLocale: 'en' }
+  const base = { enabledAdditionalLocales: ['zh-cn', 'zh-tw'], defaultLocale: 'en' }
 
   it('never redirects when no additional locale is enabled', () => {
     expect(
       resolveHcLandingLocale({
-        cookieLocale: 'de',
-        acceptLanguage: 'de',
+        cookieLocale: 'zh-cn',
+        acceptLanguage: 'zh-CN',
         enabledAdditionalLocales: [],
         defaultLocale: 'en',
       })
@@ -138,27 +140,33 @@ describe('resolveHcLandingLocale', () => {
   })
 
   it('a manual cookie choice wins over Accept-Language', () => {
-    expect(resolveHcLandingLocale({ ...base, cookieLocale: 'fr', acceptLanguage: 'de' })).toBe('fr')
+    expect(
+      resolveHcLandingLocale({ ...base, cookieLocale: 'zh-tw', acceptLanguage: 'zh-CN' })
+    ).toBe('zh-tw')
   })
 
   it('an explicit cookie choice of the default locale is honored (no redirect)', () => {
-    expect(resolveHcLandingLocale({ ...base, cookieLocale: 'en', acceptLanguage: 'de' })).toBeNull()
+    expect(
+      resolveHcLandingLocale({ ...base, cookieLocale: 'en', acceptLanguage: 'zh-CN' })
+    ).toBeNull()
   })
 
   it('ignores a stale cookie referencing a since-disabled locale', () => {
-    expect(
-      resolveHcLandingLocale({ ...base, cookieLocale: 'zh-cn', acceptLanguage: null })
-    ).toBeNull()
+    // `de` no longer ships a catalog, so a cookie naming it cannot redirect.
+    expect(resolveHcLandingLocale({ ...base, cookieLocale: 'de', acceptLanguage: null })).toBeNull()
   })
 
   it('falls back to Accept-Language detection with no cookie', () => {
     expect(
-      resolveHcLandingLocale({ ...base, cookieLocale: null, acceptLanguage: 'de-DE,de;q=0.9' })
-    ).toBe('de')
+      resolveHcLandingLocale({ ...base, cookieLocale: null, acceptLanguage: 'zh-CN,zh;q=0.9' })
+    ).toBe('zh-cn')
   })
 
   it('stays on default when Accept-Language does not match an enabled locale', () => {
     expect(resolveHcLandingLocale({ ...base, cookieLocale: null, acceptLanguage: 'ja' })).toBeNull()
+    expect(
+      resolveHcLandingLocale({ ...base, cookieLocale: null, acceptLanguage: 'de-DE,de;q=0.9' })
+    ).toBeNull()
   })
 
   it('stays on default when Accept-Language resolves to the default locale itself', () => {

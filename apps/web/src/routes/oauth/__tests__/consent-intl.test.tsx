@@ -126,7 +126,7 @@ describe('standalone MCP consent intl', () => {
 
   it('keeps the English picker copy consistent with the standalone page for other locales', async () => {
     mockRequests()
-    await renderConsent('de')
+    await renderConsent('zh-cn')
     openDetail()
 
     expect(screen.getByRole('button', { name: 'Settings: Read' })).toBeInTheDocument()
