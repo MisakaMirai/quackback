@@ -6,7 +6,7 @@ import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { cn } from '@/lib/shared/utils'
 import { SaveStatus } from './save-status'
 import { moduleOfPage, type NavModule, type NavSection } from './settings-nav-sections'
-import { SETTINGS_PAGES, type SettingsPagePath } from './settings-pages'
+import { SETTINGS_PAGES, settingsPageLabelId, type SettingsPagePath } from './settings-pages'
 
 type PageTitle = { page: SettingsPagePath; title?: never } | { title: string; page?: never }
 
@@ -68,7 +68,19 @@ export function SettingsPage({
     throw new Error('SettingsPage takes exactly one of `page` or `title`')
   }
 
-  const resolvedTitle = page === undefined ? title : SETTINGS_PAGES[page].label
+  const resolvedTitle =
+    page === undefined
+      ? title
+      : intl.formatMessage({
+          id: settingsPageLabelId(page),
+          defaultMessage: SETTINGS_PAGES[page].label,
+        })
+  const moduleTitle = module
+    ? intl.formatMessage({
+        id: settingsPageLabelId(module.id),
+        defaultMessage: module.label,
+      })
+    : undefined
 
   const shownCrumbs = module ? undefined : crumbs
   // A linked crumb is itself the way back.
@@ -83,7 +95,7 @@ export function SettingsPage({
         </div>
       )}
       <PageHeader
-        title={module ? module.label : resolvedTitle!}
+        title={module ? moduleTitle! : resolvedTitle!}
         description={module ? undefined : description}
         badge={badge}
         crumbs={shownCrumbs}
@@ -109,6 +121,7 @@ export function SettingsPage({
  * starting with the current tab in view.
  */
 function ModuleTabs({ module, current }: { module: NavModule; current: string }) {
+  const intl = useOptionalIntl()
   const barRef = useRef<HTMLElement>(null)
   useEffect(() => {
     const bar = barRef.current
@@ -122,7 +135,10 @@ function ModuleTabs({ module, current }: { module: NavModule; current: string })
   return (
     <nav
       ref={barRef}
-      aria-label={module.label}
+      aria-label={intl.formatMessage({
+        id: settingsPageLabelId(module.id),
+        defaultMessage: module.label,
+      })}
       data-slot="tabs-list"
       data-variant="line"
       className="scrollbar-none relative flex items-center overflow-x-auto"
@@ -137,7 +153,10 @@ function ModuleTabs({ module, current }: { module: NavModule; current: string })
           aria-current={tab.to === current ? 'page' : undefined}
           className="inline-flex shrink-0 items-center text-sm whitespace-nowrap transition-colors"
         >
-          {tab.label}
+          {intl.formatMessage({
+            id: settingsPageLabelId(tab.to),
+            defaultMessage: tab.label,
+          })}
         </Link>
       ))}
     </nav>
