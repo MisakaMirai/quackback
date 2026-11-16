@@ -5326,5 +5326,13 @@
   "workspaceUnavailable.signIn": "登入 Quackback",
   "workspaceUnavailable.unknown.body": "{host} 上沒有設定任何內容。請檢查網址，或詢問傳送連結給您的人。",
   "workspaceUnavailable.unknown.owner": "正在設定工作區？請登入 Quackback。",
-  "workspaceUnavailable.unknown.title": "這裡沒有工作區"
+  "workspaceUnavailable.unknown.title": "這裡沒有工作區",
+  "inbox.message.agent": "客服",
+  "inbox.message.visitor": "訪客",
+  "inbox.message.sharePost": "分享為貼文…",
+  "inbox.message.trackAsFeedback": "轉為回饋…",
+  "inbox.message.trackAsFeedbackAction": "轉為回饋",
+  "inbox.message.aiSuggestion": "AI 建議將此轉為貼文",
+  "inbox.message.receivedByEmail": "透過電子郵件收到",
+  "inbox.message.viaTicketThread": "· 來自工單對話"
 }

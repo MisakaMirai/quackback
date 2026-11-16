@@ -5326,5 +5326,13 @@
   "workspaceUnavailable.signIn": "Sign in to Quackback",
   "workspaceUnavailable.unknown.body": "Nothing is set up at {host}. Check the address, or ask whoever sent you the link.",
   "workspaceUnavailable.unknown.owner": "Setting up a workspace? Sign in to Quackback.",
-  "workspaceUnavailable.unknown.title": "There's no workspace here"
+  "workspaceUnavailable.unknown.title": "There's no workspace here",
+  "inbox.message.agent": "Agent",
+  "inbox.message.visitor": "Visitor",
+  "inbox.message.sharePost": "Share a post…",
+  "inbox.message.trackAsFeedback": "Track as feedback…",
+  "inbox.message.trackAsFeedbackAction": "Track as feedback",
+  "inbox.message.aiSuggestion": "AI suggests tracking this as a post",
+  "inbox.message.receivedByEmail": "Received by email",
+  "inbox.message.viaTicketThread": "· via ticket thread"
 }

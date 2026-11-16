@@ -33,6 +33,7 @@ import {
 } from '@heroicons/react/24/solid'
 import { BookmarkIcon, PencilIcon } from '@heroicons/react/24/outline'
 import { Avatar } from '@/components/ui/avatar'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { AttachmentList } from '@/components/shared/files/attachment-list'
 import { ReactionChip } from '@/components/shared/reaction-chip'
 import { NoteContent } from '@/components/admin/conversation/note-content'
@@ -478,6 +479,7 @@ export const AgentMessageBubble = memo(function AgentMessageBubble({
   // open (the pointer leaves the row to interact with the portal'd content).
   const [emojiOpen, setEmojiOpen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
+  const intl = useOptionalIntl()
   const [editing, setEditing] = useState(false)
 
   // System events (e.g. "assigned to …") are status notices, not messages:
@@ -502,7 +504,11 @@ export const AgentMessageBubble = memo(function AgentMessageBubble({
   // through `NoteContent` instead of the reply renderer.
   const isNote = message.isInternal
   const isAgent = message.senderType === 'agent'
-  const authorName = message.author?.displayName ?? (isAgent ? 'Agent' : 'Visitor')
+  const authorName =
+    message.author?.displayName ??
+    (isAgent
+      ? intl.formatMessage({ id: 'inbox.message.agent', defaultMessage: 'Agent' })
+      : intl.formatMessage({ id: 'inbox.message.visitor', defaultMessage: 'Visitor' }))
   const isFlagged = message.flaggedAt !== null
   const toolbarPinned = emojiOpen || menuOpen
   // Agent replies and notes all sit on the agent's side of the thread; only
@@ -700,12 +706,20 @@ export const AgentMessageBubble = memo(function AgentMessageBubble({
                         <DropdownMenuSeparator />
                         {onSharePost && (
                           <DropdownMenuItem onClick={() => onSharePost(message)}>
-                            <ChatBubbleLeftRightIcon className="h-4 w-4" /> Share a post…
+                            <ChatBubbleLeftRightIcon className="h-4 w-4" />{' '}
+                            {intl.formatMessage({
+                              id: 'inbox.message.sharePost',
+                              defaultMessage: 'Share a post…',
+                            })}
                           </DropdownMenuItem>
                         )}
                         {onTrackAsPost && (
                           <DropdownMenuItem onClick={() => onTrackAsPost(message)}>
-                            <AdjustmentsHorizontalIcon className="h-4 w-4" /> Track as feedback…
+                            <AdjustmentsHorizontalIcon className="h-4 w-4" />{' '}
+                            {intl.formatMessage({
+                              id: 'inbox.message.trackAsFeedback',
+                              defaultMessage: 'Track as feedback…',
+                            })}
                           </DropdownMenuItem>
                         )}
                       </>
@@ -734,14 +748,22 @@ export const AgentMessageBubble = memo(function AgentMessageBubble({
         {isNote && suggestion && onTrackSuggestion && (
           <div className="flex max-w-[85%] flex-wrap items-center gap-2 rounded-md border border-amber-400/30 bg-amber-400/10 px-2 py-1.5">
             <span className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-700 dark:text-amber-300">
-              <LightBulbIcon className="h-3.5 w-3.5" /> AI suggests tracking this as a post
+              <LightBulbIcon className="h-3.5 w-3.5" />{' '}
+              {intl.formatMessage({
+                id: 'inbox.message.aiSuggestion',
+                defaultMessage: 'AI suggests tracking this as a post',
+              })}
             </span>
             <button
               type="button"
               onClick={() => onTrackSuggestion(message)}
               className="ml-auto inline-flex items-center gap-1 rounded-md bg-primary px-2 py-1 text-[11px] font-medium text-primary-foreground transition-colors hover:bg-primary/90"
             >
-              <ArrowTopRightOnSquareIcon className="h-3.5 w-3.5" /> Track as feedback
+              <ArrowTopRightOnSquareIcon className="h-3.5 w-3.5" />{' '}
+              {intl.formatMessage({
+                id: 'inbox.message.trackAsFeedbackAction',
+                defaultMessage: 'Track as feedback',
+              })}
             </button>
           </div>
         )}
@@ -780,8 +802,14 @@ export const AgentMessageBubble = memo(function AgentMessageBubble({
           {message.viaEmail && (
             <EnvelopeIcon
               className="h-3 w-3 shrink-0"
-              aria-label="Received by email"
-              title="Received by email"
+              aria-label={intl.formatMessage({
+                id: 'inbox.message.receivedByEmail',
+                defaultMessage: 'Received by email',
+              })}
+              title={intl.formatMessage({
+                id: 'inbox.message.receivedByEmail',
+                defaultMessage: 'Received by email',
+              })}
             />
           )}
           {/* Pair-thread provenance (convergence Phase 2): a legacy
@@ -789,7 +817,12 @@ export const AgentMessageBubble = memo(function AgentMessageBubble({
               not a chip — it answers "why does this read differently", nothing
               more. */}
           {ticketProvenance && message.ticketId && !isNote && (
-            <span className="shrink-0">· via ticket thread</span>
+            <span className="shrink-0">
+              {intl.formatMessage({
+                id: 'inbox.message.viaTicketThread',
+                defaultMessage: '· via ticket thread',
+              })}
+            </span>
           )}
           <MessageTime iso={message.createdAt} />
           {message.editedAt && <EditedAt iso={message.editedAt} />}
