@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Suspense } from 'react'
 import { cleanup, render, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { IntlProvider } from 'react-intl'
+import { IntlProvider, createIntl } from 'react-intl'
 import { renderToStaticMarkup } from 'react-dom/server'
 
 vi.mock('@tanstack/react-router', () => ({
@@ -50,9 +50,12 @@ describe('integration connect config', () => {
   }, 120000)
 
   it('setup steps never point at a bare "Connect" button unless the button reads that', () => {
+    const intl = createIntl({ locale: 'en' })
     const offenders = Object.entries(INTEGRATION_SETTINGS)
       .filter(([, entry]) =>
-        entry.setup.steps.some((step) => />Connect<\/span>/.test(renderToStaticMarkup(<>{step}</>)))
+        entry.setup
+          .steps(intl)
+          .some((step) => />Connect<\/span>/.test(renderToStaticMarkup(<>{step}</>)))
       )
       .map(([type]) => type)
     // Azure DevOps is the one connect button that reads just "Connect".

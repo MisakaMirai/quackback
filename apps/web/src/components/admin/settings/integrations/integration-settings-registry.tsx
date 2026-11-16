@@ -13,6 +13,7 @@
  * in WO-11.)
  */
 import { lazy, type ComponentType, type ReactNode } from 'react'
+import type { IntlShape, MessageDescriptor } from 'react-intl'
 import { CustomerContextConfig } from './shared/customer-context-config'
 import type { IntegrationCatalogEntry } from '@/lib/shared/integration-types'
 import type { NotificationChannel } from '@/components/admin/settings/integrations/shared/notification-channel-router'
@@ -41,6 +42,19 @@ export type ConnectionActionsComponent = ComponentType<{
   isConnected: boolean
 }>
 
+/** Setup card copy shown before an integration is connected. */
+export interface IntegrationSetup {
+  title: MessageDescriptor
+  description: MessageDescriptor
+  /**
+   * Built with the surrounding intl at render time (never at module scope), so
+   * the copy follows the active locale. Rich tags (`<b>`, `<code>`, and
+   * step-specific ones like `<link>`/`<endpoint>`) resolve through the values
+   * passed to `intl.formatMessage`.
+   */
+  steps: (intl: IntlShape) => ReactNode[]
+}
+
 export interface IntegrationSettingsEntry {
   /** Registry/type id (underscore form, e.g. `azure_devops`). */
   type: string
@@ -51,7 +65,7 @@ export interface IntegrationSettingsEntry {
   /** Connect / disconnect (or webhook / key) actions. */
   ConnectionActions: ConnectionActionsComponent
   /** Setup card copy shown when not connected. */
-  setup: { title: string; description: string; steps: ReactNode[] }
+  setup: IntegrationSetup
   /** Connected-state capability configuration. */
   renderConfig?: (ctx: { integration: IntegrationSettingsData; isConnected: boolean }) => ReactNode
   /** Override the "Connected to X" workspace label (e.g. azure_devops → organizationName). */
@@ -269,6 +283,33 @@ function SegmentIcon({ className }: { className?: string }) {
   )
 }
 
+/** Rich-text values for setup steps: `<b>` emphasis and inline `<code>`. */
+const RICH_TEXT = {
+  b: (chunks: ReactNode) => <span className="font-medium text-foreground">{chunks}</span>,
+  code: (chunks: ReactNode) => <code className="text-xs">{chunks}</code>,
+}
+
+// Step copy shared by every provider that uses the same workflow wording.
+const CHOOSE_EVENTS_TASK: MessageDescriptor = {
+  id: 'admin.integrations.setup.chooseEventsTask',
+  defaultMessage:
+    'Choose which events trigger task creation. You can change these settings at any time.',
+}
+const CHOOSE_EVENTS_ISSUE: MessageDescriptor = {
+  id: 'admin.integrations.setup.chooseEventsIssue',
+  defaultMessage:
+    'Choose which events trigger issue creation. You can change these settings at any time.',
+}
+const CHOOSE_EVENTS_NOTIFICATION: MessageDescriptor = {
+  id: 'admin.integrations.setup.chooseEventsNotification',
+  defaultMessage:
+    'Choose which events trigger notifications. You can enable or disable individual event types at any time.',
+}
+const LOOKUP_BY_EMAIL: MessageDescriptor = {
+  id: 'admin.integrations.setup.lookupByEmail',
+  defaultMessage: 'Customer details are looked up by email when you open customer context.',
+}
+
 /** The registry, keyed by integration type (underscore form). */
 export const INTEGRATION_SETTINGS: Record<string, IntegrationSettingsEntry> = {
   asana: {
@@ -277,18 +318,33 @@ export const INTEGRATION_SETTINGS: Record<string, IntegrationSettingsEntry> = {
     Icon: getIntegrationIcon('asana')!,
     ConnectionActions: AsanaConnectionActions,
     setup: {
-      title: 'Connect your Asana workspace',
-      description:
-        'Connect Asana to create tasks from feedback and review incoming status changes.',
-      steps: [
-        <p key="1">
-          Click <span className="font-medium text-foreground">Connect Asana</span> to authorize
-          Quackback to create tasks in your Asana workspace.
+      title: {
+        id: 'admin.integrations.setup.asana.title',
+        defaultMessage: 'Connect your Asana workspace',
+      },
+      description: {
+        id: 'admin.integrations.setup.asana.description',
+        defaultMessage:
+          'Connect Asana to create tasks from feedback and review incoming status changes.',
+      },
+      steps: (intl) => [
+        <p>
+          {intl.formatMessage(
+            {
+              id: 'admin.integrations.setup.asana.step1',
+              defaultMessage:
+                'Click <b>Connect Asana</b> to authorize Quackback to create tasks in your Asana workspace.',
+            },
+            RICH_TEXT
+          )}
         </p>,
-        <p key="2">Select which project new feedback tasks should be created in.</p>,
-        <p key="3">
-          Choose which events trigger task creation. You can change these settings at any time.
+        <p>
+          {intl.formatMessage({
+            id: 'admin.integrations.setup.asana.step2',
+            defaultMessage: 'Select which project new feedback tasks should be created in.',
+          })}
         </p>,
+        <p>{intl.formatMessage(CHOOSE_EVENTS_TASK)}</p>,
       ],
     },
     renderConfig: ({ integration, isConnected }) => (
@@ -308,32 +364,55 @@ export const INTEGRATION_SETTINGS: Record<string, IntegrationSettingsEntry> = {
     Icon: getIntegrationIcon('azure_devops')!,
     ConnectionActions: AzureDevOpsConnectionActions,
     setup: {
-      title: 'Connect Azure DevOps',
-      description:
-        "Connect Azure DevOps to automatically create work items from feedback posts, keeping your team's workflow in sync.",
-      steps: [
-        <p key="1">
-          Create a{' '}
-          <a
-            href="https://learn.microsoft.com/en-us/azure/devops/organizations/accounts/use-personal-access-tokens-to-authenticate"
-            target="_blank"
-            rel="noopener noreferrer"
-            className={INLINE_LINK}
-          >
-            Personal access token
-            <NewTabHint />
-          </a>{' '}
-          in Azure DevOps with{' '}
-          <span className="font-medium text-foreground">Work Items (Read & Write)</span> scope.
+      title: {
+        id: 'admin.integrations.setup.azureDevOps.title',
+        defaultMessage: 'Connect Azure DevOps',
+      },
+      description: {
+        id: 'admin.integrations.setup.azureDevOps.description',
+        defaultMessage:
+          "Connect Azure DevOps to automatically create work items from feedback posts, keeping your team's workflow in sync.",
+      },
+      steps: (intl) => [
+        <p>
+          {intl.formatMessage(
+            {
+              id: 'admin.integrations.setup.azureDevOps.step1',
+              defaultMessage:
+                'Create a <link>Personal access token</link> in Azure DevOps with <b>Work Items (Read & Write)</b> scope.',
+            },
+            {
+              ...RICH_TEXT,
+              link: (chunks: ReactNode) => (
+                <a
+                  href="https://learn.microsoft.com/en-us/azure/devops/organizations/accounts/use-personal-access-tokens-to-authenticate"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={INLINE_LINK}
+                >
+                  {chunks}
+                  <NewTabHint />
+                </a>
+              ),
+            }
+          )}
         </p>,
-        <p key="2">
-          Enter your organization URL and PAT below, then click{' '}
-          <span className="font-medium text-foreground">Connect</span>. Quackback will verify access
-          to your organization.
+        <p>
+          {intl.formatMessage(
+            {
+              id: 'admin.integrations.setup.azureDevOps.step2',
+              defaultMessage:
+                'Enter your organization URL and PAT below, then click <b>Connect</b>. Quackback will verify access to your organization.',
+            },
+            RICH_TEXT
+          )}
         </p>,
-        <p key="3">
-          Select which project and work item type to use, then enable the events that should trigger
-          work item creation.
+        <p>
+          {intl.formatMessage({
+            id: 'admin.integrations.setup.azureDevOps.step3',
+            defaultMessage:
+              'Select which project and work item type to use, then enable the events that should trigger work item creation.',
+          })}
         </p>,
       ],
     },
@@ -355,18 +434,33 @@ export const INTEGRATION_SETTINGS: Record<string, IntegrationSettingsEntry> = {
     Icon: getIntegrationIcon('clickup')!,
     ConnectionActions: ClickUpConnectionActions,
     setup: {
-      title: 'Connect your ClickUp workspace',
-      description:
-        'Connect ClickUp to turn feedback into tasks and track progress directly from your workspace.',
-      steps: [
-        <p key="1">
-          Click <span className="font-medium text-foreground">Connect ClickUp</span> to authorize
-          Quackback to create tasks in your ClickUp workspace.
+      title: {
+        id: 'admin.integrations.setup.clickup.title',
+        defaultMessage: 'Connect your ClickUp workspace',
+      },
+      description: {
+        id: 'admin.integrations.setup.clickup.description',
+        defaultMessage:
+          'Connect ClickUp to turn feedback into tasks and track progress directly from your workspace.',
+      },
+      steps: (intl) => [
+        <p>
+          {intl.formatMessage(
+            {
+              id: 'admin.integrations.setup.clickup.step1',
+              defaultMessage:
+                'Click <b>Connect ClickUp</b> to authorize Quackback to create tasks in your ClickUp workspace.',
+            },
+            RICH_TEXT
+          )}
         </p>,
-        <p key="2">Select a space and list where new feedback tasks should be created.</p>,
-        <p key="3">
-          Choose which events trigger task creation. You can change these settings at any time.
+        <p>
+          {intl.formatMessage({
+            id: 'admin.integrations.setup.clickup.step2',
+            defaultMessage: 'Select a space and list where new feedback tasks should be created.',
+          })}
         </p>,
+        <p>{intl.formatMessage(CHOOSE_EVENTS_TASK)}</p>,
       ],
     },
     renderConfig: ({ integration, isConnected }) => (
@@ -385,22 +479,34 @@ export const INTEGRATION_SETTINGS: Record<string, IntegrationSettingsEntry> = {
     Icon: getIntegrationIcon('discord')!,
     ConnectionActions: DiscordConnectionActions,
     setup: {
-      title: 'Connect your Discord server',
-      description:
-        'Connect Discord to receive notifications when users submit feedback, when statuses change, and when comments are added.',
-      steps: [
-        <p key="1">
-          Click <span className="font-medium text-foreground">Connect Discord</span> to add the
-          Quackback bot to your Discord server.
+      title: {
+        id: 'admin.integrations.setup.discord.title',
+        defaultMessage: 'Connect your Discord server',
+      },
+      description: {
+        id: 'admin.integrations.setup.discord.description',
+        defaultMessage:
+          'Connect Discord to receive notifications when users submit feedback, when statuses change, and when comments are added.',
+      },
+      steps: (intl) => [
+        <p>
+          {intl.formatMessage(
+            {
+              id: 'admin.integrations.setup.discord.step1',
+              defaultMessage:
+                'Click <b>Connect Discord</b> to add the Quackback bot to your Discord server.',
+            },
+            RICH_TEXT
+          )}
         </p>,
-        <p key="2">
-          Select which text channel notifications should be posted to. The bot needs access to the
-          channel.
+        <p>
+          {intl.formatMessage({
+            id: 'admin.integrations.setup.discord.step2',
+            defaultMessage:
+              'Select which text channel notifications should be posted to. The bot needs access to the channel.',
+          })}
         </p>,
-        <p key="3">
-          Choose which events trigger notifications. You can enable or disable individual event
-          types at any time.
-        </p>,
+        <p>{intl.formatMessage(CHOOSE_EVENTS_NOTIFICATION)}</p>,
       ],
     },
     renderConfig: ({ integration, isConnected }) => (
@@ -421,20 +527,36 @@ export const INTEGRATION_SETTINGS: Record<string, IntegrationSettingsEntry> = {
     Icon: getIntegrationIcon('freshdesk')!,
     ConnectionActions: FreshdeskConnectionActions,
     setup: {
-      title: 'Connect Freshdesk',
-      description:
-        'Connect Freshdesk to see contact details and open the customer’s Freshdesk profile.',
-      steps: [
-        <p key="1">
-          Find your <span className="font-medium text-foreground">API key</span> in your Freshdesk
-          profile settings.
+      title: {
+        id: 'admin.integrations.setup.freshdesk.title',
+        defaultMessage: 'Connect Freshdesk',
+      },
+      description: {
+        id: 'admin.integrations.setup.freshdesk.description',
+        defaultMessage:
+          'Connect Freshdesk to see contact details and open the customer’s Freshdesk profile.',
+      },
+      steps: (intl) => [
+        <p>
+          {intl.formatMessage(
+            {
+              id: 'admin.integrations.setup.freshdesk.step1',
+              defaultMessage: 'Find your <b>API key</b> in your Freshdesk profile settings.',
+            },
+            RICH_TEXT
+          )}
         </p>,
-        <p key="2">
-          Enter your Freshdesk subdomain and API key below, then click{' '}
-          <span className="font-medium text-foreground">Save</span>. Quackback will verify the
-          connection.
+        <p>
+          {intl.formatMessage(
+            {
+              id: 'admin.integrations.setup.freshdesk.step2',
+              defaultMessage:
+                'Enter your Freshdesk subdomain and API key below, then click <b>Save</b>. Quackback will verify the connection.',
+            },
+            RICH_TEXT
+          )}
         </p>,
-        <p key="3">Customer details are looked up by email when you open customer context.</p>,
+        <p>{intl.formatMessage(LOOKUP_BY_EMAIL)}</p>,
       ],
     },
     renderConfig: ({ integration, isConnected }) => (
@@ -448,18 +570,33 @@ export const INTEGRATION_SETTINGS: Record<string, IntegrationSettingsEntry> = {
     Icon: getIntegrationIcon('github')!,
     ConnectionActions: GitHubConnectionActions,
     setup: {
-      title: 'Connect your GitHub account',
-      description:
-        'Connect GitHub to automatically create issues from user feedback and sync statuses when issues are closed or reopened.',
-      steps: [
-        <p key="1">
-          Click <span className="font-medium text-foreground">Connect GitHub</span> to authorize
-          Quackback to create issues in your GitHub repositories.
+      title: {
+        id: 'admin.integrations.setup.github.title',
+        defaultMessage: 'Connect your GitHub account',
+      },
+      description: {
+        id: 'admin.integrations.setup.github.description',
+        defaultMessage:
+          'Connect GitHub to automatically create issues from user feedback and sync statuses when issues are closed or reopened.',
+      },
+      steps: (intl) => [
+        <p>
+          {intl.formatMessage(
+            {
+              id: 'admin.integrations.setup.github.step1',
+              defaultMessage:
+                'Click <b>Connect GitHub</b> to authorize Quackback to create issues in your GitHub repositories.',
+            },
+            RICH_TEXT
+          )}
         </p>,
-        <p key="2">Select which repository new feedback issues should be created in.</p>,
-        <p key="3">
-          Choose which events trigger issue creation. You can change these settings at any time.
+        <p>
+          {intl.formatMessage({
+            id: 'admin.integrations.setup.github.step2',
+            defaultMessage: 'Select which repository new feedback issues should be created in.',
+          })}
         </p>,
+        <p>{intl.formatMessage(CHOOSE_EVENTS_ISSUE)}</p>,
       ],
     },
     bareConfig: true,
@@ -479,24 +616,42 @@ export const INTEGRATION_SETTINGS: Record<string, IntegrationSettingsEntry> = {
     Icon: getIntegrationIcon('gitlab')!,
     ConnectionActions: GitLabConnectionActions,
     setup: {
-      title: 'Connect GitLab',
-      description:
-        'Connect GitLab.com or a self-hosted GitLab instance to create issues from feedback and review incoming status changes.',
-      steps: [
-        <p key="1">
-          Configure your GitLab{' '}
-          <span className="font-medium text-foreground">Application ID and Secret</span>. For a
-          self-hosted instance, also set the{' '}
-          <span className="font-medium text-foreground">GitLab instance URL</span>. Register the
-          redirect URI shown in the credentials form on your GitLab OAuth application.
+      title: {
+        id: 'admin.integrations.setup.gitlab.title',
+        defaultMessage: 'Connect GitLab',
+      },
+      description: {
+        id: 'admin.integrations.setup.gitlab.description',
+        defaultMessage:
+          'Connect GitLab.com or a self-hosted GitLab instance to create issues from feedback and review incoming status changes.',
+      },
+      steps: (intl) => [
+        <p>
+          {intl.formatMessage(
+            {
+              id: 'admin.integrations.setup.gitlab.step1',
+              defaultMessage:
+                'Configure your GitLab <b>Application ID and Secret</b>. For a self-hosted instance, also set the <b>GitLab instance URL</b>. Register the redirect URI shown in the credentials form on your GitLab OAuth application.',
+            },
+            RICH_TEXT
+          )}
         </p>,
-        <p key="2">
-          Click <span className="font-medium text-foreground">Connect GitLab</span> to authorize
-          Quackback with your GitLab account. You will be sent to GitLab.com or your instance,
-          depending on the URL you configured.
+        <p>
+          {intl.formatMessage(
+            {
+              id: 'admin.integrations.setup.gitlab.step2',
+              defaultMessage:
+                'Click <b>Connect GitLab</b> to authorize Quackback with your GitLab account. You will be sent to GitLab.com or your instance, depending on the URL you configured.',
+            },
+            RICH_TEXT
+          )}
         </p>,
-        <p key="3">
-          Select a project to create issues in, then choose which events should trigger new issues.
+        <p>
+          {intl.formatMessage({
+            id: 'admin.integrations.setup.gitlab.step3',
+            defaultMessage:
+              'Select a project to create issues in, then choose which events should trigger new issues.',
+          })}
         </p>,
       ],
     },
@@ -516,17 +671,36 @@ export const INTEGRATION_SETTINGS: Record<string, IntegrationSettingsEntry> = {
     Icon: getIntegrationIcon('hubspot')!,
     ConnectionActions: HubSpotConnectionActions,
     setup: {
-      title: 'Connect your HubSpot account',
-      description:
-        'Connect HubSpot to enrich feedback with CRM context like company, deal value, and lifecycle stage.',
-      steps: [
-        <p key="1">
-          Connect your HubSpot account to authorize read-only access to contact and deal data.
+      title: {
+        id: 'admin.integrations.setup.hubspot.title',
+        defaultMessage: 'Connect your HubSpot account',
+      },
+      description: {
+        id: 'admin.integrations.setup.hubspot.description',
+        defaultMessage:
+          'Connect HubSpot to enrich feedback with CRM context like company, deal value, and lifecycle stage.',
+      },
+      steps: (intl) => [
+        <p>
+          {intl.formatMessage({
+            id: 'admin.integrations.setup.hubspot.step1',
+            defaultMessage:
+              'Connect your HubSpot account to authorize read-only access to contact and deal data.',
+          })}
         </p>,
-        <p key="2">Open customer context to look up the customer’s HubSpot profile by email.</p>,
-        <p key="3">
-          CRM context (company, deal value, lifecycle stage) appears alongside their feedback to
-          help you prioritize by revenue impact.
+        <p>
+          {intl.formatMessage({
+            id: 'admin.integrations.setup.hubspot.step2',
+            defaultMessage:
+              'Open customer context to look up the customer’s HubSpot profile by email.',
+          })}
+        </p>,
+        <p>
+          {intl.formatMessage({
+            id: 'admin.integrations.setup.hubspot.step3',
+            defaultMessage:
+              'CRM context (company, deal value, lifecycle stage) appears alongside their feedback to help you prioritize by revenue impact.',
+          })}
         </p>,
       ],
     },
@@ -541,15 +715,36 @@ export const INTEGRATION_SETTINGS: Record<string, IntegrationSettingsEntry> = {
     Icon: getIntegrationIcon('intercom')!,
     ConnectionActions: IntercomConnectionActions,
     setup: {
-      title: 'Connect your Intercom account',
-      description:
-        'Connect Intercom to enrich feedback with customer context like company, plan, and tags.',
-      steps: [
-        <p key="1">Connect your Intercom account to authorize read-only access to contact data.</p>,
-        <p key="2">Open customer context to look up the customer’s Intercom profile by email.</p>,
-        <p key="3">
-          Customer context (company, plan, tags) appears alongside their feedback to help you
-          prioritize.
+      title: {
+        id: 'admin.integrations.setup.intercom.title',
+        defaultMessage: 'Connect your Intercom account',
+      },
+      description: {
+        id: 'admin.integrations.setup.intercom.description',
+        defaultMessage:
+          'Connect Intercom to enrich feedback with customer context like company, plan, and tags.',
+      },
+      steps: (intl) => [
+        <p>
+          {intl.formatMessage({
+            id: 'admin.integrations.setup.intercom.step1',
+            defaultMessage:
+              'Connect your Intercom account to authorize read-only access to contact data.',
+          })}
+        </p>,
+        <p>
+          {intl.formatMessage({
+            id: 'admin.integrations.setup.intercom.step2',
+            defaultMessage:
+              'Open customer context to look up the customer’s Intercom profile by email.',
+          })}
+        </p>,
+        <p>
+          {intl.formatMessage({
+            id: 'admin.integrations.setup.intercom.step3',
+            defaultMessage:
+              'Customer context (company, plan, tags) appears alongside their feedback to help you prioritize.',
+          })}
         </p>,
       ],
     },
@@ -564,18 +759,33 @@ export const INTEGRATION_SETTINGS: Record<string, IntegrationSettingsEntry> = {
     Icon: getIntegrationIcon('jira')!,
     ConnectionActions: JiraConnectionActions,
     setup: {
-      title: 'Connect your Jira instance',
-      description:
-        'Connect Jira to create issues from feedback and review incoming status changes.',
-      steps: [
-        <p key="1">
-          Click <span className="font-medium text-foreground">Connect Jira</span> to authorize
-          Quackback to create issues in your Jira instance.
+      title: {
+        id: 'admin.integrations.setup.jira.title',
+        defaultMessage: 'Connect your Jira instance',
+      },
+      description: {
+        id: 'admin.integrations.setup.jira.description',
+        defaultMessage:
+          'Connect Jira to create issues from feedback and review incoming status changes.',
+      },
+      steps: (intl) => [
+        <p>
+          {intl.formatMessage(
+            {
+              id: 'admin.integrations.setup.jira.step1',
+              defaultMessage:
+                'Click <b>Connect Jira</b> to authorize Quackback to create issues in your Jira instance.',
+            },
+            RICH_TEXT
+          )}
         </p>,
-        <p key="2">Select which project and issue type to use for new feedback issues.</p>,
-        <p key="3">
-          Choose which events trigger issue creation. You can change these settings at any time.
+        <p>
+          {intl.formatMessage({
+            id: 'admin.integrations.setup.jira.step2',
+            defaultMessage: 'Select which project and issue type to use for new feedback issues.',
+          })}
         </p>,
+        <p>{intl.formatMessage(CHOOSE_EVENTS_ISSUE)}</p>,
       ],
     },
     renderConfig: ({ integration, isConnected }) => (
@@ -594,18 +804,33 @@ export const INTEGRATION_SETTINGS: Record<string, IntegrationSettingsEntry> = {
     Icon: getIntegrationIcon('linear')!,
     ConnectionActions: LinearConnectionActions,
     setup: {
-      title: 'Connect your Linear workspace',
-      description:
-        'Connect Linear to create issues from feedback and receive verified status updates on linked items.',
-      steps: [
-        <p key="1">
-          Click <span className="font-medium text-foreground">Connect Linear</span> to authorize
-          Quackback to create issues in your Linear workspace.
+      title: {
+        id: 'admin.integrations.setup.linear.title',
+        defaultMessage: 'Connect your Linear workspace',
+      },
+      description: {
+        id: 'admin.integrations.setup.linear.description',
+        defaultMessage:
+          'Connect Linear to create issues from feedback and receive verified status updates on linked items.',
+      },
+      steps: (intl) => [
+        <p>
+          {intl.formatMessage(
+            {
+              id: 'admin.integrations.setup.linear.step1',
+              defaultMessage:
+                'Click <b>Connect Linear</b> to authorize Quackback to create issues in your Linear workspace.',
+            },
+            RICH_TEXT
+          )}
         </p>,
-        <p key="2">Select which team new feedback issues should be created in.</p>,
-        <p key="3">
-          Choose which events trigger issue creation. You can change these settings at any time.
+        <p>
+          {intl.formatMessage({
+            id: 'admin.integrations.setup.linear.step2',
+            defaultMessage: 'Select which team new feedback issues should be created in.',
+          })}
         </p>,
+        <p>{intl.formatMessage(CHOOSE_EVENTS_ISSUE)}</p>,
       ],
     },
     renderConfig: ({ integration, isConnected }) => (
@@ -625,21 +850,42 @@ export const INTEGRATION_SETTINGS: Record<string, IntegrationSettingsEntry> = {
     Icon: getIntegrationIcon('make')!,
     ConnectionActions: MakeConnectionActions,
     setup: {
-      title: 'Connect Make',
-      description:
-        'Connect Make (formerly Integromat) to trigger automation scenarios when users submit feedback, when statuses change, and when comments are added.',
-      steps: [
-        <p key="1">
-          Create a new scenario in Make and add a{' '}
-          <span className="font-medium text-foreground">Webhooks</span> module as the trigger.
+      title: {
+        id: 'admin.integrations.setup.make.title',
+        defaultMessage: 'Connect Make',
+      },
+      description: {
+        id: 'admin.integrations.setup.make.description',
+        defaultMessage:
+          'Connect Make (formerly Integromat) to trigger automation scenarios when users submit feedback, when statuses change, and when comments are added.',
+      },
+      steps: (intl) => [
+        <p>
+          {intl.formatMessage(
+            {
+              id: 'admin.integrations.setup.make.step1',
+              defaultMessage:
+                'Create a new scenario in Make and add a <b>Webhooks</b> module as the trigger.',
+            },
+            RICH_TEXT
+          )}
         </p>,
-        <p key="2">
-          Copy the webhook URL and paste it below, then click{' '}
-          <span className="font-medium text-foreground">Save</span>. Quackback will send a test
-          payload.
+        <p>
+          {intl.formatMessage(
+            {
+              id: 'admin.integrations.setup.make.step2',
+              defaultMessage:
+                'Copy the webhook URL and paste it below, then click <b>Save</b>. Quackback will send a test payload.',
+            },
+            RICH_TEXT
+          )}
         </p>,
-        <p key="3">
-          Choose which events should trigger your scenario, then continue building in Make.
+        <p>
+          {intl.formatMessage({
+            id: 'admin.integrations.setup.make.step3',
+            defaultMessage:
+              'Choose which events should trigger your scenario, then continue building in Make.',
+          })}
         </p>,
       ],
     },
@@ -658,20 +904,41 @@ export const INTEGRATION_SETTINGS: Record<string, IntegrationSettingsEntry> = {
     Icon: getIntegrationIcon('monday')!,
     ConnectionActions: MondayConnectionActions,
     setup: {
-      title: 'Connect Monday.com',
-      description: 'Connect Monday.com to create items from feedback in your selected board.',
-      steps: [
-        <p key="1">
-          Configure your Monday.com{' '}
-          <span className="font-medium text-foreground">OAuth credentials</span> in the platform
-          settings.
+      title: {
+        id: 'admin.integrations.setup.monday.title',
+        defaultMessage: 'Connect Monday.com',
+      },
+      description: {
+        id: 'admin.integrations.setup.monday.description',
+        defaultMessage: 'Connect Monday.com to create items from feedback in your selected board.',
+      },
+      steps: (intl) => [
+        <p>
+          {intl.formatMessage(
+            {
+              id: 'admin.integrations.setup.monday.step1',
+              defaultMessage:
+                'Configure your Monday.com <b>OAuth credentials</b> in the platform settings.',
+            },
+            RICH_TEXT
+          )}
         </p>,
-        <p key="2">
-          Click <span className="font-medium text-foreground">Connect Monday.com</span> to authorize
-          Quackback with your Monday.com workspace.
+        <p>
+          {intl.formatMessage(
+            {
+              id: 'admin.integrations.setup.monday.step2',
+              defaultMessage:
+                'Click <b>Connect Monday.com</b> to authorize Quackback with your Monday.com workspace.',
+            },
+            RICH_TEXT
+          )}
         </p>,
-        <p key="3">
-          Select a board to create items in, then choose which events should trigger new items.
+        <p>
+          {intl.formatMessage({
+            id: 'admin.integrations.setup.monday.step3',
+            defaultMessage:
+              'Select a board to create items in, then choose which events should trigger new items.',
+          })}
         </p>,
       ],
     },
@@ -692,21 +959,41 @@ export const INTEGRATION_SETTINGS: Record<string, IntegrationSettingsEntry> = {
     Icon: getIntegrationIcon('n8n')!,
     ConnectionActions: N8nConnectionActions,
     setup: {
-      title: 'Connect n8n',
-      description:
-        'Connect n8n to trigger automated workflows when users submit feedback, when statuses change, and when comments are added.',
-      steps: [
-        <p key="1">
-          Create a new workflow in n8n and add a{' '}
-          <span className="font-medium text-foreground">Webhook</span> trigger node.
+      title: {
+        id: 'admin.integrations.setup.n8n.title',
+        defaultMessage: 'Connect n8n',
+      },
+      description: {
+        id: 'admin.integrations.setup.n8n.description',
+        defaultMessage:
+          'Connect n8n to trigger automated workflows when users submit feedback, when statuses change, and when comments are added.',
+      },
+      steps: (intl) => [
+        <p>
+          {intl.formatMessage(
+            {
+              id: 'admin.integrations.setup.n8n.step1',
+              defaultMessage: 'Create a new workflow in n8n and add a <b>Webhook</b> trigger node.',
+            },
+            RICH_TEXT
+          )}
         </p>,
-        <p key="2">
-          Copy the production webhook URL and paste it below, then click{' '}
-          <span className="font-medium text-foreground">Save</span>. Quackback will send a test
-          payload.
+        <p>
+          {intl.formatMessage(
+            {
+              id: 'admin.integrations.setup.n8n.step2',
+              defaultMessage:
+                'Copy the production webhook URL and paste it below, then click <b>Save</b>. Quackback will send a test payload.',
+            },
+            RICH_TEXT
+          )}
         </p>,
-        <p key="3">
-          Choose which events should trigger your workflow, then continue building in n8n.
+        <p>
+          {intl.formatMessage({
+            id: 'admin.integrations.setup.n8n.step3',
+            defaultMessage:
+              'Choose which events should trigger your workflow, then continue building in n8n.',
+          })}
         </p>,
       ],
     },
@@ -725,20 +1012,39 @@ export const INTEGRATION_SETTINGS: Record<string, IntegrationSettingsEntry> = {
     Icon: getIntegrationIcon('notion')!,
     ConnectionActions: NotionConnectionActions,
     setup: {
-      title: 'Connect your Notion workspace',
-      description:
-        'Connect Notion to automatically create database items when users submit feedback. Link feedback to your product roadmap in Notion.',
-      steps: [
-        <p key="1">
-          Click <span className="font-medium text-foreground">Connect Notion</span> to authorize
-          Quackback with your Notion workspace.
+      title: {
+        id: 'admin.integrations.setup.notion.title',
+        defaultMessage: 'Connect your Notion workspace',
+      },
+      description: {
+        id: 'admin.integrations.setup.notion.description',
+        defaultMessage:
+          'Connect Notion to automatically create database items when users submit feedback. Link feedback to your product roadmap in Notion.',
+      },
+      steps: (intl) => [
+        <p>
+          {intl.formatMessage(
+            {
+              id: 'admin.integrations.setup.notion.step1',
+              defaultMessage:
+                'Click <b>Connect Notion</b> to authorize Quackback with your Notion workspace.',
+            },
+            RICH_TEXT
+          )}
         </p>,
-        <p key="2">
-          Select which database new feedback items should be created in. The database must have a
-          Title property.
+        <p>
+          {intl.formatMessage({
+            id: 'admin.integrations.setup.notion.step2',
+            defaultMessage:
+              'Select which database new feedback items should be created in. The database must have a Title property.',
+          })}
         </p>,
-        <p key="3">
-          Choose which events trigger new database items. You can change this at any time.
+        <p>
+          {intl.formatMessage({
+            id: 'admin.integrations.setup.notion.step3',
+            defaultMessage:
+              'Choose which events trigger new database items. You can change this at any time.',
+          })}
         </p>,
       ],
     },
@@ -759,23 +1065,42 @@ export const INTEGRATION_SETTINGS: Record<string, IntegrationSettingsEntry> = {
     Icon: getIntegrationIcon('ntfy')!,
     ConnectionActions: NtfyConnectionActions,
     setup: {
-      title: 'Connect ntfy',
-      description:
-        'Connect ntfy to receive instant push notifications when users submit feedback, statuses change, and comments are added.',
-      steps: [
-        <p key="1">
-          Create a topic on <span className="font-medium text-foreground">ntfy.sh</span> or your
-          self-hosted ntfy server. Copy the full topic URL (e.g.{' '}
-          <code className="text-xs">https://ntfy.sh/my-alerts</code>).
+      title: {
+        id: 'admin.integrations.setup.ntfy.title',
+        defaultMessage: 'Connect ntfy',
+      },
+      description: {
+        id: 'admin.integrations.setup.ntfy.description',
+        defaultMessage:
+          'Connect ntfy to receive instant push notifications when users submit feedback, statuses change, and comments are added.',
+      },
+      steps: (intl) => [
+        <p>
+          {intl.formatMessage(
+            {
+              id: 'admin.integrations.setup.ntfy.step1',
+              defaultMessage:
+                'Create a topic on <b>ntfy.sh</b> or your self-hosted ntfy server. Copy the full topic URL (e.g. <code>https://ntfy.sh/my-alerts</code>).',
+            },
+            RICH_TEXT
+          )}
         </p>,
-        <p key="2">
-          Paste the topic URL below. If your topic is protected, add an access token too. Click{' '}
-          <span className="font-medium text-foreground">Save</span>. Quackback will send a test
-          notification to verify the channel.
+        <p>
+          {intl.formatMessage(
+            {
+              id: 'admin.integrations.setup.ntfy.step2',
+              defaultMessage:
+                'Paste the topic URL below. If your topic is protected, add an access token too. Click <b>Save</b>. Quackback will send a test notification to verify the channel.',
+            },
+            RICH_TEXT
+          )}
         </p>,
-        <p key="3">
-          Choose which events should trigger notifications, then install the ntfy app on your
-          devices and subscribe to your topic.
+        <p>
+          {intl.formatMessage({
+            id: 'admin.integrations.setup.ntfy.step3',
+            defaultMessage:
+              'Choose which events should trigger notifications, then install the ntfy app on your devices and subscribe to your topic.',
+          })}
         </p>,
       ],
     },
@@ -794,19 +1119,37 @@ export const INTEGRATION_SETTINGS: Record<string, IntegrationSettingsEntry> = {
     Icon: getIntegrationIcon('salesforce')!,
     ConnectionActions: SalesforceConnectionActions,
     setup: {
-      title: 'Connect Salesforce',
-      description: 'Connect Salesforce to see customer and account details alongside feedback.',
-      steps: [
-        <p key="1">
-          Configure your Salesforce{' '}
-          <span className="font-medium text-foreground">Connected App credentials</span> in the
-          platform settings.
+      title: {
+        id: 'admin.integrations.setup.salesforce.title',
+        defaultMessage: 'Connect Salesforce',
+      },
+      description: {
+        id: 'admin.integrations.setup.salesforce.description',
+        defaultMessage:
+          'Connect Salesforce to see customer and account details alongside feedback.',
+      },
+      steps: (intl) => [
+        <p>
+          {intl.formatMessage(
+            {
+              id: 'admin.integrations.setup.salesforce.step1',
+              defaultMessage:
+                'Configure your Salesforce <b>Connected App credentials</b> in the platform settings.',
+            },
+            RICH_TEXT
+          )}
         </p>,
-        <p key="2">
-          Click <span className="font-medium text-foreground">Connect Salesforce</span> to authorize
-          Quackback with your Salesforce org.
+        <p>
+          {intl.formatMessage(
+            {
+              id: 'admin.integrations.setup.salesforce.step2',
+              defaultMessage:
+                'Click <b>Connect Salesforce</b> to authorize Quackback with your Salesforce org.',
+            },
+            RICH_TEXT
+          )}
         </p>,
-        <p key="3">Customer details are looked up by email when you open customer context.</p>,
+        <p>{intl.formatMessage(LOOKUP_BY_EMAIL)}</p>,
       ],
     },
     renderConfig: ({ integration, isConnected }) => (
@@ -830,15 +1173,38 @@ export const INTEGRATION_SETTINGS: Record<string, IntegrationSettingsEntry> = {
     Icon: SegmentIcon,
     ConnectionActions: SegmentConnectionActions,
     setup: {
-      title: 'Connect Segment',
-      description:
-        'Verify signed identify events and optionally publish segment membership changes.',
-      steps: [
-        <p key="secret">Copy the signing secret from your Segment source or destination.</p>,
-        <p key="endpoint">
-          Send identify events to <code>/api/integrations/segment/identify</code>.
+      title: {
+        id: 'admin.integrations.segment.connectLabel',
+        defaultMessage: 'Connect Segment',
+      },
+      description: {
+        id: 'admin.integrations.setup.segment.description',
+        defaultMessage:
+          'Verify signed identify events and optionally publish segment membership changes.',
+      },
+      steps: (intl) => [
+        <p>
+          {intl.formatMessage({
+            id: 'admin.integrations.setup.segment.step1',
+            defaultMessage: 'Copy the signing secret from your Segment source or destination.',
+          })}
         </p>,
-        <p key="rotate">Reconnect here whenever you rotate either secret.</p>,
+        <p>
+          {intl.formatMessage(
+            {
+              id: 'admin.integrations.setup.segment.step2',
+              defaultMessage:
+                'Send identify events to <endpoint>/api/integrations/segment/identify</endpoint>.',
+            },
+            { endpoint: (chunks: ReactNode) => <code>{chunks}</code> }
+          )}
+        </p>,
+        <p>
+          {intl.formatMessage({
+            id: 'admin.integrations.setup.segment.step3',
+            defaultMessage: 'Reconnect here whenever you rotate either secret.',
+          })}
+        </p>,
       ],
     },
   },
@@ -850,16 +1216,35 @@ export const INTEGRATION_SETTINGS: Record<string, IntegrationSettingsEntry> = {
     Icon: getIntegrationIcon('shortcut')!,
     ConnectionActions: ShortcutConnectionActions,
     setup: {
-      title: 'Connect your Shortcut workspace',
-      description:
-        'Connect Shortcut to create stories from feedback and review incoming status changes.',
-      steps: [
-        <p key="1">
-          Generate an API token from your Shortcut account settings and paste it below.
+      title: {
+        id: 'admin.integrations.setup.shortcut.title',
+        defaultMessage: 'Connect your Shortcut workspace',
+      },
+      description: {
+        id: 'admin.integrations.setup.shortcut.description',
+        defaultMessage:
+          'Connect Shortcut to create stories from feedback and review incoming status changes.',
+      },
+      steps: (intl) => [
+        <p>
+          {intl.formatMessage({
+            id: 'admin.integrations.setup.shortcut.step1',
+            defaultMessage:
+              'Generate an API token from your Shortcut account settings and paste it below.',
+          })}
         </p>,
-        <p key="2">Select which project new feedback stories should be created in.</p>,
-        <p key="3">
-          Choose which events trigger story creation. You can change these settings at any time.
+        <p>
+          {intl.formatMessage({
+            id: 'admin.integrations.setup.shortcut.step2',
+            defaultMessage: 'Select which project new feedback stories should be created in.',
+          })}
+        </p>,
+        <p>
+          {intl.formatMessage({
+            id: 'admin.integrations.setup.shortcut.step3',
+            defaultMessage:
+              'Choose which events trigger story creation. You can change these settings at any time.',
+          })}
         </p>,
       ],
     },
@@ -879,18 +1264,29 @@ export const INTEGRATION_SETTINGS: Record<string, IntegrationSettingsEntry> = {
     Icon: getIntegrationIcon('slack')!,
     ConnectionActions: SlackConnectionActions,
     setup: {
-      title: 'Connect your Slack workspace',
-      description: 'Post notifications to the Slack channel you choose.',
-      steps: [
-        <p key="1">Authorize Quackback to post messages to your Slack workspace.</p>,
-        <p key="2">
-          Select which channel notifications should be posted to. The bot must be added to private
-          channels before they appear in the list.
+      title: {
+        id: 'admin.integrations.setup.slack.title',
+        defaultMessage: 'Connect your Slack workspace',
+      },
+      description: {
+        id: 'admin.integrations.setup.slack.description',
+        defaultMessage: 'Post notifications to the Slack channel you choose.',
+      },
+      steps: (intl) => [
+        <p>
+          {intl.formatMessage({
+            id: 'admin.integrations.setup.slack.step1',
+            defaultMessage: 'Authorize Quackback to post messages to your Slack workspace.',
+          })}
         </p>,
-        <p key="3">
-          Choose which events trigger notifications. You can enable or disable individual event
-          types at any time.
+        <p>
+          {intl.formatMessage({
+            id: 'admin.integrations.setup.slack.step2',
+            defaultMessage:
+              'Select which channel notifications should be posted to. The bot must be added to private channels before they appear in the list.',
+          })}
         </p>,
+        <p>{intl.formatMessage(CHOOSE_EVENTS_NOTIFICATION)}</p>,
       ],
     },
     renderConfig: ({ integration, isConnected }) => (
@@ -911,20 +1307,41 @@ export const INTEGRATION_SETTINGS: Record<string, IntegrationSettingsEntry> = {
     Icon: getIntegrationIcon('stripe')!,
     ConnectionActions: StripeConnectionActions,
     setup: {
-      title: 'Connect Stripe',
-      description: 'Connect Stripe to find customers by email and open their billing profile.',
-      steps: [
-        <p key="1">
-          Create a <span className="font-medium text-foreground">restricted API key</span> in your
-          Stripe dashboard with read access to Customers.
+      title: {
+        id: 'admin.integrations.setup.stripe.title',
+        defaultMessage: 'Connect Stripe',
+      },
+      description: {
+        id: 'admin.integrations.setup.stripe.description',
+        defaultMessage: 'Connect Stripe to find customers by email and open their billing profile.',
+      },
+      steps: (intl) => [
+        <p>
+          {intl.formatMessage(
+            {
+              id: 'admin.integrations.setup.stripe.step1',
+              defaultMessage:
+                'Create a <b>restricted API key</b> in your Stripe dashboard with read access to Customers.',
+            },
+            RICH_TEXT
+          )}
         </p>,
-        <p key="2">
-          Paste the API key below and click{' '}
-          <span className="font-medium text-foreground">Save</span>. Quackback will verify the
-          connection.
+        <p>
+          {intl.formatMessage(
+            {
+              id: 'admin.integrations.setup.stripe.step2',
+              defaultMessage:
+                'Paste the API key below and click <b>Save</b>. Quackback will verify the connection.',
+            },
+            RICH_TEXT
+          )}
         </p>,
-        <p key="3">
-          Customer data will be automatically looked up by email when new feedback is submitted.
+        <p>
+          {intl.formatMessage({
+            id: 'admin.integrations.setup.stripe.step3',
+            defaultMessage:
+              'Customer data will be automatically looked up by email when new feedback is submitted.',
+          })}
         </p>,
       ],
     },
@@ -939,19 +1356,39 @@ export const INTEGRATION_SETTINGS: Record<string, IntegrationSettingsEntry> = {
     Icon: getIntegrationIcon('teams')!,
     ConnectionActions: TeamsConnectionActions,
     setup: {
-      title: 'Connect Microsoft Teams',
-      description:
-        'Connect Microsoft Teams to receive notifications when users submit feedback, when statuses change, and when comments are added.',
-      steps: [
-        <p key="1">
-          Register Quackback in your Azure AD workspace and add the Teams bot permissions.
+      title: {
+        id: 'admin.integrations.setup.teams.title',
+        defaultMessage: 'Connect Microsoft Teams',
+      },
+      description: {
+        id: 'admin.integrations.setup.teams.description',
+        defaultMessage:
+          'Connect Microsoft Teams to receive notifications when users submit feedback, when statuses change, and when comments are added.',
+      },
+      steps: (intl) => [
+        <p>
+          {intl.formatMessage({
+            id: 'admin.integrations.setup.teams.step1',
+            defaultMessage:
+              'Register Quackback in your Azure AD workspace and add the Teams bot permissions.',
+          })}
         </p>,
-        <p key="2">
-          Click <span className="font-medium text-foreground">Connect Teams</span> to authorize
-          Quackback to post to your Teams channels.
+        <p>
+          {intl.formatMessage(
+            {
+              id: 'admin.integrations.setup.teams.step2',
+              defaultMessage:
+                'Click <b>Connect Teams</b> to authorize Quackback to post to your Teams channels.',
+            },
+            RICH_TEXT
+          )}
         </p>,
-        <p key="3">
-          Select a team and channel for notifications, then choose which events trigger messages.
+        <p>
+          {intl.formatMessage({
+            id: 'admin.integrations.setup.teams.step3',
+            defaultMessage:
+              'Select a team and channel for notifications, then choose which events trigger messages.',
+          })}
         </p>,
       ],
     },
@@ -971,20 +1408,45 @@ export const INTEGRATION_SETTINGS: Record<string, IntegrationSettingsEntry> = {
     Icon: getIntegrationIcon('trello')!,
     ConnectionActions: TrelloConnectionActions,
     setup: {
-      title: 'Connect your Trello workspace',
-      description: 'Connect Trello to create cards from feedback and review incoming list changes.',
-      steps: [
-        <p key="1">
-          Create a Trello Power-Up in your workspace (optional, only needed for custom branding).
+      title: {
+        id: 'admin.integrations.setup.trello.title',
+        defaultMessage: 'Connect your Trello workspace',
+      },
+      description: {
+        id: 'admin.integrations.setup.trello.description',
+        defaultMessage:
+          'Connect Trello to create cards from feedback and review incoming list changes.',
+      },
+      steps: (intl) => [
+        <p>
+          {intl.formatMessage({
+            id: 'admin.integrations.setup.trello.step1',
+            defaultMessage:
+              'Create a Trello Power-Up in your workspace (optional, only needed for custom branding).',
+          })}
         </p>,
-        <p key="2">
-          Click <span className="font-medium text-foreground">Connect Trello</span> to authorize
-          Quackback to access your Trello workspace.
+        <p>
+          {intl.formatMessage(
+            {
+              id: 'admin.integrations.setup.trello.step2',
+              defaultMessage:
+                'Click <b>Connect Trello</b> to authorize Quackback to access your Trello workspace.',
+            },
+            RICH_TEXT
+          )}
         </p>,
-        <p key="3">Select which board and list new feedback cards should be created in.</p>,
-        <p key="4">
-          Choose which events trigger card creation. You can enable or disable individual event
-          types at any time.
+        <p>
+          {intl.formatMessage({
+            id: 'admin.integrations.setup.trello.step3',
+            defaultMessage: 'Select which board and list new feedback cards should be created in.',
+          })}
+        </p>,
+        <p>
+          {intl.formatMessage({
+            id: 'admin.integrations.setup.trello.step4',
+            defaultMessage:
+              'Choose which events trigger card creation. You can enable or disable individual event types at any time.',
+          })}
         </p>,
       ],
     },
@@ -1005,23 +1467,42 @@ export const INTEGRATION_SETTINGS: Record<string, IntegrationSettingsEntry> = {
     Icon: getIntegrationIcon('zapier')!,
     ConnectionActions: ZapierConnectionActions,
     setup: {
-      title: 'Connect Zapier',
-      description:
-        'Connect Zapier to trigger automated workflows when users submit feedback, when statuses change, and when comments are added.',
-      steps: [
-        <p key="1">
-          Create a new Zap in Zapier and add a{' '}
-          <span className="font-medium text-foreground">Webhooks by Zapier</span> trigger with{' '}
-          <span className="font-medium text-foreground">Catch Hook</span>.
+      title: {
+        id: 'admin.integrations.setup.zapier.title',
+        defaultMessage: 'Connect Zapier',
+      },
+      description: {
+        id: 'admin.integrations.setup.zapier.description',
+        defaultMessage:
+          'Connect Zapier to trigger automated workflows when users submit feedback, when statuses change, and when comments are added.',
+      },
+      steps: (intl) => [
+        <p>
+          {intl.formatMessage(
+            {
+              id: 'admin.integrations.setup.zapier.step1',
+              defaultMessage:
+                'Create a new Zap in Zapier and add a <b>Webhooks by Zapier</b> trigger with <b>Catch Hook</b>.',
+            },
+            RICH_TEXT
+          )}
         </p>,
-        <p key="2">
-          Copy the webhook URL from Zapier and paste it below, then click{' '}
-          <span className="font-medium text-foreground">Save</span>. Quackback will send a test
-          payload.
+        <p>
+          {intl.formatMessage(
+            {
+              id: 'admin.integrations.setup.zapier.step2',
+              defaultMessage:
+                'Copy the webhook URL from Zapier and paste it below, then click <b>Save</b>. Quackback will send a test payload.',
+            },
+            RICH_TEXT
+          )}
         </p>,
-        <p key="3">
-          Choose which events should trigger your Zap, then continue building your workflow in
-          Zapier.
+        <p>
+          {intl.formatMessage({
+            id: 'admin.integrations.setup.zapier.step3',
+            defaultMessage:
+              'Choose which events should trigger your Zap, then continue building your workflow in Zapier.',
+          })}
         </p>,
       ],
     },
@@ -1041,13 +1522,37 @@ export const INTEGRATION_SETTINGS: Record<string, IntegrationSettingsEntry> = {
     Icon: getIntegrationIcon('zendesk')!,
     ConnectionActions: ZendeskConnectionActions,
     setup: {
-      title: 'Connect your Zendesk account',
-      description:
-        'Connect Zendesk to enrich feedback with support context like organization, role, and tags.',
-      steps: [
-        <p key="1">Connect your Zendesk account to authorize read-only access to user data.</p>,
-        <p key="2">Open customer context to look up the customer’s Zendesk profile by email.</p>,
-        <p key="3">Support context (organization, role, tags) appears alongside their feedback.</p>,
+      title: {
+        id: 'admin.integrations.setup.zendesk.title',
+        defaultMessage: 'Connect your Zendesk account',
+      },
+      description: {
+        id: 'admin.integrations.setup.zendesk.description',
+        defaultMessage:
+          'Connect Zendesk to enrich feedback with support context like organization, role, and tags.',
+      },
+      steps: (intl) => [
+        <p>
+          {intl.formatMessage({
+            id: 'admin.integrations.setup.zendesk.step1',
+            defaultMessage:
+              'Connect your Zendesk account to authorize read-only access to user data.',
+          })}
+        </p>,
+        <p>
+          {intl.formatMessage({
+            id: 'admin.integrations.setup.zendesk.step2',
+            defaultMessage:
+              'Open customer context to look up the customer’s Zendesk profile by email.',
+          })}
+        </p>,
+        <p>
+          {intl.formatMessage({
+            id: 'admin.integrations.setup.zendesk.step3',
+            defaultMessage:
+              'Support context (organization, role, tags) appears alongside their feedback.',
+          })}
+        </p>,
       ],
     },
     renderConfig: ({ integration, isConnected }) => (

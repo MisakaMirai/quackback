@@ -1,9 +1,10 @@
 import { lazy, useState } from 'react'
 import { Link } from '@tanstack/react-router'
+import type { MessageDescriptor } from 'react-intl'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { StateBadge } from '@/components/shared/state-badge'
 import { INTEGRATION_ICON_MAP } from '@/components/icons/integration-icons'
 import {
-  INTEGRATION_CATEGORIES,
   type IntegrationCatalogEntry,
   type IntegrationCategory,
   type PlatformCredentialField,
@@ -24,6 +25,29 @@ const CATEGORY_ORDER: IntegrationCategory[] = [
   'automation',
 ]
 
+const CATEGORY_LABELS: Record<IntegrationCategory, MessageDescriptor> = {
+  notifications: {
+    id: 'admin.integrations.list.category.notifications',
+    defaultMessage: 'Notifications',
+  },
+  issue_tracking: {
+    id: 'admin.integrations.list.category.issueTracking',
+    defaultMessage: 'Issue tracking',
+  },
+  support_crm: {
+    id: 'admin.integrations.list.category.supportCrm',
+    defaultMessage: 'Support & CRM',
+  },
+  user_data: {
+    id: 'admin.integrations.list.category.userData',
+    defaultMessage: 'User data',
+  },
+  automation: {
+    id: 'admin.integrations.list.category.automation',
+    defaultMessage: 'Automation',
+  },
+}
+
 interface IntegrationStatus {
   id: string
   status: 'active' | 'paused' | 'error'
@@ -41,6 +65,7 @@ interface SelectedIntegration {
 }
 
 export function IntegrationList({ catalog, integrations }: IntegrationListProps) {
+  const intl = useOptionalIntl()
   const [selectedIntegration, setSelectedIntegration] = useState<SelectedIntegration | null>(null)
   const [activeCategory, setActiveCategory] = useState<IntegrationCategory | 'all'>('all')
 
@@ -68,12 +93,26 @@ export function IntegrationList({ catalog, integrations }: IntegrationListProps)
 
   return (
     <div className="space-y-4">
-      <div role="group" aria-label="Categories" className="flex flex-wrap gap-1.5">
+      <div
+        role="group"
+        aria-label={intl.formatMessage({
+          id: 'admin.integrations.list.categoriesAria',
+          defaultMessage: 'Categories',
+        })}
+        className="flex flex-wrap gap-1.5"
+      >
         {[
-          { id: 'all' as const, label: 'All', count: catalog.length },
+          {
+            id: 'all' as const,
+            label: intl.formatMessage({
+              id: 'admin.integrations.sync.filterAll',
+              defaultMessage: 'All',
+            }),
+            count: catalog.length,
+          },
           ...populatedCategories.map((cat) => ({
             id: cat,
-            label: INTEGRATION_CATEGORIES[cat].label,
+            label: intl.formatMessage(CATEGORY_LABELS[cat]),
             count: categoryCounts.get(cat) ?? 0,
           })),
         ].map((chip) => (
@@ -170,7 +209,12 @@ export function IntegrationList({ catalog, integrations }: IntegrationListProps)
               <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">
                 {entry.name}
               </span>
-              <span className="text-xs text-muted-foreground">Coming soon</span>
+              <span className="text-xs text-muted-foreground">
+                {intl.formatMessage({
+                  id: 'admin.integrations.list.comingSoon',
+                  defaultMessage: 'Coming soon',
+                })}
+              </span>
             </div>
           )
         })}

@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import { ExclamationTriangleIcon } from '@heroicons/react/24/solid'
 import { ArrowUpTrayIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline'
 import { TimeAgo } from '@/components/ui/time-ago'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 
 export interface IntegrationHealth {
   lastOutboundAt: string | null
@@ -35,6 +36,7 @@ export function IntegrationHealthPanel({
   actions,
   embedded = false,
 }: IntegrationHealthPanelProps) {
+  const intl = useOptionalIntl()
   const resolved = health ?? emptyHealth
   const { lastOutboundAt, lastInboundAt, lastError, lastErrorAt, attentionCount = 0 } = resolved
 
@@ -51,33 +53,58 @@ export function IntegrationHealthPanel({
         <h3
           className={`text-[11px] font-medium uppercase tracking-wide text-muted-foreground ${actions ? 'pt-1.5' : ''}`}
         >
-          Health
+          {intl.formatMessage({
+            id: 'admin.integrations.health.title',
+            defaultMessage: 'Health',
+          })}
         </h3>
         {actions}
       </div>
       <dl className={`mt-3 grid gap-3 ${embedded ? 'grid-cols-2' : 'sm:grid-cols-2'}`}>
         <HealthRow
           icon={<ArrowUpTrayIcon className="h-4 w-4 text-muted-foreground" />}
-          label="Last sync sent"
+          label={intl.formatMessage({
+            id: 'admin.integrations.health.lastSent',
+            defaultMessage: 'Last sync sent',
+          })}
           at={lastOutboundAt}
-          emptyLabel="No deliveries yet"
+          emptyLabel={intl.formatMessage({
+            id: 'admin.integrations.health.noDeliveries',
+            defaultMessage: 'No deliveries yet',
+          })}
         />
         <HealthRow
           icon={<ArrowDownTrayIcon className="h-4 w-4 text-muted-foreground" />}
-          label="Last sync received"
+          label={intl.formatMessage({
+            id: 'admin.integrations.health.lastReceived',
+            defaultMessage: 'Last sync received',
+          })}
           at={lastInboundAt}
-          emptyLabel="None received"
+          emptyLabel={intl.formatMessage({
+            id: 'admin.integrations.health.noneReceived',
+            defaultMessage: 'None received',
+          })}
         />
       </dl>
 
       {attentionCount > 0 && (
         <p className="mt-3 text-sm text-destructive" role="status">
-          {attentionCount} {attentionCount === 1 ? 'sync needs' : 'syncs need'} attention.
+          {intl.formatMessage(
+            {
+              id: 'admin.integrations.health.attention',
+              defaultMessage:
+                '{count, plural, one {# sync needs attention.} other {# syncs need attention.}}',
+            },
+            { count: attentionCount }
+          )}
         </p>
       )}
       {onViewHistory && (
         <button type="button" onClick={onViewHistory} className="mt-2 text-xs underline">
-          View sync history
+          {intl.formatMessage({
+            id: 'admin.integrations.health.viewHistory',
+            defaultMessage: 'View sync history',
+          })}
         </button>
       )}
 
@@ -86,7 +113,12 @@ export function IntegrationHealthPanel({
           <ExclamationTriangleIcon className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
           <div className="min-w-0">
             <div className="flex items-center gap-2 text-xs font-medium text-destructive">
-              <span>Connection error</span>
+              <span>
+                {intl.formatMessage({
+                  id: 'admin.integrations.health.connectionError',
+                  defaultMessage: 'Connection error',
+                })}
+              </span>
               {lastErrorAt && (
                 <span className="font-normal text-destructive/70">
                   <TimeAgo date={lastErrorAt} />
