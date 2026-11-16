@@ -8,7 +8,7 @@ import { UserAttributesList } from '@/components/admin/settings/user-attributes/
 import { adminPageHead } from '@/lib/client/admin-head'
 
 export const Route = createFileRoute('/admin/settings/people')({
-  head: adminPageHead('People settings'),
+  head: adminPageHead('People settings', 'admin.pageTitle.peopleSettings'),
   loader: async ({ context }) => {
     assertRoutePermission(context.permissions, PERMISSIONS.USER_ATTRIBUTE_VIEW)
     const { queryClient } = context

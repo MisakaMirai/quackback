@@ -26,7 +26,7 @@ interface TicketsRedirectSearch {
 }
 
 export const Route = createFileRoute('/admin/tickets')({
-  head: adminPageHead('Tickets'),
+  head: adminPageHead('Tickets', 'admin.pageTitle.tickets'),
   validateSearch: (search: Record<string, unknown>): TicketsRedirectSearch => ({
     t: typeof search.t === 'string' && isValidTypeId(search.t, 'ticket') ? search.t : undefined,
   }),

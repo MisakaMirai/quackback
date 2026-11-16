@@ -23,7 +23,7 @@ const searchSchema = z.object({
 })
 
 export const Route = createFileRoute('/admin/settings/members')({
-  head: adminPageHead('Members settings'),
+  head: adminPageHead('Members settings', 'admin.pageTitle.membersSettings'),
   validateSearch: searchSchema,
   loader: async ({ context }) => {
     assertRoutePermission(context.permissions, PERMISSIONS.MEMBER_VIEW)

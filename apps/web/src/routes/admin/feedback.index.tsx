@@ -11,7 +11,7 @@ import { adminPageHead } from '@/lib/client/admin-head'
 import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 
 export const Route = createFileRoute('/admin/feedback/')({
-  head: adminPageHead('Feedback'),
+  head: adminPageHead('Feedback', 'admin.pageTitle.feedback'),
   // Note: No loaderDeps for the filter fields - the loader only runs on
   // initial route load for SSR (prefetching the default/unfiltered dataset).
   // Client-side filter changes are handled by InboxContainer's useInboxPosts

@@ -17,7 +17,7 @@ const searchSchema = z.object({
 type ConversationDataTab = 'attributes' | 'tags'
 
 export const Route = createFileRoute('/admin/settings/conversation-data')({
-  head: adminPageHead('Conversation data settings'),
+  head: adminPageHead('Conversation data settings', 'admin.pageTitle.conversationDataSettings'),
   validateSearch: searchSchema,
   beforeLoad: ({ context }) => {
     if (!isProductEnabled(context.settings?.featureFlags, 'support')) {

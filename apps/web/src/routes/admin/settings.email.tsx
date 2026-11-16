@@ -13,7 +13,7 @@ import { adminPageHead } from '@/lib/client/admin-head'
  * feedback, changelog and status email send whether or not Support is on.
  */
 export const Route = createFileRoute('/admin/settings/email')({
-  head: adminPageHead('Email settings'),
+  head: adminPageHead('Email settings', 'admin.pageTitle.emailSettings'),
   // Someone who runs the support inbox but not the workspace's sending lands
   // on the inbox settings they can change, not on the sign-in page: links to
   // sending domains reach them from bells and emails sent before this page.

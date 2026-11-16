@@ -3,7 +3,7 @@ import { adminPageHead } from '@/lib/client/admin-head'
 
 /** The module has no page of its own: it opens on the first page the viewer can open. */
 export const Route = createFileRoute('/admin/settings/feedback')({
-  head: adminPageHead('Feedback settings'),
+  head: adminPageHead('Feedback settings', 'admin.pageTitle.feedbackSettings'),
   beforeLoad: async ({ context }) => {
     // Loaded here so the settings page registry stays out of the entry chunk.
     const { settingsModuleRedirectPath } =

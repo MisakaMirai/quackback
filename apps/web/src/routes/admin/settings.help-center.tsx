@@ -29,7 +29,7 @@ const searchSchema = z.object({
 })
 
 export const Route = createFileRoute('/admin/settings/help-center')({
-  head: adminPageHead('Help center settings'),
+  head: adminPageHead('Help center settings', 'admin.pageTitle.helpCenterSettings'),
   validateSearch: searchSchema,
   beforeLoad: ({ context }) => {
     if (!isProductEnabled(context.settings?.featureFlags, 'helpCenter')) {

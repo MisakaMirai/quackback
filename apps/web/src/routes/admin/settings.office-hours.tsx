@@ -58,7 +58,7 @@ const officeHoursQuery = queryOptions({
 })
 
 export const Route = createFileRoute('/admin/settings/office-hours')({
-  head: adminPageHead('Office hours settings'),
+  head: adminPageHead('Office hours settings', 'admin.pageTitle.officeHoursSettings'),
   beforeLoad: ({ context }) => {
     if (!isProductEnabled(context.settings?.featureFlags, 'support')) {
       throw redirect({ to: '/admin/settings/general' })

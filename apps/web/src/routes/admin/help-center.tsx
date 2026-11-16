@@ -5,7 +5,7 @@ import { helpCenterSearchSchema } from '@/components/admin/help-center/help-cent
 import { adminPageHead } from '@/lib/client/admin-head'
 
 export const Route = createFileRoute('/admin/help-center')({
-  head: adminPageHead('Help center'),
+  head: adminPageHead('Help center', 'admin.pageTitle.helpCenter'),
   validateSearch: (raw: Record<string, unknown>) =>
     blankOmittedSearchKeys(raw, helpCenterSearchSchema.parse(raw)),
   beforeLoad: ({ context }) => {

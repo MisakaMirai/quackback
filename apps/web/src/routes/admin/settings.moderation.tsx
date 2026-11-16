@@ -7,7 +7,7 @@ import { ModerationPage } from '@/components/admin/settings/moderation-settings-
 import { adminPageHead } from '@/lib/client/admin-head'
 
 export const Route = createFileRoute('/admin/settings/moderation')({
-  head: adminPageHead('Moderation settings'),
+  head: adminPageHead('Moderation settings', 'admin.pageTitle.moderationSettings'),
   beforeLoad: ({ context }) => {
     if (!isProductEnabled(context.settings?.featureFlags, 'feedback')) {
       throw redirect({ to: '/admin/settings/general' })

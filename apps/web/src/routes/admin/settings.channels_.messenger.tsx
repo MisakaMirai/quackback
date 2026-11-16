@@ -7,7 +7,7 @@ import { readBatch } from '@/lib/client/queries/read-batch'
 import { adminPageHead } from '@/lib/client/admin-head'
 
 export const Route = createFileRoute('/admin/settings/channels_/messenger')({
-  head: adminPageHead('Messenger channel settings'),
+  head: adminPageHead('Messenger channel settings', 'admin.pageTitle.messengerChannelSettings'),
   beforeLoad: ({ context }) => {
     if (!context.settings?.featureFlags?.supportInbox) {
       throw redirect({ to: '/admin/settings/general' })

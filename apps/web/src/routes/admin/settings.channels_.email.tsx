@@ -10,7 +10,7 @@ import { warmQuery } from '@/lib/client/queries/warm-query'
 import { adminPageHead } from '@/lib/client/admin-head'
 
 export const Route = createFileRoute('/admin/settings/channels_/email')({
-  head: adminPageHead('Email channel settings'),
+  head: adminPageHead('Email channel settings', 'admin.pageTitle.emailChannelSettings'),
   beforeLoad: ({ context }) => {
     if (!isProductEnabled(context.settings?.featureFlags, 'support')) {
       // Sending addresses used to live here, and old links still point here.

@@ -8,7 +8,7 @@ import { adminPageHead } from '@/lib/client/admin-head'
 // /admin/settings/security/sso, which is a redirect-only route for stale
 // bookmarks. The URL is still /admin/settings/security/sso/new.
 export const Route = createFileRoute('/admin/settings/security/sso_/new')({
-  head: adminPageHead('New single sign-on provider'),
+  head: adminPageHead('New single sign-on provider', 'admin.pageTitle.newSsoProvider'),
   beforeLoad: ({ context }) => {
     assertRoutePermission(context.permissions, PERMISSIONS.AUTH_MANAGE)
   },

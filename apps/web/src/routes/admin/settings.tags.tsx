@@ -9,7 +9,7 @@ import { readBatch } from '@/lib/client/queries/read-batch'
 import { adminPageHead } from '@/lib/client/admin-head'
 
 export const Route = createFileRoute('/admin/settings/tags')({
-  head: adminPageHead('Tags settings'),
+  head: adminPageHead('Tags settings', 'admin.pageTitle.tagsSettings'),
   beforeLoad: ({ context }) => {
     if (!isProductEnabled(context.settings?.featureFlags, 'feedback')) {
       throw redirect({ to: '/admin/settings/general' })

@@ -45,7 +45,7 @@ const searchSchema = z.object({
 })
 
 export const Route = createFileRoute('/admin/users')({
-  head: adminPageHead('Users'),
+  head: adminPageHead('Users', 'admin.pageTitle.users'),
   validateSearch: searchSchema,
   // Note: No loaderDeps for the filter fields - the loader only runs on
   // initial route load for SSR (prefetching the default/unfiltered dataset).

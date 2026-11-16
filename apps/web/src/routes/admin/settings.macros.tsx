@@ -10,7 +10,7 @@ import { warmQuery } from '@/lib/client/queries/warm-query'
 import { adminPageHead } from '@/lib/client/admin-head'
 
 export const Route = createFileRoute('/admin/settings/macros')({
-  head: adminPageHead('Macros settings'),
+  head: adminPageHead('Macros settings', 'admin.pageTitle.macrosSettings'),
   beforeLoad: ({ context }) => {
     if (!isProductEnabled(context.settings?.featureFlags, 'support')) {
       throw redirect({ to: '/admin/settings/general' })

@@ -72,7 +72,7 @@ const slaOfficeHoursQuery = queryOptions({
 })
 
 export const Route = createFileRoute('/admin/settings/sla')({
-  head: adminPageHead('SLA settings'),
+  head: adminPageHead('SLA settings', 'admin.pageTitle.slaSettings'),
   beforeLoad: ({ context }) => {
     if (!isProductEnabled(context.settings?.featureFlags, 'support')) {
       throw redirect({ to: '/admin/settings/general' })

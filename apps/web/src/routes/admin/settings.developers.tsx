@@ -39,7 +39,7 @@ const searchSchema = z.object({
 type ApiTab = 'keys' | 'webhooks' | 'mcp'
 
 export const Route = createFileRoute('/admin/settings/developers')({
-  head: adminPageHead('Developers settings'),
+  head: adminPageHead('Developers settings', 'admin.pageTitle.developersSettings'),
   validateSearch: searchSchema,
   loader: async ({ context }) => {
     assertRoutePermission(context.permissions, PERMISSIONS.API_KEY_MANAGE)

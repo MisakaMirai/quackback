@@ -6,7 +6,7 @@ import { DEFAULT_LOCALE, loadAreaMessages } from '@/lib/shared/i18n'
 import { adminPageHead } from '@/lib/client/admin-head'
 
 export const Route = createFileRoute('/admin/settings/notifications')({
-  head: adminPageHead('Notifications settings'),
+  head: adminPageHead('Notifications settings', 'admin.pageTitle.notificationsSettings'),
   // Per-member page (each team member manages their own notification
   // preferences) with no extra permission gate — the parent `/admin` guard's
   // admin/member wall is the only requirement, so no per-route RPC guard.

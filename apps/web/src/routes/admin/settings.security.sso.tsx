@@ -7,7 +7,7 @@ import { adminPageHead } from '@/lib/client/admin-head'
  * stale bookmarks or inbound links so they land on the right place.
  */
 export const Route = createFileRoute('/admin/settings/security/sso')({
-  head: adminPageHead('Single sign-on settings'),
+  head: adminPageHead('Single sign-on settings', 'admin.pageTitle.ssoSettings'),
   beforeLoad: () => {
     throw redirect({ to: '/admin/settings/security/authentication', search: { tab: 'sign-in' } })
   },

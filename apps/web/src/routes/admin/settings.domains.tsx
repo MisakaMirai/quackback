@@ -20,7 +20,7 @@ import {
 import { adminPageHead } from '@/lib/client/admin-head'
 
 export const Route = createFileRoute('/admin/settings/domains')({
-  head: adminPageHead('Domains settings'),
+  head: adminPageHead('Domains settings', 'admin.pageTitle.domainsSettings'),
   loader: async ({ context }) => {
     assertRouteAnyPermission(context.permissions, DOMAINS_PAGE_PERMISSIONS)
     const can = (permission: PermissionKey) => context.permissions?.includes(permission) ?? false

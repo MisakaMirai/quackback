@@ -9,7 +9,7 @@ import { readBatch } from '@/lib/client/queries/read-batch'
 import { adminPageHead } from '@/lib/client/admin-head'
 
 export const Route = createFileRoute('/admin/settings/integrations/')({
-  head: adminPageHead('Integrations settings'),
+  head: adminPageHead('Integrations settings', 'admin.pageTitle.integrationsSettings'),
   loader: async ({ context }) => {
     assertRoutePermission(context.permissions, PERMISSIONS.INTEGRATION_VIEW)
     const ensure = readBatch(context.queryClient)

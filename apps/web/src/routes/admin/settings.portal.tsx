@@ -67,7 +67,7 @@ import { useSessionContext, useWorkspaceSettings } from '@/lib/client/hooks/use-
 import { adminPageHead } from '@/lib/client/admin-head'
 
 export const Route = createFileRoute('/admin/settings/portal')({
-  head: adminPageHead('Portal settings'),
+  head: adminPageHead('Portal settings', 'admin.pageTitle.portalSettings'),
   loader: async ({ context }) => {
     // Portal config reads/writes require settings.branding, which non-admin
     // team roles lack. Gate the page instead of letting managers land on a
