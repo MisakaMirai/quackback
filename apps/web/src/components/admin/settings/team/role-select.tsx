@@ -29,7 +29,7 @@ export function useRoleChoice(value: string, held?: RoleChoice): RoleChoice {
     return {
       role: 'admin',
       label: intl.formatMessage({
-        id: 'onboarding.live.invite.admin',
+        id: 'admin.people.invite.admin',
         defaultMessage: 'Admin',
       }),
     }
@@ -37,7 +37,7 @@ export function useRoleChoice(value: string, held?: RoleChoice): RoleChoice {
     return {
       role: 'member',
       label: intl.formatMessage({
-        id: 'onboarding.live.invite.member',
+        id: 'admin.people.invite.member',
         defaultMessage: 'Member',
       }),
     }
@@ -49,7 +49,7 @@ export function useRoleChoice(value: string, held?: RoleChoice): RoleChoice {
     label:
       found?.name ??
       intl.formatMessage({
-        id: 'onboarding.live.invite.member',
+        id: 'admin.people.invite.member',
         defaultMessage: 'Member',
       }),
   }

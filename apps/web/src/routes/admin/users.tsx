@@ -89,7 +89,7 @@ function UsersErrorComponent({ error, reset }: { error: unknown; reset: () => vo
           <p className="mb-4">{message}</p>
           <Button onClick={reset} variant="outline" size="sm">
             {intl.formatMessage({
-              id: 'common.errorPage.tryAgain',
+              id: 'common.tryAgain',
               defaultMessage: 'Try again',
             })}
           </Button>

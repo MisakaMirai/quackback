@@ -64,7 +64,7 @@ function FeedbackErrorComponent({ error, reset }: { error: unknown; reset: () =>
           <p className="mb-4">{message}</p>
           <Button onClick={reset} variant="outline" size="sm">
             {intl.formatMessage({
-              id: 'common.errorPage.tryAgain',
+              id: 'common.tryAgain',
               defaultMessage: 'Try again',
             })}
           </Button>

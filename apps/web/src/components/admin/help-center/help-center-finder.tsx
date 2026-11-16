@@ -203,7 +203,7 @@ function LiveHelpCenterFinder({
                 { category: currentCategory.name }
               )
             : intl.formatMessage({
-                id: 'portal.hc.search.placeholder',
+                id: 'admin.helpCenter.searchPlaceholder',
                 defaultMessage: 'Search articles...',
               })
         }

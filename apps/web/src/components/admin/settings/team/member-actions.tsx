@@ -178,11 +178,11 @@ export function MemberActions({
     choice.roleId ? assignedRoleId === choice.roleId : memberRole === choice.role && !holdsCustom
 
   const adminLabel = intl.formatMessage({
-    id: 'onboarding.live.invite.admin',
+    id: 'admin.people.invite.admin',
     defaultMessage: 'Admin',
   })
   const memberLabel = intl.formatMessage({
-    id: 'onboarding.live.invite.member',
+    id: 'admin.people.invite.member',
     defaultMessage: 'Member',
   })
 

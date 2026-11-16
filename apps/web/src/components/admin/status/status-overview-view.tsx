@@ -123,7 +123,7 @@ export function StatusOverviewView() {
                     defaultMessage: 'Retrying…',
                   })
                 : intl.formatMessage({
-                    id: 'common.errorPage.tryAgain',
+                    id: 'common.tryAgain',
                     defaultMessage: 'Try again',
                   })}
             </Button>

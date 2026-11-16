@@ -660,7 +660,7 @@ function ImportProgress({
           })}
       </p>
       <Button variant="outline" size="sm" onClick={onReset}>
-        {intl.formatMessage({ id: 'common.errorPage.tryAgain', defaultMessage: 'Try again' })}
+        {intl.formatMessage({ id: 'common.tryAgain', defaultMessage: 'Try again' })}
       </Button>
     </div>
   )

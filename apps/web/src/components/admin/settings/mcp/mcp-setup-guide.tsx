@@ -1,5 +1,4 @@
 import { useState, useMemo, useEffect, type ReactNode } from 'react'
-import { FormattedMessage } from 'react-intl'
 import { Link } from '@tanstack/react-router'
 import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import {
@@ -389,10 +388,13 @@ export function McpSetupGuide({ endpointUrl }: McpSetupGuideProps) {
               </span>
             </div>
             <p className="text-[11px] text-muted-foreground ml-7">
-              <FormattedMessage
-                id="admin.settings.mcp.setup.authBody"
-                defaultMessage="Use an <link>API key</link> or OAuth (browser login, recommended). Claude Code and Claude Desktop support both."
-                values={{
+              {intl.formatMessage(
+                {
+                  id: 'admin.settings.mcp.setup.authBody',
+                  defaultMessage:
+                    'Use an <link>API key</link> or OAuth (browser login, recommended). Claude Code and Claude Desktop support both.',
+                },
+                {
                   link: (chunks: ReactNode) => (
                     <Link
                       to="/admin/settings/developers"
@@ -402,8 +404,8 @@ export function McpSetupGuide({ endpointUrl }: McpSetupGuideProps) {
                       {chunks}
                     </Link>
                   ),
-                }}
-              />
+                }
+              )}
             </p>
           </div>
 
@@ -550,7 +552,7 @@ export function McpSetupGuide({ endpointUrl }: McpSetupGuideProps) {
                 className={`${INLINE_LINK} inline-flex items-center gap-1 text-[11px]`}
               >
                 {intl.formatMessage({
-                  id: 'common.errorPage.reference',
+                  id: 'common.reference',
                   defaultMessage: 'Reference',
                 })}
                 <NewTabHint />

@@ -132,7 +132,7 @@ export function OverviewDashboard({
               defaultMessage="Couldn’t load this page."
             />{' '}
             <RetryButton onClick={() => void overview.refetch()}>
-              <FormattedMessage id="common.errorPage.tryAgain" defaultMessage="Try again" />
+              <FormattedMessage id="common.tryAgain" defaultMessage="Try again" />
             </RetryButton>
           </Quiet>
         </SettingsCard>
@@ -182,10 +182,7 @@ export function OverviewDashboard({
                     <p className="border-b border-border px-3 py-2.5 text-sm text-muted-foreground sm:px-4">
                       {feedError}{' '}
                       <RetryButton onClick={() => void overview.refetch()}>
-                        <FormattedMessage
-                          id="common.errorPage.tryAgain"
-                          defaultMessage="Try again"
-                        />
+                        <FormattedMessage id="common.tryAgain" defaultMessage="Try again" />
                       </RetryButton>
                     </p>
                   ) : null}
@@ -199,10 +196,7 @@ export function OverviewDashboard({
                     <Quiet>
                       {feedError}{' '}
                       <RetryButton onClick={() => void overview.refetch()}>
-                        <FormattedMessage
-                          id="common.errorPage.tryAgain"
-                          defaultMessage="Try again"
-                        />
+                        <FormattedMessage id="common.tryAgain" defaultMessage="Try again" />
                       </RetryButton>
                     </Quiet>
                   ) : (
@@ -514,7 +508,7 @@ function ModuleCard<T>({
           {error}{' '}
           {onRetry ? (
             <RetryButton onClick={onRetry}>
-              <FormattedMessage id="common.errorPage.tryAgain" defaultMessage="Try again" />
+              <FormattedMessage id="common.tryAgain" defaultMessage="Try again" />
             </RetryButton>
           ) : null}
         </Quiet>

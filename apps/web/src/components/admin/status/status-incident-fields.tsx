@@ -110,7 +110,7 @@ export function AffectedComponentsField({
         })}{' '}
         <button type="button" className="underline" onClick={() => void refetch()}>
           {intl.formatMessage({
-            id: 'common.errorPage.tryAgain',
+            id: 'common.tryAgain',
             defaultMessage: 'Try again',
           })}
         </button>

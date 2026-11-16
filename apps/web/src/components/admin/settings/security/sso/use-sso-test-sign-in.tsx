@@ -528,7 +528,7 @@ function ModalFooter({
       {hasResultOrError && !applying && !applied && (
         <Button size="sm" variant={successAction ? 'outline' : 'default'} onClick={onStart}>
           {intl.formatMessage({
-            id: 'common.errorPage.tryAgain',
+            id: 'common.tryAgain',
             defaultMessage: 'Try again',
           })}
         </Button>

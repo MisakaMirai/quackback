@@ -5467,5 +5467,13 @@
   "inbox.macros.empty": "找不到巨集。",
   "inbox.snooze.typeTime": "輸入時間",
   "inbox.snooze.placeholder": "明天上午、下週、週五下午…",
-  "helpCenter.searchCompact": "搜尋..."
+  "helpCenter.searchCompact": "搜尋...",
+  "common.tryAgain": "重試",
+  "common.reference": "參考",
+  "admin.helpCenter.searchPlaceholder": "搜尋...",
+  "admin.people.invite.admin": "管理員",
+  "admin.people.invite.member": "成員",
+  "admin.settings.imports.download": "下載",
+  "admin.settings.imports.columnSize": "大小",
+  "portal.helpCenter.searchCompact": "搜尋..."
 }

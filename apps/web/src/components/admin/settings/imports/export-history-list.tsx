@@ -127,7 +127,7 @@ export function ExportHistoryList() {
             </TableHead>
             <TableHead>
               {intl.formatMessage({
-                id: 'files.archive.columnSize',
+                id: 'admin.settings.imports.columnSize',
                 defaultMessage: 'Size',
               })}
             </TableHead>
@@ -144,7 +144,10 @@ export function ExportHistoryList() {
               })}
             </TableHead>
             <TableHead className="text-right">
-              {intl.formatMessage({ id: 'files.download', defaultMessage: 'Download' })}
+              {intl.formatMessage({
+                id: 'admin.settings.imports.download',
+                defaultMessage: 'Download',
+              })}
             </TableHead>
           </TableRow>
         </TableHeader>

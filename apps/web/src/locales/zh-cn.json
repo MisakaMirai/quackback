@@ -5467,5 +5467,13 @@
   "inbox.macros.empty": "未找到宏。",
   "inbox.snooze.typeTime": "输入时间",
   "inbox.snooze.placeholder": "明天上午、下周、周五下午…",
-  "helpCenter.searchCompact": "搜索..."
+  "helpCenter.searchCompact": "搜索...",
+  "common.tryAgain": "重试",
+  "common.reference": "参考",
+  "admin.helpCenter.searchPlaceholder": "搜索...",
+  "admin.people.invite.admin": "管理员",
+  "admin.people.invite.member": "成员",
+  "admin.settings.imports.download": "下载",
+  "admin.settings.imports.columnSize": "大小",
+  "portal.helpCenter.searchCompact": "搜索..."
 }

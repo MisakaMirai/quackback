@@ -119,7 +119,7 @@ export function HelpCenterCompactSearch() {
     <Button variant="outline" size="sm" className="gap-2 text-muted-foreground" disabled>
       <MagnifyingGlassIcon className="h-4 w-4" />
       <span className="hidden sm:inline">
-        {intl.formatMessage({ id: 'helpCenter.searchCompact', defaultMessage: 'Search...' })}
+        {intl.formatMessage({ id: 'portal.helpCenter.searchCompact', defaultMessage: 'Search...' })}
       </span>
     </Button>
   )

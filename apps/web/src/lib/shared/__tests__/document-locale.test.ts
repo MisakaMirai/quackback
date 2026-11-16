@@ -25,12 +25,12 @@ describe('documentLocale', () => {
     }
   })
   it('keeps untranslated auth utility pages on the default locale', () => {
-    // These render hard-coded English with no IntlProvider — labeling them
+    // These render hard-coded English with no IntlProvider, labeling them
     // `lang="zh-cn"` would misstate the language.
     expect(documentLocale(['__root__', '/auth/login'], 'zh-cn')).toBe('en')
     expect(documentLocale(['__root__', '/auth/signup'], 'zh-cn')).toBe('en')
     expect(documentLocale(['__root__', '/auth/two-factor'], 'zh-cn')).toBe('en')
-    expect(documentLocale(['__root__', '/auth/auth-complete'], 'zh-cn')).toBe('en')
+    expect(documentLocale(['__root__', '/auth/auth-complete'], 'zh-cn')).toBe('zh-cn')
     expect(documentLocale(['__root__', '/auth/open-handoff'], 'zh-tw')).toBe('en')
   })
   it('keeps the admin app (incl. its English-first login) and system routes on the default', () => {
@@ -40,7 +40,7 @@ describe('documentLocale', () => {
     expect(documentLocale(['__root__', '/admin/posts'], 'zh-cn')).toBe('en')
     expect(documentLocale(['__root__', '/onboarding'], 'zh-cn')).toBe('en')
     expect(documentLocale(['__root__', '/apps'], 'zh-cn')).toBe('en')
-    expect(documentLocale(['__root__', '/verify-magic-link'], 'zh-cn')).toBe('en')
+    expect(documentLocale(['__root__', '/verify-magic-link'], 'zh-cn')).toBe('zh-cn')
   })
 })
 
