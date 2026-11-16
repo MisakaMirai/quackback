@@ -2,7 +2,10 @@ import { nameInitial } from '@/lib/shared/utils/initial'
 import { createFileRoute } from '@tanstack/react-router'
 import { useState, useEffect } from 'react'
 import { ArrowPathIcon } from '@heroicons/react/24/solid'
+import { FormattedMessage, useIntl } from 'react-intl'
+import { PortalIntlProvider } from '@/components/portal-intl-provider'
 import { Button } from '@/components/ui/button'
+import { DEFAULT_LOCALE, loadPortalMessages } from '@/lib/shared/i18n'
 import { getInviteBrandingFn } from '@/lib/server/functions/invitations'
 import { parseInvitationId } from '@/lib/shared/parse-invitation-id'
 
@@ -18,24 +21,45 @@ export const Route = createFileRoute('/verify-magic-link')({
     callbackURL: (search.callbackURL as string) || undefined,
     errorCallbackURL: (search.errorCallbackURL as string) || undefined,
   }),
+  loader: async ({ context }) => {
+    const locale = context.acceptLanguageLocale ?? DEFAULT_LOCALE
+    return { locale, messages: await loadPortalMessages(locale) }
+  },
   component: VerifyMagicLinkPage,
 })
 
 function VerifyMagicLinkPage() {
+  const { locale, messages } = Route.useLoaderData()
+
+  return (
+    <PortalIntlProvider locale={locale} messages={messages}>
+      <VerifyMagicLinkContent />
+    </PortalIntlProvider>
+  )
+}
+
+function VerifyMagicLinkContent() {
   const { token, callbackURL, errorCallbackURL } = Route.useSearch()
 
   if (!token) {
     return (
       <PageShell>
         <Card>
-          <div className="text-destructive text-xl font-medium tracking-tight">Invalid link</div>
+          <div className="text-destructive text-xl font-medium tracking-tight">
+            <FormattedMessage
+              id="portal.auth.magicLink.invalidTitle"
+              defaultMessage="Invalid link"
+            />
+          </div>
           <p className="mt-2 text-muted-foreground">
-            This verification link is invalid or incomplete. Please check the link in your email and
-            try again.
+            <FormattedMessage
+              id="portal.auth.magicLink.invalidBody"
+              defaultMessage="This verification link is invalid or incomplete. Please check the link in your email and try again."
+            />
           </p>
           <a href="/" className="mt-6 block">
             <Button variant="outline" className="w-full h-11">
-              Go to Home
+              <FormattedMessage id="portal.auth.goHome" defaultMessage="Go to Home" />
             </Button>
           </a>
         </Card>
@@ -76,6 +100,7 @@ function InvitationVerifyPage({
   errorCallbackURL: string | undefined
   invitationId: string
 }) {
+  const intl = useIntl()
   const [branding, setBranding] = useState<InviteBranding | null>(null)
   const [isLoading, setIsLoading] = useState(false)
 
@@ -101,28 +126,61 @@ function InvitationVerifyPage({
           <>
             <WorkspaceIdentity branding={branding} />
             <div className="mt-6 mb-6 h-px bg-border/50" />
-            <h1 className="text-2xl font-bold tracking-tight">You're invited!</h1>
+            <h1 className="text-2xl font-bold tracking-tight">
+              <FormattedMessage
+                id="portal.auth.acceptInvite.invitedTitle"
+                defaultMessage="You're invited!"
+              />
+            </h1>
             <p className="mt-2 text-muted-foreground">
               {branding.inviterName
-                ? `${branding.inviterName} invited you to join ${branding.workspaceName}.`
-                : `You've been invited to join ${branding.workspaceName}.`}
+                ? intl.formatMessage(
+                    {
+                      id: 'portal.auth.magicLink.invitedBody',
+                      defaultMessage: '{inviter} invited you to join {workspace}.',
+                    },
+                    { inviter: branding.inviterName, workspace: branding.workspaceName }
+                  )
+                : intl.formatMessage(
+                    {
+                      id: 'portal.auth.magicLink.invitedBodyNoInviter',
+                      defaultMessage: "You've been invited to join {workspace}.",
+                    },
+                    { workspace: branding.workspaceName }
+                  )}
             </p>
           </>
         ) : (
           <>
             <div className="h-8" />
-            <h1 className="text-2xl font-bold tracking-tight">You're invited!</h1>
-            <p className="mt-2 text-muted-foreground">Loading invitation details...</p>
+            <h1 className="text-2xl font-bold tracking-tight">
+              <FormattedMessage
+                id="portal.auth.acceptInvite.invitedTitle"
+                defaultMessage="You're invited!"
+              />
+            </h1>
+            <p className="mt-2 text-muted-foreground">
+              <FormattedMessage
+                id="portal.auth.magicLink.loading"
+                defaultMessage="Loading invitation details..."
+              />
+            </p>
           </>
         )}
         <Button onClick={handleAccept} disabled={isLoading} className="mt-6 w-full h-11">
           {isLoading ? (
             <>
               <ArrowPathIcon className="mr-2 h-4 w-4 animate-spin" />
-              Setting up...
+              <FormattedMessage
+                id="portal.auth.magicLink.settingUp"
+                defaultMessage="Setting up..."
+              />
             </>
           ) : (
-            'Accept invitation'
+            <FormattedMessage
+              id="portal.auth.magicLink.accept"
+              defaultMessage="Accept invitation"
+            />
           )}
         </Button>
       </Card>
@@ -187,7 +245,7 @@ function GenericVerifyPage({
   const continueLink = (
     <a href={fallbackHref} className="mt-6 inline-block">
       <Button variant="outline" className="h-11">
-        Continue
+        <FormattedMessage id="portal.auth.continue" defaultMessage="Continue" />
       </Button>
     </a>
   )
@@ -197,9 +255,16 @@ function GenericVerifyPage({
       <Card>
         <div className="flex items-center justify-center gap-2">
           <ArrowPathIcon className="h-5 w-5 animate-spin text-primary" aria-hidden />
-          <h1 className="text-2xl font-bold tracking-tight">Signing you in&hellip;</h1>
+          <h1 className="text-2xl font-bold tracking-tight">
+            <FormattedMessage id="portal.auth.sso.redirecting" defaultMessage="Signing you in…" />
+          </h1>
         </div>
-        <p className="mt-2 text-muted-foreground">Hang tight, this only takes a moment.</p>
+        <p className="mt-2 text-muted-foreground">
+          <FormattedMessage
+            id="portal.auth.magicLink.hangTight"
+            defaultMessage="Hang tight, this only takes a moment."
+          />
+        </p>
         {showContinue && continueLink}
         <noscript>{continueLink}</noscript>
       </Card>

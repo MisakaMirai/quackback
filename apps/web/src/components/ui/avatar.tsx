@@ -1,5 +1,6 @@
 import * as React from 'react'
 
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { cn, getInitials } from '@/lib/shared/utils'
 
 interface AvatarProps extends React.ComponentProps<'div'> {
@@ -56,6 +57,7 @@ function Avatar({
   children,
   ...props
 }: AvatarProps) {
+  const intl = useOptionalIntl()
   if (children) {
     return (
       <div
@@ -69,7 +71,7 @@ function Avatar({
   }
 
   const initials = fallback ?? getInitials(name)
-  const altText = name || 'Avatar'
+  const altText = name || intl.formatMessage({ id: 'ui.avatar.alt', defaultMessage: 'Avatar' })
   const fallbackEl = (
     <div
       data-slot="avatar-fallback"

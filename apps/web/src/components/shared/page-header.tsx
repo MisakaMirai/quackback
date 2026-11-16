@@ -1,5 +1,6 @@
 import { Fragment } from 'react'
 import { Link } from '@tanstack/react-router'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { cn } from '@/lib/shared/utils'
 
 /** A parent of the current page. Without `to` it is a module name with no page of its own. */
@@ -38,10 +39,14 @@ export function PageHeader({
   actions,
   className,
 }: PageHeaderProps) {
+  const intl = useOptionalIntl()
   return (
     <div data-page-header="" className={cn('space-y-1.5', className)}>
       {crumbs && crumbs.length > 0 && (
-        <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-1.5 text-[13px]">
+        <nav
+          aria-label={intl.formatMessage({ id: 'common.breadcrumb', defaultMessage: 'Breadcrumb' })}
+          className="flex flex-wrap items-center gap-1.5 text-[13px]"
+        >
           {crumbs.map((crumb) => (
             <Fragment key={`${crumb.to ?? ''}:${crumb.label}`}>
               {crumb.to ? (

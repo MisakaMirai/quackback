@@ -1,6 +1,7 @@
 import { ArrowTopRightOnSquareIcon, LinkIcon, XMarkIcon } from '@heroicons/react/24/solid'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 
 interface ModalHeaderProps {
   /** Breadcrumb section label (e.g. "Feedback", "Changelog", "Roadmap") */
@@ -16,12 +17,22 @@ interface ModalHeaderProps {
   hideCopyLink?: boolean
 }
 
-async function handleCopyLink(): Promise<void> {
+async function handleCopyLink(intl: ReturnType<typeof useOptionalIntl>): Promise<void> {
   try {
     await navigator.clipboard.writeText(window.location.href)
-    toast.success('Link copied to clipboard')
+    toast.success(
+      intl.formatMessage({
+        id: 'common.modalHeader.linkCopied',
+        defaultMessage: 'Link copied to clipboard',
+      })
+    )
   } catch {
-    toast.error('Failed to copy link')
+    toast.error(
+      intl.formatMessage({
+        id: 'common.modalHeader.linkCopyFailed',
+        defaultMessage: 'Failed to copy link',
+      })
+    )
   }
 }
 
@@ -33,6 +44,7 @@ export function ModalHeader({
   children,
   hideCopyLink,
 }: ModalHeaderProps) {
+  const intl = useOptionalIntl()
   return (
     <header className="sticky top-0 z-20 bg-gradient-to-b from-card/98 to-card/95 backdrop-blur-md border-b border-border/40 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
       <div className="flex items-center justify-between px-6 py-2.5">
@@ -66,7 +78,9 @@ export function ModalHeader({
               className="gap-1.5 h-8"
             >
               <ArrowTopRightOnSquareIcon className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">View</span>
+              <span className="hidden sm:inline">
+                {intl.formatMessage({ id: 'common.modalHeader.view', defaultMessage: 'View' })}
+              </span>
             </Button>
           )}
 
@@ -75,11 +89,13 @@ export function ModalHeader({
               type="button"
               variant="ghost"
               size="sm"
-              onClick={handleCopyLink}
+              onClick={() => handleCopyLink(intl)}
               className="gap-1.5 h-8"
             >
               <LinkIcon className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Copy Link</span>
+              <span className="hidden sm:inline">
+                {intl.formatMessage({ id: 'common.copyLink', defaultMessage: 'Copy link' })}
+              </span>
             </Button>
           )}
         </div>

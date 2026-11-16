@@ -26,6 +26,7 @@ import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover'
 import { Avatar } from '@/components/ui/avatar'
 import { isTeamMember, type Role } from '@/lib/shared/roles'
 import { useWorkspaceSettings } from '@/lib/client/hooks/use-root-context'
+import { useOptionalIntl } from './use-optional-intl'
 
 interface PrincipalCard {
   principalId: string
@@ -101,6 +102,7 @@ interface MentionHoverCardOverlayProps {
 }
 
 export function MentionHoverCardOverlay({ children, className }: MentionHoverCardOverlayProps) {
+  const intl = useOptionalIntl()
   const containerRef = useRef<HTMLDivElement>(null)
   const [anchor, setAnchor] = useState<{ rect: DOMRect; principalId: string } | null>(null)
   const settings = useWorkspaceSettings()
@@ -263,8 +265,14 @@ export function MentionHoverCardOverlay({ children, className }: MentionHoverCar
                   {isTeamMember(card.role) && (
                     <span
                       className="inline-flex items-center justify-center h-5 w-5 rounded-md bg-primary/15 text-primary shrink-0"
-                      aria-label={`${teamBadgeLabel} Member`}
-                      title={`${teamBadgeLabel} Member`}
+                      aria-label={intl.formatMessage(
+                        { id: 'ui.mention.member', defaultMessage: '{name} Member' },
+                        { name: teamBadgeLabel }
+                      )}
+                      title={intl.formatMessage(
+                        { id: 'ui.mention.member', defaultMessage: '{name} Member' },
+                        { name: teamBadgeLabel }
+                      )}
                     >
                       {teamBadgeLogoUrl ? (
                         <img
@@ -279,11 +287,15 @@ export function MentionHoverCardOverlay({ children, className }: MentionHoverCar
                   )}
                 </div>
                 <div className="text-xs text-muted-foreground/70 mt-1">
-                  Joined{' '}
-                  {new Date(card.joinedAt).toLocaleDateString(undefined, {
-                    month: 'short',
-                    year: 'numeric',
-                  })}
+                  {intl.formatMessage(
+                    { id: 'ui.mention.joined', defaultMessage: 'Joined {date}' },
+                    {
+                      date: new Date(card.joinedAt).toLocaleDateString(intl.locale, {
+                        month: 'short',
+                        year: 'numeric',
+                      }),
+                    }
+                  )}
                 </div>
               </div>
             </div>

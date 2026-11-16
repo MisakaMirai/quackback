@@ -6,6 +6,7 @@ import {
   useRouteContext,
 } from '@tanstack/react-router'
 import { lazy, Suspense } from 'react'
+import { createIntl } from 'react-intl'
 import { createServerFn } from '@tanstack/react-start'
 import { setResponseHeader } from '@tanstack/react-start/server'
 import { fetchUserAvatar } from '@/lib/server/functions/portal'
@@ -23,8 +24,9 @@ import { buildPortalAuthDialogConfig } from '@/components/auth/portal-auth-dialo
 import type { PortalAccessGateError } from '@/lib/shared/types/portal-gate-error'
 import { generateWorkspaceThemeCSS, readFontSans } from '@/lib/shared/theme'
 import { PortalIntlProvider } from '@/components/portal-intl-provider'
-import { getPortalLocaleFn, loadPortalIntl } from '@/lib/server/functions/locale'
-import { DEFAULT_LOCALE } from '@/lib/shared/i18n'
+import { onIntlError } from '@/lib/client/intl-error'
+import { loadPortalIntl } from '@/lib/server/functions/locale'
+import { DEFAULT_LOCALE, loadPortalMessages } from '@/lib/shared/i18n'
 import {
   evaluateMyPortalAccessFn,
   recordPortalAccessDeniedFn,
@@ -156,8 +158,6 @@ export const Route = createFileRoute('/_portal')({
 
       const brandingData = settings?.brandingData ?? null
       const brandingConfig = settings?.brandingConfig ?? {}
-      // Locale so the gate's auth dialog renders under PortalIntlProvider.
-      const locale = await getPortalLocaleFn().catch(() => DEFAULT_LOCALE)
       // Instant-SSO: when the workspace's only sign-in method is a single OIDC
       // provider, redirect anonymous visitors straight to the IdP. Skipped for
       // 'unauthorized' (signed-in non-member) — they already have a session and
@@ -173,6 +173,10 @@ export const Route = createFileRoute('/_portal')({
         })
         if (instant) throw redirect({ href: instant.url })
       }
+      // Locale so the gate's auth dialog renders under PortalIntlProvider, and
+      // the catalog so the page's head copy is translated too.
+      const locale = context.acceptLanguageLocale ?? DEFAULT_LOCALE
+      const messages = await loadPortalMessages(locale)
       const gate: PortalAccessGateError = {
         type: 'portal-access-gate',
         reason: accessResult.reason,
@@ -194,7 +198,7 @@ export const Route = createFileRoute('/_portal')({
           registeredAuthProviders,
         }),
       }
-      return { gate, prompt }
+      return { gate, prompt, locale, messages }
     }
 
     if (!settings) {
@@ -281,11 +285,25 @@ export const Route = createFileRoute('/_portal')({
     }
   },
   head: ({ loaderData }) => {
+    // The head runs outside React, so it formats through the same catalog the
+    // loader seeded for the page instead of an IntlProvider.
+    const intl = createIntl({
+      locale: loaderData?.locale ?? DEFAULT_LOCALE,
+      messages: loaderData?.messages ?? {},
+      defaultLocale: DEFAULT_LOCALE,
+      onError: onIntlError,
+    })
+
     // Access gate: a valid 200 sign-in page, but keep it out of search indexes.
     if (loaderData?.gate) {
       return {
         meta: [
-          { title: `Sign in · ${loaderData.gate.workspaceName}` },
+          {
+            title: intl.formatMessage(
+              { id: 'portal.meta.signInTitle', defaultMessage: 'Sign in · {workspace}' },
+              { workspace: loaderData.gate.workspaceName }
+            ),
+          },
           { name: 'robots', content: 'noindex, nofollow' },
         ],
         links: [{ rel: 'icon', href: loaderData.gate.logoUrl || '/logo.png' }],
@@ -297,7 +315,14 @@ export const Route = createFileRoute('/_portal')({
       loaderData?.faviconData?.url || loaderData?.brandingData?.logoUrl || '/logo.png'
 
     const workspaceName = loaderData?.workspaceName ?? 'Quackback'
-    const description = `Share feedback, vote on feature requests, and track the ${workspaceName} roadmap.`
+    const description = intl.formatMessage(
+      {
+        id: 'portal.meta.description',
+        defaultMessage:
+          'Share feedback, vote on feature requests, and track the {workspace} roadmap.',
+      },
+      { workspace: workspaceName }
+    )
     // Social share image: workspace logo, then the bundled default.
     const ogImageUrl = resolvePortalOgImageUrl(loaderData?.brandingData, loaderData?.baseUrl)
 

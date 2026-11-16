@@ -1,20 +1,37 @@
 import { Badge } from '@/components/ui/badge'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 
 export type BadgeState =
   'on' | 'off' | 'paused' | 'connected' | 'setting-up' | 'pending' | 'attention' | 'error'
 
 const STATES: Record<
   BadgeState,
-  { label: string; variant: 'secondary' | 'success' | 'warning' | 'destructive' }
+  {
+    labelId: string
+    defaultLabel: string
+    variant: 'secondary' | 'success' | 'warning' | 'destructive'
+  }
 > = {
-  on: { label: 'On', variant: 'secondary' },
-  off: { label: 'Off', variant: 'secondary' },
-  paused: { label: 'Paused', variant: 'secondary' },
-  connected: { label: 'Connected', variant: 'success' },
-  'setting-up': { label: 'Setting up', variant: 'secondary' },
-  pending: { label: 'Pending', variant: 'secondary' },
-  attention: { label: 'Needs attention', variant: 'warning' },
-  error: { label: 'Error', variant: 'destructive' },
+  on: { labelId: 'common.state.on', defaultLabel: 'On', variant: 'secondary' },
+  off: { labelId: 'common.state.off', defaultLabel: 'Off', variant: 'secondary' },
+  paused: { labelId: 'common.state.paused', defaultLabel: 'Paused', variant: 'secondary' },
+  connected: {
+    labelId: 'common.state.connected',
+    defaultLabel: 'Connected',
+    variant: 'success',
+  },
+  'setting-up': {
+    labelId: 'common.state.settingUp',
+    defaultLabel: 'Setting up',
+    variant: 'secondary',
+  },
+  pending: { labelId: 'common.state.pending', defaultLabel: 'Pending', variant: 'secondary' },
+  attention: {
+    labelId: 'common.state.needsAttention',
+    defaultLabel: 'Needs attention',
+    variant: 'warning',
+  },
+  error: { labelId: 'common.state.error', defaultLabel: 'Error', variant: 'destructive' },
 }
 
 /**
@@ -22,10 +39,11 @@ const STATES: Record<
  * state shows no badge.
  */
 export function StateBadge({ state }: { state: BadgeState }) {
-  const { label, variant } = STATES[state]
+  const intl = useOptionalIntl()
+  const { labelId, defaultLabel, variant } = STATES[state]
   return (
     <Badge variant={variant} size="sm">
-      {label}
+      {intl.formatMessage({ id: labelId, defaultMessage: defaultLabel })}
     </Badge>
   )
 }

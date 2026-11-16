@@ -1,7 +1,10 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useEffect, useRef, useState } from 'react'
+import { FormattedMessage } from 'react-intl'
 import { ArrowPathIcon, ExclamationTriangleIcon } from '@heroicons/react/24/solid'
+import { PortalIntlProvider } from '@/components/portal-intl-provider'
 import { startProviderLink } from '@/lib/client/start-provider-link'
+import { DEFAULT_LOCALE, loadPortalMessages } from '@/lib/shared/i18n'
 import { isSafeCallbackUrl } from '@/lib/shared/routing'
 
 interface LinkSsoSearch {
@@ -36,10 +39,24 @@ export const Route = createFileRoute('/auth/link-sso')({
     type: search.type === 'oidc' || search.type === 'social' ? search.type : undefined,
     next: isSafeCallbackUrl(search.next) ? search.next : undefined,
   }),
+  loader: async ({ context }) => {
+    const locale = context.acceptLanguageLocale ?? DEFAULT_LOCALE
+    return { locale, messages: await loadPortalMessages(locale) }
+  },
   component: LinkSsoPage,
 })
 
 function LinkSsoPage() {
+  const { locale, messages } = Route.useLoaderData()
+
+  return (
+    <PortalIntlProvider locale={locale} messages={messages}>
+      <LinkSsoContent />
+    </PortalIntlProvider>
+  )
+}
+
+function LinkSsoContent() {
   const { provider, type, next } = Route.useSearch()
   const destination = next ?? '/'
   const [failed, setFailed] = useState(false)
@@ -80,19 +97,31 @@ function LinkSsoPage() {
         {failed ? (
           <>
             <ExclamationTriangleIcon className="h-12 w-12 text-amber-500 mx-auto" />
-            <p className="text-foreground font-medium">You&apos;re signed in</p>
+            <p className="text-foreground font-medium">
+              <FormattedMessage
+                id="portal.auth.linkSso.signedIn"
+                defaultMessage="You're signed in"
+              />
+            </p>
             <p className="text-sm text-muted-foreground">
-              We couldn&apos;t connect single sign-on automatically, but your email is confirmed —
-              the next time you sign in with SSO it will be linked to this account.
+              <FormattedMessage
+                id="portal.auth.linkSso.body"
+                defaultMessage="We couldn't connect single sign-on automatically, but your email is confirmed. The next time you sign in with SSO it will be linked to this account."
+              />
             </p>
             <a href={destination} className="text-sm font-medium text-primary hover:underline">
-              Continue
+              <FormattedMessage id="portal.auth.continue" defaultMessage="Continue" />
             </a>
           </>
         ) : (
           <>
             <ArrowPathIcon className="h-12 w-12 animate-spin text-primary mx-auto" />
-            <p className="text-muted-foreground">Connecting single sign-on…</p>
+            <p className="text-muted-foreground">
+              <FormattedMessage
+                id="portal.auth.linkSso.connecting"
+                defaultMessage="Connecting single sign-on…"
+              />
+            </p>
           </>
         )}
       </div>

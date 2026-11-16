@@ -57,64 +57,127 @@ export type { PortalAccessGateError } from '@/lib/shared/types/portal-gate-error
 // privacy wall can't leak the portal it's guarding. The strings are generic,
 // obviously-synthetic feature requests; behind the blur they only need to read
 // as "a real feedback board lives here".
-const MOCK_NAV = ['Feedback', 'Roadmap', 'Changelog']
+interface MockMessage {
+  id: string
+  defaultMessage: string
+}
 
-const MOCK_SORTS = [
-  { label: 'Trending', Icon: FireIcon },
-  { label: 'Top', Icon: ArrowTrendingUpIcon },
-  { label: 'New', Icon: ClockIcon },
+const MOCK_NAV: MockMessage[] = [
+  { id: 'portal.accessGate.backdrop.nav.feedback', defaultMessage: 'Feedback' },
+  { id: 'portal.accessGate.backdrop.nav.roadmap', defaultMessage: 'Roadmap' },
+  { id: 'portal.accessGate.backdrop.nav.changelog', defaultMessage: 'Changelog' },
 ]
 
-const MOCK_BOARDS = [
-  { name: 'All posts', count: 412 },
-  { name: 'Feature Requests', count: 286 },
-  { name: 'Bug Reports', count: 84 },
-  { name: 'Integrations', count: 42 },
+const MOCK_SORTS: Array<{ label: MockMessage; Icon: typeof FireIcon }> = [
+  {
+    label: { id: 'portal.accessGate.backdrop.sort.trending', defaultMessage: 'Trending' },
+    Icon: FireIcon,
+  },
+  {
+    label: { id: 'portal.accessGate.backdrop.sort.top', defaultMessage: 'Top' },
+    Icon: ArrowTrendingUpIcon,
+  },
+  {
+    label: { id: 'portal.accessGate.backdrop.sort.new', defaultMessage: 'New' },
+    Icon: ClockIcon,
+  },
+]
+
+const MOCK_BOARDS: Array<{ name: MockMessage; count: number }> = [
+  { name: { id: 'portal.accessGate.backdrop.board.all', defaultMessage: 'All posts' }, count: 412 },
+  {
+    name: { id: 'portal.accessGate.backdrop.board.features', defaultMessage: 'Feature Requests' },
+    count: 286,
+  },
+  {
+    name: { id: 'portal.accessGate.backdrop.board.bugs', defaultMessage: 'Bug Reports' },
+    count: 84,
+  },
+  {
+    name: { id: 'portal.accessGate.backdrop.board.integrations', defaultMessage: 'Integrations' },
+    count: 42,
+  },
 ]
 
 const MOCK_POSTS: Array<{
-  title: string
-  excerpt: string
+  title: MockMessage
+  excerpt: MockMessage
   votes: number
   comments: number
   author: string
   when: string
   tags: string[]
-  status?: { label: string; color: string }
+  status?: { label: MockMessage; color: string }
 }> = [
   {
-    title: 'Dark mode for the dashboard',
-    excerpt: 'A proper dark theme would make late-night sessions far easier on the eyes.',
+    title: {
+      id: 'portal.accessGate.backdrop.post.darkMode.title',
+      defaultMessage: 'Dark mode for the dashboard',
+    },
+    excerpt: {
+      id: 'portal.accessGate.backdrop.post.darkMode.excerpt',
+      defaultMessage: 'A proper dark theme would make late-night sessions far easier on the eyes.',
+    },
     votes: 142,
     comments: 18,
     author: 'Alex M.',
     when: '2d',
     tags: ['ui', 'accessibility'],
-    status: { label: 'Planned', color: '#f59e0b' },
+    status: {
+      label: { id: 'portal.accessGate.backdrop.status.planned', defaultMessage: 'Planned' },
+      color: '#f59e0b',
+    },
   },
   {
-    title: 'Bulk export to CSV',
-    excerpt: 'Let admins export filtered results to a spreadsheet in one click.',
+    title: {
+      id: 'portal.accessGate.backdrop.post.csvExport.title',
+      defaultMessage: 'Bulk export to CSV',
+    },
+    excerpt: {
+      id: 'portal.accessGate.backdrop.post.csvExport.excerpt',
+      defaultMessage: 'Let admins export filtered results to a spreadsheet in one click.',
+    },
     votes: 97,
     comments: 11,
     author: 'Jordan P.',
     when: '4d',
     tags: ['export'],
-    status: { label: 'In Progress', color: '#3b82f6' },
+    status: {
+      label: { id: 'portal.accessGate.backdrop.status.inProgress', defaultMessage: 'In Progress' },
+      color: '#3b82f6',
+    },
   },
   {
-    title: 'Slack notifications for new replies',
-    excerpt: 'Ping a channel whenever a teammate responds so nothing slips through.',
+    title: {
+      id: 'portal.accessGate.backdrop.post.slack.title',
+      defaultMessage: 'Slack notifications for new replies',
+    },
+    excerpt: {
+      id: 'portal.accessGate.backdrop.post.slack.excerpt',
+      defaultMessage: 'Ping a channel whenever a teammate responds so nothing slips through.',
+    },
     votes: 73,
     comments: 6,
     author: 'Sam R.',
     when: '1w',
     tags: ['integrations'],
-    status: { label: 'Under Review', color: '#8b5cf6' },
+    status: {
+      label: {
+        id: 'portal.accessGate.backdrop.status.underReview',
+        defaultMessage: 'Under Review',
+      },
+      color: '#8b5cf6',
+    },
   },
   {
-    title: 'Keyboard shortcuts for navigation',
-    excerpt: 'Power users want to move between views without reaching for the mouse.',
+    title: {
+      id: 'portal.accessGate.backdrop.post.shortcuts.title',
+      defaultMessage: 'Keyboard shortcuts for navigation',
+    },
+    excerpt: {
+      id: 'portal.accessGate.backdrop.post.shortcuts.excerpt',
+      defaultMessage: 'Power users want to move between views without reaching for the mouse.',
+    },
     votes: 51,
     comments: 4,
     author: 'Riley K.',
@@ -122,18 +185,33 @@ const MOCK_POSTS: Array<{
     tags: ['ux'],
   },
   {
-    title: 'Custom domains for portals',
-    excerpt: 'Host the feedback portal on our own subdomain for a seamless brand.',
+    title: {
+      id: 'portal.accessGate.backdrop.post.domains.title',
+      defaultMessage: 'Custom domains for portals',
+    },
+    excerpt: {
+      id: 'portal.accessGate.backdrop.post.domains.excerpt',
+      defaultMessage: 'Host the feedback portal on our own subdomain for a seamless brand.',
+    },
     votes: 44,
     comments: 9,
     author: 'Casey T.',
     when: '2w',
     tags: ['branding'],
-    status: { label: 'Planned', color: '#f59e0b' },
+    status: {
+      label: { id: 'portal.accessGate.backdrop.status.planned', defaultMessage: 'Planned' },
+      color: '#f59e0b',
+    },
   },
   {
-    title: 'Mobile apps for iOS and Android',
-    excerpt: 'Triage and reply to feedback on the go from a native app.',
+    title: {
+      id: 'portal.accessGate.backdrop.post.mobile.title',
+      defaultMessage: 'Mobile apps for iOS and Android',
+    },
+    excerpt: {
+      id: 'portal.accessGate.backdrop.post.mobile.excerpt',
+      defaultMessage: 'Triage and reply to feedback on the go from a native app.',
+    },
     votes: 38,
     comments: 5,
     author: 'Morgan L.',
@@ -154,6 +232,7 @@ function DecorativeBackdrop({
   workspaceName: string
   logoUrl: string | null
 }) {
+  const intl = useIntl()
   return (
     <div className="min-h-screen bg-background select-none pointer-events-none">
       {/* Header */}
@@ -181,12 +260,12 @@ function DecorativeBackdrop({
           <div className="mt-2 flex items-center gap-1">
             {MOCK_NAV.map((label, i) => (
               <div
-                key={label}
+                key={label.id}
                 className={`rounded-md px-3 py-2 text-sm font-medium ${
                   i === 0 ? 'bg-muted text-foreground' : 'text-muted-foreground'
                 }`}
               >
-                {label}
+                {intl.formatMessage(label)}
               </div>
             ))}
           </div>
@@ -201,7 +280,10 @@ function DecorativeBackdrop({
             {/* Faux submission box */}
             <div className="rounded-lg border border-border/40 bg-card p-4">
               <div className="flex h-9 items-center rounded-md border border-border/50 bg-muted/30 px-3 text-sm text-muted-foreground/50">
-                Suggest a feature or report a bug…
+                {intl.formatMessage({
+                  id: 'portal.accessGate.backdrop.suggest',
+                  defaultMessage: 'Suggest a feature or report a bug…',
+                })}
               </div>
             </div>
 
@@ -210,24 +292,34 @@ function DecorativeBackdrop({
               <div className="flex items-center gap-1">
                 {MOCK_SORTS.map(({ label, Icon }, i) => (
                   <div
-                    key={label}
+                    key={label.id}
                     className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm ${
                       i === 0 ? 'bg-muted font-medium text-foreground' : 'text-muted-foreground'
                     }`}
                   >
                     <Icon className={`h-4 w-4 ${i === 0 ? 'text-primary' : ''}`} />
-                    {label}
+                    {intl.formatMessage(label)}
                   </div>
                 ))}
               </div>
               <div className="flex items-center gap-2">
                 <div className="inline-flex items-center gap-1.5 rounded-md border border-border/50 px-3 py-1.5 text-sm text-muted-foreground">
                   <MagnifyingGlassIcon className="h-4 w-4" />
-                  <span className="hidden sm:inline">Search</span>
+                  <span className="hidden sm:inline">
+                    {intl.formatMessage({
+                      id: 'portal.accessGate.backdrop.search',
+                      defaultMessage: 'Search',
+                    })}
+                  </span>
                 </div>
                 <div className="inline-flex items-center gap-1.5 rounded-md border border-border/50 px-3 py-1.5 text-sm text-muted-foreground">
                   <FunnelIcon className="h-4 w-4" />
-                  <span className="hidden sm:inline">Filter</span>
+                  <span className="hidden sm:inline">
+                    {intl.formatMessage({
+                      id: 'portal.accessGate.backdrop.filter',
+                      defaultMessage: 'Filter',
+                    })}
+                  </span>
                 </div>
               </div>
             </div>
@@ -236,7 +328,7 @@ function DecorativeBackdrop({
             <div className="space-y-3">
               {MOCK_POSTS.map((post) => (
                 <div
-                  key={post.title}
+                  key={post.title.id}
                   className="flex items-start gap-4 rounded-lg border border-border/40 bg-card p-4"
                 >
                   {/* Vote pill */}
@@ -255,14 +347,14 @@ function DecorativeBackdrop({
                           className="size-1.5 shrink-0 rounded-full"
                           style={{ backgroundColor: post.status.color }}
                         />
-                        {post.status.label}
+                        {intl.formatMessage(post.status.label)}
                       </div>
                     )}
                     <div className="line-clamp-1 text-base font-semibold text-foreground">
-                      {post.title}
+                      {intl.formatMessage(post.title)}
                     </div>
                     <div className="mt-1 line-clamp-1 text-sm text-muted-foreground/60">
-                      {post.excerpt}
+                      {intl.formatMessage(post.excerpt)}
                     </div>
                     <div className="mt-1.5 flex items-center gap-1">
                       {post.tags.map((tag) => (
@@ -294,12 +386,15 @@ function DecorativeBackdrop({
           <div className="hidden w-64 shrink-0 lg:block">
             <div className="overflow-hidden rounded-lg border border-border/50 bg-card shadow-sm">
               <div className="px-4 pb-3 pt-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Boards
+                {intl.formatMessage({
+                  id: 'portal.accessGate.backdrop.boards',
+                  defaultMessage: 'Boards',
+                })}
               </div>
               <div className="space-y-1 px-4 pb-4">
                 {MOCK_BOARDS.map((board, i) => (
                   <div
-                    key={board.name}
+                    key={board.name.id}
                     className={`flex items-center gap-2 rounded-full px-3 py-1.5 text-sm ${
                       i === 0 ? 'bg-muted font-medium text-foreground' : 'text-muted-foreground'
                     }`}
@@ -309,7 +404,7 @@ function DecorativeBackdrop({
                     ) : (
                       <ChatBubbleLeftIcon className="h-4 w-4" />
                     )}
-                    <span className="truncate">{board.name}</span>
+                    <span className="truncate">{intl.formatMessage(board.name)}</span>
                     <span className="ms-auto text-xs font-semibold tabular-nums">
                       {board.count}
                     </span>

@@ -84,7 +84,7 @@ async function authorizedScopes(request: ReturnType<typeof mockRequests>): Promi
 }
 
 function openDetail() {
-  fireEvent.click(screen.getByRole('button', { name: /Choose what .* can access/ }))
+  fireEvent.click(screen.getByRole('button', { name: /Choose what|选择/ }))
 }
 
 describe('standalone MCP consent intl', () => {
@@ -124,13 +124,13 @@ describe('standalone MCP consent intl', () => {
     )
   })
 
-  it('keeps the English picker copy consistent with the standalone page for other locales', async () => {
+  it('renders the zh-cn picker copy', async () => {
     mockRequests()
     await renderConsent('zh-cn')
     openDetail()
 
     expect(screen.getByRole('button', { name: 'Settings: Read' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Authorize' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: '授权' })).toBeEnabled()
   })
 
   it('grants every capability when authorized as it opens', async () => {

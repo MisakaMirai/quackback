@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { buttonVariants } from '@/components/ui/button'
 import { useOpenedOnce } from '@/lib/client/hooks/use-opened-once'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { cn } from '@/lib/shared/utils'
 import { WarningBox } from './warning-box'
 
@@ -36,14 +37,19 @@ export const ConfirmDialog = memo(function ConfirmDialog({
   title,
   description,
   warning,
-  confirmLabel = 'Confirm',
-  cancelLabel = 'Cancel',
+  confirmLabel,
+  cancelLabel,
   variant = 'default',
   isPending,
   confirmDisabled,
   onConfirm,
   children,
 }: ConfirmDialogProps) {
+  const intl = useOptionalIntl()
+  const resolvedConfirmLabel =
+    confirmLabel ?? intl.formatMessage({ id: 'common.confirm', defaultMessage: 'Confirm' })
+  const resolvedCancelLabel =
+    cancelLabel ?? intl.formatMessage({ id: 'common.cancel', defaultMessage: 'Cancel' })
   const startedRef = useRef(false)
   const [started, setStarted] = useState(false)
   const busy = Boolean(isPending) || started
@@ -90,7 +96,7 @@ export const ConfirmDialog = memo(function ConfirmDialog({
         )}
 
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={busy}>{cancelLabel}</AlertDialogCancel>
+          <AlertDialogCancel disabled={busy}>{resolvedCancelLabel}</AlertDialogCancel>
           <AlertDialogAction
             onClick={(event) => {
               if (busy || startedRef.current) {
@@ -113,7 +119,7 @@ export const ConfirmDialog = memo(function ConfirmDialog({
             disabled={busy || confirmDisabled}
             className={cn(variant === 'destructive' && buttonVariants({ variant: 'destructive' }))}
           >
-            {confirmLabel}
+            {resolvedConfirmLabel}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

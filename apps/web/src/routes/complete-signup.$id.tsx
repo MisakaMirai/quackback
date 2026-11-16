@@ -2,9 +2,12 @@ import { nameInitial } from '@/lib/shared/utils/initial'
 import { createFileRoute, isRedirect } from '@tanstack/react-router'
 import { useState } from 'react'
 import { ArrowPathIcon } from '@heroicons/react/24/solid'
+import { FormattedMessage, useIntl, type MessageDescriptor } from 'react-intl'
+import { PortalIntlProvider } from '@/components/portal-intl-provider'
 import { Spinner } from '@/components/shared/spinner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { DEFAULT_LOCALE, loadPortalMessages } from '@/lib/shared/i18n'
 import {
   acceptInvitationFn,
   getInvitationDetailsFn,
@@ -12,16 +15,37 @@ import {
   setPasswordFn,
 } from '@/lib/server/functions/invitations'
 
-const ERROR_MESSAGES: Record<string, string> = {
-  INVALID_TOKEN:
-    'This invitation link is invalid. It may have already been used. Please ask your administrator to resend the invitation.',
-  EXPIRED_TOKEN:
-    'This invitation link has expired. Please ask your administrator to resend the invitation.',
-  failed_to_create_user:
-    "We couldn't create your account. Please try again or contact your administrator.",
-  new_user_signup_disabled:
-    'New account creation is currently disabled. Please contact your administrator.',
-  failed_to_create_session: "We couldn't sign you in. Please try again.",
+const ERROR_MESSAGES: Record<string, MessageDescriptor> = {
+  INVALID_TOKEN: {
+    id: 'portal.auth.acceptInvite.invalidToken',
+    defaultMessage:
+      'This invitation link is invalid. It may have already been used. Please ask your administrator to resend the invitation.',
+  },
+  EXPIRED_TOKEN: {
+    id: 'portal.auth.acceptInvite.expiredToken',
+    defaultMessage:
+      'This invitation link has expired. Please ask your administrator to resend the invitation.',
+  },
+  failed_to_create_user: {
+    id: 'portal.auth.acceptInvite.createUserFailed',
+    defaultMessage:
+      "We couldn't create your account. Please try again or contact your administrator.",
+  },
+  new_user_signup_disabled: {
+    id: 'portal.auth.acceptInvite.signupDisabled',
+    defaultMessage:
+      'New account creation is currently disabled. Please contact your administrator.',
+  },
+  failed_to_create_session: {
+    id: 'portal.auth.acceptInvite.createSessionFailed',
+    defaultMessage: "We couldn't sign you in. Please try again.",
+  },
+}
+
+const UNKNOWN_ERROR: MessageDescriptor = {
+  id: 'portal.auth.acceptInvite.unknownError',
+  defaultMessage:
+    'Something went wrong with the invitation link. Please ask your administrator to resend the invitation.',
 }
 
 export interface InviteBranding {
@@ -44,25 +68,40 @@ export const Route = createFileRoute('/complete-signup/$id')({
     const { id } = params
     const { session } = context
 
+    const locale = context.acceptLanguageLocale ?? DEFAULT_LOCALE
+    const messages = await loadPortalMessages(locale)
+
     const branding = await getInviteBrandingFn({ data: id }).catch(() => DEFAULT_BRANDING)
 
     if (!session?.user) {
-      return { state: 'not-authenticated' as const, branding }
+      return { state: 'not-authenticated' as const, branding, locale, messages }
     }
 
     try {
       const data = await getInvitationDetailsFn({ data: id })
-      return { state: 'welcome' as const, ...data, branding }
+      return { state: 'welcome' as const, ...data, branding, locale, messages }
     } catch (err) {
       if (isRedirect(err)) throw err
-      const message = err instanceof Error ? err.message : 'Failed to load invitation'
-      return { state: 'error' as const, error: message, branding }
+      // No message from the server: the component renders its own localized fallback.
+      const message = err instanceof Error ? err.message : ''
+      return { state: 'error' as const, error: message, branding, locale, messages }
     }
   },
   component: AcceptInvitationPage,
 })
 
 function AcceptInvitationPage() {
+  const { locale, messages } = Route.useLoaderData()
+
+  return (
+    <PortalIntlProvider locale={locale} messages={messages}>
+      <AcceptInvitationContent />
+    </PortalIntlProvider>
+  )
+}
+
+function AcceptInvitationContent() {
+  const intl = useIntl()
   const data = Route.useLoaderData()
   const { error: errorCode } = Route.useSearch()
   const { id } = Route.useParams()
@@ -71,9 +110,7 @@ function AcceptInvitationPage() {
   // If the loader succeeded (state='welcome'), a stale ?error= from a previous
   // redirect attempt (e.g. Outlook Safe Links) should not override the valid invitation.
   if (errorCode && data.state !== 'welcome') {
-    const message =
-      ERROR_MESSAGES[errorCode] ??
-      'Something went wrong with the invitation link. Please ask your administrator to resend the invitation.'
+    const message = intl.formatMessage(ERROR_MESSAGES[errorCode] ?? UNKNOWN_ERROR)
     return (
       <PageShell>
         <ErrorContent error={message} invitationId={id} errorKind="token" branding={branding} />
@@ -157,6 +194,8 @@ function NotAuthenticatedContent({
   invitationId: string
   branding: InviteBranding
 }) {
+  const intl = useIntl()
+
   return (
     <div
       className="overflow-hidden rounded-2xl border border-border/50 bg-gradient-to-b from-card to-card/80 p-8 text-center backdrop-blur-sm"
@@ -167,21 +206,37 @@ function NotAuthenticatedContent({
     >
       <WorkspaceIdentity branding={branding} />
       <div className="mt-6 mb-6 h-px bg-border/50" />
-      <h1 className="text-2xl font-bold tracking-tight">You're invited!</h1>
+      <h1 className="text-2xl font-bold tracking-tight">
+        <FormattedMessage
+          id="portal.auth.acceptInvite.invitedTitle"
+          defaultMessage="You're invited!"
+        />
+      </h1>
       <p className="mt-2 text-muted-foreground">
         {branding.inviterName
-          ? `${branding.inviterName} invited you to join the team. Sign in to get started.`
-          : 'Sign in to accept your invitation and get started with your team.'}
+          ? intl.formatMessage(
+              {
+                id: 'portal.auth.acceptInvite.invitedBody',
+                defaultMessage: '{inviter} invited you to join the team. Sign in to get started.',
+              },
+              { inviter: branding.inviterName }
+            )
+          : intl.formatMessage({
+              id: 'portal.auth.acceptInvite.signInBody',
+              defaultMessage: 'Sign in to accept your invitation and get started with your team.',
+            })}
       </p>
       <div className="mt-6 flex flex-col gap-3">
         <a href={`/auth/login?callbackUrl=/complete-signup/${invitationId}`}>
-          <Button className="w-full h-11">Sign in</Button>
+          <Button className="w-full h-11">
+            <FormattedMessage id="portal.auth.signIn" defaultMessage="Sign in" />
+          </Button>
         </a>
         <a
           href="/"
           className="text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
-          Go to Home
+          <FormattedMessage id="portal.auth.goHome" defaultMessage="Go to Home" />
         </a>
       </div>
     </div>
@@ -202,6 +257,7 @@ function WelcomeContent({
   passwordEnabled: boolean
   branding: InviteBranding
 }) {
+  const intl = useIntl()
   const { id } = Route.useParams()
   const [name, setName] = useState(invite.name ?? '')
   const [password, setPassword] = useState('')
@@ -217,11 +273,21 @@ function WelcomeContent({
     const trimmedName = name.trim()
 
     if (trimmedName.length < 2) {
-      setError('Please enter your name (at least 2 characters)')
+      setError(
+        intl.formatMessage({
+          id: 'portal.auth.acceptInvite.nameTooShort',
+          defaultMessage: 'Please enter your name (at least 2 characters)',
+        })
+      )
       return
     }
     if (!skipPassword && password && password.length < 8) {
-      setError('Password must be at least 8 characters')
+      setError(
+        intl.formatMessage({
+          id: 'portal.auth.error.passwordTooShort',
+          defaultMessage: 'Password must be at least 8 characters',
+        })
+      )
       return
     }
 
@@ -237,7 +303,13 @@ function WelcomeContent({
 
       window.location.href = '/admin'
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to accept invitation'
+      const message =
+        err instanceof Error
+          ? err.message
+          : intl.formatMessage({
+              id: 'portal.auth.acceptInvite.acceptFailed',
+              defaultMessage: 'Failed to accept invitation',
+            })
       if (message.includes('already been accepted')) {
         window.location.href = '/admin'
         return
@@ -259,11 +331,25 @@ function WelcomeContent({
         <WorkspaceIdentity branding={branding} />
         <div className="mt-6 mb-6 h-px bg-border/50" />
         <div className="mb-6 text-center">
-          <h1 className="text-2xl font-bold tracking-tight">Welcome!</h1>
+          <h1 className="text-2xl font-bold tracking-tight">
+            <FormattedMessage
+              id="portal.auth.acceptInvite.welcomeTitle"
+              defaultMessage="Welcome!"
+            />
+          </h1>
           <p className="mt-2 text-muted-foreground">
             {invite.inviterName
-              ? `Invited by ${invite.inviterName}`
-              : 'Complete your account setup to get started'}
+              ? intl.formatMessage(
+                  {
+                    id: 'portal.auth.acceptInvite.invitedBy',
+                    defaultMessage: 'Invited by {inviter}',
+                  },
+                  { inviter: invite.inviterName }
+                )
+              : intl.formatMessage({
+                  id: 'portal.auth.acceptInvite.setupBody',
+                  defaultMessage: 'Complete your account setup to get started',
+                })}
           </p>
         </div>
 
@@ -281,7 +367,10 @@ function WelcomeContent({
 
           <div className="space-y-2">
             <label htmlFor="name" className="text-sm font-medium">
-              Your name
+              <FormattedMessage
+                id="portal.auth.acceptInvite.nameLabel"
+                defaultMessage="Your name"
+              />
             </label>
             <Input
               id="name"
@@ -289,7 +378,10 @@ function WelcomeContent({
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
-              placeholder="Jane Doe"
+              placeholder={intl.formatMessage({
+                id: 'portal.auth.name.placeholder',
+                defaultMessage: 'Jane Doe',
+              })}
               autoComplete="name"
               autoFocus
               disabled={isLoading}
@@ -300,14 +392,26 @@ function WelcomeContent({
           {passwordEnabled && (
             <div className="space-y-2">
               <label htmlFor="password" className="text-sm font-medium">
-                Set a password <span className="text-muted-foreground font-normal">(optional)</span>
+                <FormattedMessage
+                  id="portal.auth.acceptInvite.passwordLabel"
+                  defaultMessage="Set a password"
+                />{' '}
+                <span className="text-muted-foreground font-normal">
+                  <FormattedMessage
+                    id="portal.auth.acceptInvite.optional"
+                    defaultMessage="(optional)"
+                  />
+                </span>
               </label>
               <Input
                 id="password"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="At least 8 characters"
+                placeholder={intl.formatMessage({
+                  id: 'portal.auth.password.placeholderSignup',
+                  defaultMessage: 'At least 8 characters',
+                })}
                 autoComplete="new-password"
                 disabled={isLoading}
                 className="h-11"
@@ -320,7 +424,14 @@ function WelcomeContent({
             disabled={isLoading || name.trim().length < 2}
             className="w-full h-11"
           >
-            {isLoading ? <ArrowPathIcon className="h-4 w-4 animate-spin" /> : 'Get started'}
+            {isLoading ? (
+              <ArrowPathIcon className="h-4 w-4 animate-spin" />
+            ) : (
+              <FormattedMessage
+                id="portal.auth.acceptInvite.getStarted"
+                defaultMessage="Get started"
+              />
+            )}
           </Button>
 
           {passwordEnabled && (
@@ -331,7 +442,10 @@ function WelcomeContent({
               disabled={isLoading}
               className="w-full text-muted-foreground"
             >
-              Skip password setup
+              <FormattedMessage
+                id="portal.auth.acceptInvite.skipPassword"
+                defaultMessage="Skip password setup"
+              />
             </Button>
           )}
         </form>
@@ -359,8 +473,15 @@ function ErrorContent({
   errorKind?: ErrorKind
   branding: InviteBranding
 }) {
+  const intl = useIntl()
   const [retrying, setRetrying] = useState(false)
   const kind = errorKind ?? getErrorKind(error)
+  const displayError =
+    error ||
+    intl.formatMessage({
+      id: 'portal.auth.error.invitationLoadFailed',
+      defaultMessage: 'Failed to load invitation',
+    })
 
   return (
     <div
@@ -374,22 +495,34 @@ function ErrorContent({
       {retrying ? (
         <div>
           <Spinner size="xl" className="border-primary mx-auto" />
-          <p className="mt-4 text-muted-foreground">Retrying...</p>
+          <p className="mt-4 text-muted-foreground">
+            <FormattedMessage id="portal.auth.acceptInvite.retrying" defaultMessage="Retrying..." />
+          </p>
         </div>
       ) : (
         <div>
           <div className="text-destructive text-xl font-medium tracking-tight">
-            Unable to accept invitation
+            <FormattedMessage
+              id="portal.auth.acceptInvite.failedTitle"
+              defaultMessage="Unable to accept invitation"
+            />
           </div>
-          <p className="mt-2 text-muted-foreground">{error}</p>
+          <p className="mt-2 text-muted-foreground">{displayError}</p>
           <div className="mt-6 flex flex-col gap-3">
             {kind === 'already-accepted' ? (
               <a href="/admin">
-                <Button className="w-full h-11">Go to Dashboard</Button>
+                <Button className="w-full h-11">
+                  <FormattedMessage
+                    id="portal.auth.acceptInvite.goToDashboard"
+                    defaultMessage="Go to Dashboard"
+                  />
+                </Button>
               </a>
             ) : kind === 'token' ? (
               <a href={`/auth/login?callbackUrl=/complete-signup/${invitationId}`}>
-                <Button className="w-full h-11">Sign in</Button>
+                <Button className="w-full h-11">
+                  <FormattedMessage id="portal.auth.signIn" defaultMessage="Sign in" />
+                </Button>
               </a>
             ) : (
               <Button
@@ -399,14 +532,14 @@ function ErrorContent({
                   window.location.reload()
                 }}
               >
-                Try Again
+                <FormattedMessage id="portal.auth.tryAgain" defaultMessage="Try again" />
               </Button>
             )}
             <a
               href="/"
               className="text-sm text-muted-foreground hover:text-foreground transition-colors"
             >
-              Go to Home
+              <FormattedMessage id="portal.auth.goHome" defaultMessage="Go to Home" />
             </a>
           </div>
         </div>

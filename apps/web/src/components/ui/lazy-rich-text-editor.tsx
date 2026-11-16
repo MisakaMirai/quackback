@@ -10,6 +10,7 @@ import {
 } from 'react'
 import { lazyWithPreload } from '@/lib/client/lazy-with-preload'
 import { cn } from '@/lib/shared/utils'
+import { useOptionalIntl } from './use-optional-intl'
 
 /**
  * The rich-text editor behind a lazy boundary. The editor (tiptap,
@@ -50,7 +51,7 @@ export interface RichTextEditorEmptyStateProps extends Omit<
  * drawing it never loads the editor.
  */
 export function RichTextEditorEmptyState({
-  placeholder = 'Write something...',
+  placeholder,
   className,
   disabled = false,
   minHeight = '120px',
@@ -59,6 +60,10 @@ export function RichTextEditorEmptyState({
   toolbarPosition = borderless ? 'none' : 'bottom',
   ...rest
 }: RichTextEditorEmptyStateProps) {
+  const intl = useOptionalIntl()
+  const resolvedPlaceholder =
+    placeholder ??
+    intl.formatMessage({ id: 'ui.editor.placeholder', defaultMessage: 'Write something...' })
   return (
     <div
       className={cn(
@@ -84,7 +89,7 @@ export function RichTextEditorEmptyState({
         )}
         style={{ '--editor-min-height': minHeight } as CSSProperties}
       >
-        <p className="text-muted-foreground/50">{placeholder}</p>
+        <p className="text-muted-foreground/50">{resolvedPlaceholder}</p>
       </div>
       {toolbarPosition === 'bottom' && (
         <div aria-hidden className={cn('pt-1', borderless ? 'pb-0' : 'px-3 pb-2')}>
@@ -111,6 +116,7 @@ export function DeferredRichTextEditor({
   /** Remounts the editor, once mounted, when it changes (a reset after submit). */
   editorKey?: Key
 }) {
+  const intl = useOptionalIntl()
   const [wanted, setWanted] = useState(false)
   // The press or focus that mounted the editor focuses it; a reset remounts it
   // unfocused, as an always-mounted editor would be.
@@ -144,7 +150,10 @@ export function DeferredRichTextEditor({
       toolbarPosition={props.toolbarPosition}
       role="textbox"
       aria-multiline
-      aria-label={props.placeholder}
+      aria-label={
+        props.placeholder ??
+        intl.formatMessage({ id: 'ui.editor.placeholder', defaultMessage: 'Write something...' })
+      }
       tabIndex={0}
       onPointerEnter={() => setWanted(true)}
       onPointerDown={wantFocused}

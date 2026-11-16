@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { defineMessages, useIntl } from 'react-intl'
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -106,6 +107,59 @@ function FilterOptions({
 const selectClass =
   'h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring'
 
+const messages = defineMessages({
+  name: { id: 'admin.roadmap.form.name', defaultMessage: 'Name' },
+  namePlaceholder: {
+    id: 'admin.roadmap.form.namePlaceholder',
+    defaultMessage: 'Product roadmap',
+  },
+  layout: { id: 'admin.roadmap.form.layout', defaultMessage: 'Layout' },
+  layoutColumns: { id: 'admin.roadmap.form.layoutColumns', defaultMessage: 'Status columns' },
+  layoutDate: { id: 'admin.roadmap.form.layoutDate', defaultMessage: 'Date periods' },
+  description: { id: 'admin.roadmap.form.description', defaultMessage: 'Description' },
+  descriptionPlaceholder: {
+    id: 'admin.roadmap.form.descriptionPlaceholder',
+    defaultMessage: 'What this view communicates',
+  },
+  frequency: { id: 'admin.roadmap.form.frequency', defaultMessage: 'Frequency' },
+  monthly: { id: 'admin.roadmap.form.monthly', defaultMessage: 'Monthly' },
+  quarterly: { id: 'admin.roadmap.form.quarterly', defaultMessage: 'Quarterly' },
+  semiannual: { id: 'admin.roadmap.form.semiannual', defaultMessage: 'Semiannual' },
+  visibility: { id: 'admin.roadmap.form.visibility', defaultMessage: 'Visibility' },
+  public: { id: 'admin.roadmap.form.public', defaultMessage: 'Public' },
+  teamOnly: { id: 'admin.roadmap.form.teamOnly', defaultMessage: 'Team only' },
+  customerSegments: {
+    id: 'admin.roadmap.form.customerSegments',
+    defaultMessage: 'Customer segments',
+  },
+  visibleTo: { id: 'admin.roadmap.form.visibleTo', defaultMessage: 'Visible to' },
+  visibleToRequired: {
+    id: 'admin.roadmap.form.visibleToRequired',
+    defaultMessage: 'Select at least one segment.',
+  },
+  baseFilter: { id: 'admin.roadmap.form.baseFilter', defaultMessage: 'Base filter' },
+  baseFilterHelp: {
+    id: 'admin.roadmap.form.baseFilterHelp',
+    defaultMessage: 'Posts must match these constraints before placement.',
+  },
+  statuses: { id: 'admin.roadmap.form.statuses', defaultMessage: 'Statuses' },
+  boards: { id: 'admin.roadmap.form.boards', defaultMessage: 'Boards' },
+  tags: { id: 'admin.roadmap.form.tags', defaultMessage: 'Tags' },
+  authorSegments: { id: 'admin.roadmap.form.authorSegments', defaultMessage: 'Author segments' },
+  columns: { id: 'admin.roadmap.form.columns', defaultMessage: 'Columns' },
+  columnsHelp: {
+    id: 'admin.roadmap.form.columnsHelp',
+    defaultMessage: 'Each status can appear once. Dragging a card changes only its status.',
+  },
+  columnName: { id: 'admin.roadmap.form.columnName', defaultMessage: '{status} column name' },
+  columnIcon: { id: 'admin.roadmap.form.columnIcon', defaultMessage: '{status} column icon' },
+  iconPlaceholder: { id: 'admin.roadmap.form.iconPlaceholder', defaultMessage: 'Icon' },
+  columnColor: { id: 'admin.roadmap.form.columnColor', defaultMessage: '{status} column color' },
+  moveLeft: { id: 'admin.roadmap.form.moveLeft', defaultMessage: 'Move {status} left' },
+  moveRight: { id: 'admin.roadmap.form.moveRight', defaultMessage: 'Move {status} right' },
+  cancel: { id: 'common.cancel', defaultMessage: 'Cancel' },
+})
+
 export function RoadmapBuilderForm({
   roadmap,
   statuses,
@@ -117,6 +171,7 @@ export function RoadmapBuilderForm({
   onCancel,
   onSubmit,
 }: RoadmapBuilderFormProps) {
+  const intl = useIntl()
   const [name, setName] = useState(roadmap?.name ?? '')
   const [description, setDescription] = useState(roadmap?.description ?? '')
   const [type, setType] = useState<RoadmapType>(roadmap?.type ?? 'column')
@@ -190,66 +245,66 @@ export function RoadmapBuilderForm({
         <div className="space-y-5 pe-3">
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="roadmap-name">Name</Label>
+              <Label htmlFor="roadmap-name">{intl.formatMessage(messages.name)}</Label>
               <Input
                 id="roadmap-name"
                 value={name}
                 onChange={(event) => setName(event.target.value)}
-                placeholder="Product roadmap"
+                placeholder={intl.formatMessage(messages.namePlaceholder)}
                 required
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="roadmap-type">Layout</Label>
+              <Label htmlFor="roadmap-type">{intl.formatMessage(messages.layout)}</Label>
               <select
                 id="roadmap-type"
                 className={selectClass}
                 value={type}
                 onChange={(event) => setType(event.target.value as RoadmapType)}
               >
-                <option value="column">Status columns</option>
-                <option value="date">Date periods</option>
+                <option value="column">{intl.formatMessage(messages.layoutColumns)}</option>
+                <option value="date">{intl.formatMessage(messages.layoutDate)}</option>
               </select>
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="roadmap-description">Description</Label>
+            <Label htmlFor="roadmap-description">{intl.formatMessage(messages.description)}</Label>
             <Input
               id="roadmap-description"
               value={description}
               onChange={(event) => setDescription(event.target.value)}
-              placeholder="What this view communicates"
+              placeholder={intl.formatMessage(messages.descriptionPlaceholder)}
             />
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
             {type === 'date' && (
               <div className="space-y-2">
-                <Label htmlFor="roadmap-frequency">Frequency</Label>
+                <Label htmlFor="roadmap-frequency">{intl.formatMessage(messages.frequency)}</Label>
                 <select
                   id="roadmap-frequency"
                   className={selectClass}
                   value={frequency}
                   onChange={(event) => setFrequency(event.target.value as RoadmapFrequency)}
                 >
-                  <option value="monthly">Monthly</option>
-                  <option value="quarterly">Quarterly</option>
-                  <option value="semiannual">Semiannual</option>
+                  <option value="monthly">{intl.formatMessage(messages.monthly)}</option>
+                  <option value="quarterly">{intl.formatMessage(messages.quarterly)}</option>
+                  <option value="semiannual">{intl.formatMessage(messages.semiannual)}</option>
                 </select>
               </div>
             )}
             <div className="space-y-2">
-              <Label htmlFor="roadmap-visibility">Visibility</Label>
+              <Label htmlFor="roadmap-visibility">{intl.formatMessage(messages.visibility)}</Label>
               <select
                 id="roadmap-visibility"
                 className={selectClass}
                 value={visibility}
                 onChange={(event) => setVisibility(event.target.value as RoadmapVisibility)}
               >
-                <option value="public">Public</option>
-                <option value="team">Team only</option>
-                <option value="segment">Customer segments</option>
+                <option value="public">{intl.formatMessage(messages.public)}</option>
+                <option value="team">{intl.formatMessage(messages.teamOnly)}</option>
+                <option value="segment">{intl.formatMessage(messages.customerSegments)}</option>
               </select>
             </div>
           </div>
@@ -257,39 +312,46 @@ export function RoadmapBuilderForm({
           {visibility === 'segment' && (
             <div className="rounded-lg border border-border/60 p-3">
               <FilterOptions
-                label="Visible to"
+                label={intl.formatMessage(messages.visibleTo)}
                 options={segments}
                 selected={visibleSegmentIds}
                 onChange={setVisibleSegmentIds}
               />
               {!visibleSegmentIds.length && (
-                <p className="mt-2 text-xs text-destructive">Select at least one segment.</p>
+                <p className="mt-2 text-xs text-destructive">
+                  {intl.formatMessage(messages.visibleToRequired)}
+                </p>
               )}
             </div>
           )}
 
           <div className="space-y-3 rounded-lg border border-border/60 p-3">
             <div>
-              <h3 className="text-sm font-medium">Base filter</h3>
+              <h3 className="text-sm font-medium">{intl.formatMessage(messages.baseFilter)}</h3>
               <p className="text-xs text-muted-foreground">
-                Posts must match these constraints before placement.
+                {intl.formatMessage(messages.baseFilterHelp)}
               </p>
             </div>
             <FilterOptions
-              label="Statuses"
+              label={intl.formatMessage(messages.statuses)}
               options={statuses}
               selected={statusIds}
               onChange={setStatusIds}
             />
             <FilterOptions
-              label="Boards"
+              label={intl.formatMessage(messages.boards)}
               options={boards}
               selected={boardIds}
               onChange={setBoardIds}
             />
-            <FilterOptions label="Tags" options={tags} selected={tagIds} onChange={setTagIds} />
             <FilterOptions
-              label="Author segments"
+              label={intl.formatMessage(messages.tags)}
+              options={tags}
+              selected={tagIds}
+              onChange={setTagIds}
+            />
+            <FilterOptions
+              label={intl.formatMessage(messages.authorSegments)}
               options={segments}
               selected={segmentIds}
               onChange={setSegmentIds}
@@ -299,9 +361,9 @@ export function RoadmapBuilderForm({
           {type === 'column' && (
             <div className="space-y-3 rounded-lg border border-border/60 p-3">
               <div>
-                <h3 className="text-sm font-medium">Columns</h3>
+                <h3 className="text-sm font-medium">{intl.formatMessage(messages.columns)}</h3>
                 <p className="text-xs text-muted-foreground">
-                  Each status can appear once. Dragging a card changes only its status.
+                  {intl.formatMessage(messages.columnsHelp)}
                 </p>
               </div>
               <div className="space-y-2">
@@ -326,7 +388,9 @@ export function RoadmapBuilderForm({
                         <div className="mt-2 grid grid-cols-[1fr_90px_auto] gap-2 ps-6">
                           <Input
                             value={column.name}
-                            aria-label={`${status.name} column name`}
+                            aria-label={intl.formatMessage(messages.columnName, {
+                              status: status.name,
+                            })}
                             onChange={(event) =>
                               setColumns((current) =>
                                 current.map((item, index) =>
@@ -339,8 +403,10 @@ export function RoadmapBuilderForm({
                           />
                           <Input
                             value={column.icon ?? ''}
-                            aria-label={`${status.name} column icon`}
-                            placeholder="Icon"
+                            aria-label={intl.formatMessage(messages.columnIcon, {
+                              status: status.name,
+                            })}
+                            placeholder={intl.formatMessage(messages.iconPlaceholder)}
                             onChange={(event) =>
                               setColumns((current) =>
                                 current.map((item, index) =>
@@ -355,7 +421,9 @@ export function RoadmapBuilderForm({
                             <input
                               type="color"
                               value={column.color}
-                              aria-label={`${status.name} column color`}
+                              aria-label={intl.formatMessage(messages.columnColor, {
+                                status: status.name,
+                              })}
                               onChange={(event) =>
                                 setColumns((current) =>
                                   current.map((item, index) =>
@@ -373,7 +441,9 @@ export function RoadmapBuilderForm({
                               size="icon-sm"
                               disabled={columnIndex === 0}
                               onClick={() => moveColumn(columnIndex, -1)}
-                              aria-label={`Move ${status.name} left`}
+                              aria-label={intl.formatMessage(messages.moveLeft, {
+                                status: status.name,
+                              })}
                             >
                               <ChevronLeftIcon className="size-3.5" />
                             </Button>
@@ -383,7 +453,9 @@ export function RoadmapBuilderForm({
                               size="icon-sm"
                               disabled={columnIndex === columns.length - 1}
                               onClick={() => moveColumn(columnIndex, 1)}
-                              aria-label={`Move ${status.name} right`}
+                              aria-label={intl.formatMessage(messages.moveRight, {
+                                status: status.name,
+                              })}
                             >
                               <ChevronRightIcon className="size-3.5" />
                             </Button>
@@ -401,7 +473,7 @@ export function RoadmapBuilderForm({
 
       <div className="flex justify-end gap-2">
         <Button type="button" variant="outline" onClick={onCancel}>
-          Cancel
+          {intl.formatMessage(messages.cancel)}
         </Button>
         <Button
           type="submit"

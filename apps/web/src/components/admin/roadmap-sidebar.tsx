@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { defineMessages } from 'react-intl'
 import { useQuery } from '@tanstack/react-query'
 import {
   MapIcon,
@@ -14,6 +15,7 @@ import { PaneAddButton } from '@/components/shared/pane-add-button'
 import { PageHeader } from '@/components/shared/page-header'
 import { FilterSection } from '@/components/shared/filter-section'
 import { MENU_ICON, MENU_ROW } from '@/components/ui/menu'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import {
   Dialog,
   DialogContent,
@@ -38,6 +40,44 @@ import { useSegments } from '@/lib/client/hooks/use-segments-queries'
 import { RoadmapBuilderForm, type RoadmapBuilderValue } from './roadmap-builder-form'
 import { toastError } from '@/lib/client/error-notice'
 
+const messages = defineMessages({
+  roadmap: { id: 'admin.nav.roadmap', defaultMessage: 'Roadmap' },
+  roadmaps: { id: 'admin.roadmap.sidebar.title', defaultMessage: 'Roadmaps' },
+  newRoadmap: { id: 'admin.roadmap.sidebar.new', defaultMessage: 'New roadmap' },
+  edit: { id: 'admin.roadmap.action.edit', defaultMessage: 'Edit' },
+  delete: { id: 'admin.roadmap.action.delete', defaultMessage: 'Delete' },
+  createTitle: { id: 'admin.roadmap.create.title', defaultMessage: 'Create roadmap' },
+  createDescription: {
+    id: 'admin.roadmap.create.description',
+    defaultMessage: 'Define a saved view over posts using statuses or ETA periods.',
+  },
+  createFailed: {
+    id: 'admin.roadmap.create.failed',
+    defaultMessage: "Couldn't create roadmap. Try again.",
+  },
+  editTitle: { id: 'admin.roadmap.edit.title', defaultMessage: 'Edit roadmap' },
+  editDescription: {
+    id: 'admin.roadmap.edit.description',
+    defaultMessage: 'Update your roadmap settings.',
+  },
+  editSubmit: { id: 'admin.roadmap.edit.submit', defaultMessage: 'Save changes' },
+  editFailed: {
+    id: 'admin.roadmap.edit.failed',
+    defaultMessage: "Couldn't update roadmap. Try again.",
+  },
+  deleteTitle: { id: 'admin.roadmap.delete.title', defaultMessage: 'Delete roadmap?' },
+  deleteDescription: {
+    id: 'admin.roadmap.delete.description',
+    defaultMessage:
+      'Are you sure you want to delete "{name}"? Posts are not changed because roadmap placement is derived from their fields.',
+  },
+  deleteConfirm: { id: 'admin.roadmap.delete.confirm', defaultMessage: 'Delete roadmap' },
+  deleteFailed: {
+    id: 'admin.roadmap.delete.failed',
+    defaultMessage: "Couldn't delete roadmap. Try again.",
+  },
+})
+
 interface RoadmapSidebarProps {
   selectedRoadmapId: string | null
   onSelectRoadmap: (roadmapId: string | null) => void
@@ -52,6 +92,7 @@ export function RoadmapSidebar({
   createOpen,
   onCreateOpenChange,
 }: RoadmapSidebarProps) {
+  const intl = useOptionalIntl()
   const [ownCreateOpen, setOwnCreateOpen] = useState(false)
   const isCreateDialogOpen = createOpen ?? ownCreateOpen
   const setIsCreateDialogOpen = onCreateOpenChange ?? setOwnCreateOpen
@@ -81,7 +122,7 @@ export function RoadmapSidebar({
       setIsCreateDialogOpen(false)
       onSelectRoadmap(newRoadmap.id)
     } catch (error) {
-      toastError(error, "Couldn't create roadmap. Try again.")
+      toastError(error, intl.formatMessage(messages.createFailed))
     }
   }
 
@@ -96,7 +137,7 @@ export function RoadmapSidebar({
       setIsEditDialogOpen(false)
       setEditingRoadmap(null)
     } catch (error) {
-      toastError(error, "Couldn't update roadmap. Try again.")
+      toastError(error, intl.formatMessage(messages.editFailed))
     }
   }
 
@@ -111,7 +152,7 @@ export function RoadmapSidebar({
         onSelectRoadmap(roadmaps?.[0]?.id ?? null)
       }
     } catch (error) {
-      toastError(error, "Couldn't delete roadmap. Try again.")
+      toastError(error, intl.formatMessage(messages.deleteFailed))
     }
   }
 
@@ -131,7 +172,7 @@ export function RoadmapSidebar({
       className="w-64 xl:w-72 shrink-0 flex flex-col border-e border-chrome-hairline bg-background overflow-hidden"
     >
       <div className="shrink-0 px-5 py-3.5">
-        <PageHeader as="h2" title="Roadmap" />
+        <PageHeader as="h2" title={intl.formatMessage(messages.roadmap)} />
       </div>
 
       {/* Selector + list — the "Roadmaps" subheading routes through the shared
@@ -140,9 +181,12 @@ export function RoadmapSidebar({
       <ScrollArea className="flex-1">
         <div className="px-2.5 pb-5">
           <FilterSection
-            title="Roadmaps"
+            title={intl.formatMessage(messages.roadmaps)}
             action={
-              <PaneAddButton label="New roadmap" onClick={() => setIsCreateDialogOpen(true)} />
+              <PaneAddButton
+                label={intl.formatMessage(messages.newRoadmap)}
+                onClick={() => setIsCreateDialogOpen(true)}
+              />
             }
           >
             {isLoading ? (
@@ -188,7 +232,7 @@ export function RoadmapSidebar({
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem onClick={() => openEditDialog(roadmap)}>
                           <PencilIcon className="h-4 w-4 mr-2" />
-                          Edit
+                          {intl.formatMessage(messages.edit)}
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
@@ -196,7 +240,7 @@ export function RoadmapSidebar({
                           onClick={() => openDeleteDialog(roadmap)}
                         >
                           <TrashIcon className="h-4 w-4 mr-2" />
-                          Delete
+                          {intl.formatMessage(messages.delete)}
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -212,10 +256,8 @@ export function RoadmapSidebar({
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
         <DialogContent className="sm:max-w-3xl">
           <DialogHeader>
-            <DialogTitle>Create roadmap</DialogTitle>
-            <DialogDescription>
-              Define a saved view over posts using statuses or ETA periods.
-            </DialogDescription>
+            <DialogTitle>{intl.formatMessage(messages.createTitle)}</DialogTitle>
+            <DialogDescription>{intl.formatMessage(messages.createDescription)}</DialogDescription>
           </DialogHeader>
           <RoadmapBuilderForm
             statuses={statuses}
@@ -223,7 +265,7 @@ export function RoadmapSidebar({
             tags={tags}
             segments={segments}
             isPending={createRoadmap.isPending}
-            submitLabel="Create roadmap"
+            submitLabel={intl.formatMessage(messages.createTitle)}
             onCancel={() => setIsCreateDialogOpen(false)}
             onSubmit={handleCreateSubmit}
           />
@@ -234,8 +276,8 @@ export function RoadmapSidebar({
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="sm:max-w-3xl">
           <DialogHeader>
-            <DialogTitle>Edit roadmap</DialogTitle>
-            <DialogDescription>Update your roadmap settings.</DialogDescription>
+            <DialogTitle>{intl.formatMessage(messages.editTitle)}</DialogTitle>
+            <DialogDescription>{intl.formatMessage(messages.editDescription)}</DialogDescription>
           </DialogHeader>
           {editingRoadmap && (
             <RoadmapBuilderForm
@@ -246,7 +288,7 @@ export function RoadmapSidebar({
               tags={tags}
               segments={segments}
               isPending={updateRoadmap.isPending}
-              submitLabel="Save changes"
+              submitLabel={intl.formatMessage(messages.editSubmit)}
               onCancel={() => setIsEditDialogOpen(false)}
               onSubmit={handleEditSubmit}
             />
@@ -258,9 +300,11 @@ export function RoadmapSidebar({
       <ConfirmDialog
         open={isDeleteDialogOpen}
         onOpenChange={setIsDeleteDialogOpen}
-        title="Delete roadmap?"
-        description={`Are you sure you want to delete "${deletingRoadmap?.name}"? Posts are not changed because roadmap placement is derived from their fields.`}
-        confirmLabel="Delete roadmap"
+        title={intl.formatMessage(messages.deleteTitle)}
+        description={intl.formatMessage(messages.deleteDescription, {
+          name: deletingRoadmap?.name ?? '',
+        })}
+        confirmLabel={intl.formatMessage(messages.deleteConfirm)}
         variant="destructive"
         isPending={deleteRoadmap.isPending}
         onConfirm={handleDelete}

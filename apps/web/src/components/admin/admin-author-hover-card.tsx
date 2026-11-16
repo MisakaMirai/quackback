@@ -10,6 +10,7 @@
  * never get a card — same anti-enumeration contract as the portal.
  */
 import { useRef, useState, type ReactNode } from 'react'
+import { defineMessages } from 'react-intl'
 import { useNavigate } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import { ArrowRightIcon, CheckCircleIcon } from '@heroicons/react/24/solid'
@@ -18,6 +19,7 @@ import { Avatar } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { TimeAgo } from '@/components/ui/time-ago'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { cn } from '@/lib/shared/utils'
 import { PERMISSIONS } from '@/lib/shared/permissions'
 import { useHasPermission } from '@/lib/client/hooks/use-root-context'
@@ -30,6 +32,17 @@ import {
 const HOVER_OPEN_DELAY_MS = 200
 const HOVER_CLOSE_DELAY_MS = 150
 const MAX_VISIBLE_SEGMENTS = 2
+
+const messages = defineMessages({
+  anonymous: { id: 'portal.profile.nameFallback', defaultMessage: 'Anonymous' },
+  blocked: { id: 'admin.people.hover.blocked', defaultMessage: 'Blocked' },
+  posts: { id: 'common.userStats.ideas', defaultMessage: 'Posts' },
+  comments: { id: 'common.userStats.comments', defaultMessage: 'Comments' },
+  votes: { id: 'common.userStats.votes', defaultMessage: 'Votes' },
+  openProfile: { id: 'admin.people.hover.openProfile', defaultMessage: 'Open full profile' },
+  lastSeen: { id: 'admin.people.hover.lastSeen', defaultMessage: 'Last seen' },
+  segments: { id: 'admin.people.hover.segments', defaultMessage: 'Segments' },
+})
 
 interface AdminAuthorHoverCardProps {
   principalId: string
@@ -44,6 +57,7 @@ export function AdminAuthorHoverCard({
   children,
   className,
 }: AdminAuthorHoverCardProps) {
+  const intl = useOptionalIntl()
   const navigate = useNavigate()
   // Render-only: the team-context fn still requireAuth(people.view). Skip the
   // request when the caller lacks it so a vote manager without people.view
@@ -141,14 +155,14 @@ export function AdminAuthorHoverCard({
               <div className="min-w-0 flex-1">
                 <div className="flex min-w-0 items-center gap-1.5">
                   <span className="min-w-0 truncate text-sm font-medium text-foreground">
-                    {profile.displayName || displayName || 'Anonymous'}
+                    {profile.displayName || displayName || intl.formatMessage(messages.anonymous)}
                   </span>
                   {teamQuery.data?.emailVerified && (
                     <CheckCircleIcon className="size-3.5 shrink-0 text-primary" />
                   )}
                   {teamQuery.data?.blocked && (
                     <Badge variant="destructive" size="sm" className="shrink-0">
-                      Blocked
+                      {intl.formatMessage(messages.blocked)}
                     </Badge>
                   )}
                 </div>
@@ -168,9 +182,12 @@ export function AdminAuthorHoverCard({
             />
 
             <div className="mt-3 flex items-center border-t border-border/50 pt-2.5">
-              <CardStat value={profile.postCount} label="Posts" />
-              <CardStat value={profile.commentCount} label="Comments" />
-              <CardStat value={profile.voteCount} label="Votes" />
+              <CardStat value={profile.postCount} label={intl.formatMessage(messages.posts)} />
+              <CardStat
+                value={profile.commentCount}
+                label={intl.formatMessage(messages.comments)}
+              />
+              <CardStat value={profile.voteCount} label={intl.formatMessage(messages.votes)} />
             </div>
 
             {canViewPeople && (
@@ -179,7 +196,9 @@ export function AdminAuthorHoverCard({
                 onClick={goToProfile}
                 className="mt-3 flex w-full items-center justify-between border-t border-border/50 pt-2.5 text-primary"
               >
-                <span className="text-xs font-medium">Open full profile</span>
+                <span className="text-xs font-medium">
+                  {intl.formatMessage(messages.openProfile)}
+                </span>
                 <ArrowRightIcon className="size-3.5" />
               </button>
             )}
@@ -197,6 +216,7 @@ function TeamInfoRows({
   team: ProfileTeamContextView | null
   isLoading: boolean
 }) {
+  const intl = useOptionalIntl()
   if (isLoading && !team) {
     return (
       <div className="mt-3 space-y-[5px] border-t border-border/50 pt-2.5">
@@ -218,14 +238,18 @@ function TeamInfoRows({
   return (
     <div className="mt-3 flex flex-col gap-[5px] border-t border-border/50 pt-2.5 text-xs leading-4">
       <div className="flex items-center justify-between gap-2">
-        <span className="shrink-0 text-muted-foreground">Last seen</span>
+        <span className="shrink-0 text-muted-foreground">
+          {intl.formatMessage(messages.lastSeen)}
+        </span>
         <span className="min-w-0 truncate">
           {team.lastSeenAt ? <TimeAgo date={team.lastSeenAt} /> : '-'}
         </span>
       </div>
       {segments.length > 0 && (
         <div className="flex items-center justify-between gap-2">
-          <span className="shrink-0 text-muted-foreground">Segments</span>
+          <span className="shrink-0 text-muted-foreground">
+            {intl.formatMessage(messages.segments)}
+          </span>
           <span className="flex min-w-0 items-center justify-end gap-1 overflow-hidden">
             {visible.map((seg) => (
               <span
