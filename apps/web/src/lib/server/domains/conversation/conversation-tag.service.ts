@@ -18,7 +18,6 @@ import {
   conversationTags,
   conversationTagAssignments,
   conversations,
-  workflows,
   macros,
   type ConversationTag,
 } from '@/lib/server/db'
@@ -253,31 +252,19 @@ export async function listAllConversationTagsWithUsage(): Promise<
 }
 
 /**
- * The LIVE automations that reference a tag: live workflows (graph actions
- * add_tag/remove_tag or conversation.tags conditions) and macros (bundled
- * add_tag actions). Both store the branded tag id inside jsonb, so a
- * serialized containment scan covers every node shape, present and future
- * (typeids are globally unique strings, so a false positive is not a
- * realistic risk). Draft/paused workflows don't block: only running
- * automations can break.
+ * The LIVE automations that reference a tag: macros (bundled add_tag actions).
+ * They store the branded tag id inside jsonb, so a serialized containment scan
+ * covers every node shape, present and future (typeids are globally unique
+ * strings, so a false positive is not a realistic risk).
  */
 export async function findTagAutomationReferences(
   id: ConversationTagId
-): Promise<{ workflows: string[]; macros: string[] }> {
-  const [workflowRows, macroRows] = await Promise.all([
-    db
-      .select({ name: workflows.name, graph: workflows.graph })
-      .from(workflows)
-      .where(and(eq(workflows.status, 'live'), isNull(workflows.deletedAt))),
-    db
-      .select({ name: macros.name, actions: macros.actions })
-      .from(macros)
-      .where(isNull(macros.deletedAt)),
-  ])
+): Promise<{ macros: string[] }> {
+  const macroRows = await db
+    .select({ name: macros.name, actions: macros.actions })
+    .from(macros)
+    .where(isNull(macros.deletedAt))
   return {
-    workflows: workflowRows
-      .filter((w) => JSON.stringify(w.graph ?? {}).includes(id))
-      .map((w) => w.name),
     macros: macroRows
       .filter((m) => JSON.stringify(m.actions ?? []).includes(id))
       .map((m) => m.name),
@@ -287,10 +274,7 @@ export async function findTagAutomationReferences(
 /** Throw TAG_IN_USE naming every live automation that references the tag. */
 async function assertTagUnreferenced(id: ConversationTagId): Promise<void> {
   const refs = await findTagAutomationReferences(id)
-  const names = [
-    ...refs.workflows.map((n) => `workflow "${n}"`),
-    ...refs.macros.map((n) => `macro "${n}"`),
-  ]
+  const names = refs.macros.map((n) => `macro "${n}"`)
   if (names.length > 0) {
     throw new ValidationError(
       'TAG_IN_USE',
