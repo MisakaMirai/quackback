@@ -57,6 +57,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { cn } from '@/lib/shared/utils'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 
 const triggerClass =
   'inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-muted disabled:opacity-50'
@@ -77,12 +78,22 @@ export function TicketStatusControl({
   const { data: statuses } = useQuery(ticketQueries.statuses())
   // Workspace stage labels so the picker shows a renamed stage, not the default.
   const { data: stageLabels } = useQuery(ticketQueries.stageLabels())
+  const intl = useOptionalIntl()
   const mutation = useSetTicketStatus()
   const select = (statusId: TicketDTO['status']['id']) => {
     if (statusId === ticket.status.id) return
     mutation.mutate(
       { ticketId: ticket.id, statusId },
-      { onSuccess: () => onChanged?.(), onError: () => toast.error('Failed to update status') }
+      {
+        onSuccess: () => onChanged?.(),
+        onError: () =>
+          toast.error(
+            intl.formatMessage({
+              id: 'admin.settings.statuses.updateFailed',
+              defaultMessage: 'Failed to update status',
+            })
+          ),
+      }
     )
   }
   return (
@@ -135,20 +146,31 @@ export function TicketAssigneeControl({
   // The query itself rather than the inbox sidebar's hook: this control also
   // renders in the Try Messenger sheet, which should not load the sidebar.
   const { data: teams } = useQuery(inboxTeamsQueryOptions())
+  const intl = useOptionalIntl()
   const mutation = useAssignTicket()
   const { assignee } = ticket
 
   const run = (vars: { assigneePrincipalId?: string | null; assigneeTeamId?: string | null }) =>
     mutation.mutate(
       { ticketId: ticket.id, ...vars },
-      { onSuccess: () => onChanged?.(), onError: () => toast.error('Failed to assign ticket') }
+      {
+        onSuccess: () => onChanged?.(),
+        onError: () =>
+          toast.error(
+            intl.formatMessage({
+              id: 'admin.inbox.ticketAssignFailed',
+              defaultMessage: 'Failed to assign ticket',
+            })
+          ),
+      }
     )
 
   const label = assignee.principalId
-    ? (assignee.displayName ?? 'Assigned')
+    ? (assignee.displayName ??
+      intl.formatMessage({ id: 'inbox.assign.assigned', defaultMessage: 'Assigned' }))
     : assignee.teamId
-      ? (assignee.teamName ?? 'Team')
-      : 'Unassigned'
+      ? (assignee.teamName ?? intl.formatMessage({ id: 'inbox.bulk.team', defaultMessage: 'Team' }))
+      : intl.formatMessage({ id: 'inbox.assign.unassigned', defaultMessage: 'Unassigned' })
 
   return (
     <DropdownMenu>
@@ -157,7 +179,10 @@ export function TicketAssigneeControl({
           {assignee.principalId ? (
             <Avatar
               src={undefined}
-              name={assignee.displayName ?? 'Agent'}
+              name={
+                assignee.displayName ??
+                intl.formatMessage({ id: 'inbox.assign.agent', defaultMessage: 'Agent' })
+              }
               className="size-4 text-xs"
             />
           ) : (
@@ -177,10 +202,15 @@ export function TicketAssigneeControl({
         {teams && teams.length > 0 && (
           <>
             <DropdownMenuSeparator />
-            <DropdownMenuLabel className="text-muted-foreground">Teams</DropdownMenuLabel>
+            <DropdownMenuLabel className="text-muted-foreground">
+              {intl.formatMessage({ id: 'inbox.nav.teams', defaultMessage: 'Teams' })}
+            </DropdownMenuLabel>
             {assignee.teamId && (
               <DropdownMenuItem onClick={() => run({ assigneeTeamId: null })}>
-                Clear team
+                {intl.formatMessage({
+                  id: 'admin.inbox.ticketAssignee.clearTeam',
+                  defaultMessage: 'Clear team',
+                })}
               </DropdownMenuItem>
             )}
             {teams.map((t) => (
@@ -215,18 +245,30 @@ export function TicketPriorityControl({
   onChanged?: () => void
 }) {
   const mutation = useSetTicketPriority()
+  const intl = useOptionalIntl()
   const meta = priorityMeta(ticket.priority)
   const select = (priority: ConversationPriority) =>
     mutation.mutate(
       { ticketId: ticket.id, priority },
-      { onSuccess: () => onChanged?.(), onError: () => toast.error('Failed to set priority') }
+      {
+        onSuccess: () => onChanged?.(),
+        onError: () =>
+          toast.error(
+            intl.formatMessage({
+              id: 'admin.inbox.priorityFailed',
+              defaultMessage: 'Failed to set priority',
+            })
+          ),
+      }
     )
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button type="button" disabled={mutation.isPending} className={triggerClass}>
           <PriorityDot priority={ticket.priority} />
-          {ticket.priority === 'none' ? 'Priority' : meta.label}
+          {ticket.priority === 'none'
+            ? intl.formatMessage({ id: 'inbox.view.field.priority', defaultMessage: 'Priority' })
+            : meta.label}
           <ChevronDownIcon className="size-3.5 shrink-0" />
         </button>
       </DropdownMenuTrigger>
@@ -245,11 +287,11 @@ export function TicketPriorityControl({
 // the same teammate roster the assignee control reads.
 // ---------------------------------------------------------------------------
 
-const REASON_LABEL: Record<TicketWatcher['reason'], string> = {
-  requester: 'Requester',
-  assignee: 'Assignee',
-  replier: 'Replied',
-  manual: 'Added',
+const REASON_LABEL: Record<TicketWatcher['reason'], { id: string; defaultMessage: string }> = {
+  requester: { id: 'admin.inbox.contact.requester', defaultMessage: 'Requester' },
+  assignee: { id: 'inbox.view.field.assignee', defaultMessage: 'Assignee' },
+  replier: { id: 'admin.inbox.verbReplied', defaultMessage: 'Replied' },
+  manual: { id: 'admin.inbox.ticketWatchers.reasonAdded', defaultMessage: 'Added' },
 }
 
 function isMuted(mutedUntil: Date | string | null | undefined): boolean {
@@ -260,6 +302,7 @@ function isMuted(mutedUntil: Date | string | null | undefined): boolean {
 /** The caller's own watch/mute control, plus the watcher avatar stack. Renders
  *  in the ticket Properties section (inbox-detail-panel.tsx), ticket items only. */
 export function TicketWatchControl({ ticketId }: { ticketId: TicketId }) {
+  const intl = useOptionalIntl()
   const { data: status } = useQuery(ticketQueries.watchStatus(ticketId))
   const { data: watchers } = useQuery(ticketQueries.watchers(ticketId))
   const watch = useWatchTicket()
@@ -271,7 +314,14 @@ export function TicketWatchControl({ ticketId }: { ticketId: TicketId }) {
   const muted = isMuted(status?.mutedUntil)
   const pending = watch.isPending || unwatch.isPending || mute.isPending || unmute.isPending
 
-  const label = muted ? 'Muted' : watching ? 'Watching' : 'Watch'
+  const label = muted
+    ? intl.formatMessage({ id: 'admin.inbox.ticketWatchers.muted', defaultMessage: 'Muted' })
+    : watching
+      ? intl.formatMessage({
+          id: 'admin.inbox.ticketWatchers.watching',
+          defaultMessage: 'Watching',
+        })
+      : intl.formatMessage({ id: 'admin.inbox.ticketWatchers.watch', defaultMessage: 'Watch' })
   const TriggerIcon = muted ? BellSlashIcon : BellIcon
 
   return (
@@ -288,10 +338,25 @@ export function TicketWatchControl({ ticketId }: { ticketId: TicketId }) {
           {!watching && (
             <DropdownMenuItem
               onClick={() =>
-                watch.mutate({ ticketId }, { onError: () => toast.error('Failed to watch ticket') })
+                watch.mutate(
+                  { ticketId },
+                  {
+                    onError: () =>
+                      toast.error(
+                        intl.formatMessage({
+                          id: 'admin.inbox.ticketWatchers.watchFailed',
+                          defaultMessage: 'Failed to watch ticket',
+                        })
+                      ),
+                  }
+                )
               }
             >
-              <BellIcon className="size-4" /> Watch
+              <BellIcon className="size-4" />{' '}
+              {intl.formatMessage({
+                id: 'admin.inbox.ticketWatchers.watch',
+                defaultMessage: 'Watch',
+              })}
             </DropdownMenuItem>
           )}
           {watching && (
@@ -299,11 +364,23 @@ export function TicketWatchControl({ ticketId }: { ticketId: TicketId }) {
               onClick={() =>
                 unwatch.mutate(
                   { ticketId },
-                  { onError: () => toast.error('Failed to unwatch ticket') }
+                  {
+                    onError: () =>
+                      toast.error(
+                        intl.formatMessage({
+                          id: 'admin.inbox.ticketWatchers.unwatchFailed',
+                          defaultMessage: 'Failed to unwatch ticket',
+                        })
+                      ),
+                  }
                 )
               }
             >
-              <BellSlashIcon className="size-4" /> Unwatch
+              <BellSlashIcon className="size-4" />{' '}
+              {intl.formatMessage({
+                id: 'admin.inbox.ticketWatchers.unwatch',
+                defaultMessage: 'Unwatch',
+              })}
             </DropdownMenuItem>
           )}
           {watching && !muted && (
@@ -311,11 +388,23 @@ export function TicketWatchControl({ ticketId }: { ticketId: TicketId }) {
               onClick={() =>
                 mute.mutate(
                   { ticketId, days: 7 },
-                  { onError: () => toast.error('Failed to mute ticket') }
+                  {
+                    onError: () =>
+                      toast.error(
+                        intl.formatMessage({
+                          id: 'admin.inbox.ticketWatchers.muteFailed',
+                          defaultMessage: 'Failed to mute ticket',
+                        })
+                      ),
+                  }
                 )
               }
             >
-              <BellSlashIcon className="size-4" /> Mute for a week
+              <BellSlashIcon className="size-4" />{' '}
+              {intl.formatMessage({
+                id: 'admin.inbox.ticketWatchers.muteWeek',
+                defaultMessage: 'Mute for a week',
+              })}
             </DropdownMenuItem>
           )}
           {muted && (
@@ -323,11 +412,23 @@ export function TicketWatchControl({ ticketId }: { ticketId: TicketId }) {
               onClick={() =>
                 unmute.mutate(
                   { ticketId },
-                  { onError: () => toast.error('Failed to unmute ticket') }
+                  {
+                    onError: () =>
+                      toast.error(
+                        intl.formatMessage({
+                          id: 'admin.inbox.ticketWatchers.unmuteFailed',
+                          defaultMessage: 'Failed to unmute ticket',
+                        })
+                      ),
+                  }
                 )
               }
             >
-              <BellIcon className="size-4" /> Unmute
+              <BellIcon className="size-4" />{' '}
+              {intl.formatMessage({
+                id: 'admin.inbox.ticketWatchers.unmute',
+                defaultMessage: 'Unmute',
+              })}
             </DropdownMenuItem>
           )}
         </DropdownMenuContent>
@@ -344,6 +445,7 @@ function WatcherAvatarStack({
   ticketId: TicketId
   watchers: TicketWatcher[] | undefined
 }) {
+  const intl = useOptionalIntl()
   const [open, setOpen] = useState(false)
   const displayed = watchers?.slice(0, 5) ?? []
   const remaining = Math.max(0, (watchers?.length ?? 0) - 5)
@@ -355,13 +457,22 @@ function WatcherAvatarStack({
           <button
             type="button"
             className="flex items-center -space-x-2 transition-opacity hover:opacity-80"
-            aria-label="Manage watchers"
+            aria-label={intl.formatMessage({
+              id: 'admin.inbox.ticketWatchers.manageAria',
+              defaultMessage: 'Manage watchers',
+            })}
           >
             {displayed.map((w, i) => (
               <Avatar
                 key={w.principalId}
                 src={w.avatarUrl}
-                name={w.displayName ?? 'Watcher'}
+                name={
+                  w.displayName ??
+                  intl.formatMessage({
+                    id: 'admin.inbox.ticketWatchers.watcher',
+                    defaultMessage: 'Watcher',
+                  })
+                }
                 className="size-6 text-xs ring-2 ring-background"
                 style={{ zIndex: i + 1 }}
               />
@@ -381,7 +492,12 @@ function WatcherAvatarStack({
             className="inline-flex items-center gap-1 text-[13px] text-muted-foreground/60 transition-colors hover:text-muted-foreground"
           >
             <PlusIcon className="size-3" />
-            <span>Add watcher</span>
+            <span>
+              {intl.formatMessage({
+                id: 'admin.inbox.ticketWatchers.add',
+                defaultMessage: 'Add watcher',
+              })}
+            </span>
           </button>
         )}
       </PopoverTrigger>
@@ -400,6 +516,7 @@ function WatcherManagePanel({
   watchers: TicketWatcher[]
 }) {
   const { data: members } = useTeamMembers()
+  const intl = useOptionalIntl()
   const addWatcher = useAdminAddTicketWatcher()
   const removeWatcher = useAdminRemoveTicketWatcher()
 
@@ -410,33 +527,56 @@ function WatcherManagePanel({
     <div>
       <div className="max-h-56 overflow-y-auto p-2" onWheel={(e) => e.stopPropagation()}>
         {watchers.length === 0 ? (
-          <p className="py-3 text-center text-xs text-muted-foreground/60">No watchers yet</p>
+          <p className="py-3 text-center text-xs text-muted-foreground/60">
+            {intl.formatMessage({
+              id: 'admin.inbox.ticketWatchers.empty',
+              defaultMessage: 'No watchers yet',
+            })}
+          </p>
         ) : (
           <div className="space-y-2">
             {watchers.map((w) => (
               <div key={w.principalId} className="group flex items-center gap-2">
                 <Avatar
                   src={w.avatarUrl}
-                  name={w.displayName ?? 'Watcher'}
+                  name={
+                    w.displayName ??
+                    intl.formatMessage({
+                      id: 'admin.inbox.ticketWatchers.watcher',
+                      defaultMessage: 'Watcher',
+                    })
+                  }
                   className="size-6 shrink-0 text-xs"
                 />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-[13px] font-medium text-foreground">
-                    {w.displayName ?? 'Unnamed'}
+                    {w.displayName ??
+                      intl.formatMessage({
+                        id: 'common.authorSelector.unnamed',
+                        defaultMessage: 'Unnamed',
+                      })}
                   </p>
                 </div>
                 {isMuted(w.mutedUntil) && (
                   <BellSlashIcon className="size-3.5 shrink-0 text-muted-foreground/60" />
                 )}
                 <Badge size="sm" variant="subtle">
-                  {REASON_LABEL[w.reason]}
+                  {intl.formatMessage(REASON_LABEL[w.reason])}
                 </Badge>
                 <button
                   type="button"
                   onClick={() =>
                     removeWatcher.mutate(
                       { ticketId, principalId: w.principalId },
-                      { onError: () => toast.error('Failed to remove watcher') }
+                      {
+                        onError: () =>
+                          toast.error(
+                            intl.formatMessage({
+                              id: 'admin.inbox.ticketWatchers.removeFailed',
+                              defaultMessage: 'Failed to remove watcher',
+                            })
+                          ),
+                      }
                     )
                   }
                   disabled={
@@ -444,7 +584,10 @@ function WatcherManagePanel({
                     removeWatcher.variables?.principalId === w.principalId
                   }
                   className="hidden size-5 shrink-0 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive group-hover:flex"
-                  aria-label="Remove watcher"
+                  aria-label={intl.formatMessage({
+                    id: 'admin.inbox.ticketWatchers.removeAria',
+                    defaultMessage: 'Remove watcher',
+                  })}
                 >
                   <XMarkIcon className="size-3.5" />
                 </button>
@@ -460,21 +603,46 @@ function WatcherManagePanel({
           onValueChange={(principalId) =>
             addWatcher.mutate(
               { ticketId, principalId: principalId as PrincipalId },
-              { onError: () => toast.error('Failed to add watcher') }
+              {
+                onError: () =>
+                  toast.error(
+                    intl.formatMessage({
+                      id: 'admin.inbox.ticketWatchers.addFailed',
+                      defaultMessage: 'Failed to add watcher',
+                    })
+                  ),
+              }
             )
           }
         >
           <SelectTrigger size="sm" className="w-full">
             <PlusIcon className="size-3.5 shrink-0" />
             <SelectValue
-              placeholder={candidates.length === 0 ? 'No more teammates' : 'Add watcher…'}
+              placeholder={
+                candidates.length === 0
+                  ? intl.formatMessage({
+                      id: 'admin.inbox.ticketWatchers.noMoreTeammates',
+                      defaultMessage: 'No more teammates',
+                    })
+                  : intl.formatMessage({
+                      id: 'admin.inbox.ticketWatchers.addPlaceholder',
+                      defaultMessage: 'Add watcher…',
+                    })
+              }
             />
           </SelectTrigger>
           <SelectContent className="max-h-56">
             {candidates.map((m) => (
               <SelectItem key={m.id} value={m.id}>
                 <Avatar src={m.image} name={m.name ?? m.email} className="size-5 text-xs" />
-                <span className="truncate">{m.name ?? m.email ?? 'Unnamed'}</span>
+                <span className="truncate">
+                  {m.name ??
+                    m.email ??
+                    intl.formatMessage({
+                      id: 'common.authorSelector.unnamed',
+                      defaultMessage: 'Unnamed',
+                    })}
+                </span>
               </SelectItem>
             ))}
           </SelectContent>

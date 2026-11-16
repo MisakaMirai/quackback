@@ -33,22 +33,26 @@ import { LifecycleBadge } from './status-incident-fields'
 import { ReportIncidentDialog } from './status-report-incident-dialog'
 import { ScheduleMaintenanceDialog } from './status-schedule-maintenance-dialog'
 import { useStatusAccess } from './status-access'
-import { FormattedMessage } from 'react-intl'
+import { FormattedMessage, type IntlShape } from 'react-intl'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { NewButton } from '@/components/shared/new-button'
 import {
   COMPONENT_STATUS_COLORS,
-  COMPONENT_STATUS_LABELS,
   IMPACT_COLORS,
-  IMPACT_LABELS,
-  TOP_LEVEL_HEADLINES,
   type StatusComponentStatus,
   type StatusIncidentLifecycle,
 } from './status-admin-colors'
+import {
+  COMPONENT_STATUS_LABEL,
+  HERO_HEADLINE,
+  IMPACT_LABEL,
+} from '@/components/portal/status/status-colors'
 import { toastError } from '@/lib/client/error-notice'
 
 type OverviewIncident = StatusOverview['activeIncidents'][number]
 
 export function StatusOverviewView() {
+  const intl = useOptionalIntl()
   const { data, isLoading, isError, isFetching, refetch } = useQuery(statusOverviewQueries.get())
   const { canPublish, canManage } = useStatusAccess()
 
@@ -56,18 +60,29 @@ export function StatusOverviewView() {
     <div className="max-w-5xl w-full flex flex-col flex-1 min-h-0">
       <div className="px-3 pt-3.5">
         <PageHeader
-          title="Overview"
+          title={intl.formatMessage({
+            id: 'admin.status.overview.title',
+            defaultMessage: 'Overview',
+          })}
           actions={
             <div className="flex items-center gap-2">
               <Button variant="ghost" size="sm" asChild>
                 <a href="/status" target="_blank" rel="noreferrer">
                   <ArrowTopRightOnSquareIcon className="h-4 w-4" />
-                  View public page
+                  {intl.formatMessage({
+                    id: 'admin.status.overview.viewPublicPage',
+                    defaultMessage: 'View public page',
+                  })}
                 </a>
               </Button>
               {canManage && (
                 <Button variant="ghost" size="sm" asChild>
-                  <Link to="/admin/settings/status">Settings</Link>
+                  <Link to="/admin/settings/status">
+                    {intl.formatMessage({
+                      id: 'admin.status.overview.settings',
+                      defaultMessage: 'Settings',
+                    })}
+                  </Link>
                 </Button>
               )}
               {canPublish && (
@@ -87,8 +102,14 @@ export function StatusOverviewView() {
         // A failed read would otherwise leave the skeleton up for good.
         <EmptyState
           icon={ExclamationTriangleIcon}
-          title="Couldn't load the overview"
-          description="Something went wrong loading it. Check your connection and try again."
+          title={intl.formatMessage({
+            id: 'admin.status.overview.loadFailedTitle',
+            defaultMessage: "Couldn't load the overview",
+          })}
+          description={intl.formatMessage({
+            id: 'admin.status.loadFailedDescription',
+            defaultMessage: 'Something went wrong loading it. Check your connection and try again.',
+          })}
           action={
             <Button
               variant="outline"
@@ -96,7 +117,15 @@ export function StatusOverviewView() {
               onClick={() => void refetch()}
               disabled={isFetching}
             >
-              {isFetching ? 'Retrying…' : 'Try again'}
+              {isFetching
+                ? intl.formatMessage({
+                    id: 'admin.status.action.retrying',
+                    defaultMessage: 'Retrying…',
+                  })
+                : intl.formatMessage({
+                    id: 'common.errorPage.tryAgain',
+                    defaultMessage: 'Try again',
+                  })}
             </Button>
           }
           className="flex-1"
@@ -135,13 +164,17 @@ function OverviewBody({ data }: { data: StatusOverview }) {
 }
 
 function DisabledNotice() {
+  const intl = useOptionalIntl()
   const navigate = useNavigate({ from: Route.fullPath })
   const { canManage } = useStatusAccess()
   return (
     <div className="rounded-xl border border-warning/30 bg-warning/5 px-4 py-3 flex items-center gap-3 text-sm">
       <span className="h-2 w-2 rounded-full bg-warning shrink-0" />
       <span className="text-foreground/90">
-        The status page is turned off, so visitors can't see any of this yet.
+        {intl.formatMessage({
+          id: 'admin.status.overview.disabledNotice',
+          defaultMessage: "The status page is turned off, so visitors can't see any of this yet.",
+        })}
       </span>
       {canManage && (
         <Button
@@ -150,7 +183,10 @@ function DisabledNotice() {
           className="ml-auto shrink-0"
           onClick={() => void navigate({ to: '/admin/settings/status' })}
         >
-          Settings
+          {intl.formatMessage({
+            id: 'admin.status.overview.settings',
+            defaultMessage: 'Settings',
+          })}
         </Button>
       )}
     </div>
@@ -166,15 +202,33 @@ function PublicStateBanner({
   activeCount: number
   affectedCount: number
 }) {
+  const intl = useOptionalIntl()
   const hex = COMPONENT_STATUS_COLORS[status]
   const parts: string[] = []
   parts.push(
     activeCount === 0
-      ? 'No open incidents'
-      : `${activeCount} open incident${activeCount === 1 ? '' : 's'}`
+      ? intl.formatMessage({
+          id: 'admin.status.overview.noOpenIncidents',
+          defaultMessage: 'No open incidents',
+        })
+      : intl.formatMessage(
+          {
+            id: 'admin.status.overview.openIncidentCount',
+            defaultMessage: '{count, plural, =1 {1 open incident} other {# open incidents}}',
+          },
+          { count: activeCount }
+        )
   )
   if (affectedCount > 0) {
-    parts.push(`${affectedCount} service${affectedCount === 1 ? '' : 's'} affected`)
+    parts.push(
+      intl.formatMessage(
+        {
+          id: 'admin.status.overview.servicesAffected',
+          defaultMessage: '{count, plural, =1 {1 service affected} other {# services affected}}',
+        },
+        { count: affectedCount }
+      )
+    )
   }
 
   return (
@@ -190,9 +244,17 @@ function PublicStateBanner({
         <span className="h-3 w-3 rounded-full" style={{ backgroundColor: hex }} />
       </span>
       <div className="flex-1 min-w-48">
-        <p className="text-[13px] text-muted-foreground">Visitors currently see</p>
+        <p className="text-[13px] text-muted-foreground">
+          {intl.formatMessage({
+            id: 'admin.status.overview.visitorsSee',
+            defaultMessage: 'Visitors currently see',
+          })}
+        </p>
         <h3 className="text-lg font-semibold leading-tight mt-0.5">
-          {TOP_LEVEL_HEADLINES[status]}
+          {intl.formatMessage({
+            id: HERO_HEADLINE[status].id,
+            defaultMessage: HERO_HEADLINE[status].defaultMessage,
+          })}
         </h3>
         <p className="text-xs text-muted-foreground mt-0.5">{parts.join(' · ')}</p>
       </div>
@@ -222,11 +284,12 @@ function CardShell({
 
 function ViewAllLink({
   view,
-  label = 'View all',
+  label,
 }: {
   view: 'open' | 'maintenance' | 'components'
   label?: string
 }) {
+  const intl = useOptionalIntl()
   const navigate = useNavigate({ from: Route.fullPath })
   return (
     <button
@@ -234,7 +297,11 @@ function ViewAllLink({
       onClick={() => void navigate({ to: '/admin/status', search: { view } })}
       className="text-xs text-muted-foreground hover:text-foreground transition-colors"
     >
-      {label}
+      {label ??
+        intl.formatMessage({
+          id: 'admin.status.overview.viewAll',
+          defaultMessage: 'View all',
+        })}
     </button>
   )
 }
@@ -259,19 +326,27 @@ function useGoToIncident() {
 }
 
 function ActiveIncidentsCard({ incidents }: { incidents: OverviewIncident[] }) {
+  const intl = useOptionalIntl()
+  const title = intl.formatMessage({
+    id: 'admin.status.overview.openIncidentsCard',
+    defaultMessage: 'Open incidents',
+  })
   if (incidents.length === 0) {
     return (
-      <CardShell title="Open incidents">
+      <CardShell title={title}>
         <div className="px-4 py-5 flex items-center gap-2.5 text-sm text-muted-foreground">
           <CheckCircleIcon className="h-5 w-5 text-success" />
-          No open incidents
+          {intl.formatMessage({
+            id: 'admin.status.overview.noOpenIncidents',
+            defaultMessage: 'No open incidents',
+          })}
         </div>
       </CardShell>
     )
   }
 
   return (
-    <CardShell title="Open incidents" action={<ViewAllLink view="open" />}>
+    <CardShell title={title} action={<ViewAllLink view="open" />}>
       <div className="divide-y divide-border/40">
         {incidents.map((incident) => (
           <LiveRow
@@ -279,7 +354,10 @@ function ActiveIncidentsCard({ incidents }: { incidents: OverviewIncident[] }) {
             item={incident}
             meta={
               <Badge variant="outline" size="sm">
-                {IMPACT_LABELS[incident.impact]}
+                {intl.formatMessage({
+                  id: IMPACT_LABEL[incident.impact].id,
+                  defaultMessage: IMPACT_LABEL[incident.impact].defaultMessage,
+                })}
               </Badge>
             }
           />
@@ -293,11 +371,18 @@ function ActiveIncidentsCard({ incidents }: { incidents: OverviewIncident[] }) {
  *  like one: when they started and the latest update, with Post update to
  *  hand. Nothing shows while none is running. */
 function LiveMaintenanceCard({ windows }: { windows: OverviewIncident[] }) {
+  const intl = useOptionalIntl()
   const formatDate = useLocalDateFormatter()
   if (windows.length === 0) return null
 
   return (
-    <CardShell title="Maintenance in progress" action={<ViewAllLink view="maintenance" />}>
+    <CardShell
+      title={intl.formatMessage({
+        id: 'admin.status.overview.maintenanceInProgress',
+        defaultMessage: 'Maintenance in progress',
+      })}
+      action={<ViewAllLink view="maintenance" />}
+    >
       <div className="divide-y divide-border/40">
         {windows.map((w) => (
           <LiveRow
@@ -306,7 +391,15 @@ function LiveMaintenanceCard({ windows }: { windows: OverviewIncident[] }) {
             meta={
               w.scheduledStartAt ? (
                 <span>
-                  Planned {formatWindow(formatDate, w.scheduledStartAt, w.scheduledEndAt)}
+                  {intl.formatMessage(
+                    {
+                      id: 'admin.status.overview.planned',
+                      defaultMessage: 'Planned {window}',
+                    },
+                    {
+                      window: formatWindow(intl, formatDate, w.scheduledStartAt, w.scheduledEndAt),
+                    }
+                  )}
                 </span>
               ) : null
             }
@@ -320,6 +413,7 @@ function LiveMaintenanceCard({ windows }: { windows: OverviewIncident[] }) {
 /** One live incident or running window: what it is, when it started, the
  *  latest update, and Post update. */
 function LiveRow({ item, meta }: { item: OverviewIncident; meta?: React.ReactNode }) {
+  const intl = useOptionalIntl()
   const goToIncident = useGoToIncident()
   const latest = item.updates[item.updates.length - 1]
   const lifecycle = item.status as StatusIncidentLifecycle
@@ -345,19 +439,28 @@ function LiveRow({ item, meta }: { item: OverviewIncident; meta?: React.ReactNod
               <span key={c.componentId}>{c.name}</span>
             ))}
             <span className="text-muted-foreground/50">·</span>
-            <span>
-              Started <TimeAgo date={item.startedAt} locale="en" />
-            </span>
+            <FormattedMessage
+              id="admin.status.overview.started"
+              defaultMessage="Started {time}"
+              values={{ time: <TimeAgo date={item.startedAt} /> }}
+            />
           </div>
         </div>
         <Button size="sm" onClick={() => goToIncident(item.id)}>
-          Post update
+          {intl.formatMessage({
+            id: 'admin.status.action.postUpdate',
+            defaultMessage: 'Post update',
+          })}
         </Button>
       </div>
       {latest && (
         <p className="text-xs text-muted-foreground border-l-2 border-border pl-2.5 ml-1 line-clamp-2">
           <span className="text-foreground/80 font-medium">
-            Latest update <TimeAgo date={latest.createdAt} locale="en" />:
+            <FormattedMessage
+              id="admin.status.overview.latestUpdate"
+              defaultMessage="Latest update {time}:"
+              values={{ time: <TimeAgo date={latest.createdAt} /> }}
+            />
           </span>{' '}
           {latest.body}
         </p>
@@ -367,14 +470,27 @@ function LiveRow({ item, meta }: { item: OverviewIncident; meta?: React.ReactNod
 }
 
 function formatWindow(
+  intl: IntlShape,
   format: LocalDateFormatter,
   startIso: string | null,
   endIso: string | null
 ): string {
-  if (!startIso) return 'Not scheduled'
+  if (!startIso)
+    return intl.formatMessage({
+      id: 'admin.status.overview.notScheduled',
+      defaultMessage: 'Not scheduled',
+    })
   const day = format(startIso, { weekday: 'short', month: 'short', day: 'numeric' })
   const time = (iso: string) => format(iso, { hour: '2-digit', minute: '2-digit' })
-  return endIso ? `${day}, ${time(startIso)} to ${time(endIso)}` : `${day}, ${time(startIso)}`
+  return endIso
+    ? intl.formatMessage(
+        {
+          id: 'admin.status.overview.windowRange',
+          defaultMessage: '{start} to {end}',
+        },
+        { start: `${day}, ${time(startIso)}`, end: time(endIso) }
+      )
+    : `${day}, ${time(startIso)}`
 }
 
 /** The day of the month as plain digits ("2", never "2."), in the formatter's zone. */
@@ -385,6 +501,7 @@ function dayOfMonth(format: LocalDateFormatter, date: Date): string {
 /** Windows still ahead. One that has started is under Maintenance in
  *  progress instead. */
 function UpcomingMaintenanceCard({ windows }: { windows: OverviewIncident[] }) {
+  const intl = useOptionalIntl()
   const formatDate = useLocalDateFormatter()
   const goToIncident = useGoToIncident()
   const startMutation = useStartStatusMaintenanceNow()
@@ -394,7 +511,13 @@ function UpcomingMaintenanceCard({ windows }: { windows: OverviewIncident[] }) {
 
   return (
     <>
-      <CardShell title="Upcoming maintenance" action={<ViewAllLink view="maintenance" />}>
+      <CardShell
+        title={intl.formatMessage({
+          id: 'admin.status.overview.upcomingMaintenance',
+          defaultMessage: 'Upcoming maintenance',
+        })}
+        action={<ViewAllLink view="maintenance" />}
+      >
         <div className="divide-y divide-border/40">
           {windows.map((w) => {
             const start = w.scheduledStartAt ? new Date(w.scheduledStartAt) : null
@@ -419,15 +542,23 @@ function UpcomingMaintenanceCard({ windows }: { windows: OverviewIncident[] }) {
                   </button>
                   <div className="flex items-center flex-wrap gap-2 text-[11px] text-muted-foreground mt-1">
                     <LifecycleBadge status={lifecycle} />
-                    <span>{formatWindow(formatDate, w.scheduledStartAt, w.scheduledEndAt)}</span>
+                    <span>
+                      {formatWindow(intl, formatDate, w.scheduledStartAt, w.scheduledEndAt)}
+                    </span>
                     {w.autoStart && (
                       <Badge variant="outline" size="sm">
-                        Auto-start
+                        {intl.formatMessage({
+                          id: 'admin.status.overview.autoStartBadge',
+                          defaultMessage: 'Auto-start',
+                        })}
                       </Badge>
                     )}
                     {w.autoComplete && (
                       <Badge variant="outline" size="sm">
-                        Auto-complete
+                        {intl.formatMessage({
+                          id: 'admin.status.overview.autoCompleteBadge',
+                          defaultMessage: 'Auto-complete',
+                        })}
                       </Badge>
                     )}
                   </div>
@@ -439,7 +570,10 @@ function UpcomingMaintenanceCard({ windows }: { windows: OverviewIncident[] }) {
                     onClick={() => setStartTarget(w)}
                     disabled={startMutation.isPending}
                   >
-                    Start now
+                    {intl.formatMessage({
+                      id: 'admin.status.overview.startNow',
+                      defaultMessage: 'Start now',
+                    })}
                   </Button>
                 )}
                 <Button
@@ -459,18 +593,40 @@ function UpcomingMaintenanceCard({ windows }: { windows: OverviewIncident[] }) {
       <ConfirmDialog
         open={!!startTarget}
         onOpenChange={(o) => !o && setStartTarget(null)}
-        title="Start maintenance now?"
-        description="The window begins immediately: affected services switch to Under maintenance on the public page and an update is posted to the timeline. Subscribers are not emailed."
-        confirmLabel="Start now"
+        title={intl.formatMessage({
+          id: 'admin.status.overview.startConfirmTitle',
+          defaultMessage: 'Start maintenance now?',
+        })}
+        description={intl.formatMessage({
+          id: 'admin.status.overview.startConfirmDescription',
+          defaultMessage:
+            'The window begins immediately: affected services switch to Under maintenance on the public page and an update is posted to the timeline. Subscribers are not emailed.',
+        })}
+        confirmLabel={intl.formatMessage({
+          id: 'admin.status.overview.startNow',
+          defaultMessage: 'Start now',
+        })}
         isPending={startMutation.isPending}
         onConfirm={() => {
           if (!startTarget) return
           startMutation.mutate(startTarget.id, {
             onSuccess: () => {
               setStartTarget(null)
-              toast.success('Maintenance started')
+              toast.success(
+                intl.formatMessage({
+                  id: 'admin.status.overview.toastStarted',
+                  defaultMessage: 'Maintenance started',
+                })
+              )
             },
-            onError: (err) => toastError(err, 'Failed to start maintenance'),
+            onError: (err) =>
+              toastError(
+                err,
+                intl.formatMessage({
+                  id: 'admin.status.overview.toastStartFailed',
+                  defaultMessage: 'Failed to start maintenance',
+                })
+              ),
           })
         }}
       />
@@ -479,24 +635,43 @@ function UpcomingMaintenanceCard({ windows }: { windows: OverviewIncident[] }) {
 }
 
 function StatTiles({ data }: { data: StatusOverview }) {
+  const intl = useOptionalIntl()
   const formatNumber = useFormatNumber()
   return (
     <div className="rounded-xl border border-border/50 bg-card shadow-sm overflow-hidden">
       <AnalyticsStatRow
         stats={[
           {
-            label: '90-day uptime',
+            label: intl.formatMessage({
+              id: 'admin.status.overview.uptime90d',
+              defaultMessage: '90-day uptime',
+            }),
             value: data.uptime90d === null ? '-' : `${data.uptime90d.toFixed(2)}%`,
           },
           {
-            label: 'Subscribers',
+            label: intl.formatMessage({
+              id: 'admin.status.overview.subscribers',
+              defaultMessage: 'Subscribers',
+            }),
             value: formatNumber(data.subscribers.active),
             caption:
               data.subscribers.newLast7d > 0
-                ? `+${data.subscribers.newLast7d} this week`
+                ? intl.formatMessage(
+                    {
+                      id: 'admin.status.overview.newThisWeek',
+                      defaultMessage: '+{count} this week',
+                    },
+                    { count: data.subscribers.newLast7d }
+                  )
                 : undefined,
           },
-          { label: 'Incidents, 30 days', value: String(data.incidentsLast30d) },
+          {
+            label: intl.formatMessage({
+              id: 'admin.status.overview.incidents30d',
+              defaultMessage: 'Incidents, 30 days',
+            }),
+            value: String(data.incidentsLast30d),
+          },
         ]}
       />
     </div>
@@ -504,6 +679,7 @@ function StatTiles({ data }: { data: StatusOverview }) {
 }
 
 function ServiceHealthCard({ data }: { data: StatusOverview }) {
+  const intl = useOptionalIntl()
   // Services are managed on a page only status_page.manage can open.
   const { canManage } = useStatusAccess()
   // A group with no services has nothing to report, so it is not listed.
@@ -512,8 +688,21 @@ function ServiceHealthCard({ data }: { data: StatusOverview }) {
 
   return (
     <CardShell
-      title="Service health"
-      action={canManage ? <ViewAllLink view="components" label="Manage" /> : undefined}
+      title={intl.formatMessage({
+        id: 'admin.status.overview.serviceHealth',
+        defaultMessage: 'Service health',
+      })}
+      action={
+        canManage ? (
+          <ViewAllLink
+            view="components"
+            label={intl.formatMessage({
+              id: 'admin.status.overview.manage',
+              defaultMessage: 'Manage',
+            })}
+          />
+        ) : undefined
+      }
     >
       {!hasAny ? (
         <div className="space-y-3 px-4 py-5">
@@ -544,6 +733,7 @@ function ServiceHealthCard({ data }: { data: StatusOverview }) {
 }
 
 function ServiceRow({ name, status }: { name: string; status: StatusComponentStatus }) {
+  const intl = useOptionalIntl()
   return (
     <div className="px-4 py-2 flex items-center gap-2.5 text-sm border-t border-border/30 first:border-t-0">
       <span
@@ -555,7 +745,10 @@ function ServiceRow({ name, status }: { name: string; status: StatusComponentSta
         className="ml-auto text-xs font-medium shrink-0"
         style={{ color: COMPONENT_STATUS_COLORS[status] }}
       >
-        {COMPONENT_STATUS_LABELS[status]}
+        {intl.formatMessage({
+          id: COMPONENT_STATUS_LABEL[status].id,
+          defaultMessage: COMPONENT_STATUS_LABEL[status].defaultMessage,
+        })}
       </span>
     </div>
   )

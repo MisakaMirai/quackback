@@ -9,6 +9,7 @@
 import { useState } from 'react'
 import { CheckCircleIcon } from '@heroicons/react/24/solid'
 import { toast } from 'sonner'
+import { type IntlShape } from 'react-intl'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -27,6 +28,7 @@ import {
 import type { SendingDomainDTO } from '@/lib/server/functions/channel-accounts'
 import { errorText } from '@/lib/client/error-text'
 import { addressDomainStanding } from './sending-domain-view'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 
 /** What the dialog is open for: a new address (on a domain, when one is given), or renaming one. */
 export type SendingAddressDialogTarget =
@@ -102,24 +104,57 @@ export function SendingAddressDialog({
 
 /** The line under the address: what its domain means for sending from it. */
 function domainNote(
+  intl: IntlShape,
   standing: ReturnType<typeof addressDomainStanding>,
   setsUpDomains: boolean
 ): { text: string; verified?: boolean } | null {
   if (!standing) return null
   const { kind, domain } = standing
   if (kind === 'verified') {
-    return { text: `${domain} is verified, so it can send right away.`, verified: true }
+    return {
+      text: intl.formatMessage(
+        {
+          id: 'admin.channels.sendingAddress.domainVerified',
+          defaultMessage: '{domain} is verified, so it can send right away.',
+        },
+        { domain }
+      ),
+      verified: true,
+    }
   }
   // Only a shared server holds an address back until its domain is verified.
   if (!setsUpDomains) return null
   if (kind === 'pending') {
-    return { text: `${domain} is still being verified. This address can send once it is.` }
+    return {
+      text: intl.formatMessage(
+        {
+          id: 'admin.channels.sendingAddress.domainPending',
+          defaultMessage: '{domain} is still being verified. This address can send once it is.',
+        },
+        { domain }
+      ),
+    }
   }
   if (kind === 'attention') {
-    return { text: `${domain} needs attention. This address can send once it's fixed.` }
+    return {
+      text: intl.formatMessage(
+        {
+          id: 'admin.channels.sendingAddress.domainAttention',
+          defaultMessage: "{domain} needs attention. This address can send once it's fixed.",
+        },
+        { domain }
+      ),
+    }
   }
   return {
-    text: `${domain} is new here. Next you'll add its DNS records, and email keeps coming from your current address until they're found.`,
+    text: intl.formatMessage(
+      {
+        id: 'admin.channels.sendingAddress.domainNew',
+        defaultMessage:
+          "{domain} is new here. Next you'll add its DNS records, and email keeps coming from your current address until they're found.",
+      },
+      { domain }
+    ),
   }
 }
 
@@ -137,6 +172,7 @@ function SendingAddressForm({
   onClose: () => void
   onAdded?: () => void
 } & DomainContext) {
+  const intl = useOptionalIntl()
   const create = useCreateSendingAddress()
   const rename = useUpdateSendingAddressName()
   const [address, setAddress] = useState(
@@ -154,7 +190,7 @@ function SendingAddressForm({
   const found = adding ? addressDomainStanding(typed, domains) : null
   // The platform's own domain is neither new nor set up: nothing to say.
   const standing = found && !ownDomains.includes(found.domain) ? found : null
-  const note = domainNote(standing, setsUpDomains)
+  const note = domainNote(intl, standing, setsUpDomains)
   const bringsRecords = setsUpDomains && standing?.kind === 'new'
   const name = senderName.trim() || workspaceName
   // Shown once there is an address to show: the sender line as an inbox has it.
@@ -170,17 +206,48 @@ function SendingAddressForm({
           onSuccess: (added) => {
             // The one time adding an address changes what email sends from, so
             // it is said rather than left to be noticed.
-            if (added.madeDefault) toast.success(`${added.address} is now your default address.`)
+            if (added.madeDefault) {
+              toast.success(
+                intl.formatMessage(
+                  {
+                    id: 'admin.channels.sendingAddress.nowDefault',
+                    defaultMessage: '{address} is now your default address.',
+                  },
+                  { address: added.address }
+                )
+              )
+            }
             onAdded?.()
             onClose()
           },
-          onError: (e) => setError(errorText(e, "Couldn't add the address.")),
+          onError: (e) =>
+            setError(
+              errorText(
+                e,
+                intl.formatMessage({
+                  id: 'admin.channels.sendingAddress.addFailed',
+                  defaultMessage: "Couldn't add the address.",
+                })
+              )
+            ),
         }
       )
     } else {
       rename.mutate(
         { id: target.id, senderName: name },
-        { onSuccess: onClose, onError: (e) => setError(errorText(e, "Couldn't save the name.")) }
+        {
+          onSuccess: onClose,
+          onError: (e) =>
+            setError(
+              errorText(
+                e,
+                intl.formatMessage({
+                  id: 'admin.channels.sendingAddress.saveFailed',
+                  defaultMessage: "Couldn't save the name.",
+                })
+              )
+            ),
+        }
       )
     }
   }
@@ -193,23 +260,47 @@ function SendingAddressForm({
       }}
     >
       <DialogHeader>
-        <DialogTitle>{adding ? 'Add address' : 'Edit name'}</DialogTitle>
+        <DialogTitle>
+          {adding
+            ? intl.formatMessage({
+                id: 'admin.channels.email.addAddress',
+                defaultMessage: 'Add address',
+              })
+            : intl.formatMessage({
+                id: 'admin.channels.email.editName',
+                defaultMessage: 'Edit name',
+              })}
+        </DialogTitle>
         {!adding && (
           <DialogDescription>
-            The name recipients see on email from {target.address}.
+            {intl.formatMessage(
+              {
+                id: 'admin.channels.sendingAddress.editDescription',
+                defaultMessage: 'The name recipients see on email from {address}.',
+              },
+              { address: target.address }
+            )}
           </DialogDescription>
         )}
       </DialogHeader>
       <div className="space-y-3 py-4">
         {adding && (
           <div className="space-y-1.5">
-            <Label htmlFor="sending-address">Email address</Label>
+            <Label htmlFor="sending-address">
+              {intl.formatMessage({
+                id: 'admin.channels.sendingAddress.emailLabel',
+                defaultMessage: 'Email address',
+              })}
+            </Label>
             <Input
               id="sending-address"
               type="email"
               value={address}
               onChange={(e) => setAddress(e.target.value)}
-              placeholder="help@yourcompany.com"
+              placeholder={intl.formatMessage({
+                id: 'admin.channels.sendingAddress.emailPlaceholder',
+                defaultMessage: 'help@yourcompany.com',
+              })}
               aria-describedby={note ? 'sending-address-domain' : undefined}
               autoFocus
             />
@@ -230,7 +321,12 @@ function SendingAddressForm({
           </div>
         )}
         <div className="space-y-1.5">
-          <Label htmlFor="sender-name">Sender name</Label>
+          <Label htmlFor="sender-name">
+            {intl.formatMessage({
+              id: 'admin.channels.sendingAddress.senderName',
+              defaultMessage: 'Sender name',
+            })}
+          </Label>
           <Input
             id="sender-name"
             value={senderName}
@@ -241,7 +337,11 @@ function SendingAddressForm({
           />
           {preview && (
             <p id="sender-name-preview" className="text-[13px] text-muted-foreground">
-              Recipients see <span className="text-foreground">{preview}</span>
+              {intl.formatMessage({
+                id: 'admin.channels.sendingAddress.preview',
+                defaultMessage: 'Recipients see',
+              })}{' '}
+              <span className="text-foreground">{preview}</span>
             </p>
           )}
         </div>
@@ -253,10 +353,20 @@ function SendingAddressForm({
       </div>
       <DialogFooter>
         <Button type="button" variant="ghost" onClick={onClose}>
-          Cancel
+          {intl.formatMessage({ id: 'common.cancel', defaultMessage: 'Cancel' })}
         </Button>
         <Button type="submit" disabled={pending || (adding && !address.trim())}>
-          {!adding ? 'Save' : bringsRecords ? 'Add and show records' : 'Add address'}
+          {!adding
+            ? intl.formatMessage({ id: 'admin.channels.email.save', defaultMessage: 'Save' })
+            : bringsRecords
+              ? intl.formatMessage({
+                  id: 'admin.channels.sendingAddress.addAndShow',
+                  defaultMessage: 'Add and show records',
+                })
+              : intl.formatMessage({
+                  id: 'admin.channels.email.addAddress',
+                  defaultMessage: 'Add address',
+                })}
         </Button>
       </DialogFooter>
     </form>

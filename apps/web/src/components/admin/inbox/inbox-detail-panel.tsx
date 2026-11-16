@@ -59,6 +59,7 @@ import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { MENU_LABEL } from '@/components/ui/menu'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { DETAIL_DATE, DetailDate, DetailRow as Row } from '@/components/shared/detail-row'
 import { CalendarDate, useLocalDateFormatter } from '@/components/ui/local-date'
 import { TimeAgo } from '@/components/ui/time-ago'
@@ -74,6 +75,7 @@ import { useFeatureFlags } from '@/lib/client/hooks/use-root-context'
  * date set, and only after mount (the label depends on "now").
  */
 function TicketDueChip({ dueAt, resolvedAt }: { dueAt: string | null; resolvedAt: string | null }) {
+  const intl = useOptionalIntl()
   const formatDate = useLocalDateFormatter()
   const [now, setNow] = useState<Date | null>(null)
   useEffect(() => {
@@ -94,10 +96,18 @@ function TicketDueChip({ dueAt, resolvedAt }: { dueAt: string | null; resolvedAt
         'inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 text-[11px] font-medium tabular-nums',
         TONE_CLASSES[tone]
       )}
-      title={`Due ${formatDate(dueAt, DETAIL_DATE)}`}
+      title={intl.formatMessage(
+        { id: 'admin.inbox.ticketDue.title', defaultMessage: 'Due {date}' },
+        { date: formatDate(dueAt, DETAIL_DATE) }
+      )}
     >
       <ClockIcon className="h-3 w-3" aria-hidden />
-      {overdue ? `${formatSlaCountdown(abs)} over` : formatSlaCountdown(abs)}
+      {overdue
+        ? intl.formatMessage(
+            { id: 'admin.inbox.ticketDue.overdue', defaultMessage: '{time} over' },
+            { time: formatSlaCountdown(abs) }
+          )
+        : formatSlaCountdown(abs)}
     </span>
   )
 }
@@ -113,6 +123,7 @@ function TicketDueChip({ dueAt, resolvedAt }: { dueAt: string | null; resolvedAt
  * permanently, so there is no "resolved" countdown to show.
  */
 function TicketSlaChip({ sla }: { sla: NonNullable<TicketDTO['sla']> }) {
+  const intl = useOptionalIntl()
   const [now, setNow] = useState<Date | null>(null)
   useEffect(() => {
     setNow(new Date())
@@ -125,9 +136,12 @@ function TicketSlaChip({ sla }: { sla: NonNullable<TicketDTO['sla']> }) {
   const tone = sla.paused ? 'paused' : dueCountdownTone(remainingMs)
   const abs = Math.abs(remainingMs)
   const label = sla.paused
-    ? 'paused'
+    ? intl.formatMessage({ id: 'admin.inbox.ticketSla.paused', defaultMessage: 'paused' })
     : tone === 'overdue'
-      ? `${formatSlaCountdown(abs)} over`
+      ? intl.formatMessage(
+          { id: 'admin.inbox.ticketDue.overdue', defaultMessage: '{time} over' },
+          { time: formatSlaCountdown(abs) }
+        )
       : formatSlaCountdown(abs)
 
   return (
@@ -136,7 +150,13 @@ function TicketSlaChip({ sla }: { sla: NonNullable<TicketDTO['sla']> }) {
         'inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 text-[11px] font-medium tabular-nums',
         TONE_CLASSES[tone]
       )}
-      title={`${sla.policyName} · time to resolve target`}
+      title={intl.formatMessage(
+        {
+          id: 'admin.inbox.ticketSla.title',
+          defaultMessage: '{policy} · time to resolve target',
+        },
+        { policy: sla.policyName }
+      )}
     >
       <ClockIcon className="h-3 w-3" aria-hidden />
       {label}
@@ -242,6 +262,7 @@ export const InboxDetailPanel = memo(function InboxDetailPanel({
   visible: isVisible,
   overlay = false,
 }: InboxDetailPanelProps) {
+  const intl = useOptionalIntl()
   const flags = useFeatureFlags()
   const asideClassName = overlay
     ? 'flex h-full min-h-0 w-full flex-col overflow-hidden'
@@ -304,7 +325,17 @@ export const InboxDetailPanel = memo(function InboxDetailPanel({
   const contactName = supportContactName({
     accountName: detail?.name,
     publicName,
-    fallback: principalId ? (isTicketItem ? 'Requester' : 'Visitor') : 'No requester',
+    fallback: principalId
+      ? isTicketItem
+        ? intl.formatMessage({
+            id: 'admin.inbox.contact.requester',
+            defaultMessage: 'Requester',
+          })
+        : intl.formatMessage({ id: 'admin.inbox.contact.visitor', defaultMessage: 'Visitor' })
+      : intl.formatMessage({
+          id: 'admin.inbox.contact.noRequester',
+          defaultMessage: 'No requester',
+        }),
   })
   const convoCount = history?.conversations.length ?? 0
   const convoMore = history?.hasMore ?? false
@@ -357,7 +388,10 @@ export const InboxDetailPanel = memo(function InboxDetailPanel({
                     {detail?.emailVerified && (
                       <CheckBadgeIcon
                         className="h-3.5 w-3.5 shrink-0 text-primary"
-                        title="Verified email"
+                        title={intl.formatMessage({
+                          id: 'admin.inbox.contact.verifiedEmail',
+                          defaultMessage: 'Verified email',
+                        })}
                       />
                     )}
                   </Link>
@@ -369,22 +403,37 @@ export const InboxDetailPanel = memo(function InboxDetailPanel({
                     <p className="truncate text-xs text-muted-foreground">
                       {email}
                       {!detail?.email && !isTicketItem && conversation?.visitorEmail && (
-                        <span className="ml-1 text-muted-foreground/50">(in conversation)</span>
+                        <span className="ml-1 text-muted-foreground/50">
+                          {intl.formatMessage({
+                            id: 'admin.inbox.contact.inConversation',
+                            defaultMessage: '(in conversation)',
+                          })}
+                        </span>
                       )}
                     </p>
                   ) : getChannelDescriptor(conversation?.channel ?? '')?.addressing === 'thread' ? (
                     <p className="truncate text-xs text-muted-foreground">
-                      {getChannelDescriptor(conversation!.channel)?.label} user
+                      {intl.formatMessage(
+                        { id: 'admin.inbox.contact.channelUser', defaultMessage: '{channel} user' },
+                        { channel: getChannelDescriptor(conversation!.channel)?.label }
+                      )}
                     </p>
                   ) : (
                     <p className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-muted-foreground">
-                      Anonymous <UnreachableBadge channel={conversation?.channel ?? 'email'} />
+                      {intl.formatMessage({
+                        id: 'admin.inbox.contact.anonymous',
+                        defaultMessage: 'Anonymous',
+                      })}{' '}
+                      <UnreachableBadge channel={conversation?.channel ?? 'email'} />
                     </p>
                   )
                 ) : null}
                 {contactBlocked && (
                   <Badge variant="destructive" className="mt-1 text-[11px]">
-                    Blocked
+                    {intl.formatMessage({
+                      id: 'admin.inbox.contact.blocked',
+                      defaultMessage: 'Blocked',
+                    })}
                   </Badge>
                 )}
               </div>
@@ -409,9 +458,27 @@ export const InboxDetailPanel = memo(function InboxDetailPanel({
             {detail && (
               <div className="grid grid-cols-3 gap-1 text-center">
                 {[
-                  { label: 'Posts', value: detail.postCount },
-                  { label: 'Comments', value: detail.commentCount },
-                  { label: 'Votes', value: detail.voteCount },
+                  {
+                    label: intl.formatMessage({
+                      id: 'admin.analytics.stat.posts',
+                      defaultMessage: 'Posts',
+                    }),
+                    value: detail.postCount,
+                  },
+                  {
+                    label: intl.formatMessage({
+                      id: 'common.userStats.comments',
+                      defaultMessage: 'Comments',
+                    }),
+                    value: detail.commentCount,
+                  },
+                  {
+                    label: intl.formatMessage({
+                      id: 'common.userStats.votes',
+                      defaultMessage: 'Votes',
+                    }),
+                    value: detail.voteCount,
+                  },
                 ].map((s) => (
                   <div key={s.label} className="rounded-md bg-muted/40 py-1.5">
                     <p className="text-sm font-semibold">{s.value}</p>
@@ -424,7 +491,12 @@ export const InboxDetailPanel = memo(function InboxDetailPanel({
             {principalId && (
               <div className="space-y-1 text-xs">
                 <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Conversations</span>
+                  <span className="text-muted-foreground">
+                    {intl.formatMessage({
+                      id: 'inbox.nav.conversations',
+                      defaultMessage: 'Conversations',
+                    })}
+                  </span>
                   <span className="font-medium text-foreground">
                     {convoCount}
                     {convoMore ? '+' : ''}
@@ -432,7 +504,12 @@ export const InboxDetailPanel = memo(function InboxDetailPanel({
                 </div>
                 {firstSeen && (
                   <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">First seen</span>
+                    <span className="text-muted-foreground">
+                      {intl.formatMessage({
+                        id: 'admin.inbox.contact.firstSeen',
+                        defaultMessage: 'First seen',
+                      })}
+                    </span>
                     <span className="font-medium text-foreground">
                       <DetailDate date={firstSeen} />
                     </span>
@@ -444,7 +521,12 @@ export const InboxDetailPanel = memo(function InboxDetailPanel({
             {/* Previous conversations (this principal's other threads). */}
             {previous.length > 0 && (
               <div className="space-y-1.5 border-t border-border/30 pt-3">
-                <p className="text-xs font-medium text-muted-foreground">Previous conversations</p>
+                <p className="text-xs font-medium text-muted-foreground">
+                  {intl.formatMessage({
+                    id: 'admin.inbox.contact.previousConversations',
+                    defaultMessage: 'Previous conversations',
+                  })}
+                </p>
                 {previous.slice(0, 8).map((c) => (
                   <button
                     key={c.id}
@@ -453,7 +535,12 @@ export const InboxDetailPanel = memo(function InboxDetailPanel({
                     className="flex w-full min-w-0 flex-col items-start gap-0.5 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-muted/60"
                   >
                     <span className="block w-full min-w-0 truncate text-xs text-foreground/90">
-                      {c.subject ?? c.lastMessagePreview ?? 'Conversation'}
+                      {c.subject ??
+                        c.lastMessagePreview ??
+                        intl.formatMessage({
+                          id: 'inbox.view.kindConversation',
+                          defaultMessage: 'Conversation',
+                        })}
                     </span>
                     <span className="block w-full min-w-0 truncate text-xs capitalize text-muted-foreground">
                       {c.status} · <TimeAgo date={c.lastMessageAt} />
@@ -473,7 +560,12 @@ export const InboxDetailPanel = memo(function InboxDetailPanel({
           issuePeople &&
           issuePeople.length > 0 && (
             <div className="space-y-2 border-t border-border/30 pt-4">
-              <span className={MENU_LABEL}>On this issue</span>
+              <span className={MENU_LABEL}>
+                {intl.formatMessage({
+                  id: 'admin.inbox.issue.peopleTitle',
+                  defaultMessage: 'On this issue',
+                })}
+              </span>
               <ul className="space-y-2">
                 {issuePeople.map((person) => (
                   <li key={person.principalId} className="flex min-w-0 items-center gap-2">
@@ -495,7 +587,15 @@ export const InboxDetailPanel = memo(function InboxDetailPanel({
           <div className="space-y-3 border-t border-border/30 pt-4">
             <div className="flex items-center justify-between">
               <span className={MENU_LABEL}>
-                {isTicketItem ? 'Ticket details' : 'Linked ticket'}
+                {isTicketItem
+                  ? intl.formatMessage({
+                      id: 'admin.inbox.ticketCard.details',
+                      defaultMessage: 'Ticket details',
+                    })
+                  : intl.formatMessage({
+                      id: 'admin.inbox.ticketCard.linked',
+                      defaultMessage: 'Linked ticket',
+                    })}
               </span>
               {!isTicketItem && (
                 <button
@@ -510,7 +610,12 @@ export const InboxDetailPanel = memo(function InboxDetailPanel({
             {/* The type chip leads the card (convergence Phase 4): the
                 registry type's icon + name, tinted its color. Typeless legacy
                 rows fall back to the bare category badge. */}
-            <Row label="Type">
+            <Row
+              label={intl.formatMessage({
+                id: 'admin.inbox.toolbar.type',
+                defaultMessage: 'Type',
+              })}
+            >
               {ticket.ticketType ? (
                 <span
                   className="inline-flex max-w-full items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-medium"
@@ -528,42 +633,94 @@ export const InboxDetailPanel = memo(function InboxDetailPanel({
             </Row>
             {!isTicketItem && (
               <>
-                <Row label="Status">
+                <Row
+                  label={intl.formatMessage({
+                    id: 'inbox.view.field.status',
+                    defaultMessage: 'Status',
+                  })}
+                >
                   <TicketStatusControl ticket={ticket} onChanged={onChanged} />
                 </Row>
-                <Row label="Stage">
+                <Row
+                  label={intl.formatMessage({
+                    id: 'admin.inbox.ticketCard.stage',
+                    defaultMessage: 'Stage',
+                  })}
+                >
                   {ticket.stage.slot ? (
                     <TicketStageChip stage={ticket.stage} />
                   ) : (
-                    <span className="text-xs text-muted-foreground">Internal only</span>
+                    <span className="text-xs text-muted-foreground">
+                      {intl.formatMessage({
+                        id: 'admin.inbox.ticketCard.internalOnly',
+                        defaultMessage: 'Internal only',
+                      })}
+                    </span>
                   )}
                 </Row>
               </>
             )}
             {ticket.dueAt && !ticket.resolvedAt && (
-              <Row icon={ClockIcon} label="Due">
+              <Row
+                icon={ClockIcon}
+                label={intl.formatMessage({
+                  id: 'admin.inbox.ticketCard.due',
+                  defaultMessage: 'Due',
+                })}
+              >
                 <TicketDueChip dueAt={ticket.dueAt} resolvedAt={ticket.resolvedAt} />
               </Row>
             )}
             {/* The SLA stamp's TTR countdown — separate from the bare `dueAt`
                 row above, which reads the ticket's own due_at column. */}
             {ticket.sla && !ticket.sla.resolvedAt && (
-              <Row icon={ClockIcon} label="SLA">
+              <Row
+                icon={ClockIcon}
+                label={intl.formatMessage({
+                  id: 'admin.inbox.ticketCard.sla',
+                  defaultMessage: 'SLA',
+                })}
+              >
                 <TicketSlaChip sla={ticket.sla} />
               </Row>
             )}
-            <Row icon={CalendarIcon} label="Opened">
+            <Row
+              icon={CalendarIcon}
+              label={intl.formatMessage({
+                id: 'portal.tickets.details.opened',
+                defaultMessage: 'Opened',
+              })}
+            >
               <span className="text-sm font-medium text-foreground">
                 <DetailDate date={ticket.createdAt} />
               </span>
             </Row>
-            <Row icon={CalendarIcon} label="First response">
+            <Row
+              icon={CalendarIcon}
+              label={intl.formatMessage({
+                id: 'admin.settings.sla.firstResponse',
+                defaultMessage: 'First response',
+              })}
+            >
               <span className="text-sm font-medium text-foreground">
-                {ticket.firstResponseAt ? <DetailDate date={ticket.firstResponseAt} /> : 'Not yet'}
+                {ticket.firstResponseAt ? (
+                  <DetailDate date={ticket.firstResponseAt} />
+                ) : (
+                  intl.formatMessage({
+                    id: 'admin.inbox.ticketCard.notYet',
+                    defaultMessage: 'Not yet',
+                  })
+                )}
               </span>
             </Row>
             {ticket.resolvedAt && (
-              <Row icon={CalendarIcon} label="Resolved">
+              <Row
+                icon={CalendarIcon}
+                label={intl.formatMessage({
+                  id: 'admin.analytics.stat.resolved',
+                  defaultMessage: 'Resolved',
+                })}
+              >
                 <span className="text-sm font-medium text-foreground">
                   <DetailDate date={ticket.resolvedAt} />
                 </span>
@@ -581,9 +738,9 @@ export const InboxDetailPanel = memo(function InboxDetailPanel({
               const display =
                 field.type === 'checkbox' ? (
                   raw === true ? (
-                    'Yes'
+                    intl.formatMessage({ id: 'portal.tickets.details.yes', defaultMessage: 'Yes' })
                   ) : (
-                    'No'
+                    intl.formatMessage({ id: 'portal.tickets.details.no', defaultMessage: 'No' })
                   )
                 ) : field.type === 'date' && typeof raw === 'string' ? (
                   <CalendarDate value={raw} options={DETAIL_DATE} />
@@ -601,7 +758,11 @@ export const InboxDetailPanel = memo(function InboxDetailPanel({
           showCreateTicketSlot && (
             <div className="border-t border-border/30 pt-4">
               <Button type="button" variant="outline" className="w-full" onClick={onCreateTicket}>
-                <TicketIcon className="h-4 w-4" /> Create ticket
+                <TicketIcon className="h-4 w-4" />{' '}
+                {intl.formatMessage({
+                  id: 'admin.inbox.createTicket.create',
+                  defaultMessage: 'Create ticket',
+                })}
               </Button>
             </div>
           )
@@ -612,15 +773,32 @@ export const InboxDetailPanel = memo(function InboxDetailPanel({
               ticket's own status lives in the Ticket card above, so it is not
               repeated here. */}
         <div className="space-y-4 border-t border-border/30 pt-4">
-          <span className={cn(MENU_LABEL, 'block')}>Properties</span>
+          <span className={cn(MENU_LABEL, 'block')}>
+            {intl.formatMessage({
+              id: 'admin.inbox.ticketCard.properties',
+              defaultMessage: 'Properties',
+            })}
+          </span>
           {!isTicketItem && conversation && (
             <>
               {isClosedConversation && endReasonLabel && (
-                <Row icon={StopCircleIcon} label="Ended">
+                <Row
+                  icon={StopCircleIcon}
+                  label={intl.formatMessage({
+                    id: 'admin.inbox.ticketCard.ended',
+                    defaultMessage: 'Ended',
+                  })}
+                >
                   <span className="text-sm font-medium text-foreground">{endReasonLabel}</span>
                 </Row>
               )}
-              <Row icon={CheckCircleIcon} label="Status">
+              <Row
+                icon={CheckCircleIcon}
+                label={intl.formatMessage({
+                  id: 'inbox.view.field.status',
+                  defaultMessage: 'Status',
+                })}
+              >
                 <StatusControl
                   conversationId={conversation.id}
                   status={conversation.status}
@@ -631,7 +809,13 @@ export const InboxDetailPanel = memo(function InboxDetailPanel({
               </Row>
             </>
           )}
-          <Row icon={FlagIcon} label="Priority">
+          <Row
+            icon={FlagIcon}
+            label={intl.formatMessage({
+              id: 'inbox.view.field.priority',
+              defaultMessage: 'Priority',
+            })}
+          >
             {isTicketItem && ticket ? (
               <TicketPriorityControl ticket={ticket} onChanged={onChanged} />
             ) : (
@@ -644,7 +828,13 @@ export const InboxDetailPanel = memo(function InboxDetailPanel({
               )
             )}
           </Row>
-          <Row icon={UserCircleIcon} label="Assignee">
+          <Row
+            icon={UserCircleIcon}
+            label={intl.formatMessage({
+              id: 'inbox.view.field.assignee',
+              defaultMessage: 'Assignee',
+            })}
+          >
             {isTicketItem && ticket ? (
               <TicketAssigneeControl ticket={ticket} onChanged={onChanged} />
             ) : (
@@ -658,19 +848,36 @@ export const InboxDetailPanel = memo(function InboxDetailPanel({
             )}
           </Row>
           {isTicketItem && ticket && (
-            <Row icon={BellIcon} label="Watchers" align="start">
+            <Row
+              icon={BellIcon}
+              label={intl.formatMessage({
+                id: 'admin.inbox.ticketCard.watchers',
+                defaultMessage: 'Watchers',
+              })}
+              align="start"
+            >
               <TicketWatchControl ticketId={ticket.id} />
             </Row>
           )}
           {!isTicketItem && conversation && (
-            <Row icon={TagIcon} label="Tags" align="start">
+            <Row
+              icon={TagIcon}
+              label={intl.formatMessage({ id: 'inbox.nav.tags', defaultMessage: 'Tags' })}
+              align="start"
+            >
               <div className="flex flex-wrap justify-end gap-1">
                 <ConversationTagsEditor conversationId={conversation.id} tags={conversation.tags} />
               </div>
             </Row>
           )}
           {!isTicketItem && conversation && (
-            <Row icon={InboxArrowDownIcon} label="Channel">
+            <Row
+              icon={InboxArrowDownIcon}
+              label={intl.formatMessage({
+                id: 'inbox.view.field.channel',
+                defaultMessage: 'Channel',
+              })}
+            >
               <span className="text-sm font-medium text-foreground">
                 {CHANNEL_LABEL[conversation.channel]}
               </span>
@@ -679,7 +886,13 @@ export const InboxDetailPanel = memo(function InboxDetailPanel({
           {!isTicketItem &&
             conversation?.channel === 'github' &&
             githubIssueRefFromUrl(conversation.customAttributes?.githubUrl) && (
-              <Row icon={ArrowTopRightOnSquareIcon} label="Issue">
+              <Row
+                icon={ArrowTopRightOnSquareIcon}
+                label={intl.formatMessage({
+                  id: 'admin.inbox.ticketCard.issue',
+                  defaultMessage: 'Issue',
+                })}
+              >
                 <a
                   href={String(conversation.customAttributes.githubUrl)}
                   target="_blank"
@@ -691,14 +904,26 @@ export const InboxDetailPanel = memo(function InboxDetailPanel({
               </Row>
             )}
           {!isTicketItem && conversation && (
-            <Row icon={CalendarIcon} label="Created">
+            <Row
+              icon={CalendarIcon}
+              label={intl.formatMessage({
+                id: 'admin.inbox.ticketCard.created',
+                defaultMessage: 'Created',
+              })}
+            >
               <span className="text-sm font-medium text-foreground">
                 <DetailDate date={conversation.createdAt} />
               </span>
             </Row>
           )}
           {!isTicketItem && conversation?.csatRating != null && (
-            <Row icon={FaceSmileIcon} label="CSAT">
+            <Row
+              icon={FaceSmileIcon}
+              label={intl.formatMessage({
+                id: 'admin.inbox.ticketCard.csat',
+                defaultMessage: 'CSAT',
+              })}
+            >
               <span className="text-sm text-amber-500">
                 {'★'.repeat(conversation.csatRating)}
                 <span className="text-muted-foreground/40">
@@ -733,7 +958,11 @@ export const InboxDetailPanel = memo(function InboxDetailPanel({
             {/* Track as feedback — conversation-level (kept here per §2.7's
                   Links section). */}
             <Button type="button" variant="outline" className="w-full" onClick={onTrackAsFeedback}>
-              <ArrowTopRightOnSquareIcon className="h-4 w-4" /> Track as feedback
+              <ArrowTopRightOnSquareIcon className="h-4 w-4" />{' '}
+              {intl.formatMessage({
+                id: 'inbox.convert.track',
+                defaultMessage: 'Track as feedback',
+              })}
             </Button>
           </div>
         )}
@@ -776,7 +1005,13 @@ export const InboxDetailPanel = memo(function InboxDetailPanel({
   )
 
   return (
-    <aside aria-label="Item details" className={asideClassName}>
+    <aside
+      aria-label={intl.formatMessage({
+        id: 'admin.inbox.detailPanel.aria',
+        defaultMessage: 'Item details',
+      })}
+      className={asideClassName}
+    >
       {detailsBody}
     </aside>
   )

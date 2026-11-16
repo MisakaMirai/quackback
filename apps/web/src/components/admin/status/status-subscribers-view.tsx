@@ -41,6 +41,8 @@ import {
   useRemoveStatusSubscriber,
 } from '@/lib/client/mutations/status'
 import { exportStatusSubscribersAdminFn } from '@/lib/server/functions/status'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
+import type { IntlShape } from 'react-intl'
 import { toastError } from '@/lib/client/error-notice'
 
 /** Extract the "Email" column from a CSV file; falls back to treating every
@@ -115,17 +117,22 @@ function downloadCsv(rows: ExportRow[]): void {
 }
 
 /** Only the non-default sources get a badge; a self-serve subscription is the normal case. */
-const SOURCE_LABELS: Record<string, string> = {
-  auto: 'Automatic',
-  admin: 'Added by admin',
-  csv_import: 'CSV import',
+const SOURCE_LABELS: Record<string, { id: string; defaultMessage: string }> = {
+  auto: { id: 'admin.status.subscribers.sourceAuto', defaultMessage: 'Automatic' },
+  admin: { id: 'admin.status.subscribers.sourceAdmin', defaultMessage: 'Added by admin' },
+  csv_import: { id: 'admin.status.subscribers.csvImport', defaultMessage: 'CSV import' },
 }
 
-function subscriberName(sub: StatusSubscriptionAdmin): string {
-  return sub.displayName ?? sub.email ?? 'Unknown'
+function subscriberName(intl: IntlShape, sub: StatusSubscriptionAdmin): string {
+  return (
+    sub.displayName ??
+    sub.email ??
+    intl.formatMessage({ id: 'admin.status.subscribers.unknown', defaultMessage: 'Unknown' })
+  )
 }
 
 export function StatusSubscribersView() {
+  const intl = useOptionalIntl()
   const formatNumber = useFormatNumber()
   const [debouncedSearch, setDebouncedSearch] = useState<string | undefined>(undefined)
   const { value: searchValue, setValue: setSearchValue } = useDebouncedSearch({
@@ -153,12 +160,34 @@ export function StatusSubscribersView() {
 
   async function confirmRemove() {
     if (!removing) return
-    const name = subscriberName(removing)
+    const name = subscriberName(intl, removing)
     try {
       const { removed } = await removeMutation.mutateAsync(removing.principalId)
-      toast.success(removed ? `Removed ${name}.` : `${name} had already unsubscribed.`)
+      toast.success(
+        removed
+          ? intl.formatMessage(
+              {
+                id: 'admin.status.subscribers.removedToast',
+                defaultMessage: 'Removed {name}.',
+              },
+              { name }
+            )
+          : intl.formatMessage(
+              {
+                id: 'admin.status.subscribers.alreadyUnsubscribed',
+                defaultMessage: '{name} had already unsubscribed.',
+              },
+              { name }
+            )
+      )
     } catch (error) {
-      toastError(error, 'Failed to remove subscriber')
+      toastError(
+        error,
+        intl.formatMessage({
+          id: 'admin.status.subscribers.toastRemoveFailed',
+          defaultMessage: 'Failed to remove subscriber',
+        })
+      )
     } finally {
       setRemoving(null)
     }
@@ -169,12 +198,23 @@ export function StatusSubscribersView() {
     try {
       const rows = await exportStatusSubscribersAdminFn()
       if (rows.length === 0) {
-        toast.info('No subscribers to export yet.')
+        toast.info(
+          intl.formatMessage({
+            id: 'admin.status.subscribers.toastNothingToExport',
+            defaultMessage: 'No subscribers to export yet.',
+          })
+        )
         return
       }
       downloadCsv(rows)
     } catch (error) {
-      toastError(error, 'Failed to export subscribers')
+      toastError(
+        error,
+        intl.formatMessage({
+          id: 'admin.status.subscribers.toastExportFailed',
+          defaultMessage: 'Failed to export subscribers',
+        })
+      )
     } finally {
       setExporting(false)
     }
@@ -185,12 +225,23 @@ export function StatusSubscribersView() {
       <AdminListHeader
         searchValue={searchValue}
         onSearchChange={setSearchValue}
-        searchPlaceholder="Search subscribers..."
+        searchPlaceholder={intl.formatMessage({
+          id: 'admin.status.subscribers.searchPlaceholder',
+          defaultMessage: 'Search subscribers...',
+        })}
         action={
           <>
             <Button variant="outline" size="sm" onClick={handleExport} disabled={exporting}>
               <ArrowUpTrayIcon className="h-4 w-4" />
-              {exporting ? 'Exporting…' : 'Export CSV'}
+              {exporting
+                ? intl.formatMessage({
+                    id: 'admin.status.action.exporting',
+                    defaultMessage: 'Exporting…',
+                  })
+                : intl.formatMessage({
+                    id: 'admin.status.subscribers.exportCsv',
+                    defaultMessage: 'Export CSV',
+                  })}
             </Button>
             <AddSubscribersDialog />
           </>
@@ -201,10 +252,25 @@ export function StatusSubscribersView() {
         <div className="rounded-xl border border-border/50 bg-card shadow-sm overflow-hidden">
           <AnalyticsStatRow
             stats={[
-              { label: 'Total', value: formatNumber(countsQuery.data?.total ?? 0) },
-              { label: 'Active', value: formatNumber(countsQuery.data?.active ?? 0) },
               {
-                label: 'Unsubscribed',
+                label: intl.formatMessage({
+                  id: 'admin.status.subscribers.statTotal',
+                  defaultMessage: 'Total',
+                }),
+                value: formatNumber(countsQuery.data?.total ?? 0),
+              },
+              {
+                label: intl.formatMessage({
+                  id: 'admin.status.subscribers.statActive',
+                  defaultMessage: 'Active',
+                }),
+                value: formatNumber(countsQuery.data?.active ?? 0),
+              },
+              {
+                label: intl.formatMessage({
+                  id: 'admin.status.subscribers.statUnsubscribed',
+                  defaultMessage: 'Unsubscribed',
+                }),
                 value: formatNumber(countsQuery.data?.unsubscribed ?? 0),
               },
             ]}
@@ -220,7 +286,17 @@ export function StatusSubscribersView() {
         ) : items.length === 0 ? (
           <EmptyState
             icon={UsersIcon}
-            title={searchValue ? 'No subscribers match your search' : 'No subscribers yet'}
+            title={
+              searchValue
+                ? intl.formatMessage({
+                    id: 'admin.status.subscribers.emptySearch',
+                    defaultMessage: 'No subscribers match your search',
+                  })
+                : intl.formatMessage({
+                    id: 'admin.status.subscribers.emptyTitle',
+                    defaultMessage: 'No subscribers yet',
+                  })
+            }
             className="h-48"
           />
         ) : (
@@ -228,29 +304,43 @@ export function StatusSubscribersView() {
             {items.map((sub) => (
               <div key={sub.id} className="group flex items-center gap-3 px-4 py-3">
                 <div className="min-w-0 flex-1">
-                  <div className="text-sm font-medium truncate">{subscriberName(sub)}</div>
+                  <div className="text-sm font-medium truncate">{subscriberName(intl, sub)}</div>
                   {sub.email && sub.displayName && (
                     <div className="text-xs text-muted-foreground truncate">{sub.email}</div>
                   )}
                 </div>
                 {sub.scope === 'components' && (
                   <Badge variant="outline" size="sm">
-                    {`${sub.componentIds.length} service${sub.componentIds.length === 1 ? '' : 's'}`}
+                    {intl.formatMessage(
+                      {
+                        id: 'admin.status.subscribers.serviceCount',
+                        defaultMessage: '{count, plural, =1 {1 service} other {# services}}',
+                      },
+                      { count: sub.componentIds.length }
+                    )}
                   </Badge>
                 )}
                 {SOURCE_LABELS[sub.source] && (
                   <Badge variant="outline" size="sm">
-                    {SOURCE_LABELS[sub.source]}
+                    {intl.formatMessage(SOURCE_LABELS[sub.source])}
                   </Badge>
                 )}
                 <div className="text-xs text-muted-foreground text-right shrink-0 whitespace-nowrap">
                   {sub.unsubscribedAt ? (
                     <span>
-                      Unsubscribed <TimeAgo date={sub.unsubscribedAt} locale="en" />
+                      {intl.formatMessage({
+                        id: 'admin.status.subscribers.unsubscribed',
+                        defaultMessage: 'Unsubscribed',
+                      })}{' '}
+                      <TimeAgo date={sub.unsubscribedAt} />
                     </span>
                   ) : (
                     <span>
-                      Subscribed <TimeAgo date={sub.createdAt} locale="en" />
+                      {intl.formatMessage({
+                        id: 'admin.status.subscribers.subscribed',
+                        defaultMessage: 'Subscribed',
+                      })}{' '}
+                      <TimeAgo date={sub.createdAt} />
                     </span>
                   )}
                 </div>
@@ -259,8 +349,17 @@ export function StatusSubscribersView() {
                     variant="ghost"
                     size="icon"
                     className="h-7 w-7 shrink-0 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
-                    title="Remove subscriber"
-                    aria-label={`Remove ${subscriberName(sub)}`}
+                    title={intl.formatMessage({
+                      id: 'admin.status.subscribers.removeTitle',
+                      defaultMessage: 'Remove subscriber',
+                    })}
+                    aria-label={intl.formatMessage(
+                      {
+                        id: 'admin.status.subscribers.removeAria',
+                        defaultMessage: 'Remove {name}',
+                      },
+                      { name: subscriberName(intl, sub) }
+                    )}
                     onClick={() => setRemoving(sub)}
                   >
                     <UserMinusIcon className="h-4 w-4" />
@@ -274,13 +373,23 @@ export function StatusSubscribersView() {
         <ConfirmDialog
           open={!!removing}
           onOpenChange={(o) => !o && setRemoving(null)}
-          title="Remove subscriber?"
+          title={intl.formatMessage({
+            id: 'admin.status.subscribers.removeConfirmTitle',
+            defaultMessage: 'Remove subscriber?',
+          })}
           description={
             removing
-              ? `${subscriberName(removing)} stops receiving status updates. They can subscribe again themselves.`
+              ? intl.formatMessage(
+                  {
+                    id: 'admin.status.subscribers.removeConfirmDescription',
+                    defaultMessage:
+                      '{name} stops receiving status updates. They can subscribe again themselves.',
+                  },
+                  { name: subscriberName(intl, removing) }
+                )
               : undefined
           }
-          confirmLabel="Remove"
+          confirmLabel={intl.formatMessage({ id: 'common.remove', defaultMessage: 'Remove' })}
           variant="destructive"
           isPending={removeMutation.isPending}
           onConfirm={confirmRemove}
@@ -297,7 +406,10 @@ export function StatusSubscribersView() {
                 onClick={() => fetchNextPage()}
                 className="text-muted-foreground"
               >
-                Load more
+                {intl.formatMessage({
+                  id: 'admin.status.subscribers.loadMore',
+                  defaultMessage: 'Load more',
+                })}
               </Button>
             )}
           </div>
@@ -308,6 +420,7 @@ export function StatusSubscribersView() {
 }
 
 function AddSubscribersDialog() {
+  const intl = useOptionalIntl()
   const [open, setOpen] = useState(false)
 
   return (
@@ -317,17 +430,35 @@ function AddSubscribersDialog() {
       </DialogTrigger>
       <DialogContent className="sm:max-w-xl">
         <DialogHeader>
-          <DialogTitle>New subscriber</DialogTitle>
+          <DialogTitle>
+            {intl.formatMessage({
+              id: 'admin.status.subscribers.newTitle',
+              defaultMessage: 'New subscriber',
+            })}
+          </DialogTitle>
           <DialogDescription>
-            Subscribe existing accounts to status updates. Emails without a matching account, and
-            people who unsubscribed, are skipped; no new accounts are created.
+            {intl.formatMessage({
+              id: 'admin.status.subscribers.newDescription',
+              defaultMessage:
+                'Subscribe existing accounts to status updates. Emails without a matching account, and people who unsubscribed, are skipped; no new accounts are created.',
+            })}
           </DialogDescription>
         </DialogHeader>
 
         <Tabs defaultValue="email">
           <TabsList>
-            <TabsTrigger value="email">By email</TabsTrigger>
-            <TabsTrigger value="csv">CSV import</TabsTrigger>
+            <TabsTrigger value="email">
+              {intl.formatMessage({
+                id: 'admin.status.subscribers.tabEmail',
+                defaultMessage: 'By email',
+              })}
+            </TabsTrigger>
+            <TabsTrigger value="csv">
+              {intl.formatMessage({
+                id: 'admin.status.subscribers.csvImport',
+                defaultMessage: 'CSV import',
+              })}
+            </TabsTrigger>
           </TabsList>
           <TabsContent value="email" className="pt-1">
             <AddByEmailTab onDone={() => setOpen(false)} />
@@ -342,6 +473,7 @@ function AddSubscribersDialog() {
 }
 
 function AddByEmailTab({ onDone }: { onDone: () => void }) {
+  const intl = useOptionalIntl()
   const [email, setEmail] = useState('')
   const addMutation = useAddStatusSubscriber()
 
@@ -352,21 +484,48 @@ function AddByEmailTab({ onDone }: { onDone: () => void }) {
     try {
       const result = await addMutation.mutateAsync(trimmed)
       if (result.subscribed) {
-        toast.success(`Subscribed ${trimmed}.`)
+        toast.success(
+          intl.formatMessage(
+            {
+              id: 'admin.status.subscribers.subscribedToast',
+              defaultMessage: 'Subscribed {email}.',
+            },
+            { email: trimmed }
+          )
+        )
       } else {
-        toast.info(`Skipped ${trimmed}: they unsubscribed from status updates.`)
+        toast.info(
+          intl.formatMessage(
+            {
+              id: 'admin.status.subscribers.skippedUnsubscribed',
+              defaultMessage: 'Skipped {email}: they unsubscribed from status updates.',
+            },
+            { email: trimmed }
+          )
+        )
       }
       setEmail('')
       onDone()
     } catch (error) {
-      toastError(error, 'No matching user for that email')
+      toastError(
+        error,
+        intl.formatMessage({
+          id: 'admin.status.subscribers.toastNoMatchingUser',
+          defaultMessage: 'No matching user for that email',
+        })
+      )
     }
   }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="space-y-2">
-        <Label htmlFor="add-subscriber-email">Email address</Label>
+        <Label htmlFor="add-subscriber-email">
+          {intl.formatMessage({
+            id: 'admin.status.subscribers.emailLabel',
+            defaultMessage: 'Email address',
+          })}
+        </Label>
         <Input
           id="add-subscriber-email"
           type="email"
@@ -377,15 +536,27 @@ function AddByEmailTab({ onDone }: { onDone: () => void }) {
           required
         />
         <p className="text-xs text-muted-foreground">
-          The email must belong to an existing account. This subscribes them to the whole page.
+          {intl.formatMessage({
+            id: 'admin.status.subscribers.emailHint',
+            defaultMessage:
+              'The email must belong to an existing account. This subscribes them to the whole page.',
+          })}
         </p>
       </div>
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onDone}>
-          Cancel
+          {intl.formatMessage({ id: 'common.cancel', defaultMessage: 'Cancel' })}
         </Button>
         <Button type="submit" disabled={!email.trim() || addMutation.isPending}>
-          {addMutation.isPending ? 'Adding…' : 'Add subscriber'}
+          {addMutation.isPending
+            ? intl.formatMessage({
+                id: 'admin.status.action.adding',
+                defaultMessage: 'Adding…',
+              })
+            : intl.formatMessage({
+                id: 'admin.status.subscribers.addAction',
+                defaultMessage: 'Add subscriber',
+              })}
         </Button>
       </DialogFooter>
     </form>
@@ -393,6 +564,7 @@ function AddByEmailTab({ onDone }: { onDone: () => void }) {
 }
 
 function CsvImportTab({ onDone }: { onDone: () => void }) {
+  const intl = useOptionalIntl()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [fileName, setFileName] = useState<string | null>(null)
   const [emails, setEmails] = useState<string[]>([])
@@ -409,7 +581,12 @@ function CsvImportTab({ onDone }: { onDone: () => void }) {
       const parsed = parseEmailsFromCsv(text)
       setEmails(parsed)
       if (parsed.length === 0) {
-        setError('No emails found. Make sure the file has an "Email" column.')
+        setError(
+          intl.formatMessage({
+            id: 'admin.status.subscribers.csvNoEmails',
+            defaultMessage: 'No emails found. Make sure the file has an "Email" column.',
+          })
+        )
       }
     }
     reader.readAsText(file)
@@ -420,13 +597,45 @@ function CsvImportTab({ onDone }: { onDone: () => void }) {
     try {
       const result = await importMutation.mutateAsync(emails)
       toast.success(
-        `Imported ${result.imported}.` +
-          (result.skipped > 0 ? ` Skipped ${result.skipped} without a matching account.` : '') +
-          (result.optedOut > 0 ? ` Skipped ${result.optedOut} who unsubscribed.` : '')
+        [
+          intl.formatMessage(
+            {
+              id: 'admin.status.subscribers.importedToast',
+              defaultMessage: 'Imported {count}.',
+            },
+            { count: result.imported }
+          ),
+          result.skipped > 0
+            ? intl.formatMessage(
+                {
+                  id: 'admin.status.subscribers.importedSkippedNoAccount',
+                  defaultMessage: 'Skipped {count} without a matching account.',
+                },
+                { count: result.skipped }
+              )
+            : null,
+          result.optedOut > 0
+            ? intl.formatMessage(
+                {
+                  id: 'admin.status.subscribers.importedSkippedUnsubscribed',
+                  defaultMessage: 'Skipped {count} who unsubscribed.',
+                },
+                { count: result.optedOut }
+              )
+            : null,
+        ]
+          .filter(Boolean)
+          .join(' ')
       )
       onDone()
     } catch (err) {
-      toastError(err, 'Import failed')
+      toastError(
+        err,
+        intl.formatMessage({
+          id: 'admin.status.subscribers.importFailed',
+          defaultMessage: 'Import failed',
+        })
+      )
     }
   }
 
@@ -447,12 +656,23 @@ function CsvImportTab({ onDone }: { onDone: () => void }) {
           <div className="flex items-center justify-center gap-2 text-sm">
             <DocumentTextIcon className="h-4 w-4 text-primary" />
             <span className="font-medium">{fileName}</span>
-            <span className="text-muted-foreground">({emails.length} emails found)</span>
+            <span className="text-muted-foreground">
+              {intl.formatMessage(
+                {
+                  id: 'admin.status.subscribers.emailsFound',
+                  defaultMessage: '({count} emails found)',
+                },
+                { count: emails.length }
+              )}
+            </span>
           </div>
         ) : (
           <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
             <ArrowUpTrayIcon className="h-4 w-4" />
-            Click to choose a CSV file with an "Email" column
+            {intl.formatMessage({
+              id: 'admin.status.subscribers.csvChooseFile',
+              defaultMessage: 'Click to choose a CSV file with an "Email" column',
+            })}
           </div>
         )}
       </div>
@@ -473,22 +693,36 @@ function CsvImportTab({ onDone }: { onDone: () => void }) {
             data-in-label
           />
           <span>
-            I confirm every person on this list has agreed to receive email from us, and I am not
-            importing a purchased or scraped list.
+            {intl.formatMessage({
+              id: 'admin.status.subscribers.csvConsent',
+              defaultMessage:
+                'I confirm every person on this list has agreed to receive email from us, and I am not importing a purchased or scraped list.',
+            })}
           </span>
         </label>
       )}
 
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onDone}>
-          Cancel
+          {intl.formatMessage({ id: 'common.cancel', defaultMessage: 'Cancel' })}
         </Button>
         <Button
           type="button"
           onClick={handleImport}
           disabled={emails.length === 0 || !consentChecked || importMutation.isPending}
         >
-          {importMutation.isPending ? 'Importing…' : `Subscribe ${emails.length} emails`}
+          {importMutation.isPending
+            ? intl.formatMessage({
+                id: 'admin.status.action.importing',
+                defaultMessage: 'Importing…',
+              })
+            : intl.formatMessage(
+                {
+                  id: 'admin.status.subscribers.subscribeCount',
+                  defaultMessage: 'Subscribe {count} emails',
+                },
+                { count: emails.length }
+              )}
         </Button>
       </DialogFooter>
     </div>

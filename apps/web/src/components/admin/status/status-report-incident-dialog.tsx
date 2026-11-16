@@ -29,6 +29,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { useCreateStatusIncident } from '@/lib/client/mutations/status'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import {
   AffectedComponentsField,
   TemplatePickerButton,
@@ -36,7 +37,8 @@ import {
   type AffectedRow,
 } from './status-incident-fields'
 import { deriveImpact } from '@/lib/shared/status-calc'
-import { IMPACT_LABELS, type StatusIncidentImpact } from './status-admin-colors'
+import { IMPACT_LABEL } from '@/components/portal/status/status-colors'
+import { type StatusIncidentImpact } from './status-admin-colors'
 import { toastError } from '@/lib/client/error-notice'
 
 export function ReportIncidentDialog({
@@ -50,6 +52,7 @@ export function ReportIncidentDialog({
   onOpenChange?: (open: boolean) => void
 }) {
   const [internalOpen, setInternalOpen] = useState(false)
+  const intl = useOptionalIntl()
   const isControlled = openProp !== undefined
   const open = isControlled ? openProp : internalOpen
   const [backfill, setBackfill] = useState(false)
@@ -126,7 +129,13 @@ export function ReportIncidentDialog({
         search: { view: 'open', incident: created.id },
       })
     } catch (error) {
-      toastError(error, 'Failed to report incident')
+      toastError(
+        error,
+        intl.formatMessage({
+          id: 'admin.status.report.toastFailed',
+          defaultMessage: 'Failed to report incident',
+        })
+      )
     }
   }
 
@@ -142,26 +151,51 @@ export function ReportIncidentDialog({
         <DialogTrigger asChild>
           <Button size="sm" variant={variant}>
             <PlusIcon className="h-4 w-4 mr-1.5" />
-            Report incident
+            {intl.formatMessage({
+              id: 'admin.status.report.trigger',
+              defaultMessage: 'Report incident',
+            })}
           </Button>
         </DialogTrigger>
       )}
       <DialogContent className="sm:max-w-xl">
         <DialogHeader>
-          <DialogTitle>{backfill ? 'Log a past incident' : 'Report an incident'}</DialogTitle>
+          <DialogTitle>
+            {backfill
+              ? intl.formatMessage({
+                  id: 'admin.status.report.backfillTitle',
+                  defaultMessage: 'Log a past incident',
+                })
+              : intl.formatMessage({
+                  id: 'admin.status.report.title',
+                  defaultMessage: 'Report an incident',
+                })}
+          </DialogTitle>
           <DialogDescription>
             {backfill
-              ? 'Adds a resolved incident to your incident history. It does not change uptime or service status, and subscribers are not emailed.'
-              : 'Publishes to your status page and emails subscribers once.'}
+              ? intl.formatMessage({
+                  id: 'admin.status.report.backfillDescription',
+                  defaultMessage:
+                    'Adds a resolved incident to your incident history. It does not change uptime or service status, and subscribers are not emailed.',
+                })
+              : intl.formatMessage({
+                  id: 'admin.status.report.description',
+                  defaultMessage: 'Publishes to your status page and emails subscribers once.',
+                })}
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label htmlFor="report-title">Title</Label>
+              <Label htmlFor="report-title">
+                {intl.formatMessage({ id: 'admin.status.field.title', defaultMessage: 'Title' })}
+              </Label>
               <TemplatePickerButton
-                label="Start from template"
+                label={intl.formatMessage({
+                  id: 'admin.status.action.startFromTemplate',
+                  defaultMessage: 'Start from template',
+                })}
                 onApply={(t) => {
                   setTitle(t.title)
                   setBody(t.body)
@@ -179,26 +213,42 @@ export function ReportIncidentDialog({
               id="report-title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Elevated error rates on the API"
+              placeholder={intl.formatMessage({
+                id: 'admin.status.report.titlePlaceholder',
+                defaultMessage: 'Elevated error rates on the API',
+              })}
               required
               autoFocus
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="report-body">What's happening?</Label>
+            <Label htmlFor="report-body">
+              {intl.formatMessage({
+                id: 'admin.status.report.bodyLabel',
+                defaultMessage: "What's happening?",
+              })}
+            </Label>
             <Textarea
               id="report-body"
               value={body}
               onChange={(e) => setBody(e.target.value)}
-              placeholder="Share what's happening and what you're doing about it…"
+              placeholder={intl.formatMessage({
+                id: 'admin.status.report.bodyPlaceholder',
+                defaultMessage: "Share what's happening and what you're doing about it…",
+              })}
               className="min-h-24"
               required
             />
           </div>
 
           <div className="space-y-2">
-            <Label>Affected services</Label>
+            <Label>
+              {intl.formatMessage({
+                id: 'admin.status.field.affectedServices',
+                defaultMessage: 'Affected services',
+              })}
+            </Label>
             <AffectedComponentsField kind="incident" value={affected} onChange={setAffected} />
           </div>
 
@@ -206,13 +256,27 @@ export function ReportIncidentDialog({
             <div className="flex items-center gap-2 rounded-lg bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
               <ExclamationTriangleIcon className="h-3.5 w-3.5 shrink-0" />
               <span>
-                Impact:{' '}
+                {intl.formatMessage({
+                  id: 'admin.status.report.impactLabel',
+                  defaultMessage: 'Impact:',
+                })}{' '}
                 <span className="font-semibold text-foreground">
-                  {IMPACT_LABELS[effectiveImpact]}
+                  {intl.formatMessage({
+                    id: IMPACT_LABEL[effectiveImpact].id,
+                    defaultMessage: IMPACT_LABEL[effectiveImpact].defaultMessage,
+                  })}
                 </span>{' '}
                 {templateImpact
-                  ? '· pinned by the applied template. You can change it after publishing.'
-                  : '· derived from the worst affected service. You can pin it after publishing.'}
+                  ? intl.formatMessage({
+                      id: 'admin.status.report.impactPinned',
+                      defaultMessage:
+                        '· pinned by the applied template. You can change it after publishing.',
+                    })
+                  : intl.formatMessage({
+                      id: 'admin.status.report.impactDerived',
+                      defaultMessage:
+                        '· derived from the worst affected service. You can pin it after publishing.',
+                    })}
               </span>
             </div>
           )}
@@ -220,7 +284,12 @@ export function ReportIncidentDialog({
           {backfill ? (
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
-                <Label>Started at</Label>
+                <Label>
+                  {intl.formatMessage({
+                    id: 'admin.status.field.startedAt',
+                    defaultMessage: 'Started at',
+                  })}
+                </Label>
                 <DateTimePicker
                   value={backfillStart}
                   onChange={setBackfillStart}
@@ -228,7 +297,12 @@ export function ReportIncidentDialog({
                 />
               </div>
               <div className="space-y-2">
-                <Label>Resolved at</Label>
+                <Label>
+                  {intl.formatMessage({
+                    id: 'admin.status.field.resolvedAt',
+                    defaultMessage: 'Resolved at',
+                  })}
+                </Label>
                 {/* No minDate: the picker would move a time before the start up
                     to the start. The admin's value stays, with the error below. */}
                 <DateTimePicker
@@ -239,7 +313,10 @@ export function ReportIncidentDialog({
               </div>
               {backfillOutOfOrder && (
                 <p className="col-span-2 text-xs text-destructive">
-                  It must be resolved after it started.
+                  {intl.formatMessage({
+                    id: 'admin.status.report.backfillOrderError',
+                    defaultMessage: 'It must be resolved after it started.',
+                  })}
                 </p>
               )}
             </div>
@@ -252,9 +329,15 @@ export function ReportIncidentDialog({
                 data-in-label
               />
               <span className="text-sm">
-                Email subscribers
+                {intl.formatMessage({
+                  id: 'admin.status.field.emailSubscribers',
+                  defaultMessage: 'Email subscribers',
+                })}
                 <span className="block text-xs text-muted-foreground">
-                  One email at publish. Updates and the resolve never email.
+                  {intl.formatMessage({
+                    id: 'admin.status.report.emailHint',
+                    defaultMessage: 'One email at publish. Updates and the resolve never email.',
+                  })}
                 </span>
               </span>
             </label>
@@ -266,18 +349,35 @@ export function ReportIncidentDialog({
               className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground text-left"
               onClick={() => setBackfill((b) => !b)}
             >
-              {backfill ? 'Report a live incident instead' : 'Log a past incident instead'}
+              {backfill
+                ? intl.formatMessage({
+                    id: 'admin.status.report.switchToLive',
+                    defaultMessage: 'Report a live incident instead',
+                  })
+                : intl.formatMessage({
+                    id: 'admin.status.report.switchToBackfill',
+                    defaultMessage: 'Log a past incident instead',
+                  })}
             </button>
             <div className="flex items-center gap-2">
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-                Cancel
+                {intl.formatMessage({ id: 'common.cancel', defaultMessage: 'Cancel' })}
               </Button>
               <Button type="submit" disabled={!canSubmit || createMutation.isPending}>
                 {createMutation.isPending
-                  ? 'Creating…'
+                  ? intl.formatMessage({
+                      id: 'admin.status.action.creating',
+                      defaultMessage: 'Creating…',
+                    })
                   : backfill
-                    ? 'Log past incident'
-                    : 'Publish incident'}
+                    ? intl.formatMessage({
+                        id: 'admin.status.report.submitBackfill',
+                        defaultMessage: 'Log past incident',
+                      })
+                    : intl.formatMessage({
+                        id: 'admin.status.report.submit',
+                        defaultMessage: 'Publish incident',
+                      })}
               </Button>
             </div>
           </DialogFooter>

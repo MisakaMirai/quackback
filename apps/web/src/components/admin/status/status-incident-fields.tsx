@@ -10,6 +10,8 @@ import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { StatusSelect } from '@/components/shared/sidebar-primitives'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
+import { COMPONENT_STATUS_LABEL, LIFECYCLE_LABEL } from '@/components/portal/status/status-colors'
 import {
   statusComponentQueries,
   statusTemplateQueries,
@@ -17,13 +19,25 @@ import {
 } from '@/lib/client/queries/status'
 import {
   COMPONENT_STATUS_OPTIONS,
-  LIFECYCLE_LABELS,
   defaultAffectedStatus,
   type StatusComponentStatus,
   type StatusIncidentImpact,
   type StatusIncidentKind,
   type StatusIncidentLifecycle,
 } from './status-admin-colors'
+
+/** The service status picker's options, worded in the app's language. */
+export function useComponentStatusOptions() {
+  const intl = useOptionalIntl()
+  return useMemo(
+    () =>
+      COMPONENT_STATUS_OPTIONS.map((option) => ({
+        ...option,
+        label: intl.formatMessage(COMPONENT_STATUS_LABEL[option.value]),
+      })),
+    [intl]
+  )
+}
 
 export interface AffectedRow {
   componentId: string
@@ -57,6 +71,8 @@ export function AffectedComponentsField({
   value: AffectedRow[]
   onChange: (next: AffectedRow[]) => void
 }) {
+  const intl = useOptionalIntl()
+  const statusOptions = useComponentStatusOptions()
   const { data, isLoading, isError, refetch } = useQuery(statusComponentQueries.choices())
   const components = useMemo(() => flattenComponents(data), [data])
   const byId = useMemo(() => new Map(value.map((v) => [v.componentId, v.componentStatus])), [value])
@@ -73,21 +89,43 @@ export function AffectedComponentsField({
     onChange(value.map((v) => (v.componentId === id ? { ...v, componentStatus: status } : v)))
   }
 
-  if (isLoading) return <p className="text-xs text-muted-foreground">Loading services…</p>
+  if (isLoading) {
+    return (
+      <p className="text-xs text-muted-foreground">
+        {intl.formatMessage({
+          id: 'admin.status.fields.loadingServices',
+          defaultMessage: 'Loading services…',
+        })}
+      </p>
+    )
+  }
   // A failed load is not an empty list: saying "No services yet" would send
   // the admin off to create services that already exist.
   if (isError) {
     return (
       <p className="text-xs text-destructive">
-        Couldn't load services.{' '}
+        {intl.formatMessage({
+          id: 'admin.status.fields.loadFailed',
+          defaultMessage: "Couldn't load services.",
+        })}{' '}
         <button type="button" className="underline" onClick={() => void refetch()}>
-          Try again
+          {intl.formatMessage({
+            id: 'common.errorPage.tryAgain',
+            defaultMessage: 'Try again',
+          })}
         </button>
       </p>
     )
   }
   if (components.length === 0) {
-    return <p className="text-xs text-muted-foreground">No services yet. Create one first.</p>
+    return (
+      <p className="text-xs text-muted-foreground">
+        {intl.formatMessage({
+          id: 'admin.status.fields.empty',
+          defaultMessage: 'No services yet. Create one first.',
+        })}
+      </p>
+    )
   }
 
   return (
@@ -110,7 +148,7 @@ export function AffectedComponentsField({
             {checked && (
               <StatusSelect
                 value={status}
-                options={COMPONENT_STATUS_OPTIONS}
+                options={statusOptions}
                 onChange={(v) => setStatus(c.id, v as StatusComponentStatus)}
               />
             )}
@@ -191,12 +229,17 @@ const LIFECYCLE_VARIANT: Record<StatusIncidentLifecycle, 'success' | 'warning' |
  * as muted text instead of a badge.
  */
 export function LifecycleBadge({ status }: { status: StatusIncidentLifecycle }) {
+  const intl = useOptionalIntl()
+  const label = intl.formatMessage({
+    id: LIFECYCLE_LABEL[status].id,
+    defaultMessage: LIFECYCLE_LABEL[status].defaultMessage,
+  })
   if (status === 'resolved' || status === 'completed') {
-    return <span className="text-xs text-muted-foreground">{LIFECYCLE_LABELS[status]}</span>
+    return <span className="text-xs text-muted-foreground">{label}</span>
   }
   return (
     <Badge variant={LIFECYCLE_VARIANT[status]} size="sm">
-      {LIFECYCLE_LABELS[status]}
+      {label}
     </Badge>
   )
 }
