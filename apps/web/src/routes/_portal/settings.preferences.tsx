@@ -3,6 +3,7 @@ import { useIntl, FormattedMessage } from 'react-intl'
 import { Cog6ToothIcon } from '@heroicons/react/24/solid'
 import { PortalPageHeader } from '@/components/public/portal-page-header'
 import { ThemeSwitcher } from '@/components/theme-switcher'
+import { LanguageSwitcher } from '@/components/language-switcher'
 import { NotificationMatrixForm } from '@/components/settings/notification-matrix-form'
 import { AreaMessages } from '@/components/shared/area-messages'
 import { getNotificationPreferencesFn } from '@/lib/server/functions/user'
@@ -68,6 +69,26 @@ function PreferencesPage() {
           </p>
           <ThemeSwitcher />
         </div>
+      </div>
+
+      {/* Language */}
+      <div
+        className="rounded-xl border border-border/50 bg-card p-6 shadow-sm animate-in fade-in duration-200 fill-mode-backwards"
+        style={{ animationDelay: '125ms' }}
+      >
+        <h2 className="font-medium mb-1">
+          <FormattedMessage
+            id="portal.settings.preferences.language.title"
+            defaultMessage="Language"
+          />
+        </h2>
+        <p className="text-sm text-muted-foreground mb-4">
+          <FormattedMessage
+            id="portal.settings.preferences.language.description"
+            defaultMessage="Choose the language for the portal."
+          />
+        </p>
+        <LanguageSwitcher />
       </div>
 
       {/* Notifications */}

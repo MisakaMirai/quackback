@@ -5546,5 +5546,7 @@
   "admin.settings.logo.removeFailed": "Failed to remove logo",
   "admin.settings.logo.removing": "Removing…",
   "admin.settings.logo.remove": "Remove",
-  "admin.settings.logo.cropTitle": "Crop your logo"
+  "admin.settings.logo.cropTitle": "Crop your logo",
+  "portal.settings.preferences.language.title": "Language",
+  "portal.settings.preferences.language.description": "Choose the language for the portal."
 }

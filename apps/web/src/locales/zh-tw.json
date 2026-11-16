@@ -5546,5 +5546,7 @@
   "admin.settings.logo.removeFailed": "標誌移除失敗",
   "admin.settings.logo.removing": "正在移除…",
   "admin.settings.logo.remove": "移除",
-  "admin.settings.logo.cropTitle": "裁剪標誌"
+  "admin.settings.logo.cropTitle": "裁剪標誌",
+  "portal.settings.preferences.language.title": "語言",
+  "portal.settings.preferences.language.description": "選擇入口網站使用的語言。"
 }
