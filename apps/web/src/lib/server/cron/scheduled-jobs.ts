@@ -13,7 +13,7 @@
  */
 import { logger } from '@/lib/server/logger'
 
-const log = logger.child({ component: 'fleet-cron' })
+const log = logger.child({ component: 'scheduled-cron' })
 
 const TEN_MIN = 10 * 60 * 1000
 const ONE_HOUR = 60 * 60 * 1000
@@ -120,7 +120,7 @@ export async function runStatusMaintenanceSweep(): Promise<void> {
  * A pass over every workspace's outbox would be a second drainer racing the
  * job claim for no reachable failure.
  */
-export const FLEET_CRON_JOBS = {
+export const SCHEDULED_CRON_JOBS = {
   daily: async () => {
     await runDailyMaintenance()
   },
@@ -131,20 +131,20 @@ export const FLEET_CRON_JOBS = {
     await runStatusMaintenanceSweep()
   },
   housekeeping: async () => {
-    await FLEET_CRON_JOBS.hourly()
+    await SCHEDULED_CRON_JOBS.hourly()
     const { withSweepLock } = await import('@/lib/server/sweep-lock')
     // Same bodies as `daily`, claimed once per 23 h so an hourly tick does
     // not re-run retention + telemetry. Pattern matches `telemetry_ping`.
-    await withSweepLock('daily_cycle', TWENTY_THREE_HOURS, () => FLEET_CRON_JOBS.daily(), {
+    await withSweepLock('daily_cycle', TWENTY_THREE_HOURS, () => SCHEDULED_CRON_JOBS.daily(), {
       keepUntilExpiry: true,
     })
   },
 } as const
 
-export type FleetCronJobName = keyof typeof FLEET_CRON_JOBS
+export type ScheduledCronJobName = keyof typeof SCHEDULED_CRON_JOBS
 
-export function isFleetCronJobName(value: string): value is FleetCronJobName {
-  return Object.hasOwn(FLEET_CRON_JOBS, value)
+export function isScheduledCronJobName(value: string): value is ScheduledCronJobName {
+  return Object.hasOwn(SCHEDULED_CRON_JOBS, value)
 }
 
 /**
@@ -154,15 +154,15 @@ export function isFleetCronJobName(value: string): value is FleetCronJobName {
  * exited 0 on a failed sweep would report a green run over a fleet that
  * has stopped sweeping, which is the only failure mode that path has.
  */
-export async function runFleetCronJob(name: FleetCronJobName): Promise<boolean> {
+export async function runScheduledCronJob(name: ScheduledCronJobName): Promise<boolean> {
   const startedAt = Date.now()
-  log.info({ job: name }, 'fleet cron job starting')
+  log.info({ job: name }, 'scheduled cron job starting')
   try {
-    await FLEET_CRON_JOBS[name]()
-    log.info({ job: name, duration_ms: Date.now() - startedAt }, 'fleet cron job complete')
+    await SCHEDULED_CRON_JOBS[name]()
+    log.info({ job: name, duration_ms: Date.now() - startedAt }, 'scheduled cron job complete')
     return true
   } catch (err) {
-    log.error({ err, job: name, duration_ms: Date.now() - startedAt }, 'fleet cron job failed')
+    log.error({ err, job: name, duration_ms: Date.now() - startedAt }, 'scheduled cron job failed')
     return false
   }
 }

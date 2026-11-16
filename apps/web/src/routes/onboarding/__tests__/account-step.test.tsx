@@ -86,8 +86,6 @@ vi.mock('@/components/ui/input-otp', () => ({
 }))
 
 import { AccountStep, type AccountStepProps } from '../-account-step'
-const track = vi.hoisted(() => vi.fn())
-vi.mock('@/lib/client/analytics', () => ({ track }))
 
 import { postAuthSuccess } from '@/lib/client/hooks/use-auth-broadcast'
 
@@ -423,7 +421,6 @@ describe('account step — a self-hosted first user', () => {
       })
     )
     await waitFor(() => expect(navigate).toHaveBeenCalledWith({ to: '/onboarding' }))
-    expect(track).toHaveBeenCalledWith('onboarding_account_created')
   })
 
   // The name is what customers see on replies and updates; an account created
@@ -736,14 +733,6 @@ describe('account step — an install whose first account has claimed setup', ()
 
     expect(screen.queryByText(/restart setup/i)).toBeNull()
   })
-
-  it('records the owner coming back as a sign-in', async () => {
-    track.mockClear()
-    renderStep(selfHostedClaimed())
-    act(() => postAuthSuccess())
-    await waitFor(() => expect(track).toHaveBeenCalledWith('onboarding_signed_in'))
-    expect(track).not.toHaveBeenCalledWith('onboarding_account_created')
-  })
 })
 
 describe('account step — after a sign-in completes', () => {
@@ -766,7 +755,6 @@ describe('account step — after a sign-in completes', () => {
       navigate.mock.invocationCallOrder[0]!
     )
   })
-
   it('answers on the first-user surface too, not only the claimed one', async () => {
     const props = selfHosted()
     props.authConfig.oauth = { ...DEFAULT_AUTH_CONFIG.oauth, password: false, magicLink: true }
@@ -775,30 +763,5 @@ describe('account step — after a sign-in completes', () => {
     act(() => postAuthSuccess())
 
     await waitFor(() => expect(navigate).toHaveBeenCalledWith({ to: '/onboarding' }))
-  })
-
-  it('records an account created only where one is created', async () => {
-    renderStep(selfHosted())
-    act(() => postAuthSuccess())
-    await waitFor(() => expect(track).toHaveBeenCalledWith('onboarding_account_created'))
-  })
-
-  // Someone who already started setup signs back in from the first-user
-  // screen. No account is created, so the funnel must not count one.
-  it('records a returning sign-in from the first-user screen as a sign-in', async () => {
-    track.mockClear()
-    renderStep(preStamped())
-    fireEvent.click(screen.getByRole('button', { name: /^sign in$/i }))
-    act(() => postAuthSuccess())
-    await waitFor(() => expect(track).toHaveBeenCalledWith('onboarding_signed_in'))
-    expect(track).not.toHaveBeenCalledWith('onboarding_account_created')
-  })
-
-  it('records an owner signing in to a claimed workspace as a sign-in', async () => {
-    track.mockClear()
-    renderStep(provisioned())
-    act(() => postAuthSuccess())
-    await waitFor(() => expect(track).toHaveBeenCalledWith('onboarding_signed_in'))
-    expect(track).not.toHaveBeenCalledWith('onboarding_account_created')
   })
 })

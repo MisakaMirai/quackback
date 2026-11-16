@@ -125,6 +125,11 @@ export function scopedWorkspaceId(): WorkspaceId | null {
   // a bijection — so the namespace is still exactly the fact that was verified,
   // not a derivative of it.
   const raw = scope.workspace.fingerprint.expectedSelfReportedWorkspaceId
+  if (typeof raw !== 'string') {
+    throw new WorkspaceNamespaceUnresolvable(
+      `workspace ${scope.workspace.workspaceKey}'s scope carries no workspace id`
+    )
+  }
   try {
     return fromUuid('workspace', raw)
   } catch {

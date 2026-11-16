@@ -5,7 +5,7 @@
  * Under pooled tenancy every scheduled sweep funnels through `withSweepLock`,
  * which fans the tick out across the fleet. The always-on worker arms those
  * timers itself — the same schedule as a single-workspace install. A sweep
- * added to `fleet-jobs.ts` but not to `startup.ts`'s schedule would silently
+ * added to `scheduled-jobs.ts` but not to `startup.ts`'s schedule would silently
  * stop running on the live fleet. So this suite reads both sources and
  * asserts they name the same work.
  *
@@ -37,7 +37,7 @@ function scheduledJobFns(source: string): Set<string> {
 }
 
 describe('the sweep inventory', () => {
-  const jobsSource = read('cron/fleet-jobs.ts')
+  const jobsSource = read('cron/scheduled-jobs.ts')
   const startupSource = read('startup.ts')
 
   it('is exactly the eight locks the fleet has, all defined in one module', () => {
@@ -67,9 +67,9 @@ describe('the sweep inventory', () => {
     const armed = scheduledJobFns(startupSource)
     expect(armed.size).toBeGreaterThan(0)
 
-    const jobs = await import('@/lib/server/cron/fleet-jobs')
+    const jobs = await import('@/lib/server/cron/scheduled-jobs')
     const exported = new Set(
-      Object.keys(jobs).filter((k) => k.startsWith('run') && k !== 'runFleetCronJob')
+      Object.keys(jobs).filter((k) => k.startsWith('run') && k !== 'runScheduledCronJob')
     )
     expect(exported.size).toBeGreaterThan(0)
     expect([...armed].sort()).toEqual([...exported].sort())
@@ -88,7 +88,7 @@ describe('the worker arms the sweep schedule under either tenancy mode', () => {
     expect(fn).not.toBe('')
 
     const jobWorker = fn.indexOf('startJobWorker')
-    const scheduleStart = fn.indexOf("import('@/lib/server/cron/fleet-jobs')")
+    const scheduleStart = fn.indexOf("import('@/lib/server/cron/scheduled-jobs')")
     expect(jobWorker).toBeGreaterThan(-1)
     expect(fn).not.toContain('startRelayTier')
     expect(scheduleStart).toBeGreaterThan(jobWorker)
@@ -98,14 +98,15 @@ describe('the worker arms the sweep schedule under either tenancy mode', () => {
 
 describe('the cron entry point', () => {
   it('knows exactly three jobs and rejects anything else', async () => {
-    const { FLEET_CRON_JOBS, isFleetCronJobName } = await import('@/lib/server/cron/fleet-jobs')
-    expect(Object.keys(FLEET_CRON_JOBS).sort()).toEqual(['daily', 'hourly', 'housekeeping'])
-    expect(isFleetCronJobName('daily')).toBe(true)
-    expect(isFleetCronJobName('hourly')).toBe(true)
-    expect(isFleetCronJobName('housekeeping')).toBe(true)
-    expect(isFleetCronJobName('weekly')).toBe(false)
+    const { SCHEDULED_CRON_JOBS, isScheduledCronJobName } =
+      await import('@/lib/server/cron/scheduled-jobs')
+    expect(Object.keys(SCHEDULED_CRON_JOBS).sort()).toEqual(['daily', 'hourly', 'housekeeping'])
+    expect(isScheduledCronJobName('daily')).toBe(true)
+    expect(isScheduledCronJobName('hourly')).toBe(true)
+    expect(isScheduledCronJobName('housekeeping')).toBe(true)
+    expect(isScheduledCronJobName('weekly')).toBe(false)
     // Not a prototype walk: `toString` must not read as a job name.
-    expect(isFleetCronJobName('toString')).toBe(false)
-    expect(isFleetCronJobName('constructor')).toBe(false)
+    expect(isScheduledCronJobName('toString')).toBe(false)
+    expect(isScheduledCronJobName('constructor')).toBe(false)
   })
 })

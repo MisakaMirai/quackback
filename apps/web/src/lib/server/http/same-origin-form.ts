@@ -1,4 +1,4 @@
-import { requestWorkspaceHost } from '@/lib/server/workspaces/saas-edge-host'
+import { requestWorkspaceHost } from '@/lib/server/http/request-host'
 
 /**
  * CSRF check for same-origin form POSTs.

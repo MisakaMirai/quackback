@@ -230,6 +230,17 @@ export const REPLAY_RETIRED: ReadonlySet<string> = new Set([
   '0277_widget_chat_to_messenger',
   '0280_widget_session_scope',
   '0291_legacy_surface_switches',
+  // Retired by 0319_drop_retired_tables: it drops the workflow engine tables,
+  // the Labs experiment table and settings.state, so these replays would
+  // recreate objects the current schema no longer declares.
+  '0054_settings_state',
+  '0180_workflow_runs_started_at_idx',
+  '0184_workflow_run_graph_snapshot',
+  '0185_workflow_run_graph_backfill',
+  '0188_workflow_versions',
+  '0281_workspace_experiments',
+  '0282_refined_visual_theme_visible',
+  '0283_refined_visual_theme_default_on',
 ])
 
 export const REPLAY_OVERRIDES: readonly ReplayOverride[] = [
@@ -273,7 +284,7 @@ export const REPLAY_OVERRIDES: readonly ReplayOverride[] = [
       'the gap heal treats the two differently and only mutates is refused in both populations: ' +
       'an errors verdict here would still let a heal delete the ledger rows and then fail on ' +
       'every replay forever, with nothing able to write them back.',
-    stillFailsWith: /pipeline_log|assistant_events/,
+    stillFailsWith: /pipeline_log|assistant_events|workflow_runs|workflow_run_events/,
   },
 ]
 

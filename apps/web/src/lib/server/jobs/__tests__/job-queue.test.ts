@@ -47,10 +47,7 @@ vi.mock('@/lib/server/workspaces/workspace-context', () => ({
     currentWorkspaceKey === null ? null : { workspaceKey: currentWorkspaceKey },
 }))
 
-import {
-  __resetAfterCommitForTests,
-  onDurableWorkCommitted,
-} from '@/lib/server/workspaces/after-commit'
+import { __resetAfterCommitForTests, onDurableWorkCommitted } from '@/lib/server/jobs/after-commit'
 
 import {
   cancelJob,
@@ -764,7 +761,7 @@ describe('transactional enqueue', () => {
   it('commits the job with the caller transaction and signals only after commit', async () => {
     const q = queue('tx-commit')
     currentWorkspaceKey = 'ws-tx'
-    const { wrapDbTransaction } = await import('@/lib/server/workspaces/after-commit')
+    const { wrapDbTransaction } = await import('@/lib/server/jobs/after-commit')
     const transaction = wrapDbTransaction(testDb().transaction.bind(testDb()))
     await transaction(async (tx) => {
       const { inserted } = await enqueueJob({ queue: q, payload: { n: 1 }, executor: tx })

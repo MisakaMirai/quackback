@@ -36,7 +36,6 @@ export const SETTINGS_SQL_COLUMNS = [
   'help_center_config',
   'tier_limits',
   'managed_field_paths',
-  'state',
   'auth_config_version',
 ] as const
 

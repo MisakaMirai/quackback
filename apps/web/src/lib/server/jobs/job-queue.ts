@@ -78,7 +78,7 @@ import { getExecuteRows } from '@/lib/server/utils/execute-rows'
 import { logger } from '@/lib/server/logger'
 import { getCurrentWorkspace } from '@/lib/server/workspaces/workspace-context'
 import { isPooledTenancy } from '@/lib/server/workspaces/mode'
-import { noteDurableWork, SINGLE_WORKSPACE_KEY } from '@/lib/server/workspaces/after-commit'
+import { noteDurableWork, SINGLE_WORKSPACE_KEY } from '@/lib/server/jobs/after-commit'
 import { pausedQueues } from './definitions'
 import {
   leaseClaimGroupedSql,

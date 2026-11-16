@@ -47,7 +47,7 @@ import { db } from '@/lib/server/db'
 import { getExecuteRows } from '@/lib/server/utils/execute-rows'
 import { currentWorkspaceNamespace } from '../workspaces/workspace-keyed'
 import { isPooledTenancy } from '../workspaces/mode'
-import { directConnection } from '../workspaces/pool-cache'
+import { config } from '@/lib/server/config'
 import { openRealtimeListener, type RealtimeListener } from './pg-listener'
 import { logger } from '@/lib/server/logger'
 
@@ -215,14 +215,15 @@ async function acquireConnection(namespace: string): Promise<WorkspaceConnection
   }
 
   const promise = (async () => {
-    const { url, password } = await directConnection()
+    // LISTEN/NOTIFY needs a session-mode connection; DATABASE_URL is the
+    // install's direct DSN.
+    const url = config.databaseUrl
     // `dispatch` needs the listener to read overflow rows back on its own
     // connection, and the listener needs `onPayload` to construct. The box
     // closes the cycle without a partially-initialised binding.
     const box: { listener: RealtimeListener | null } = { listener: null }
     const listener = await openRealtimeListener({
       directUrl: url,
-      password,
       label: namespace,
       onPayload: (raw) => {
         if (box.listener) dispatch(namespace, box.listener, raw)

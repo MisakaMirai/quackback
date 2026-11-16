@@ -36,13 +36,9 @@
  * then shared process-wide.
  *
  * **That makes the boundary a cross-piece contract rather than a self-contained
- * guarantee, so name where the other half lives:**
- * `lib/server/policy/module-state/` — the §4.4 scanner — owns every
- * module-scope mutable-state site *it can see* under `lib/server/**`, reconciled
- * against a checked-in ledger, with its recall limits recorded in that module's
- * README. It is a *source* scan, so load order is irrelevant to it: it sees a
- * captured singleton whether the module was imported at prime time, at call
- * time, or never.
+ * guarantee:** a handler must be importable at prime time, so anything it
+ * captures at module scope is shared process-wide. This test pins the import
+ * side; review any new module-scope mutable state in a handler by hand.
  *
  * **This test's boundary is therefore sound to exactly the degree that scanner's
  * recall is** — not absolutely. And one gap is invisible from its ledger:

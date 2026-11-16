@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import type { SitemapUrl } from '@/lib/server/sitemap'
 import { notTestPrincipal } from '@/lib/server/test-data'
-import { publicWorkspaceCacheHeaders } from '@/lib/server/workspaces/http-cache'
+import { publicWorkspaceCacheHeaders } from '@/lib/server/http/cache-headers'
 
 export const Route = createFileRoute('/sitemap.xml')({
   server: {

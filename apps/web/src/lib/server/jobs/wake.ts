@@ -10,9 +10,9 @@
  */
 import { getProcessRole } from '@/lib/server/process-role'
 import { logger } from '@/lib/server/logger'
-import { onDurableWorkCommitted, type DurableWork } from '@/lib/server/workspaces/after-commit'
+import { onDurableWorkCommitted, type DurableWork } from '@/lib/server/jobs/after-commit'
 import { getCurrentWorkspace } from '@/lib/server/workspaces/workspace-context'
-import { FLEET_INTERNAL_TOKEN_ENV } from '@/lib/server/fleet/internal-auth'
+import { FLEET_INTERNAL_TOKEN_ENV } from '@/lib/server/jobs/internal-auth'
 import type { JobWakeAbort, JobWakeRequest } from './worker'
 
 const log = logger.child({ component: 'job-wake' })

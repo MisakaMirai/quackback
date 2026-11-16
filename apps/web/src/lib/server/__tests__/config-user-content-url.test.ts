@@ -1,7 +1,6 @@
 /**
  * `USER_CONTENT_URL`: an optional separate origin user files are served from.
- * It must be a bare http(s) origin; under pooled tenancy it is ignored (one
- * host cannot serve every workspace's files) and that is logged once.
+ * It must be a bare http(s) origin.
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 
@@ -94,27 +93,9 @@ describe('USER_CONTENT_URL', () => {
     }
   })
 
-  it('is ignored under pooled tenancy, with one warning', async () => {
-    process.env.QUACKBACK_TENANCY = 'pooled'
-    process.env.QUACKBACK_CONTROL_DATABASE_URL = 'postgresql://cp@localhost:5432/control'
-    delete process.env.DATABASE_URL
-    process.env.USER_CONTENT_URL = 'https://files.example.com'
-
-    const result = await load()
-    expect(result).toMatchObject({ ok: true, value: undefined })
-    if (result.ok) {
-      result.read()
-      result.read()
-    }
-    expect(logged.warnings.filter((m) => m.includes('USER_CONTENT_URL'))).toHaveLength(1)
-  })
-
-  it('does not warn when single-workspace, or when unset', async () => {
+  it('does not warn when unset', async () => {
     process.env.USER_CONTENT_URL = 'https://files.example.com'
     await load()
-    process.env.QUACKBACK_TENANCY = 'pooled'
-    process.env.QUACKBACK_CONTROL_DATABASE_URL = 'postgresql://cp@localhost:5432/control'
-    delete process.env.DATABASE_URL
     delete process.env.USER_CONTENT_URL
     await load()
     expect(logged.warnings).toHaveLength(0)

@@ -63,7 +63,9 @@ import { sql } from '@/lib/server/db'
 import type { Database, Transaction } from '@/lib/server/db'
 import { logger } from '@/lib/server/logger'
 import { getCurrentWorkspace } from './workspace-context'
-import { WORKSPACE_FINGERPRINT_METADATA_KEY } from './vendor/contract'
+
+/** The stamp the control plane writes into a provisioned workspace's metadata. */
+const WORKSPACE_FINGERPRINT_METADATA_KEY = 'cloudTenant'
 
 const log = logger.child({ component: 'workspace-provenance' })
 

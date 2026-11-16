@@ -15,7 +15,7 @@ import {
   getScopedDatabase,
   WorkspaceScopeMissingError,
 } from '@/lib/server/workspaces/workspace-context'
-import { wrapDbTransaction } from '@/lib/server/workspaces/after-commit'
+import { wrapDbTransaction } from '@/lib/server/jobs/after-commit'
 import { countingQueryLogger } from '@/lib/server/request-metrics'
 
 // Import drizzle-orm operators explicitly to work around Nitro bundler issues

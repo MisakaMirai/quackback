@@ -54,8 +54,6 @@ Profiles: **Owner** = admin class + an admin-owned full API key (scoped keys hol
 | status.manage | feedback | ✓ | ✓ |
 | tag.view | feedback | ✓ | ✓ |
 | tag.manage | feedback | ✓ | ✓ |
-| suggestion.view | feedback | ✓ | ✓ |
-| suggestion.manage | feedback | ✓ | ✓ |
 | prioritization.manage | feedback | ✓ | ✓ |
 | changelog.view_draft | changelog | ✓ | ✓ |
 | changelog.manage | changelog | ✓ | ✓ |
@@ -88,14 +86,13 @@ Profiles: **Owner** = admin class + an admin-owned full API key (scoped keys hol
 | office_hours.manage | support | ✓ | · |
 | routing.manage | support | ✓ | · |
 | team.manage | support | ✓ | · |
-| workflow.manage | support | ✓ | · |
 | channel_account.manage | support | ✓ | · |
 | status_page.manage | status_page | ✓ | · |
 | status_page.publish | status_page | ✓ | ✓ |
 
 ## 2. Surfaces and their enforced authorization
 
-### Server functions (`requireAuth`) — 611 surfaces
+### Server functions (`requireAuth`) — 607 surfaces
 
 | Surface | Enforces |
 | --- | --- |
@@ -526,10 +523,6 @@ Profiles: **Owner** = admin class + an admin-owned full API key (scoped keys hol
 | `lib/server/functions/settings.ts`::updateOfficeHoursFn | office_hours.manage |
 | `lib/server/functions/settings.ts`::fetchChangelogSettingsFn | changelog.manage |
 | `lib/server/functions/settings.ts`::updateChangelogSettingsFn | changelog.manage |
-| `lib/server/functions/settings.ts`::fetchWorkflowAbandonedAutoCloseFn | routing.manage |
-| `lib/server/functions/settings.ts`::updateWorkflowAbandonedAutoCloseFn | workflow.manage |
-| `lib/server/functions/settings.ts`::fetchWorkflowCloseSpamFn | routing.manage |
-| `lib/server/functions/settings.ts`::updateWorkflowCloseSpamFn | workflow.manage |
 | `lib/server/functions/settings.ts`::fetchDefaultSlaPolicyFn | sla.manage |
 | `lib/server/functions/settings.ts`::updateDefaultSlaPolicyFn | sla.manage |
 | `lib/server/functions/settings.ts`::getSpamFilterConfigFn | settings.manage |
@@ -908,7 +901,7 @@ Key scopes are enforced: an API key holds exactly its stored scopes (owner permi
 
 ## 4. Entry points without a requireAuth/key gate
 
-182 of 894 entry points hold no `requireAuth` / `withApiKeyAuth` / `requireTeamAuth` gate.
+182 of 890 entry points hold no `requireAuth` / `withApiKeyAuth` / `requireTeamAuth` gate.
 Each is expected to be intentionally public, a pre-auth flow, a signature-verified webhook, or a handler that delegates auth (e.g. the MCP route).
 **Adding a row here is an access-control change** — confirm the new entry point is meant to be reachable without a gate.
 

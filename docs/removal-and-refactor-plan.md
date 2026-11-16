@@ -420,3 +420,12 @@ Get-ChildItem apps/web/src -Recurse -File -Include *.ts,*.tsx   # 体量
 Select-String -Path apps/web/src/locales/en.json -Pattern '"automation\.'   # 173
 Select-String -Path packages/db/drizzle/meta/_journal.json -Pattern '^<<<<<<<'  # 冲突标记
 ```
+
+---
+
+## 执行记录
+
+- **P1 / P3 / P4 / P5**：提交 `e149a27a9`（141 files，+243/−7,826）。AI evals/脚本/工作流设置、PostHog、工作流表与 `settings.state`（迁移 `0319_drop_retired_tables`）、语言包 `automation.*`、文档元数据均已移除。
+- **P2（云托管多租户栈）**：同一分支的后续提交。删除 `workspace-probe`、`policy/module-state`、`fleet/`（migrator/schema-floor/schema-state/ensure-schema-current/session-dsn）、`workspaces/` 下的 registry、resolver、pool-cache、fingerprint、physical-identity、quarantine、activity、fleet、saas-edge-host、request-scope、unavailable-page、workspace-secrets、stored-ciphertext、provenance vendor 与 `TENANCY.md`；worker 从多 workspace 循环改为单数据库循环；`cron/fleet-jobs` 改名 `cron/scheduled-jobs`；`internal-auth` 与 `after-commit` 移入 `jobs/`。
+- 保留一个极薄的单 workspace 兼容层（`workspaces/workspace-context.ts`、`workspace-keyed.ts`、`mode.ts`）：生产不创建 scope，测试夹具仍可验证按安装隔离的存储/密钥行为。`QUACKBACK_TENANCY`、`QUACKBACK_CONTROL_DATABASE_URL`、`QUACKBACK_FLEET_ROOT_KEY` 不再参与配置校验。
+- **验证**：`bun run typecheck`、`bun run lint`（0 errors）、`bun run build`、`bun run db:check-drift` 通过；`db:migrate` 已在本机 dev/test 库应用 `0319`；完整 Vitest 套件通过（见提交说明）。

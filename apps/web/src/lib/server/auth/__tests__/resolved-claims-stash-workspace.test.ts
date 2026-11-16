@@ -1,8 +1,5 @@
 /**
- * The OIDC resolved-claims stash, across workspaces.
- *
- * Not on SAAS-HOSTING-STACK.md §4.1's list — found by the module-state scanner
- * this piece added, which is the point of having one.
+ * The OIDC resolved-claims stash, across workspace scopes.
  *
  * The stash carries freshly-validated IdP claims from the resolver to the
  * role-provisioning hook, keyed by `providerId + accountId`. Neither half is

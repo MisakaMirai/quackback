@@ -36,7 +36,6 @@
 import { assertEmailProviderConfigured } from '@quackback/email/provider'
 import { logger } from '@/lib/server/logger'
 import { validateRuntimeConfig } from '@/lib/server/config'
-import { assertSchemaFloorConfigured } from '@/lib/server/fleet/schema-floor'
 import { assertProcessRoleConfigured } from '@/lib/server/process-role'
 
 const log = logger.child({ component: 'boot-config' })
@@ -67,7 +66,6 @@ export function assertBootConfigurationOrExit(
 
   try {
     assertProcessRoleConfigured(env)
-    assertSchemaFloorConfigured(env)
     // Two outbound mail providers is a choice the operator has not made; the
     // message names the variables in conflict.
     assertEmailProviderConfigured(env)

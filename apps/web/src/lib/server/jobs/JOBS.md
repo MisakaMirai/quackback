@@ -1,11 +1,13 @@
 # The Postgres job queue
 
-Background work on Postgres, per workspace, with leases. This is the substrate that
-replaces Redis for the background tier (`SAAS-HOSTING-STACK.md` §7).
+Background work on Postgres, with leases. This is the substrate that replaces
+Redis for the background tier.
 
-`QUACKBACK_TENANCY=single` — the default and every self-hosted install — gets one
-loop, no workspace scope, and the same scheduled jobs on the cadences they have
-always run on. Nothing here needs a registry or a control plane.
+Quackback is single-workspace: one process serves one database, so the worker
+runs one loop and the same scheduled jobs on the cadences they have always run
+on. Nothing here needs a registry or a control plane. Sections below that discuss
+a two-workspace fleet describe the removed pooled runtime and are kept as design
+history.
 
 ---
 

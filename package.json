@@ -50,7 +50,7 @@
     "db:generate-csv": "bun packages/db/src/generate-sample-csv.ts",
     "reset": "bun packages/db/src/reset.ts",
     "import": "bun scripts/import/cli.ts",
-    "typecheck": "tsc --noEmit -p apps/web/tsconfig.json && tsc --noEmit -p apps/web/workspace-probe/tsconfig.json",
+    "typecheck": "tsc --noEmit -p apps/web/tsconfig.json",
     "prepare": "husky"
   },
   "type": "module",

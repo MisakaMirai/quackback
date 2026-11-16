@@ -1,9 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { db, sql, getMigrationStatus } from '@/lib/server/db'
-// The mode is read from the environment rather than through `config`: the
-// readiness probe must not fail because some unrelated variable is missing —
-// that would report the process unhealthy for a reason it is not.
-import { isPooledTenancy } from '@/lib/server/workspaces/mode'
 import { getJobWorkerStatus } from '@/lib/server/jobs/worker'
 import { getProcessRole, shouldRunWorkers } from '@/lib/server/process-role'
 import { logger } from '@/lib/server/logger'
@@ -52,46 +48,7 @@ async function runCheck(name: string, check: () => Promise<void>): Promise<Check
  * Longer than the platform's suspend timer on purpose. Anything shorter and the
  * probe becomes the client that keeps the control compute awake — see below.
  */
-const CONTROL_OBSERVATION_TTL_MS = 600_000
-
 async function checkDb(): Promise<void> {
-  // Under pooled workspaces the probe carries no workspace, so there is no "the"
-  // database to ping. What the fleet's readiness actually depends on is the
-  // control store — without it no hostname resolves at all. Probing a workspace
-  // would also be actively harmful: it would wake a suspended workspace
-  // database every few seconds, defeating the idle-cost model the pooling exists for.
-  //
-  // The control store now has exactly the same problem, and it used to have it
-  // from this line. `SELECT 1` on every poll is a client connected every few
-  // seconds, which is why that compute measured 95% active for a day while
-  // doing nothing. So the probe **observes rather than connects**: the registry
-  // records the outcome of every real read, and a recent success is better
-  // evidence than a synthetic one — it is the actual query the request path
-  // depends on, against the actual pool, rather than a `SELECT 1` that can pass
-  // while the registry tables are unreadable.
-  //
-  // A real connection is still made in the one case where observation says
-  // nothing: no read has succeeded within the window. That covers boot, where
-  // readiness genuinely must not pass until the control database has answered,
-  // and it covers a fleet so quiet that the last read has aged out — at which
-  // point one connection every ten minutes is a rounding error against a suspend
-  // timer measured in minutes.
-  if (isPooledTenancy()) {
-    // Imported here rather than at module scope: a single-workspace probe must not
-    // drag the workspaces stack (and `postgres`) into its module graph for a branch
-    // it never takes.
-    const { probeControlDatabase, getControlReadState } =
-      await import('@/lib/server/workspaces/registry')
-    const state = getControlReadState()
-    const now = Date.now()
-    // A failure that is newer than the last success is the current truth, and it
-    // must fail the probe rather than be aged out by a stale success.
-    if (state.lastOkAt > state.lastErrorAt && now - state.lastOkAt < CONTROL_OBSERVATION_TTL_MS) {
-      return
-    }
-    await probeControlDatabase()
-    return
-  }
   await db.execute(sql`SELECT 1`)
 }
 
@@ -118,13 +75,6 @@ export function resetReadinessCache(): void {
  * the next reader to believe the case is handled.
  */
 async function checkMigrations(): Promise<void> {
-  // Fleet readiness stops asserting anything about workspace schemas under pooled
-  // workspaces, per SAAS-HOSTING-STACK.md §10.5. The memo below is actively
-  // misleading there: it caches "migrations OK" forever after the first workspace
-  // it happened to see, so the probe goes blind during exactly the rolling
-  // migration it exists to catch. A workspace mid-migration must degrade alone —
-  // that is the per-workspace `MIN_SCHEMA_VERSION` gate's job, not the probe's.
-  if (isPooledTenancy()) return
   if (migrationsKnownUpToDate) return
   const status = await getMigrationStatus(db)
   if (!status.upToDate) throw new MigrationsBehind()
@@ -202,13 +152,6 @@ export async function handleReadinessProbe(): Promise<Response> {
       migrations: migrationsCheck,
       workers: workersCheck,
     },
-  }
-  // Request-pool LRU stats: entries currently held, evictions since boot.
-  // Only meaningful under pooled tenancy; the cache is empty otherwise.
-  if (isPooledTenancy()) {
-    const { getPoolCacheStats } = await import('@/lib/server/workspaces/pool-cache')
-    const pools = getPoolCacheStats()
-    body.pools = { entries: pools.live, evictions: pools.evicted }
   }
   return Response.json(body, { status: ready ? 200 : 503 })
 }
