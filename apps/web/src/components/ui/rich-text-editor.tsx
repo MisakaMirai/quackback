@@ -122,13 +122,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from './dropdown-menu'
-import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuSeparator,
-  ContextMenuTrigger,
-} from './context-menu'
 import { ScrollArea } from './scroll-area'
 
 // Curated grammar set instead of lowlight's `common` (~37 languages): the
@@ -1784,8 +1777,9 @@ const showFormattingBubble: BubbleMenuProps['shouldShow'] = ({ editor, state }) 
 
 const showTableBubble: BubbleMenuProps['shouldShow'] = ({ editor }) => editor.isActive('table')
 
-const showImageBubble: BubbleMenuProps['shouldShow'] = ({ editor }) =>
-  editor.isActive('resizableImage')
+// The resizable-image extension registers its node as `image` (not
+// `resizableImage`), so this is the name both the schema and the selection use.
+const showImageBubble: BubbleMenuProps['shouldShow'] = ({ editor }) => editor.isActive('image')
 
 interface EditorChromeProps {
   editor: Editor
@@ -1800,8 +1794,8 @@ interface EditorChromeProps {
 }
 
 /**
- * The writing surface and everything around it: the toolbar, the bubble menus
- * and the image context menu. None of it takes the document as a prop, so a
+ * The writing surface and everything around it: the toolbar and the bubble
+ * menus. None of it takes the document as a prop, so a
  * controlled host that re-renders on every keystroke (a new value and often a
  * new onDocumentChange) stops at RichTextEditorBase. The toolbar and menus follow the
  * selection through their own useEditorState subscriptions instead.
@@ -1817,39 +1811,6 @@ const EditorChrome = memo(function EditorChrome({
   onImageUpload,
   onVideoUpload,
 }: EditorChromeProps) {
-  const intl = useOptionalIntl()
-  // Image context menu state - stores the src of the right-clicked image
-  const [contextMenuImageSrc, setContextMenuImageSrc] = useState<string | null>(null)
-
-  // Handle right-click - check if it's on an image and store the src
-  const handleContextMenu = useCallback(
-    (e: React.MouseEvent) => {
-      if (!features.images) {
-        setContextMenuImageSrc(null)
-        return
-      }
-
-      // Check if right-clicked on an image
-      const target = e.target as HTMLElement
-      const imageWrapper = target.closest('.resizable-image-wrapper')
-      const img = imageWrapper?.querySelector('img') || (target.tagName === 'IMG' ? target : null)
-
-      if (img && img instanceof HTMLImageElement) {
-        setContextMenuImageSrc(img.src)
-      } else {
-        // Not an image - prevent Radix context menu from opening
-        setContextMenuImageSrc(null)
-      }
-    },
-    [features.images]
-  )
-
-  // Use shared image actions hook for context menu
-  const contextMenuActions = useImageActions({
-    src: contextMenuImageSrc ?? undefined,
-    editor,
-  })
-
   // Ref for finding the nearest dialog content to append bubble menus to.
   // Appending to the dialog (instead of document.body) keeps the menu inside
   // Radix's focus-trap so clicks still work, while escaping ScrollArea overflow.
@@ -1866,80 +1827,44 @@ const EditorChrome = memo(function EditorChrome({
   }, [])
 
   return (
-    <ContextMenu>
-      {/* No `disabled` here: Base UI disables pointer events for the whole
-          trigger subtree, which would make the editor itself unclickable.
-          The image menu can't open without images anyway — handleContextMenu
-          clears the src unless features.images is on. */}
-      <ContextMenuTrigger asChild>
-        <div
-          ref={containerRef}
-          className={cn(
-            !borderless && 'overflow-hidden rounded-md border border-input bg-background',
-            disabled && 'opacity-50 cursor-not-allowed',
-            fill && 'flex h-full min-h-0 flex-col',
-            className
-          )}
-          onContextMenu={handleContextMenu}
-        >
-          {toolbarPosition === 'top' && (
-            <MenuBar
-              editor={editor}
-              disabled={disabled}
-              features={features}
-              onImageUpload={onImageUpload}
-              onVideoUpload={onVideoUpload}
-              variant="top"
-            />
-          )}
-
-          <EditorContent
+    <>
+      <div
+        ref={containerRef}
+        className={cn(
+          !borderless && 'overflow-hidden rounded-md border border-input bg-background',
+          disabled && 'opacity-50 cursor-not-allowed',
+          fill && 'flex h-full min-h-0 flex-col',
+          className
+        )}
+      >
+        {toolbarPosition === 'top' && (
+          <MenuBar
             editor={editor}
-            className={cn(fill && 'min-h-0 flex-1 overflow-y-auto [&_.tiptap]:min-h-full')}
+            disabled={disabled}
+            features={features}
+            onImageUpload={onImageUpload}
+            onVideoUpload={onVideoUpload}
+            variant="top"
           />
+        )}
 
-          {toolbarPosition === 'bottom' && (
-            <MenuBar
-              editor={editor}
-              disabled={disabled}
-              features={features}
-              onImageUpload={onImageUpload}
-              onVideoUpload={onVideoUpload}
-              variant="bottom"
-              borderless={borderless}
-            />
-          )}
-        </div>
-      </ContextMenuTrigger>
+        <EditorContent
+          editor={editor}
+          className={cn(fill && 'min-h-0 flex-1 overflow-y-auto [&_.tiptap]:min-h-full')}
+        />
 
-      {contextMenuImageSrc && (
-        <ContextMenuContent className="min-w-[180px]">
-          <ContextMenuItem onClick={contextMenuActions.viewImage}>
-            <Expand className="mr-3 size-4 text-muted-foreground" />
-            {intl.formatMessage({ id: 'ui.editor.viewImage', defaultMessage: 'View image' })}
-          </ContextMenuItem>
-          <ContextMenuItem onClick={contextMenuActions.downloadImage}>
-            <Download className="mr-3 size-4 text-muted-foreground" />
-            {intl.formatMessage({ id: 'files.download', defaultMessage: 'Download' })}
-          </ContextMenuItem>
-          <ContextMenuItem onClick={contextMenuActions.copyImage}>
-            <Copy className="mr-3 size-4 text-muted-foreground" />
-            {intl.formatMessage({
-              id: 'common.copyToClipboard',
-              defaultMessage: 'Copy to clipboard',
-            })}
-          </ContextMenuItem>
-          <ContextMenuItem onClick={contextMenuActions.copyLink}>
-            <Link2 className="mr-3 size-4 text-muted-foreground" />
-            {intl.formatMessage({ id: 'common.copyLink', defaultMessage: 'Copy link' })}
-          </ContextMenuItem>
-          <ContextMenuSeparator />
-          <ContextMenuItem onClick={contextMenuActions.deleteImage}>
-            <Trash2 className="mr-3 size-4 text-muted-foreground" />
-            {intl.formatMessage({ id: 'common.delete', defaultMessage: 'Delete' })}
-          </ContextMenuItem>
-        </ContextMenuContent>
-      )}
+        {toolbarPosition === 'bottom' && (
+          <MenuBar
+            editor={editor}
+            disabled={disabled}
+            features={features}
+            onImageUpload={onImageUpload}
+            onVideoUpload={onVideoUpload}
+            variant="bottom"
+            borderless={borderless}
+          />
+        )}
+      </div>
 
       {features.bubbleMenu !== false && (
         <BubbleMenu
@@ -1976,7 +1901,7 @@ const EditorChrome = memo(function EditorChrome({
           <ImageToolbar editor={editor} disabled={disabled} />
         </BubbleMenu>
       )}
-    </ContextMenu>
+    </>
   )
 }, sameChromeProps)
 
@@ -2715,7 +2640,7 @@ interface ImageToolbarProps {
 }
 
 const selectImageSrc = ({ editor: e }: { editor: Editor }) =>
-  e.getAttributes('resizableImage').src as string | undefined
+  e.getAttributes('image').src as string | undefined
 
 function ImageToolbar({ editor, disabled }: ImageToolbarProps) {
   const intl = useOptionalIntl()

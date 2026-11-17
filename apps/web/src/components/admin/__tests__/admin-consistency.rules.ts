@@ -43,7 +43,7 @@ interface Analysis {
 
 /** Overlay containers: a width on these (or inside them) is not a page width. */
 const OVERLAY =
-  /^(?:(?:AlertDialog|Dialog|Sheet|Popover|Tooltip|DropdownMenu|ContextMenu|Select|HoverCard)(?:Sub)?(?:Content|Popup)|Tooltip|Dialog|AlertDialog|Sheet|Popover)$/
+  /^(?:(?:AlertDialog|Dialog|Sheet|Popover|Tooltip|DropdownMenu|Select|HoverCard)(?:Sub)?(?:Content|Popup)|Tooltip|Dialog|AlertDialog|Sheet|Popover)$/
 
 function jsxName(node: Node): string | null {
   const name = node.name as Node | undefined

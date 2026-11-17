@@ -5,8 +5,6 @@ import { cn } from '@/lib/shared/utils'
 const TRIGGER_TYPE_NAMES = new Set([
   'AlertDialogTrigger',
   'CollapsibleTrigger',
-  'ContextMenuSubTrigger',
-  'ContextMenuTrigger',
   'DialogTrigger',
   'DropdownMenuSubTrigger',
   'DropdownMenuTrigger',
