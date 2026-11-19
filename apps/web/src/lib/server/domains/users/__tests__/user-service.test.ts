@@ -80,7 +80,14 @@ vi.mock('@/lib/server/db', async (importOriginal) => ({
   isNull: vi.fn(),
   desc: vi.fn(),
   asc: vi.fn(),
-  sql: vi.fn(() => ({ kind: 'atomic-metadata-patch' })),
+  // `user.identify` builds the metadata patch with `sql` and `sql.join`; the
+  // assertions only need the sentinel this stub hands back for both.
+  sql: Object.assign(
+    vi.fn(() => ({ kind: 'atomic-metadata-patch' })),
+    {
+      join: vi.fn(() => ({ kind: 'atomic-metadata-patch' })),
+    }
+  ),
 }))
 
 vi.mock('@quackback/ids', () => ({

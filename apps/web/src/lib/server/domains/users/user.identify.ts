@@ -30,6 +30,25 @@ import {
 } from './user.attributes'
 
 /**
+ * SQL that atomically merges validated attributes into the user's metadata and
+ * removes unset keys.
+ *
+ * The removals are spelled as an `ARRAY[...]` constructor, one text parameter
+ * per key. Drizzle's `sql` template flattens a JS array into one parameter per
+ * element, so interpolating the array straight into `- ${removals}::text[]`
+ * renders `()::text[]` (no removals), `($1)::text[]` (one) or
+ * `($1, $2)::text[]` (several) — all rejected by Postgres, which is the 500
+ * every metadata update of an existing user used to hit.
+ */
+export function userMetadataPatchSql(updates: Record<string, unknown>, removals: string[]) {
+  const removalsSql = sql`ARRAY[${sql.join(
+    removals.map((key) => sql`${key}`),
+    sql`, `
+  )}]::text[]`
+  return sql`((coalesce(nullif(${user.metadata}, ''), '{}')::jsonb - ${removalsSql} || ${JSON.stringify(updates)}::jsonb)::text`
+}
+
+/**
  * Identify (create or update) a portal user by email.
  *
  * - If the user exists: update name, image, emailVerified, and merge attributes.
@@ -78,7 +97,7 @@ export async function identifyPortalUser(
       }
     }
     if (Object.keys(metadataUpdates).length > 0 || metadataRemovals.length > 0) {
-      userUpdates.metadata = sql`((coalesce(nullif(${user.metadata}, ''), '{}')::jsonb - ${metadataRemovals}::text[]) || ${JSON.stringify(metadataUpdates)}::jsonb)::text`
+      userUpdates.metadata = userMetadataPatchSql(metadataUpdates, metadataRemovals)
     }
 
     if (Object.keys(userUpdates).length > 0) {
@@ -254,7 +273,7 @@ export async function updatePortalUser(
     }
   }
   if (Object.keys(metadataUpdates).length > 0 || metadataRemovals.length > 0) {
-    userUpdates.metadata = sql`((coalesce(nullif(${user.metadata}, ''), '{}')::jsonb - ${metadataRemovals}::text[]) || ${JSON.stringify(metadataUpdates)}::jsonb)::text`
+    userUpdates.metadata = userMetadataPatchSql(metadataUpdates, metadataRemovals)
   }
 
   if (Object.keys(userUpdates).length > 0) {
