@@ -38,14 +38,41 @@ export const Route = createFileRoute('/api/v1/apps/search')({
             actor,
           })
 
-          const posts = result.items.map((p) => ({
-            id: p.id,
-            title: p.title,
-            voteCount: p.voteCount,
-            statusName: null as string | null,
-            statusColor: null as string | null,
-            board: p.board ? { name: p.board.name } : { name: '' },
-          }))
+          // The list row carries statusId only; resolve names/colors in one
+          // query so the sidebar can render the status badge the OpenAPI
+          // response promises.
+          const { db, postStatuses, inArray } = await import('@/lib/server/db')
+          const statusIds = [
+            ...new Set(
+              result.items
+                .map((p) => p.statusId)
+                .filter((id): id is NonNullable<typeof id> => id !== null)
+            ),
+          ]
+          const statusRows =
+            statusIds.length > 0
+              ? await db
+                  .select({
+                    id: postStatuses.id,
+                    name: postStatuses.name,
+                    color: postStatuses.color,
+                  })
+                  .from(postStatuses)
+                  .where(inArray(postStatuses.id, statusIds))
+              : []
+          const statusById = new Map(statusRows.map((s) => [s.id, s]))
+
+          const posts = result.items.map((p) => {
+            const status = p.statusId ? statusById.get(p.statusId) : undefined
+            return {
+              id: p.id,
+              title: p.title,
+              voteCount: p.voteCount,
+              statusName: status?.name ?? null,
+              statusColor: status?.color ?? null,
+              board: p.board ? { name: p.board.name } : { name: '' },
+            }
+          })
 
           return appJsonResponse({ posts })
         } catch (error) {

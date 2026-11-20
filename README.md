@@ -72,7 +72,7 @@ docker compose -f docker-compose.prod.yml up -d
 ```
 
 - [Self-hosting guide](deploy/self-hosted/README.md): images, reverse proxy, scaling, upgrades and troubleshooting
-- [Configuration reference](docs/configuration.md): every environment variable
+- [Configuration reference](docs/configuration.md): the core runtime and operational variables. Optional email, storage, auth, and integration settings are documented alongside their defaults in [`.env.example`](.env.example).
 - [System requirements](https://feedback.quackback.io/hc/en/articles/66-requirements) and the [Docker guide](https://feedback.quackback.io/hc/en/articles/67-docker) in our docs
 
 ## Connect your AI tools

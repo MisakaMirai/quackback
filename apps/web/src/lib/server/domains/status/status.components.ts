@@ -190,8 +190,8 @@ export async function createStatusComponent(
   return toComponentRow(component)
 }
 
-async function getComponentOrThrow(id: StatusComponentId) {
-  const existing = await db.query.statusComponents.findFirst({
+async function getComponentOrThrow(id: StatusComponentId, executor: Executor = db) {
+  const existing = await executor.query.statusComponents.findFirst({
     where: and(eq(statusComponents.id, id), isNull(statusComponents.deletedAt)),
   })
   if (!existing) {
@@ -202,9 +202,10 @@ async function getComponentOrThrow(id: StatusComponentId) {
 
 export async function updateStatusComponent(
   id: StatusComponentId,
-  input: UpdateStatusComponentInput
+  input: UpdateStatusComponentInput,
+  executor: Executor = db
 ): Promise<StatusComponentRow> {
-  await getComponentOrThrow(id)
+  await getComponentOrThrow(id, executor)
 
   const updateData: Record<string, unknown> = { updatedAt: new Date() }
   if (input.name !== undefined) updateData.name = validateName(input.name, 'Component')
@@ -213,7 +214,7 @@ export async function updateStatusComponent(
   if (input.showUptime !== undefined) updateData.showUptime = input.showUptime
   if (input.segmentIds !== undefined) updateData.segmentIds = input.segmentIds
 
-  const [updated] = await db
+  const [updated] = await executor
     .update(statusComponents)
     .set(updateData)
     .where(eq(statusComponents.id, id))
@@ -274,42 +275,58 @@ export async function setComponentStatus(
   componentId: StatusComponentId,
   status: StatusComponentStatus,
   source: StatusComponentEventSource,
-  incidentId?: StatusIncidentId | null
+  incidentId?: StatusIncidentId | null,
+  executor?: Transaction
 ): Promise<void> {
   // The row is locked and read inside the transaction, so the previous
   // status in the event is the one this write replaced, and the change, its
   // history row and its event commit together or not at all.
-  await db.transaction(async (tx) => {
-    const [locked] = await tx
-      .select()
-      .from(statusComponents)
-      .where(and(eq(statusComponents.id, componentId), isNull(statusComponents.deletedAt)))
-      .for('no key update')
-    if (!locked) {
-      throw new NotFoundError(
-        'STATUS_COMPONENT_NOT_FOUND',
-        `Status component ${componentId} not found`
-      )
-    }
-    if (locked.status === status) return
-    await writeComponentStatus(locked, status, source, incidentId, tx)
+  if (executor) {
+    await setComponentStatusWithin(executor, componentId, status, source, incidentId)
+    return
+  }
+  await db.transaction((tx) =>
+    setComponentStatusWithin(tx, componentId, status, source, incidentId)
+  )
+}
 
-    if (source === 'manual' || source === 'api') {
-      const actor: EventActor = { type: 'service', displayName: source }
-      await writeStatusEvent(
-        'status.component_changed',
-        actor,
-        {
-          componentId: locked.id,
-          componentName: locked.name,
-          previousStatus: locked.status,
-          status,
-          source,
-        },
-        tx
-      )
-    }
-  })
+/** The body of `setComponentStatus`, run inside a caller-owned transaction. */
+async function setComponentStatusWithin(
+  executor: Transaction,
+  componentId: StatusComponentId,
+  status: StatusComponentStatus,
+  source: StatusComponentEventSource,
+  incidentId: StatusIncidentId | null | undefined
+): Promise<void> {
+  const [locked] = await executor
+    .select()
+    .from(statusComponents)
+    .where(and(eq(statusComponents.id, componentId), isNull(statusComponents.deletedAt)))
+    .for('no key update')
+  if (!locked) {
+    throw new NotFoundError(
+      'STATUS_COMPONENT_NOT_FOUND',
+      `Status component ${componentId} not found`
+    )
+  }
+  if (locked.status === status) return
+  await writeComponentStatus(locked, status, source, incidentId, executor)
+
+  if (source === 'manual' || source === 'api') {
+    const actor: EventActor = { type: 'service', displayName: source }
+    await writeStatusEvent(
+      'status.component_changed',
+      actor,
+      {
+        componentId: locked.id,
+        componentName: locked.name,
+        previousStatus: locked.status,
+        status,
+        source,
+      },
+      executor
+    )
+  }
 }
 
 async function writeComponentStatus(

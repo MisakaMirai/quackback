@@ -6,6 +6,7 @@ import {
   createdResponse,
   badRequestResponse,
   handleDomainError,
+  parsePaginationParams,
 } from '@/lib/server/domains/api/responses'
 import { parseTypeId } from '@/lib/server/domains/api/validation'
 import { PERMISSIONS } from '@/lib/shared/permissions'
@@ -60,8 +61,9 @@ export const Route = createFileRoute('/api/v1/status/incidents/')({
           const url = new URL(request.url)
           const kindParam = url.searchParams.get('kind')
           const stateParam = url.searchParams.get('state')
-          const cursor = url.searchParams.get('cursor') ?? undefined
-          const limit = Math.min(parseInt(url.searchParams.get('limit') || '20', 10), 100)
+          // Shared parser: clamps to 1..100 and turns a missing/non-numeric
+          // `limit` into the default rather than NaN/0.
+          const { cursor, limit } = parsePaginationParams(url)
 
           const kind =
             kindParam === 'incident' || kindParam === 'maintenance' ? kindParam : undefined

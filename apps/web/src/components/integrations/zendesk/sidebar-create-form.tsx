@@ -40,7 +40,10 @@ export function SidebarCreateForm({ initialTitle, onBack, onCreated }: SidebarCr
 
   useEffect(() => {
     appFetch('/api/v1/apps/boards')
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) throw new Error(`boards request failed (${res.status})`)
+        return res.json()
+      })
       .then((data) => {
         const boardList = data.data?.boards ?? []
         setBoards(boardList)
@@ -48,7 +51,11 @@ export function SidebarCreateForm({ initialTitle, onBack, onCreated }: SidebarCr
           setBoardId(boardList[0].id)
         }
       })
-      .catch(() => {})
+      .catch(() => {
+        // Without this the select silently renders empty and the form looks
+        // broken; say so instead.
+        setError('Could not load boards. Close and reopen this form to retry.')
+      })
   }, [appFetch])
 
   async function handleSubmit(e: React.FormEvent) {

@@ -40,7 +40,8 @@ const runbook = (() => {
   const doc = readFileSync(path.resolve(__dirname, '../../jobs/JOBS.md'), 'utf8')
   const start = doc.indexOf('**Rolling back to a build that predates the reaction queues.**')
   const section = doc.slice(start, doc.indexOf('\n## ', start))
-  const [check, purge] = [...section.matchAll(/```sql\n([\s\S]*?)```/g)].map((match) =>
+  // JOBS.md is CRLF on Windows checkouts; accept both line endings.
+  const [check, purge] = [...section.matchAll(/```sql\r?\n([\s\S]*?)```/g)].map((match) =>
     match[1].trim().replace(/;$/, '')
   )
   return { check, purge }

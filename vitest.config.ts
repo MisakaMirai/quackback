@@ -18,7 +18,7 @@ export default defineConfig({
     // Many server tests do a first-time dynamic import() inside the test body
     // (the vi.mock factory pattern). Under parallel CPU contention that load
     // can exceed the 5s default — and a timeout firing mid-import() corrupts
-    // the module graph for later tests. 20s gives headroom; genuine hangs
+    // the module graph for later tests. 60s gives headroom; genuine hangs
     // still fail well before the suite stalls.
     testTimeout: 60000,
     // Real-Postgres suites share one test database; a single retry absorbs the

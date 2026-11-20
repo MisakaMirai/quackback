@@ -45,6 +45,7 @@ function SidebarContent() {
   const [suggestions, setSuggestions] = useState<PostRowData[]>([])
   const [suggestionsLoading, setSuggestionsLoading] = useState(true)
   const [searchActive, setSearchActive] = useState(false)
+  const [actionError, setActionError] = useState<string | null>(null)
 
   const linkedPostIds = new Set(linkedPosts.map((p) => p.id))
 
@@ -89,9 +90,21 @@ function SidebarContent() {
     fetchSuggestions()
   }, [fetchLinked, fetchSuggestions])
 
-  async function handleLink(postId: string) {
+  /** Turn a failed app call into a message the agent can act on. */
+  async function failureMessage(res: Response): Promise<string> {
     try {
-      await appFetch('/api/v1/apps/link', {
+      const body = (await res.json()) as { error?: { message?: string } }
+      if (body.error?.message) return body.error.message
+    } catch {
+      // fall through to the status-based message
+    }
+    return `Quackback request failed (${res.status})`
+  }
+
+  async function handleLink(postId: string) {
+    setActionError(null)
+    try {
+      const res = await appFetch('/api/v1/apps/link', {
         method: 'POST',
         body: JSON.stringify({
           postId,
@@ -103,15 +116,20 @@ function SidebarContent() {
             : undefined,
         }),
       })
+      if (!res.ok) {
+        setActionError(await failureMessage(res))
+        return
+      }
       await fetchLinked()
     } catch {
-      // Silently fail
+      setActionError('Could not reach Quackback. Check the connection and try again.')
     }
   }
 
   async function handleUnlink(postId: string) {
+    setActionError(null)
     try {
-      await appFetch('/api/v1/apps/unlink', {
+      const res = await appFetch('/api/v1/apps/unlink', {
         method: 'POST',
         body: JSON.stringify({
           postId,
@@ -119,9 +137,13 @@ function SidebarContent() {
           externalId: ticket.id,
         }),
       })
+      if (!res.ok) {
+        setActionError(await failureMessage(res))
+        return
+      }
       await fetchLinked()
     } catch {
-      // Silently fail
+      setActionError('Could not reach Quackback. Check the connection and try again.')
     }
   }
 
@@ -159,6 +181,12 @@ function SidebarContent() {
         <span className="text-lg">🦆</span>
         <span className="text-sm font-semibold">Quackback</span>
       </div>
+
+      {actionError && (
+        <p role="alert" className="mb-3 rounded-lg bg-destructive/10 p-2 text-sm text-destructive">
+          {actionError}
+        </p>
+      )}
 
       <div className="space-y-4">
         <SidebarSearch

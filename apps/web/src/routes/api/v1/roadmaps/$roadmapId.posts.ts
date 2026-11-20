@@ -1,6 +1,10 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { withApiKeyAuth } from '@/lib/server/domains/api/auth'
-import { successResponse, handleDomainError } from '@/lib/server/domains/api/responses'
+import {
+  successResponse,
+  handleDomainError,
+  parsePaginationParams,
+} from '@/lib/server/domains/api/responses'
 import { parseTypeId } from '@/lib/server/domains/api/validation'
 import type { RoadmapId, PostStatusId } from '@quackback/ids'
 import { toIsoStringOrNull } from '@/lib/shared/utils'
@@ -24,8 +28,9 @@ export const Route = createFileRoute('/api/v1/roadmaps/$roadmapId/posts')({
             ? parseTypeId<PostStatusId>(rawStatusId, 'post_status', 'status ID')
             : undefined
           const bucketId = url.searchParams.get('bucketId') ?? undefined
-          const limit = Math.min(parseInt(url.searchParams.get('limit') || '20', 10), 100)
-          const offset = parseInt(url.searchParams.get('offset') || '0', 10)
+          const { limit } = parsePaginationParams(url)
+          const parsedOffset = parseInt(url.searchParams.get('offset') || '0', 10)
+          const offset = Number.isFinite(parsedOffset) && parsedOffset > 0 ? parsedOffset : 0
 
           const { getRoadmapPosts } = await import('@/lib/server/domains/roadmaps/roadmap.query')
 
