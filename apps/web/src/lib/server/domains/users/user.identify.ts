@@ -45,7 +45,7 @@ export function userMetadataPatchSql(updates: Record<string, unknown>, removals:
     removals.map((key) => sql`${key}`),
     sql`, `
   )}]::text[]`
-  return sql`((coalesce(nullif(${user.metadata}, ''), '{}')::jsonb - ${removalsSql} || ${JSON.stringify(updates)}::jsonb)::text`
+  return sql`((coalesce(nullif(${user.metadata}, ''), '{}')::jsonb - ${removalsSql}) || ${JSON.stringify(updates)}::jsonb)::text`
 }
 
 /**
