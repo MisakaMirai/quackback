@@ -107,9 +107,13 @@ export const Route = createFileRoute('/api/auth/$')({
           if (contentType.includes('application/json')) {
             const body = (await request.json()) as Record<string, unknown>
             restoreRedirectUris = mcpDcrRedirectUrisToRestore(body)
+            // The body is rewritten, so the original Content-Length is stale;
+            // forwarding it can truncate the request at a proxy.
+            const headers = new Headers(request.headers)
+            headers.delete('content-length')
             request = new Request(request.url, {
               method: request.method,
-              headers: request.headers,
+              headers,
               body: JSON.stringify(mcpDcrRegistrationBody(body)),
             })
           }
@@ -138,9 +142,11 @@ export const Route = createFileRoute('/api/auth/$')({
               const { config } = await import('@/lib/server/config')
               params.set('resource', `${config.baseUrl}/api/mcp`)
             }
+            const headers = new Headers(request.headers)
+            headers.delete('content-length')
             request = new Request(request.url, {
               method: request.method,
-              headers: request.headers,
+              headers,
               body: params.toString(),
             })
           }

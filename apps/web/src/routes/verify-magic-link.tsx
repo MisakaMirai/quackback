@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { DEFAULT_LOCALE, loadPortalMessages } from '@/lib/shared/i18n'
 import { getInviteBrandingFn } from '@/lib/server/functions/invitations'
 import { parseInvitationId } from '@/lib/shared/parse-invitation-id'
+import { isSafeCallbackUrl } from '@/lib/shared/routing'
 
 interface InviteBranding {
   workspaceName: string
@@ -17,9 +18,14 @@ interface InviteBranding {
 
 export const Route = createFileRoute('/verify-magic-link')({
   validateSearch: (search: Record<string, unknown>) => ({
-    token: (search.token as string) || undefined,
-    callbackURL: (search.callbackURL as string) || undefined,
-    errorCallbackURL: (search.errorCallbackURL as string) || undefined,
+    token: typeof search.token === 'string' ? search.token : undefined,
+    // These are forwarded verbatim to better-auth's verify endpoint, which
+    // redirects to them. Only same-origin paths survive; an absolute or
+    // protocol-relative value would turn this page into an open redirect.
+    callbackURL: isSafeCallbackUrl(search.callbackURL) ? search.callbackURL : undefined,
+    errorCallbackURL: isSafeCallbackUrl(search.errorCallbackURL)
+      ? search.errorCallbackURL
+      : undefined,
   }),
   loader: async ({ context }) => {
     const locale = context.acceptLanguageLocale ?? DEFAULT_LOCALE

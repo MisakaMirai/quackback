@@ -17,6 +17,7 @@ Production Compose supplies `DATABASE_URL` from its bundled service. You must se
 | `DB_IDLE_TIMEOUT`          |                   `20` | Seconds before an idle database connection is closed.                                                           |
 | `TRUSTED_PROXY_HOPS`       |                    `0` | Proxy hops permitted to supply client-IP headers. Keep `0` when directly exposed.                               |
 | `TRUSTED_CLIENT_IP_HEADER` |                  unset | Header your proxy sets to the client IP, e.g. `X-Real-IP`. Wins over `TRUSTED_PROXY_HOPS`.                      |
+| `TRUSTED_ORIGINS`          |                  unset | Extra comma-separated origins allowed to drive auth. `BASE_URL` is trusted automatically.                       |
 | `CHAT_TRANSPORT_MODE`      |                 `live` | Set `poll` only behind proxies that buffer SSE.                                                                 |
 | `SETUP_OWNER_EMAIL`        |                  unset | Hands an unfinished setup to this address. See [Recovering setup](#recovering-setup).                           |
 | `SETUP_TOKEN`              |                  unset | Lets you create the first admin over HTTP. See [Setting up without a browser](#setting-up-without-a-browser).   |

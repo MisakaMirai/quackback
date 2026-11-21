@@ -26,4 +26,10 @@ describe('parseInvitationId', () => {
       parseInvitationId('https://acme.test/portal-invite/invite_abc123?error=INVALID_TOKEN')
     ).toBe('invite_abc123')
   })
+
+  it('accepts the same-origin relative paths magic links actually carry', () => {
+    // `requestEmailSignin` stores a path, not an absolute URL.
+    expect(parseInvitationId('/complete-signup/invite_abc123')).toBe('invite_abc123')
+    expect(parseInvitationId('/portal-invite/invite_abc123?x=1')).toBe('invite_abc123')
+  })
 })

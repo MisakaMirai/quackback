@@ -230,6 +230,10 @@ export async function buildDeferredIndex(spec: ConcurrentIndexSpec): Promise<voi
       }
     })
   } finally {
-    await direct.end({ timeout: 5 }).catch(() => {})
+    await direct.end({ timeout: 5 }).catch((err) => {
+      // Not fatal (the index build already reported), but a silent close
+      // failure hides connection leaks.
+      log.warn({ err }, 'deferred index: closing the direct connection failed')
+    })
   }
 }

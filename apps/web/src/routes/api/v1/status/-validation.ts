@@ -65,5 +65,11 @@ export function parseNullableTypeId<T extends string>(
 export function parseOptionalDate(value: string | null | undefined): Date | null | undefined {
   if (value === undefined) return undefined
   if (value === null) return null
-  return new Date(value)
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) {
+    // Callers' zod schemas already require ISO datetimes; this keeps the helper
+    // from handing an Invalid Date to the database if one slips through.
+    throw new ValidationError('VALIDATION_ERROR', `Invalid date: ${value}`)
+  }
+  return date
 }
