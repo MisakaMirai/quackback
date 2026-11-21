@@ -793,7 +793,7 @@ Profiles: **Owner** = admin class + an admin-owned full API key (scoped keys hol
 | `routes/api/v1/status/-service-handlers.ts`::listStatusComponentsHandler | PUBLIC (any valid key) |
 | `routes/api/v1/status/-service-handlers.ts`::createStatusComponentHandler | status_page.manage |
 | `routes/api/v1/status/-service-handlers.ts`::getStatusComponentHandler | PUBLIC (any valid key) |
-| `routes/api/v1/status/-service-handlers.ts`::patchStatusComponentHandler | status_page.manage |
+| `routes/api/v1/status/-service-handlers.ts`::patchStatusComponentHandler | DYNAMIC (status_page.manage | status_page.publish) |
 | `routes/api/v1/status/incidents/$incidentId.ts`::GET | PUBLIC (any valid key) |
 | `routes/api/v1/status/incidents/$incidentId.updates.ts`::POST | status_page.publish |
 | `routes/api/v1/status/incidents/index.ts`::GET | PUBLIC (any valid key) |

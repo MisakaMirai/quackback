@@ -126,6 +126,13 @@ export const BARE_GATE_CLASSIFICATIONS: Record<string, Classification> = {
     ],
     'read-only From line: an admin, or the manager of the product that sends that kind of email'
   ),
+  // Status component PATCH is field-scoped: flipping the live status is a
+  // publish action, reshaping the component is management, and one body may
+  // carry both.
+  'routes/api/v1/status/-service-handlers.ts::patchStatusComponentHandler': DYNAMIC_PERMISSION(
+    [PERMISSIONS.STATUS_PAGE_MANAGE, PERMISSIONS.STATUS_PAGE_PUBLISH],
+    'the key needs status_page.manage to change the component and status_page.publish to flip its live status'
+  ),
   'routes/api/v1/settings/index.ts::GET': DYNAMIC_PERMISSION(
     SETTINGS_REGISTRY_PERMISSIONS,
     'the key needs the read:settings scope; the list holds only the areas whose permission the key holds'
