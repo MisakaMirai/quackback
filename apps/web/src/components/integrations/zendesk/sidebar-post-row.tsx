@@ -8,7 +8,6 @@ export interface PostRowData {
   voteCount: number
   statusName?: string | null
   statusColor?: string | null
-  similarity?: number | null
   board: { name: string }
 }
 
@@ -106,11 +105,6 @@ export function SidebarPostRow({ post, linked, onLink, onUnlink }: SidebarPostRo
                   style={{ backgroundColor: post.statusColor ?? '#888' }}
                 />
                 {post.statusName}
-              </span>
-            )}
-            {!linked && post.similarity != null && (
-              <span className="text-muted-foreground">
-                {Math.round(post.similarity * 100)}% match
               </span>
             )}
           </div>

@@ -3,10 +3,8 @@ import { Loader2Icon, AlertCircleIcon } from 'lucide-react'
 import { useZafClient } from './use-zaf-client'
 import { AppContextProvider, useAppContext } from './use-app-context'
 import { SidebarLinkedPosts, type LinkedPostData } from './sidebar-linked-posts'
-import { SidebarSuggestions } from './sidebar-suggestions'
 import { SidebarSearch } from './sidebar-search'
 import { SidebarCreateForm } from './sidebar-create-form'
-import type { PostRowData } from './sidebar-post-row'
 
 export function SidebarApp() {
   const zaf = useZafClient()
@@ -42,8 +40,6 @@ function SidebarContent() {
   const [view, setView] = useState<View>('main')
   const [createTitle, setCreateTitle] = useState('')
   const [linkedPosts, setLinkedPosts] = useState<LinkedPostData[]>([])
-  const [suggestions, setSuggestions] = useState<PostRowData[]>([])
-  const [suggestionsLoading, setSuggestionsLoading] = useState(true)
   const [searchActive, setSearchActive] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
 
@@ -63,32 +59,9 @@ function SidebarContent() {
     }
   }, [appFetch, ticket.id])
 
-  const fetchSuggestions = useCallback(async () => {
-    if (!ticket.subject) {
-      setSuggestionsLoading(false)
-      return
-    }
-
-    setSuggestionsLoading(true)
-    try {
-      const res = await appFetch(
-        `/api/v1/apps/suggest?text=${encodeURIComponent(ticket.subject)}&limit=5`
-      )
-      if (res.ok) {
-        const data = await res.json()
-        setSuggestions(data.data?.posts ?? [])
-      }
-    } catch {
-      // Silently fail
-    } finally {
-      setSuggestionsLoading(false)
-    }
-  }, [appFetch, ticket.subject])
-
   useEffect(() => {
     fetchLinked()
-    fetchSuggestions()
-  }, [fetchLinked, fetchSuggestions])
+  }, [fetchLinked])
 
   /** Turn a failed app call into a message the agent can act on. */
   async function failureMessage(res: Response): Promise<string> {
@@ -160,7 +133,6 @@ function SidebarContent() {
   function handleCreated() {
     setView('main')
     fetchLinked()
-    fetchSuggestions()
   }
 
   if (view === 'create') {
@@ -199,14 +171,6 @@ function SidebarContent() {
         {!searchActive && (
           <>
             <SidebarLinkedPosts posts={linkedPosts} onUnlink={handleUnlink} />
-
-            <SidebarSuggestions
-              posts={suggestions.filter((s) => !linkedPostIds.has(s.id))}
-              linkedPostIds={linkedPostIds}
-              loading={suggestionsLoading}
-              onLink={handleLink}
-              label={linkedPosts.length > 0 ? 'More suggestions' : 'Suggested matches'}
-            />
 
             <button
               onClick={handleCreateNew}
