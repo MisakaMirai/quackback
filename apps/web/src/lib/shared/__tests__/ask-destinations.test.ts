@@ -54,7 +54,6 @@ describe('Ask destinations', () => {
     expect(paths).not.toContain('/admin/settings/office-hours')
     expect(paths).not.toContain('/admin/settings/status')
     expect(paths).not.toContain('/admin/settings/billing')
-    expect(paths).toContain('/admin/settings/domains')
     expect(paths).toContain('/admin/settings/portal')
   })
   it('searches translated labels and keywords without a model or server dependency', () => {

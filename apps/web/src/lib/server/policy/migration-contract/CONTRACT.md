@@ -6,12 +6,12 @@ Regenerate with `bunx vitest run apps/web/src/lib/server/policy/migration-contra
 
 ## Summary
 
-Migrations scanned: 294. Migrations with destructive DDL: 43.
+Migrations scanned: 295. Migrations with destructive DDL: 44.
 
 | Kind | Occurrences |
 | --- | --- |
 | DROP COLUMN | 55 |
-| DROP TABLE | 48 |
+| DROP TABLE | 49 |
 | DROP CONSTRAINT | 23 |
 | RENAME COLUMN | 17 |
 | RENAME TO (table) | 14 |
@@ -66,6 +66,7 @@ Migrations scanned: 294. Migrations with destructive DDL: 43.
 | 0317_drop_companies.sql | DROP COLUMN tickets.company_id; DROP COLUMN principal.company_id; DROP TABLE company_attribute_definitions; DROP TABLE companies | annotated (safe-after 0.15.0) |
 | 0318_drop_widget.sql | RENAME COLUMN settings.widget_config -> messenger_config; DROP COLUMN settings.widget_secret; DROP COLUMN settings.widget_installed_first_seen_at; DROP COLUMN settings.widget_installed_last_seen_at; DROP COLUMN settings.widget_installed_origin_host; DROP COLUMN settings.widget_installed_sdk_version; RENAME COLUMN posts.widget_metadata -> client_metadata; DROP TABLE widget_identified_session; DROP TABLE widget_origin_session | annotated (safe-after 0.15.0) |
 | 0319_drop_retired_tables.sql | DROP TABLE workflow_run_events; DROP TABLE workflow_runs; DROP TABLE workflow_versions; DROP TABLE workflows; DROP TABLE workspace_experiments; DROP COLUMN settings.state | annotated (safe-after 0.15.0) |
+| 0320_drop_domain_proof.sql | DROP TABLE domains | annotated (safe-after 0.15.0) |
 
 ## Grandfathered (29)
 

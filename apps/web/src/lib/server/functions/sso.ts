@@ -27,7 +27,6 @@ import { ConflictError, ForbiddenError, ValidationError } from '@/lib/shared/err
 import { httpsUrl } from '@/lib/shared/schemas/auth'
 import { actorFromAuth, withAuditEvent } from '@/lib/server/audit/log'
 import { PERMISSIONS } from '@/lib/shared/permissions'
-import { shownProofSource, type ShownProofSource } from '@/lib/shared/domain-proof'
 import { diffProviderAudit } from '@/lib/server/auth/idp-audit-diff'
 import { applyClaimMappingEdits } from '@/lib/shared/sso-claim-mapping-edit'
 import { PROFILE_FIELDS, isRoleRuleRoleId } from '@/lib/shared/oidc-claim-mapping'
@@ -135,7 +134,7 @@ export const removeVerifiedDomainFn = createServerFn({ method: 'POST' })
   })
 
 export type VerifyDomainResult =
-  | { verified: true; verifiedAt: string; via: 'dns' | ShownProofSource }
+  | { verified: true; verifiedAt: string }
   | { verified: false; reason: 'no-record' | 'lookup-failed' | 'mismatch' | 'no-pending-domain' }
 
 /** Read-only listing of the workspace's verified-domain rows. */
@@ -650,7 +649,7 @@ const verifyProviderDomainInput = z.object({
 export const verifyProviderDomainFn = createServerFn({ method: 'POST' })
   .validator(verifyProviderDomainInput)
   .handler(async ({ data }): Promise<VerifyDomainResult> => {
-    const auth = await requireAuth({ permission: PERMISSIONS.AUTH_MANAGE })
+    await requireAuth({ permission: PERMISSIONS.AUTH_MANAGE })
 
     const { getWorkspaceSettings, stampVerifiedDomain } =
       await import('@/lib/server/domains/settings/settings.service')
@@ -667,7 +666,7 @@ export const verifyProviderDomainFn = createServerFn({ method: 'POST' })
     await assertVerifyDomainRateLimit(workspace.settings.id, dom.id)
 
     const { checkSsoDomainOwnership } =
-      await import('@/lib/server/domains/domain-proof/sso-domain-check')
+      await import('@/lib/server/domains/settings/sso-domain-verify')
     const check = await checkSsoDomainOwnership(dom)
     if (!check.ok) {
       return { verified: false, reason: check.reason }
@@ -687,30 +686,8 @@ export const verifyProviderDomainFn = createServerFn({ method: 'POST' })
       }
       throw err
     }
-    return {
-      verified: true,
-      verifiedAt,
-      via: check.via === 'dns' ? 'dns' : shownProofSource(check.via, auth.permissions),
-    }
+    return { verified: true, verifiedAt }
   })
-
-/**
- * The single sign-on domains another proof already covers, by domain id, with
- * the source that covers each. A pending one shows that note instead of the
- * TXT record, and a verified one says where its proof came from.
- */
-export const getSsoDomainProofsFn = createServerFn({ method: 'GET' }).handler(
-  async (): Promise<Record<string, ShownProofSource>> => {
-    const auth = await requireAuth({ permission: PERMISSIONS.AUTH_MANAGE })
-    const { listSignInDomainSummaries } =
-      await import('@/lib/server/domains/domain-proof/domains-overview')
-    const proofs: Record<string, ShownProofSource> = {}
-    for (const d of await listSignInDomainSummaries(auth.permissions)) {
-      if (d.provenBy) proofs[d.id] = d.provenBy
-    }
-    return proofs
-  }
-)
 
 const setDomainEnforcedInput = z.object({
   id: verifiedDomainId,

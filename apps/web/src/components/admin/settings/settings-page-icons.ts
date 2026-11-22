@@ -54,7 +54,6 @@ export const SETTINGS_PAGE_ICONS: Record<
   '/admin/settings/changelog': MegaphoneIcon,
   '/admin/settings/status': SignalIcon,
   '/admin/settings/general': Cog6ToothIcon,
-  '/admin/settings/domains': GlobeAltIcon,
   '/admin/settings/notifications': BellIcon,
   '/admin/settings/portal': GlobeAltIcon,
   '/admin/settings/members': UsersIcon,

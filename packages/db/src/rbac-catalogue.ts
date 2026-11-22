@@ -22,7 +22,6 @@ export const PERMISSIONS = {
   SETTINGS_BRANDING: 'settings.branding', // theme, logos, custom CSS, workspace name
   SETTINGS_MODERATION: 'settings.moderation', // workspace moderation default
   SETTINGS_NOTIFICATIONS: 'settings.notifications', // RESERVED: no OSS surface yet
-  SETTINGS_CUSTOM_DOMAIN: 'settings.custom_domain', // Settings → Domains (cloud identity gateway)
   ROLE_MANAGE: 'role.manage', // create / edit custom roles
   API_KEY_MANAGE: 'api_key.manage',
   WEBHOOK_VIEW: 'webhook.view', // read outbound webhook subscriptions
@@ -207,11 +206,6 @@ export const PERMISSION_CATALOGUE: ReadonlyArray<{
     key: PERMISSIONS.SETTINGS_NOTIFICATIONS,
     category: 'workspace',
     description: 'Manage notification settings (reserved; not yet enforced)',
-  },
-  {
-    key: PERMISSIONS.SETTINGS_CUSTOM_DOMAIN,
-    category: 'workspace',
-    description: 'Manage the custom domain (reserved; not yet enforced)',
   },
   {
     key: PERMISSIONS.CUSTOM_FIELD_MANAGE,
@@ -560,7 +554,6 @@ export const WORKSPACE_ADMIN_PERMISSIONS: readonly PermissionKey[] = [
   PERMISSIONS.SETTINGS_BRANDING,
   PERMISSIONS.SETTINGS_MODERATION,
   PERMISSIONS.SETTINGS_NOTIFICATIONS,
-  PERMISSIONS.SETTINGS_CUSTOM_DOMAIN,
   PERMISSIONS.MEMBER_MANAGE,
   PERMISSIONS.ROLE_MANAGE,
   PERMISSIONS.API_KEY_MANAGE,
@@ -605,10 +598,13 @@ export const SUPPORT_LEAD_EXTRA_PERMISSIONS: readonly PermissionKey[] = [
  * - `assistant.manage` retired with Quackback AI.
  * - `suggestion.view` / `suggestion.manage` retired with the AI merge-suggestion
  *   queue; `workflow.manage` retired with the workflow engine.
+ * - `settings.custom_domain` retired with the Settings > Domains verification
+ *   page.
  */
 export const RETIRED_PERMISSION_KEYS: readonly string[] = [
   'assistant.manage',
   'billing.manage',
+  'settings.custom_domain',
   'suggestion.view',
   'suggestion.manage',
   'workflow.manage',

@@ -48,7 +48,6 @@ describe('scopeForPermission', () => {
     expect(scopeForPermission(PERMISSIONS.SETTINGS_BRANDING)).toBe('write:settings')
     expect(scopeForPermission(PERMISSIONS.OFFICE_HOURS_MANAGE)).toBe('write:settings')
     expect(scopeForPermission(PERMISSIONS.AUTH_MANAGE)).toBe('write:feedback')
-    expect(scopeForPermission(PERMISSIONS.SETTINGS_CUSTOM_DOMAIN)).toBe('write:feedback')
     expect(expandWriteGrants(['write:settings'])).toEqual(['read:settings', 'write:settings'])
   })
   it('maps every catalogue permission to a vocabulary scope', () => {

@@ -18,13 +18,9 @@ const workspaceLabels = (permissions: PermissionKey[], flags: object = FEEDBACK_
     ?.items.map((item) => item.label) ?? []
 
 describe('settings nav Email row', () => {
-  it('sits under Workspace after Domains, whatever products are on', () => {
-    const labels = workspaceLabels([
-      PERMISSIONS.SETTINGS_MANAGE,
-      PERMISSIONS.SETTINGS_CUSTOM_DOMAIN,
-    ])
+  it('sits under Workspace', () => {
+    const labels = workspaceLabels([PERMISSIONS.SETTINGS_MANAGE, PERMISSIONS.AUTH_MANAGE])
     expect(labels).toContain('Email')
-    expect(labels.indexOf('Email')).toBe(labels.indexOf('Domains') + 1)
   })
 
   it('is offered to whoever may change how the workspace sends', () => {
