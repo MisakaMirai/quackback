@@ -2066,6 +2066,13 @@
       "when": 1791002500000,
       "tag": "0320_drop_domain_proof",
       "breakpoints": true
+    },
+    {
+      "idx": 298,
+      "version": "7",
+      "when": 1791002600000,
+      "tag": "0321_drop_push_devices",
+      "breakpoints": true
     }
   ]
 }

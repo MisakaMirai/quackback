@@ -420,8 +420,6 @@ export {
   statusSubscriptions,
   statusSubscriptionsRelations,
   statusIncidentTemplates,
-  // Schema tables - push devices
-  pushDevices,
   files,
   filesRelations,
   // Schema tables - assistant web sources
