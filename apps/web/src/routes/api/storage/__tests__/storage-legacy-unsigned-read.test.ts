@@ -12,7 +12,7 @@
  * in-memory bucket, and it answers per object name, so a check against the
  * wrong name fails.
  */
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const WORKSPACE_ID = 'workspace_01kzf9848he8h86ct48hanask6'
 const NS = `w/${WORKSPACE_ID}/`
@@ -27,7 +27,6 @@ const mockConfig = vi.hoisted(() => ({
   s3PublicUrl: undefined as string | undefined,
   s3Proxy: true,
   baseUrl: 'https://feedback.example.com',
-  isPooledTenancy: false,
   // One trusted proxy, so the client address is the last X-Forwarded-For entry.
   trustedProxyHops: 1,
 }))
@@ -130,12 +129,6 @@ beforeEach(() => {
   sent.length = 0
   buckets.clear()
   missingStatus.value = 404
-  mockConfig.isPooledTenancy = false
-  delete process.env.QUACKBACK_TENANCY
-})
-
-afterEach(() => {
-  delete process.env.QUACKBACK_TENANCY
 })
 
 describe('a link from before read tokens, on a single-workspace install', () => {
@@ -207,18 +200,6 @@ describe('everything else still needs the token', () => {
       const res = await get(`/api/storage/${key}`)
       expect(res.status, key).toBe(403)
     }
-    expect(heads()).toHaveLength(0)
-  })
-
-  it('never allows it under pooled tenancy, where a bare key is nobody’s', async () => {
-    process.env.QUACKBACK_TENANCY = 'pooled'
-    mockConfig.isPooledTenancy = true
-    const key = freshKey('chat-images')
-    seedLegacy(key)
-
-    const res = await get(`/api/storage/${key}`)
-
-    expect(res.status).toBe(403)
     expect(heads()).toHaveLength(0)
   })
 

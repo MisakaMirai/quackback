@@ -169,7 +169,6 @@ describe.skipIf(!fixture.available)('ses tenants (real DB, rolled back)', () => 
     vi.stubEnv('EMAIL_SES_TENANTS', 'true')
     vi.stubEnv('EMAIL_SES_CONFIGURATION_SET', 'quackback')
     vi.stubEnv('QUACKBACK_INSTANCE_ID', 'inst_example1')
-    vi.stubEnv('QUACKBACK_TENANCY', '')
     vi.stubEnv('EMAIL_FROM', 'Quackback <notifications@platform.test>')
     tenants.clear()
     identities.clear()
@@ -187,13 +186,9 @@ describe.skipIf(!fixture.available)('ses tenants (real DB, rolled back)', () => 
   afterAll(fixture.close)
 
   describe('tenant name', () => {
-    it('is the workspace label, and null with tenants off or no workspace in scope', () => {
+    it('is the workspace label, and null with tenants off', () => {
       expect(sesTenantName()).toBe(NAME)
       vi.stubEnv('EMAIL_SES_TENANTS', '')
-      expect(sesTenantName()).toBeNull()
-      vi.stubEnv('EMAIL_SES_TENANTS', 'true')
-      vi.stubEnv('QUACKBACK_INSTANCE_ID', '')
-      vi.stubEnv('QUACKBACK_TENANCY', 'pooled')
       expect(sesTenantName()).toBeNull()
     })
   })
@@ -325,12 +320,6 @@ describe.skipIf(!fixture.available)('ses tenants (real DB, rolled back)', () => 
       expect(await tenantForSend({ from: 'support@acme.test' })).toBeNull()
     })
 
-    it('sends untenanted with no workspace in scope', async () => {
-      vi.stubEnv('QUACKBACK_INSTANCE_ID', '')
-      vi.stubEnv('QUACKBACK_TENANCY', 'pooled')
-      expect(await tenantForSend({ from: 'support@acme.test' })).toBeNull()
-    })
-
     it('sends untenanted before the tenant is ready', async () => {
       await testDb
         .update(emailSesTenants)
@@ -374,16 +363,6 @@ describe.skipIf(!fixture.available)('ses tenants (real DB, rolled back)', () => 
       const [own] = await pausedBells(admin)
       expect(own.body).toBe(
         'The email provider paused sending because of bounces or complaints. Bounce rate above threshold.'
-      )
-
-      // On a server shared by many workspaces, the people who run it lift a pause.
-      reputation.status = 'REINSTATED'
-      await reconcileSesTenant(deps)
-      vi.stubEnv('QUACKBACK_TENANCY', 'pooled')
-      await recordSesTenantPaused(NAME, 'Bounce rate above threshold.')
-      const bodies = (await pausedBells(admin)).map((bell) => bell.body)
-      expect(bodies).toContain(
-        'The email provider paused sending because of bounces or complaints. Bounce rate above threshold. Contact support to resume.'
       )
     })
 

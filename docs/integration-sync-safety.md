@@ -55,7 +55,7 @@ status. Unverified destination data can only create a review for a current scope
 link, never an automatic update.
 
 Stripe, Freshdesk, and Salesforce use the same on-demand customer-context contract
-and settings control as HubSpot, Intercom, and Zendesk. Their obsolete event hooks
+and settings control as HubSpot and Intercom. Their obsolete event hooks
 and configuration panels are removed. All authenticated capability paths use the
 shared token resolver; configuration and credentials can be read together. Refresh
 is serialized, reuses the transaction connection for platform credentials, and

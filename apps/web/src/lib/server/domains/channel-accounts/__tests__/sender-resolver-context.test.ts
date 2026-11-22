@@ -23,7 +23,7 @@ vi.mock('../outbound-identity', async (importOriginal) => {
         platformFrom: 'Platform <noreply@platform.example>',
         inboundDomain: 'in.platform.example',
         mailSlug: 'acme',
-        pooled: true,
+        strict: true,
       }
     },
   }

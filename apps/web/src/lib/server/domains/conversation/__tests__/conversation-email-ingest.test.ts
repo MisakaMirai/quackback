@@ -731,41 +731,6 @@ describe('ingestInboundEmail', () => {
       expect(result).toEqual({ status: 'ingested', conversationId: 'conversation_abc' })
       expect(sendVisitorMessage).toHaveBeenCalledTimes(1)
     })
-
-    it('does not read a neighbouring workspace’s Message-ID as ours on a pooled fleet', async () => {
-      // One process serves every workspace behind one shared sending domain, so
-      // a Message-ID host is a fact about the FLEET and not about this workspace.
-      // Reading it as authorship hard-drops the neighbour's mail — the same
-      // mistake as trusting a sending provider's regional host, one level in.
-      vi.stubEnv('QUACKBACK_TENANCY', 'pooled')
-      try {
-        const neighboursOwnId = '<c.01kw8qxn1eeh4t2rek7varh032.n1@tenaevexeo.resend.app>'
-        const passingThrough = await ingestInboundEmail({
-          ...baseEvent,
-          data: { ...baseEvent.data, headers: [{ name: 'Message-ID', value: neighboursOwnId }] },
-        })
-        expect(passingThrough).toEqual({ status: 'ingested', conversationId: 'conversation_abc' })
-
-        // …and the fleet is not left without a guard: the id this workspace
-        // recorded itself still identifies its own mail coming back.
-        vi.clearAllMocks()
-        sendVisitorMessage.mockResolvedValue({ created: false })
-        assertConversationSendRate.mockResolvedValue(undefined)
-        const ourOwnId = '<0100019a1f4c8e21-4c17@email.amazonses.com>'
-        resolveConversationByMessageIds.mockImplementation(async (...args: unknown[]) => {
-          const ids = args[0] as string[]
-          return ids.includes(ourOwnId) ? 'conversation_abc' : null
-        })
-        const comingBack = await ingestInboundEmail({
-          ...baseEvent,
-          data: { ...baseEvent.data, headers: [{ name: 'Message-ID', value: ourOwnId }] },
-        })
-        expect(comingBack).toEqual({ status: 'suppressed' })
-        expect(sendVisitorMessage).not.toHaveBeenCalled()
-      } finally {
-        vi.unstubAllEnvs()
-      }
-    })
   })
 
   describe('the workspace front door is materialised last of all', () => {

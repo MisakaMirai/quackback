@@ -14,7 +14,6 @@ import { TierLimitError } from '@/lib/server/errors/tier-limit-error'
 import { ChannelAddressInUseError, SendingDomainInUseError } from './channel-account.service'
 import { SendingDomainRefusedError } from './sending-identity'
 import { SendingIdentityRefusedError } from './outbound-identity'
-import { isPooledTenancy } from '@/lib/server/workspaces/mode'
 
 export type DomainAction = 'address' | 'verify' | 'remove' | 'test'
 
@@ -36,12 +35,10 @@ const FAILED: Record<DomainAction, string> = {
 }
 
 /**
- * Who can act when trying again does not help: on a server shared by many
- * workspaces, the people who run it; on a workspace's own server, whoever
- * administers it.
+ * Who can act when trying again does not help: whoever administers this
+ * install.
  */
-const whoToAsk = (): string =>
-  isPooledTenancy() ? 'contact support' : 'contact your administrator'
+const whoToAsk = (): string => 'contact your administrator'
 
 /** Whether the failure is this server's setup rather than the request. */
 function isSetupFailure(error: unknown): boolean {

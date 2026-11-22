@@ -61,7 +61,6 @@ vi.mock('@/lib/server/db', () => ({
   },
 }))
 
-vi.mock('../../workspaces/mode', () => ({ isPooledTenancy: () => false }))
 vi.mock('../../config', () => ({ config: { databaseUrl: 'postgresql://x/y' } }))
 
 const { subscribe, publishAsync, closeSubscriber, openListenerCount } = await import('../pubsub')

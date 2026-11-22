@@ -223,13 +223,13 @@ export async function voteOnPost(postId: PostId, principalId: PrincipalId): Prom
 /**
  * Add a vote on behalf of a user (insert-only, never removes)
  *
- * Used by integration apps (e.g. Zendesk sidebar) to vote on behalf of
- * a customer when linking a ticket to a post. Unlike voteOnPost(), this
- * is idempotent and never toggles — it only inserts.
+ * Used by API clients and MCP tools to vote on behalf of a customer, for
+ * example when converting a support thread into a post. Unlike voteOnPost(),
+ * this is idempotent and never toggles — it only inserts.
  *
  * @param postId - Post ID to vote on
  * @param principalId - Principal ID of the voter
- * @param source - Optional source metadata (e.g. { type: 'zendesk', externalUrl: 'https://...' })
+ * @param source - Optional source metadata (e.g. { type: 'slack', externalUrl: 'https://...' })
  * @returns Result containing vote status and new count
  */
 export async function addVoteOnBehalf(

@@ -92,7 +92,7 @@ Reactions to events are **sinks**, not "hooks". Each implements
 `HookHandler.run(event, target, config, ctx)` and is resolved by a
 `SinkResolver` in the registry. To disambiguate the overloaded word:
 
-- **sink** = a delivery target (email / notification / webhook / app_webhook /
+- **sink** = a delivery target (email / notification / webhook /
   integration / workflow / ai / summary).
 - **connector** = a first-party integration's outbound `IntegrationDefinition.hook`.
 - **inbound handler** = an external → Quackback webhook receiver.

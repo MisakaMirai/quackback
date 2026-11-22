@@ -432,12 +432,6 @@ export const config = {
     }
     return url
   },
-  get tenancyMode() {
-    return 'single' as const
-  },
-  get isPooledTenancy() {
-    return false
-  },
   get dbPoolMax() {
     const configured = loadConfig().dbPoolMax
     if (configured) return configured

@@ -309,7 +309,6 @@ export const getInstallChecksFn = createServerFn({ method: 'GET' }).handler(
   async (): Promise<InstallChecks | null> => {
     await requireAuth({ permission: PERMISSIONS.SETTINGS_MANAGE })
     const { config } = await import('@/lib/server/config')
-    if (config.isPooledTenancy) return null
     const { isEmailConfigured } = await import('@quackback/email')
     const { isS3Usable } = await import('@/lib/server/storage/s3')
     const { getRequestHeaders } = await import('@tanstack/react-start/server')

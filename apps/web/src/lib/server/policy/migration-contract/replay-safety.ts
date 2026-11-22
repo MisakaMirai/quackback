@@ -241,6 +241,10 @@ export const REPLAY_RETIRED: ReadonlySet<string> = new Set([
   '0281_workspace_experiments',
   '0282_refined_visual_theme_visible',
   '0283_refined_visual_theme_default_on',
+  // Retired by 0322_drop_apps: its app-subscription UPDATE targets the apps
+  // table, which the lineage now drops, so a second application has no relation
+  // to update. Its webhook and notification cleanup still applies once.
+  '0308_remove_approvals_leftovers',
 ])
 
 export const REPLAY_OVERRIDES: readonly ReplayOverride[] = [

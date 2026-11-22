@@ -47,7 +47,6 @@ describe('workspaceAuthTrustedOrigins', () => {
     vi.resetModules()
     vi.stubEnv('BASE_URL', 'https://fleet.example.com')
     vi.stubEnv('SECRET_KEY', 'a'.repeat(64))
-    vi.stubEnv('QUACKBACK_TENANCY', 'single')
     vi.stubEnv('DATABASE_URL', 'postgresql://u@localhost:5432/x')
     vi.stubEnv('TRUSTED_ORIGINS', 'https://attacker.example')
   })

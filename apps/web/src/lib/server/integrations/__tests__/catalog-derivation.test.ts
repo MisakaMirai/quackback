@@ -66,7 +66,7 @@ describe('getIntegrationCatalog capability derivation', () => {
 
   it('lookup providers advertise their implemented context capability', async () => {
     const catalog = await getIntegrationCatalog()
-    for (const id of ['zendesk', 'intercom', 'hubspot']) {
+    for (const id of ['intercom', 'hubspot']) {
       const entry = catalog.find((e) => e.id === id)!
       expect(
         (entry.capabilities ?? []).length,

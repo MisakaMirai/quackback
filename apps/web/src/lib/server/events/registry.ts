@@ -13,13 +13,11 @@ import type { HookHandler } from './hook-types'
 import { emailHook } from './handlers/email'
 import { notificationHook } from './handlers/notification'
 import { webhookHook } from './handlers/webhook'
-import { appWebhookHook } from './handlers/app-webhook'
 
 const builtinHooks = new Map<string, HookHandler>([
   ['email', emailHook],
   ['notification', notificationHook],
   ['webhook', webhookHook],
-  ['app_webhook', appWebhookHook],
 ])
 
 /**

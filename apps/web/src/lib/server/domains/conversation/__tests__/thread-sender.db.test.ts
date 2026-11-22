@@ -169,7 +169,6 @@ beforeAll(async () => {
 afterAll(() => new Promise<void>((resolve) => smtp.close(() => resolve())))
 
 const ENV: Record<string, string> = {
-  QUACKBACK_TENANCY: 'pooled',
   EMAIL_SMTP_HOST: '127.0.0.1',
   EMAIL_FROM: 'Platform <notifications@mail.platform.test>',
   EMAIL_INBOUND_DOMAIN: INBOUND_DOMAIN,

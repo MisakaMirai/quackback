@@ -264,11 +264,6 @@ const ZapierConnectionActions = lazy(() =>
     default: m.ZapierConnectionActions,
   }))
 )
-const ZendeskConnectionActions = lazy(() =>
-  import('@/integrations/zendesk/ui/zendesk-connection-actions').then((m) => ({
-    default: m.ZendeskConnectionActions,
-  }))
-)
 
 /** Segment has no icon registered in `INTEGRATION_UI` (it isn't a tracker or a
  * feedback source badge) - its route renders an inline "S" glyph instead of a
@@ -1512,51 +1507,6 @@ export const INTEGRATION_SETTINGS: Record<string, IntegrationSettingsEntry> = {
         initialEventMappings={integration.eventMappings}
         enabled={isConnected}
       />
-    ),
-  },
-
-  zendesk: {
-    type: 'zendesk',
-    connectForm: true,
-    catalog: catalogs.zendeskCatalog,
-    Icon: getIntegrationIcon('zendesk')!,
-    ConnectionActions: ZendeskConnectionActions,
-    setup: {
-      title: {
-        id: 'admin.integrations.setup.zendesk.title',
-        defaultMessage: 'Connect your Zendesk account',
-      },
-      description: {
-        id: 'admin.integrations.setup.zendesk.description',
-        defaultMessage:
-          'Connect Zendesk to enrich feedback with support context like organization, role, and tags.',
-      },
-      steps: (intl) => [
-        <p>
-          {intl.formatMessage({
-            id: 'admin.integrations.setup.zendesk.step1',
-            defaultMessage:
-              'Connect your Zendesk account to authorize read-only access to user data.',
-          })}
-        </p>,
-        <p>
-          {intl.formatMessage({
-            id: 'admin.integrations.setup.zendesk.step2',
-            defaultMessage:
-              'Open customer context to look up the customer’s Zendesk profile by email.',
-          })}
-        </p>,
-        <p>
-          {intl.formatMessage({
-            id: 'admin.integrations.setup.zendesk.step3',
-            defaultMessage:
-              'Support context (organization, role, tags) appears alongside their feedback.',
-          })}
-        </p>,
-      ],
-    },
-    renderConfig: ({ integration, isConnected }) => (
-      <CustomerContextConfig integrationId={integration.id} enabled={isConnected} />
     ),
   },
 }

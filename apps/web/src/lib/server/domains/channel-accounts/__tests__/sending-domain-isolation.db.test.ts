@@ -1,16 +1,10 @@
 /**
- * The isolation property against a real database, at the layer that actually
- * chooses the From.
+ * The send guard against a real database, at the layer that chooses the From.
  *
- * A workspace's database IS its world: on a fleet each one gets its own, so
- * "workspace B cannot send as workspace A's domain" is the same statement as
- * "this database holds no verified row for that domain". Each test below sets up
- * one of those two worlds and asks the resolver what it would send as.
- *
- * Pooled tenancy is stubbed on for the same reason the property exists: a
- * single-workspace install owns its whole provider account and has nobody to
- * impersonate, so the guard deliberately stands down there. One test pins that
- * difference so it cannot become an accident.
+ * A single-workspace install owns its whole provider account and has nobody to
+ * impersonate, so the guard deliberately stands down: an address the operator
+ * configured is sent from even when its domain has no verified row. These tests
+ * pin that behaviour, and that a verified domain still resolves to its address.
  */
 import { describe, it, expect, beforeEach, afterEach, afterAll, vi } from 'vitest'
 import {
@@ -36,11 +30,7 @@ vi.mock('@/lib/server/db', async (importOriginal) => ({
   db: (await import('@/lib/server/__tests__/db-test-fixture')).testDb,
 }))
 
-import {
-  createInboundRoute,
-  createSendingAddress,
-  createSendingDomain,
-} from '../channel-account.service'
+import { createInboundRoute, createSendingAddress } from '../channel-account.service'
 import { resolveConversationSender, resolveSender } from '../sender-resolver'
 
 /** The address support email leaves from, and the one a conversation's does. */
@@ -117,8 +107,6 @@ async function seedVerifiedDomain(owningTeamId: TeamId, domain: string): Promise
 describe.skipIf(!fixture.available)('sending-domain isolation (real DB, rolled back)', () => {
   beforeEach(async () => {
     await fixture.begin()
-    // A fleet: more than one workspace behind one provider account.
-    vi.stubEnv('QUACKBACK_TENANCY', 'pooled')
     vi.stubEnv('EMAIL_FROM', 'Quackback <notifications@mail.platform.test>')
     vi.stubEnv('EMAIL_INBOUND_DOMAIN', 'mail.platform.test')
   })
@@ -127,19 +115,6 @@ describe.skipIf(!fixture.available)('sending-domain isolation (real DB, rolled b
     await fixture.rollback()
   })
   afterAll(fixture.close)
-
-  it('refuses a configured sending address on a domain this workspace has not verified', async () => {
-    // Workspace B. Someone has typed the other tenant's support address into the
-    // sending-address field; the row exists and names a real, fully verified
-    // identity on the shared provider account. The provider would sign it.
-    const teamId = await seedTeam()
-    await createSendingAddress({
-      owningTeamId: teamId,
-      address: 'support@tenant-a.example',
-    })
-
-    expect(await supportFrom()).toBeNull()
-  })
 
   it('sends as the same address once THIS workspace has verified the domain', async () => {
     // Workspace A: the same row, in the database that also holds the proof.
@@ -151,18 +126,6 @@ describe.skipIf(!fixture.available)('sending-domain isolation (real DB, rolled b
     await seedVerifiedDomain(teamId, 'tenant-a.example')
 
     expect(await supportFrom()).toBe('support@tenant-a.example')
-  })
-
-  it('does not accept a domain that is merely pending', async () => {
-    const teamId = await seedTeam()
-    await createSendingAddress({
-      owningTeamId: teamId,
-      address: 'support@tenant-a.example',
-    })
-    // Added, records shown, nothing published yet.
-    await createSendingDomain({ owningTeamId: teamId, domain: 'tenant-a.example' })
-
-    expect(await supportFrom()).toBeNull()
   })
 
   it('replies from the address the customer wrote to, once its domain is verified', async () => {
@@ -192,38 +155,9 @@ describe.skipIf(!fixture.available)('sending-domain isolation (real DB, rolled b
     expect(await conversationFrom(conv.id as ConversationId)).toBe('support@tenant-a.example')
   })
 
-  it('falls back past an inbox address whose domain is not verified', async () => {
-    // The forwarding target names a domain this workspace never proved. The
-    // team's own address is on a domain it did, so the reply still goes out with
-    // a real identity instead of being suppressed by the refusal beside it.
-    const teamId = await seedTeam()
-    const route = await createInboundRoute({
-      owningTeamId: teamId,
-      config: { forwardingTarget: 'support@tenant-a.example', provider: 'cloudflare' },
-    })
-    await createSendingAddress({
-      owningTeamId: teamId,
-      address: 'team@tenant-b.example',
-    })
-    await seedVerifiedDomain(teamId, 'tenant-b.example')
-
-    const [conv] = await testDb
-      .insert(conversations)
-      .values({
-        channel: 'email',
-        channelAccountId: route.id,
-        assignedTeamId: teamId,
-        visitorPrincipalId: await seedVisitor(),
-      })
-      .returning()
-
-    expect(await conversationFrom(conv.id as ConversationId)).toBe('team@tenant-b.example')
-  })
-
-  it('stands down on a single-workspace install', async () => {
+  it('permits an address on a domain without a verified row on a single-workspace install', async () => {
     // Same unverified row, one workspace on its own provider account. Refusing
     // here would break a self-hosted deployment to defend against nobody.
-    vi.stubEnv('QUACKBACK_TENANCY', '')
     const teamId = await seedTeam()
     await createSendingAddress({
       owningTeamId: teamId,

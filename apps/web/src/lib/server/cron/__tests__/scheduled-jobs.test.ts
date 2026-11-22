@@ -2,12 +2,9 @@
  * The worker's timers and the one-shot `QUACKBACK_CRON_JOB` bodies must stay
  * one list.
  *
- * Under pooled tenancy every scheduled sweep funnels through `withSweepLock`,
- * which fans the tick out across the fleet. The always-on worker arms those
- * timers itself — the same schedule as a single-workspace install. A sweep
- * added to `scheduled-jobs.ts` but not to `startup.ts`'s schedule would silently
- * stop running on the live fleet. So this suite reads both sources and
- * asserts they name the same work.
+ * The always-on worker arms the timers itself. A sweep added to
+ * `scheduled-jobs.ts` but not to `startup.ts`'s schedule would silently stop
+ * running, so this suite reads both sources and asserts they name the same work.
  *
  * Reading source text is a weak instrument, and this run has caught nineteen
  * tests that could not have failed — so every assertion below is paired with a
@@ -73,26 +70,6 @@ describe('the sweep inventory', () => {
     )
     expect(exported.size).toBeGreaterThan(0)
     expect([...armed].sort()).toEqual([...exported].sort())
-  })
-})
-
-describe('the worker arms the sweep schedule under either tenancy mode', () => {
-  const startupSource = read('startup.ts')
-
-  it('does not skip the sweep schedule when tenancy is pooled', () => {
-    // Compute and Postgres stay up, so a pooled worker runs the same timers
-    // as a single-workspace install. An early return gated on pooled tenancy
-    // would silently park the fleet's sweeps on cron containers we no longer
-    // run.
-    const fn = startupSource.slice(startupSource.indexOf('function startBackgroundProcessing'))
-    expect(fn).not.toBe('')
-
-    const jobWorker = fn.indexOf('startJobWorker')
-    const scheduleStart = fn.indexOf("import('@/lib/server/cron/scheduled-jobs')")
-    expect(jobWorker).toBeGreaterThan(-1)
-    expect(fn).not.toContain('startRelayTier')
-    expect(scheduleStart).toBeGreaterThan(jobWorker)
-    expect(fn).not.toMatch(/if\s*\(\s*!config\.isPooledTenancy\s*\)\s*return/)
   })
 })
 

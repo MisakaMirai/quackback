@@ -7,13 +7,11 @@ import {
   posts,
   principal,
   integrations,
-  postExternalLinks,
   integrationSyncOperations as operations,
   eq,
   sql,
 } from '@/lib/server/db'
 import { enqueueJob } from '@/lib/server/jobs/job-queue'
-import { linkTicketToPost, unlinkTicketFromPost, getLinkedPosts } from '../../apps/service'
 import { queueHookSync } from '../hooks'
 import { claimSyncOperation } from '../ledger'
 import { readFileSync } from 'node:fs'
@@ -181,30 +179,5 @@ describe('forward-only integration sync (PostgreSQL)', () => {
         where: eq(operations.integrationId, integration.id),
       })
     ).toHaveLength(0)
-  })
-  it('keeps sidebar references idempotent and independent of sync-owned links', async () => {
-    const { post, integration } = await seed()
-    const [owned] = await testDb
-      .insert(postExternalLinks)
-      .values({
-        postId: post.id,
-        integrationId: integration.id,
-        integrationType: 'linear',
-        externalId: 'same-remote-id',
-        syncScope: 'managed-destination',
-      })
-      .returning()
-    const input = { postId: post.id, integrationType: 'linear', externalId: 'same-remote-id' }
-    const first = await linkTicketToPost(input, post.principalId!)
-    const second = await linkTicketToPost(input, post.principalId!)
-    expect(first.linkId).not.toBe(owned.id)
-    expect(second.linkId).toBe(first.linkId)
-    expect(await getLinkedPosts(input)).toMatchObject([{ linkId: first.linkId }])
-    expect(await getLinkedPosts(input)).toHaveLength(1)
-    await unlinkTicketFromPost(input)
-    expect(
-      await testDb.query.postExternalLinks.findFirst({ where: eq(postExternalLinks.id, owned.id) })
-    ).toBeDefined()
-    expect(await getLinkedPosts(input)).toHaveLength(0)
   })
 })

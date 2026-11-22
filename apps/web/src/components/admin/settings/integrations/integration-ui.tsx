@@ -34,7 +34,6 @@ import {
   TeamsIcon,
   TrelloIcon,
   ZapierIcon,
-  ZendeskIcon,
 } from '@/components/icons/integration-icons'
 
 interface IconProps {
@@ -176,11 +175,6 @@ export const INTEGRATION_UI: Record<string, IntegrationUiManifest> = {
     itemNoun: 'task',
   },
   zapier: { icon: ZapierIcon, displayName: 'Zapier' },
-  zendesk: {
-    icon: ZendeskIcon,
-    displayName: 'Zendesk',
-    badge: 'bg-[#e0f2f1] dark:bg-[#0a2528] text-[#03363D] dark:text-[#78B8C1]',
-  },
 }
 
 /** Look up a provider's icon component, if registered. */

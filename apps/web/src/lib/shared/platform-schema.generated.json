@@ -491,31 +491,6 @@
       "configurable": false,
       "envPrefix": "INTEGRATION_ZAPIER_",
       "fields": []
-    },
-    {
-      "id": "zendesk",
-      "name": "Zendesk",
-      "category": "support_crm",
-      "iconBg": "bg-[#03363D]",
-      "docsUrl": "https://www.quackback.io/docs/integrations/zendesk",
-      "configurable": true,
-      "envPrefix": "INTEGRATION_ZENDESK_",
-      "fields": [
-        {
-          "key": "clientId",
-          "envKey": "INTEGRATION_ZENDESK_CLIENT_ID",
-          "label": "Client ID",
-          "sensitive": false,
-          "helpUrl": "https://developer.zendesk.com/"
-        },
-        {
-          "key": "clientSecret",
-          "envKey": "INTEGRATION_ZENDESK_CLIENT_SECRET",
-          "label": "Client Secret",
-          "sensitive": true,
-          "helpUrl": "https://developer.zendesk.com/"
-        }
-      ]
     }
   ]
 }

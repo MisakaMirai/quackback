@@ -38,20 +38,12 @@ afterEach(() => {
 
 describe('currentMailSlug', () => {
   it('is the registry record’s slug inside a workspace scope', () => {
-    vi.stubEnv('QUACKBACK_TENANCY', 'pooled')
     expect(withWorkspace('ws-t1', () => currentMailSlug())).toBe(mailSlugFor('ws-t1'))
     expect(withWorkspace('ws-t2', () => currentMailSlug())).toBe(mailSlugFor('ws-t2'))
   })
 
   it('is the self-hosted label with no scope on a single-workspace process', () => {
     expect(currentMailSlug()).toBe(SELF_HOSTED_MAIL_SLUG)
-  })
-
-  it('is null with no scope on a pooled process', () => {
-    // Not the self-hosted label: on a shared inbound domain that address names
-    // no workspace, so it would leave carrying a route home that cannot resolve.
-    vi.stubEnv('QUACKBACK_TENANCY', 'pooled')
-    expect(currentMailSlug()).toBeNull()
   })
 
   it('mints a label the grammar accepts, so the self-hosted path is not a special case', () => {
@@ -61,7 +53,6 @@ describe('currentMailSlug', () => {
 
 describe('minting from a workspace scope', () => {
   it('carries the scope’s slug into a conversation address that verifies back', () => {
-    vi.stubEnv('QUACKBACK_TENANCY', 'pooled')
     const address = withWorkspace('ws-t1', () =>
       inboundReplyToAddress(CONVERSATION_ID, currentMailSlug(), ENV)
     )
@@ -74,7 +65,6 @@ describe('minting from a workspace scope', () => {
   })
 
   it('carries it into a ticket address too', () => {
-    vi.stubEnv('QUACKBACK_TENANCY', 'pooled')
     const address = withWorkspace('ws-t1', () =>
       inboundTicketReplyToAddress(TICKET_ID, currentMailSlug(), ENV)
     )
@@ -85,7 +75,6 @@ describe('minting from a workspace scope', () => {
   it('mints a different address per workspace for the same conversation id', () => {
     // The isolation the slug exists for: the tag covers the pair, so one
     // workspace's reply address cannot be re-slugged into another's.
-    vi.stubEnv('QUACKBACK_TENANCY', 'pooled')
     const one = withWorkspace('ws-t1', () =>
       inboundReplyToAddress(CONVERSATION_ID, currentMailSlug(), ENV)
     )
@@ -116,11 +105,5 @@ describe('minting with no workspace scope', () => {
         ENV
       )
     ).toBe(TICKET_ID)
-  })
-
-  it('a pooled process mints nothing rather than an unroutable address', () => {
-    vi.stubEnv('QUACKBACK_TENANCY', 'pooled')
-    expect(inboundReplyToAddress(CONVERSATION_ID, currentMailSlug(), ENV)).toBeNull()
-    expect(inboundTicketReplyToAddress(TICKET_ID, currentMailSlug(), ENV)).toBeNull()
   })
 })

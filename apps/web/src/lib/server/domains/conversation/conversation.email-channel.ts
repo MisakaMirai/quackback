@@ -70,7 +70,6 @@
 import { createHmac, randomBytes, timingSafeEqual } from 'crypto'
 import { ID_PREFIXES, type ConversationId, type TicketId } from '@quackback/ids'
 import { normalizeMailDomain } from '@/lib/server/utils/mail-domain'
-import { isPooledTenancy } from '@/lib/server/workspaces/mode'
 import { extractEmailAddress } from './conversation.email-inbound'
 
 type EnvLike = Record<string, string | undefined>
@@ -789,30 +788,9 @@ export function ownEmailDomains(env: EnvLike = process.env): Set<string> {
  * The `Message-ID` hosts on which an id is evidence that THIS workspace sent the
  * message.
  *
- * The set the mail-loop guard's host test runs against, and it is narrower than
- * {@link ownEmailDomains} for the same reason a reply address has to carry a
- * workspace label: the branch it feeds is a suppression with nothing retained,
- * so every member is a promise that no OTHER sender's mail legitimately carries
- * a `Message-ID` there. "Other" includes the workspace next door.
- *
- * ONE WORKSPACE PER PROCESS — the install owns its domains outright. There is no
+ * One workspace per process — the install owns its domains outright. There is no
  * second workspace to be confused with, so every domain it operates is evidence
- * about it, and a self-hosted install keeps exactly the guard it has always had.
- *
- * POOLED — none of them. One fleet serves every workspace behind one sending
- * domain, so a host is a fact about the FLEET: the neighbour's notifications
- * wear the identical host, and reading it as authorship suppresses their mail
- * with no retention and nobody to notice. That is the same mistake as adopting a
- * sending provider's regional host, one level in. Two things answer the question
- * there instead, and neither is a domain: the id this workspace RECORDED going
- * out (exact, and the store owns it), and the reply address this workspace
- * minted, which carries its label under an HMAC tag ({@link isOwnInboundAddress}).
- *
- * Nothing is lost on the fleet by emptying it. Ids are minted at
- * {@link outboundMessageIdDomain} — the platform's own sending domain, shared —
- * and the fleet's transport replaces the header id anyway, so this test had no
- * true positive there to give up: every match it could make was somebody else's
- * mail.
+ * about it.
  *
  * A SENDING PROVIDER'S OWN HOST IS THE ONE TO REFUSE, every time it is proposed
  * for either set. A provider that assigns the `Message-ID` itself puts its
@@ -822,7 +800,7 @@ export function ownEmailDomains(env: EnvLike = process.env): Set<string> {
  * customer of the same provider.
  */
 export function ownMessageIdDomains(env: EnvLike = process.env): Set<string> {
-  return isPooledTenancy(env) ? new Set() : ownEmailDomains(env)
+  return ownEmailDomains(env)
 }
 
 /** Mint a fresh outbound Message-ID for a conversation, bare (no angle

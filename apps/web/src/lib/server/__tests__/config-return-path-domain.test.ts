@@ -25,7 +25,7 @@ let saved: NodeJS.ProcessEnv
 
 beforeEach(() => {
   saved = { ...process.env }
-  for (const key of ['QUACKBACK_TENANCY', 'EMAIL_RETURN_PATH_DOMAIN']) delete process.env[key]
+  for (const key of ['EMAIL_RETURN_PATH_DOMAIN']) delete process.env[key]
   Object.assign(process.env, {
     BASE_URL: 'https://app.example.com',
     SECRET_KEY: 'x'.repeat(48),

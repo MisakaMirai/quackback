@@ -49,7 +49,7 @@ export const webhookHook: HookHandler = {
       return { success: true }
     }
 
-    // Delivery-time re-validation (mirrors the app-webhook hook): the
+    // Delivery-time re-validation (mirrors the integration-webhook hook): the
     // enqueue-time snapshot — including the queued target URL — is superseded
     // by the live row, so a webhook disabled, soft-deleted, or re-pointed
     // between enqueue and delivery (or during retries) is honored.

@@ -347,7 +347,7 @@ function VoterSourceLine({
     )
   }
 
-  // Integration votes without link: "{time} · via Zendesk"
+  // Integration votes without link: "{time} · via Intercom"
   if (voter.sourceType) {
     const platformName = sourceTypeLabel(intl, voter.sourceType)
     return (

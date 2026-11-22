@@ -1,6 +1,6 @@
 /**
  * Customer-context panel (IF WO-9). Renders normalized enrichment cards from
- * connected CRM integrations (Zendesk/HubSpot/Intercom) for a post's author.
+ * connected CRM integrations (HubSpot/Intercom) for a post's author.
  * Fetched ON DEMAND (only when an author email exists and the query is
  * enabled) — never eagerly per post row. Renders nothing when there's no
  * email or no connected provider returns a match. When no connected provider

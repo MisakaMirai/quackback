@@ -27,10 +27,8 @@
  *   final. A pass with any failed copy records nothing, so the next attempt
  *   retries.
  *
- * Never runs under pooled tenancy: there the bucket is shared and a bare key is
- * nobody's. `openLegacyRelocationBucket()` refuses that independently.
+ * A single-workspace install owns the bucket, so a bare key is its own.
  */
-import { config } from '@/lib/server/config'
 import { kvGet, kvSet } from '@/lib/server/kv/pg-kv'
 import { runWithoutLogContext } from '@/lib/server/log-context'
 import { logger } from '@/lib/server/logger'
@@ -99,7 +97,7 @@ export interface RelocationMarker extends RelocationCounts {
 export const RECONCILE_GRACE_MS = 24 * 60 * 60 * 1000
 
 export type RelocationOutcome =
-  | { status: 'not-applicable'; reason: 'pooled' | 'no-storage' }
+  | { status: 'not-applicable'; reason: 'no-storage' }
   | { status: 'already-done'; marker: RelocationMarker }
   | { status: 'locked' }
   | { status: 'reconciling'; marker: RelocationMarker }
@@ -270,8 +268,6 @@ export async function relocateBareObjects(
 export async function runLegacyStorageRelocation(
   now: () => number = Date.now
 ): Promise<RelocationOutcome> {
-  if (config.isPooledTenancy) return { status: 'not-applicable', reason: 'pooled' }
-
   const prior = await kvGet<RelocationMarker>(LEGACY_RELOCATION_MARKER_KEY)
   if (prior?.finishedAt) return { status: 'already-done', marker: prior }
 

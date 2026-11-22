@@ -1096,8 +1096,8 @@ describe('MCP HTTP Handler', () => {
             arguments: {
               postId: 'post_test',
               voterPrincipalId: 'principal_voter',
-              sourceType: 'zendesk',
-              sourceExternalUrl: 'https://zendesk.com/ticket/123',
+              sourceType: 'intercom',
+              sourceExternalUrl: 'https://intercom.com/ticket/123',
             },
           })
         )
@@ -1114,7 +1114,7 @@ describe('MCP HTTP Handler', () => {
 
     it('proxy_vote does NOT enforce the target principal vote tier (intentional team-attributed bypass)', async () => {
       // proxy_vote is a team-authority tool (requireTeamRole) for recording a
-      // vote on behalf of a customer (e.g. from a Zendesk ticket). It routes
+      // vote on behalf of a customer (e.g. from an Intercom ticket). It routes
       // straight to addVoteOnBehalf and deliberately skips assertPostVotable —
       // the per-board vote-tier gate applies to a user voting for THEMSELVES,
       // not to a trusted teammate attributing signal gathered elsewhere.

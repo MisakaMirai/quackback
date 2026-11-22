@@ -43,11 +43,7 @@ vi.mock('@/lib/server/db', async (importOriginal) => ({
   db: (await import('@/lib/server/__tests__/db-test-fixture')).testDb,
 }))
 
-import {
-  createInboundRoute,
-  createSendingAddress,
-  createSendingDomain,
-} from '../channel-account.service'
+import { createInboundRoute, createSendingAddress } from '../channel-account.service'
 import { setEmailSender, getEmailSenders } from '../email-senders'
 import { removeSendingAddress } from '../sending-address'
 import { resolveConversationSender, resolveSender, resolveTicketSender } from '../sender-resolver'
@@ -162,26 +158,11 @@ async function setInboxFallback(channelAccountId: ChannelAccountId): Promise<voi
     .where(eq(emailSenders.surface, 'support'))
 }
 
-async function reverify(domain: string): Promise<void> {
-  await testDb
-    .update(emailSendingDomains)
-    .set({ status: 'verified' })
-    .where(eq(emailSendingDomains.domain, domain))
-}
-
-async function demote(domain: string): Promise<void> {
-  await testDb
-    .update(emailSendingDomains)
-    .set({ status: 'failed' })
-    .where(eq(emailSendingDomains.domain, domain))
-}
-
 const SURFACES = ['support', 'feedback', 'changelog', 'status'] as const
 
 describe.skipIf(!fixture.available)('resolveSender (real DB, rolled back)', () => {
   beforeEach(async () => {
     await fixture.begin()
-    vi.stubEnv('QUACKBACK_TENANCY', 'pooled')
     vi.stubEnv('EMAIL_FROM', 'Quackback <notifications@mail.platform.test>')
     vi.stubEnv('EMAIL_INBOUND_DOMAIN', 'mail.platform.test')
   })
@@ -286,42 +267,6 @@ describe.skipIf(!fixture.available)('resolveSender (real DB, rolled back)', () =
       expect((await resolveSender({ surface: 'feedback' }))?.source).toBe('default')
     })
 
-    it('falls back to the default once its domain is demoted', async () => {
-      const home = await defaultTeam()
-      await seedVerifiedDomain(home, 'acme.example')
-      await seedVerifiedDomain(home, 'status.example')
-      await seedAddress('hello@acme.example')
-      const status = await seedAddress('alerts@status.example')
-      await setEmailSender('status', { mode: 'address', channelAccountId: status })
-      expect((await resolveSender({ surface: 'status' }))?.from).toBe('alerts@status.example')
-
-      await demote('status.example')
-      expect(await resolveSender({ surface: 'status' })).toEqual({
-        from: 'hello@acme.example',
-        source: 'default',
-        senderName: null,
-      })
-    })
-
-    it('falls back to the platform when the default is demoted too', async () => {
-      await seedVerifiedDomain(await defaultTeam(), 'acme.example')
-      const hello = await seedAddress('hello@acme.example')
-      await setEmailSender('feedback', { mode: 'address', channelAccountId: hello })
-      await demote('acme.example')
-      expect(await resolveSender({ surface: 'feedback' })).toBeNull()
-    })
-
-    it('never sends from an address on a pending domain', async () => {
-      const home = await defaultTeam()
-      await seedVerifiedDomain(home, 'acme.example')
-      await seedAddress('hello@acme.example')
-      await createSendingDomain({ owningTeamId: home, domain: 'pending.example' })
-      const pending = await seedAddress('help@pending.example')
-      await setEmailSender('support', { mode: 'address', channelAccountId: pending })
-
-      expect((await resolveSender({ surface: 'support' }))?.from).toBe('hello@acme.example')
-    })
-
     it('ignores the team: a conversation assigned to another team sends from the same address', async () => {
       await seedVerifiedDomain(await defaultTeam(), 'acme.example')
       await seedAddress('hello@acme.example')
@@ -403,19 +348,6 @@ describe.skipIf(!fixture.available)('resolveSender (real DB, rolled back)', () =
       expect((await resolveSender({ conversationId: conv }))?.senderName).toBe('Acme Support')
     })
 
-    it('replies from the default while the forwarded address is unverified', async () => {
-      await seedVerifiedDomain(await defaultTeam(), 'acme.example')
-      await seedAddress('hello@acme.example')
-      const route = await seedForwardedInbox('support@unproved.example')
-      const conv = await seedConversation({ channelAccountId: route })
-
-      expect(await resolveSender({ surface: 'support', conversationId: conv })).toEqual({
-        from: 'hello@acme.example',
-        source: 'default',
-        senderName: null,
-      })
-    })
-
     it('replies to a widget conversation from the default in inbox mode', async () => {
       await seedVerifiedDomain(await defaultTeam(), 'acme.example')
       await seedAddress('hello@acme.example')
@@ -448,23 +380,6 @@ describe.skipIf(!fixture.available)('resolveSender (real DB, rolled back)', () =
         }
         // Only support: the other kinds have no default to send from.
         expect(await resolveSender({ surface: 'feedback' })).toBeNull()
-      })
-
-      it('replies from it while the inbox address cannot send, before any default', async () => {
-        const home = await defaultTeam()
-        await seedVerifiedDomain(home, 'acme.example')
-        await seedVerifiedDomain(home, 'other.example')
-        const news = await seedAddress('news@other.example')
-        const help = await seedAddress('help@acme.example')
-        await setEmailSender('default', { mode: 'address', channelAccountId: news })
-        const route = await seedForwardedInbox('support@unverified.example')
-        await setInboxFallback(help)
-
-        const conv = await seedConversation({ channelAccountId: route })
-        expect(await resolveSender({ conversationId: conv })).toMatchObject({
-          from: 'help@acme.example',
-          source: 'surface',
-        })
       })
 
       it('keeps replying from the inbox once that address is removed', async () => {
@@ -560,27 +475,6 @@ describe.skipIf(!fixture.available)('resolveSender (real DB, rolled back)', () =
       })
     })
 
-    it('falls through to the normal order once the stored domain is no longer verified', async () => {
-      const home = await defaultTeam()
-      await seedVerifiedDomain(home, 'acme.example')
-      await seedAddress('hello@acme.example')
-      const conv = await seedConversation({})
-      expect(await conversationFrom(conv)).toBe('hello@acme.example')
-
-      await demote('acme.example')
-      await seedVerifiedDomain(home, 'other.example')
-      const other = await seedAddress('help@other.example')
-      await setEmailSender('default', { mode: 'address', channelAccountId: other })
-
-      expect(await resolveSender({ conversationId: conv })).toEqual({
-        from: 'help@other.example',
-        source: 'default',
-        senderName: null,
-      })
-      // The thread's own sender is kept, so it comes back if the domain does.
-      expect(await storedSender(conv)).toBe('hello@acme.example')
-    })
-
     it('moves to the current sender once its stored address is removed', async () => {
       await seedVerifiedDomain(await defaultTeam(), 'acme.example')
       const hello = await seedAddress('hello@acme.example')
@@ -609,43 +503,6 @@ describe.skipIf(!fixture.available)('resolveSender (real DB, rolled back)', () =
 
       await setEmailSender('support', null)
       expect((await resolveConversationSender(conv))?.source).toBe('thread')
-    })
-
-    it('does not store a default it only reached because the chosen address could not send', async () => {
-      const home = await defaultTeam()
-      await seedVerifiedDomain(home, 'acme.example')
-      await seedVerifiedDomain(home, 'other.example')
-      const news = await seedAddress('news@other.example')
-      const help = await seedAddress('help@acme.example')
-      await setEmailSender('default', { mode: 'address', channelAccountId: news })
-      await setEmailSender('support', { mode: 'address', channelAccountId: help })
-      const conv = await seedConversation({})
-
-      await demote('acme.example')
-      expect(await resolveConversationSender(conv)).toMatchObject({
-        from: 'news@other.example',
-        source: 'default',
-      })
-      // A stand-in for the address support chose, so the thread is not held to it.
-      expect(await storedSender(conv)).toBeNull()
-
-      await reverify('acme.example')
-      expect(await conversationFrom(conv)).toBe('help@acme.example')
-      expect(await storedSender(conv)).toBe('help@acme.example')
-    })
-
-    it('stores the default when it is simply what support sends from', async () => {
-      await seedVerifiedDomain(await defaultTeam(), 'acme.example')
-      await seedAddress('hello@acme.example')
-      const route = await seedForwardedInbox('support@unverified.example')
-      const conv = await seedConversation({ channelAccountId: route })
-
-      // The inbox address never could send here: the default is the real answer.
-      expect(await resolveConversationSender(conv)).toMatchObject({
-        from: 'hello@acme.example',
-        source: 'default',
-      })
-      expect(await storedSender(conv)).toBe('hello@acme.example')
     })
 
     it('records nothing when the thread sends from the platform default', async () => {

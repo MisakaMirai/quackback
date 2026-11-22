@@ -91,7 +91,7 @@ Profiles: **Owner** = admin class + an admin-owned full API key (scoped keys hol
 
 ## 2. Surfaces and their enforced authorization
 
-### Server functions (`requireAuth`) — 598 surfaces
+### Server functions (`requireAuth`) — 596 surfaces
 
 | Surface | Enforces |
 | --- | --- |
@@ -142,8 +142,6 @@ Profiles: **Owner** = admin class + an admin-owned full API key (scoped keys hol
 | `integrations/trello/server/functions.ts`::fetchTrelloBoardsFn | integration.manage |
 | `integrations/trello/server/functions.ts`::fetchTrelloListsFn | integration.manage |
 | `integrations/zapier/server/functions.ts`::saveZapierWebhookFn | integration.manage |
-| `integrations/zendesk/server/functions.ts`::getZendeskConnectUrl | integration.manage |
-| `integrations/zendesk/server/functions.ts`::searchZendeskUserFn | integration.view |
 | `lib/server/functions/activation.ts`::getStartingPointContextFn | settings.manage |
 | `lib/server/functions/activation.ts`::getActivationBridgeContextFn | settings.manage |
 | `lib/server/functions/activation.ts`::markPublicBoardLinkCopiedFn | board.manage |
@@ -694,18 +692,12 @@ Profiles: **Owner** = admin class + an admin-owned full API key (scoped keys hol
 | `lib/server/functions/webhooks.ts`::rotateWebhookSecretFn | webhook.manage |
 | `lib/server/functions/workspace-api-key-settings.ts`::fetchWorkspaceKeyRolesFn | api_key.manage |
 
-### Public REST API (`withApiKeyAuth`) — 122 surfaces
+### Public REST API (`withApiKeyAuth`) — 116 surfaces
 
 | Surface | Enforces |
 | --- | --- |
 | `routes/api/export.ts`::GET | post.export |
 | `routes/api/export.users.ts`::handleExportUsers | people.view |
-| `routes/api/v1/apps/boards.ts`::GET | PUBLIC (any valid key) |
-| `routes/api/v1/apps/link.ts`::POST | post.vote_on_behalf |
-| `routes/api/v1/apps/linked.ts`::GET | integration.view |
-| `routes/api/v1/apps/posts.ts`::POST | post.create |
-| `routes/api/v1/apps/search.ts`::GET | post.view_private |
-| `routes/api/v1/apps/unlink.ts`::POST | post.vote_on_behalf |
 | `routes/api/v1/boards/$boardId.ts`::GET | PUBLIC (any valid key) |
 | `routes/api/v1/boards/$boardId.ts`::PATCH | board.manage |
 | `routes/api/v1/boards/$boardId.ts`::DELETE | board.manage |
@@ -891,7 +883,7 @@ Key scopes are enforced: an API key holds exactly its stored scopes (owner permi
 
 ## 4. Entry points without a requireAuth/key gate
 
-180 of 879 entry points hold no `requireAuth` / `withApiKeyAuth` / `requireTeamAuth` gate.
+173 of 864 entry points hold no `requireAuth` / `withApiKeyAuth` / `requireTeamAuth` gate.
 Each is expected to be intentionally public, a pre-auth flow, a signature-verified webhook, or a handler that delegates auth (e.g. the MCP route).
 **Adding a row here is an access-control change** — confirm the new entry point is meant to be reachable without a gate.
 
@@ -1046,12 +1038,6 @@ Each is expected to be intentionally public, a pre-auth flow, a signature-verifi
 | `routes/api/user/profile.ts`::DELETE | route |
 | `routes/api/user/profile.ts`::GET | route |
 | `routes/api/user/profile.ts`::PATCH | route |
-| `routes/api/v1/apps/boards.ts`::OPTIONS | route |
-| `routes/api/v1/apps/link.ts`::OPTIONS | route |
-| `routes/api/v1/apps/linked.ts`::OPTIONS | route |
-| `routes/api/v1/apps/posts.ts`::OPTIONS | route |
-| `routes/api/v1/apps/search.ts`::OPTIONS | route |
-| `routes/api/v1/apps/unlink.ts`::OPTIONS | route |
 | `routes/api/v1/docs.ts`::GET | route |
 | `routes/api/v1/mentions/suggest.ts`::GET | route |
 | `routes/api/v1/openapi.json.ts`::GET | route |
@@ -1065,7 +1051,6 @@ Each is expected to be intentionally public, a pre-auth flow, a signature-verifi
 | `routes/api/v1/status/services/index.ts`::GET | route |
 | `routes/api/v1/status/services/index.ts`::POST | route |
 | `routes/api/v1/users/$principalId.card.ts`::GET | route |
-| `routes/apps.tsx`::setIframeHeaders | server-fn |
 | `routes/changelog/feed.ts`::GET | route |
 | `routes/changelog/rss.ts`::GET | route |
 | `routes/changelog/rss[.]xml.ts`::GET | route |
