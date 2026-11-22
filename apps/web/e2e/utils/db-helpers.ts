@@ -195,3 +195,16 @@ export function readCsatState(conversationTypeId: string): CsatState {
     runScript('csat-token.ts', ['state', conversationTypeId], 'read csat state')
   ) as CsatState
 }
+
+export interface ImportedPost {
+  title: string
+  boardName: string
+  boardSlug: string
+}
+
+/** Posts whose title starts with `prefix` (used to find one import run's rows). */
+export function getImportedPosts(prefix: string): ImportedPost[] {
+  return JSON.parse(
+    runScript('get-imported-posts.ts', [prefix], 'get imported posts')
+  ) as ImportedPost[]
+}
