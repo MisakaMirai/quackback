@@ -208,3 +208,17 @@ export function getImportedPosts(prefix: string): ImportedPost[] {
     runScript('get-imported-posts.ts', [prefix], 'get imported posts')
   ) as ImportedPost[]
 }
+
+export interface NotificationPreferencesFixture {
+  emailMuted: boolean
+  emailStatusChange: boolean
+  emailNewComment: boolean
+  matrix: Record<string, Record<string, boolean | undefined> | undefined>
+}
+
+/** The stored notification preferences for `email`'s principal. */
+export function getNotificationPreferences(email: string): NotificationPreferencesFixture {
+  return JSON.parse(
+    runScript('get-notification-preferences.ts', [email], 'get notification preferences')
+  ) as NotificationPreferencesFixture
+}
