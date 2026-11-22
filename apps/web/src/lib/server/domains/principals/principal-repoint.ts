@@ -469,7 +469,6 @@ export const REPOINT_EXEMPTIONS: Record<string, string> = {
   'principal_role_assignments.principal_id':
     'role assignments are team-only; anonymous principals hold none',
   'principal_role_assignments.granted_by_principal_id': 'grant actor is a team member',
-  'push_devices.principal_id': 'push devices belong to agents',
   // Service-principal identity columns
   'api_keys.principal_id': 'API keys are backed by service principals',
   'api_keys.created_by_id': 'key creator is a team member',

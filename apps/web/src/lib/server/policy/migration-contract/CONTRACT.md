@@ -6,12 +6,12 @@ Regenerate with `bunx vitest run apps/web/src/lib/server/policy/migration-contra
 
 ## Summary
 
-Migrations scanned: 295. Migrations with destructive DDL: 44.
+Migrations scanned: 296. Migrations with destructive DDL: 45.
 
 | Kind | Occurrences |
 | --- | --- |
 | DROP COLUMN | 55 |
-| DROP TABLE | 49 |
+| DROP TABLE | 50 |
 | DROP CONSTRAINT | 23 |
 | RENAME COLUMN | 17 |
 | RENAME TO (table) | 14 |
@@ -67,6 +67,7 @@ Migrations scanned: 295. Migrations with destructive DDL: 44.
 | 0318_drop_widget.sql | RENAME COLUMN settings.widget_config -> messenger_config; DROP COLUMN settings.widget_secret; DROP COLUMN settings.widget_installed_first_seen_at; DROP COLUMN settings.widget_installed_last_seen_at; DROP COLUMN settings.widget_installed_origin_host; DROP COLUMN settings.widget_installed_sdk_version; RENAME COLUMN posts.widget_metadata -> client_metadata; DROP TABLE widget_identified_session; DROP TABLE widget_origin_session | annotated (safe-after 0.15.0) |
 | 0319_drop_retired_tables.sql | DROP TABLE workflow_run_events; DROP TABLE workflow_runs; DROP TABLE workflow_versions; DROP TABLE workflows; DROP TABLE workspace_experiments; DROP COLUMN settings.state | annotated (safe-after 0.15.0) |
 | 0320_drop_domain_proof.sql | DROP TABLE domains | annotated (safe-after 0.15.0) |
+| 0321_drop_push_devices.sql | DROP TABLE push_devices | annotated (safe-after 0.15.0) |
 
 ## Grandfathered (29)
 
