@@ -16,16 +16,38 @@ interface InviteBranding {
   inviterName: string | null
 }
 
+/**
+ * A callback URL that may be forwarded to the verify endpoint, as a
+ * same-origin path.
+ *
+ * The emailed invitation links carry an ABSOLUTE callback URL built from the
+ * workspace origin (`https://acme.example/complete-signup/invite_…`), while the
+ * redirect target must stay a same-origin path. Accept both shapes: reduce an
+ * absolute URL to its path and apply the same relative-path check, so the host
+ * is always discarded and a link minted for another origin cannot become a
+ * redirect to it.
+ */
+export function normalizedCallbackPath(value: unknown): string | undefined {
+  if (typeof value !== 'string' || value.length === 0) return undefined
+  if (value.startsWith('/')) return isSafeCallbackUrl(value) ? value : undefined
+  try {
+    const url = new URL(value)
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') return undefined
+    const path = `${url.pathname}${url.search}${url.hash}`
+    return isSafeCallbackUrl(path) ? path : undefined
+  } catch {
+    return undefined
+  }
+}
+
 export const Route = createFileRoute('/verify-magic-link')({
   validateSearch: (search: Record<string, unknown>) => ({
     token: typeof search.token === 'string' ? search.token : undefined,
     // These are forwarded verbatim to better-auth's verify endpoint, which
     // redirects to them. Only same-origin paths survive; an absolute or
     // protocol-relative value would turn this page into an open redirect.
-    callbackURL: isSafeCallbackUrl(search.callbackURL) ? search.callbackURL : undefined,
-    errorCallbackURL: isSafeCallbackUrl(search.errorCallbackURL)
-      ? search.errorCallbackURL
-      : undefined,
+    callbackURL: normalizedCallbackPath(search.callbackURL),
+    errorCallbackURL: normalizedCallbackPath(search.errorCallbackURL),
   }),
   loader: async ({ context }) => {
     const locale = context.acceptLanguageLocale ?? DEFAULT_LOCALE
