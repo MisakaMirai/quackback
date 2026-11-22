@@ -222,3 +222,12 @@ export function getNotificationPreferences(email: string): NotificationPreferenc
     runScript('get-notification-preferences.ts', [email], 'get notification preferences')
   ) as NotificationPreferencesFixture
 }
+
+/**
+ * The live password-reset token for `email` (the value the emailed
+ * `/auth/reset-password?token=…` link carries). Polls briefly: Better-Auth
+ * writes the verification row just after `request-password-reset` answers.
+ */
+export function getResetToken(email: string): string {
+  return runScript('get-reset-token.ts', [email], 'get reset token')
+}
