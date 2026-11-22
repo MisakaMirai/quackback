@@ -2,7 +2,6 @@ import { z } from 'zod'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { PERMISSIONS, type PermissionKey } from '@/lib/shared/permissions'
 import { buildAskDestinations } from '@/lib/shared/ask-destinations'
-import { DOMAINS_PAGE_PERMISSIONS } from '@/lib/shared/domains-permissions'
 import { EMAIL_SENDING_PERMISSION } from '@/lib/shared/email-sending-permissions'
 import { getFeatureFlags } from '@/lib/server/domains/settings/settings.service'
 import { resolveMcpActor } from '../resolve-actor'
@@ -51,11 +50,6 @@ export const WORKSPACE_NAVIGATION = {
   authentication: {
     href: '/admin/settings/security/authentication',
     permission: PERMISSIONS.AUTH_MANAGE,
-    scope: 'read:settings',
-  },
-  domains: {
-    href: '/admin/settings/domains',
-    anyOf: DOMAINS_PAGE_PERMISSIONS,
     scope: 'read:settings',
   },
   email: {
@@ -130,7 +124,7 @@ export function registerNavigationTools(server: McpServer, auth: McpAuthContext)
     permissions: ({ destination }, toolAuth) => [
       navigationPermission(WORKSPACE_NAVIGATION[destination], heldPermissions(toolAuth)),
     ],
-    description: `Return an allowed workspace deep link without changing anything. Use this for operator-managed workspace names, authentication or SSO, domains, members or roles, API keys, integration OAuth, creating a board, portal header customization, and every delete request. These areas cannot be changed from chat. Never invent a URL. A delete request opens its product page for a person to review.
+    description: `Return an allowed workspace deep link without changing anything. Use this for operator-managed workspace names, authentication or SSO, members or roles, API keys, integration OAuth, creating a board, portal header customization, and every delete request. These areas cannot be changed from chat. Never invent a URL. A delete request opens its product page for a person to review.
 Examples:
 {"destination":"members"}
 {"destination":"authentication"}`,

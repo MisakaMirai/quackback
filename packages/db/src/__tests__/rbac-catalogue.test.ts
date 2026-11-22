@@ -163,7 +163,6 @@ describe('RBAC permission catalogue', () => {
       PERMISSIONS.SETTINGS_BRANDING,
       PERMISSIONS.SETTINGS_MODERATION,
       PERMISSIONS.SETTINGS_NOTIFICATIONS,
-      PERMISSIONS.SETTINGS_CUSTOM_DOMAIN,
     ]) {
       expect(WORKSPACE_ADMIN_PERMISSIONS).toContain(key)
       expect(SYSTEM_ROLE_PERMISSIONS.manager).not.toContain(key)

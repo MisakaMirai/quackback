@@ -206,12 +206,6 @@ describe('getNotificationTarget', () => {
       })
   })
 
-  it('routes a domain bell to the domains settings', () => {
-    expect(getNotificationTarget(buildNotification({ type: 'domain_needs_attention' }))).toEqual({
-      to: '/admin/settings/domains',
-    })
-  })
-
   it('routes changelog_published with a changelogId to the specific entry', () => {
     const notification = buildNotification({
       type: 'changelog_published',

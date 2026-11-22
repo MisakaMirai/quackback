@@ -91,12 +91,7 @@ describe('whose name a platform-address email goes under', () => {
       .map(([type]) => type)
       .sort()
     expect(product).toEqual(
-      [
-        'DomainAttentionEmail',
-        'OnboardingNudgeEmail',
-        'OnboardingWelcomeEmail',
-        'SendingDomainAttentionEmail',
-      ].sort()
+      ['OnboardingNudgeEmail', 'OnboardingWelcomeEmail', 'SendingDomainAttentionEmail'].sort()
     )
   })
 

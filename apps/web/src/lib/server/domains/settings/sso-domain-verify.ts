@@ -1,29 +1,19 @@
 /**
- * Whether this workspace controls a single sign-on domain.
- *
- * A domain already proven another way (a verified sending domain at or above
- * it, or a ready web address that is exactly it) needs no record of its own,
- * so no lookup is made. Otherwise the domain's own verification TXT
- * decides, as before.
+ * Whether this workspace controls a single sign-on domain: the domain's own
+ * verification TXT is the only evidence, since a self-hosted install has no
+ * cross-domain proof to inherit.
  */
 import { lookupVerificationTxt } from '@/lib/server/auth/dns-verify'
 import { interactiveResolver } from '@/lib/server/dns/resolver'
-import {
-  SSO_VERIFY_RECORD_HOST,
-  ssoVerifyRecordValue,
-  type DomainRecordCheck,
-} from '@/lib/shared/domain-proof'
-import { ssoDomainProvenBy } from './proven-zones'
+import { SSO_VERIFY_RECORD_HOST, ssoVerifyRecordValue } from '@/lib/shared/sso-domain'
 
-export type SsoDomainCheck = DomainRecordCheck
+export type SsoDomainCheck =
+  { ok: true; via: 'dns' } | { ok: false; reason: 'no-record' | 'lookup-failed' | 'mismatch' }
 
 export async function checkSsoDomainOwnership(domain: {
   name: string
   verificationToken: string
 }): Promise<SsoDomainCheck> {
-  const provenBy = await ssoDomainProvenBy(domain.name)
-  if (provenBy) return { ok: true, via: provenBy }
-
   // Run when someone clicks Verify, so the lookup gets a second try.
   const result = await lookupVerificationTxt(
     `${SSO_VERIFY_RECORD_HOST}.${domain.name}`,

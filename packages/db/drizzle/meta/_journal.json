@@ -2059,6 +2059,13 @@
       "when": 1791002400000,
       "tag": "0319_drop_retired_tables",
       "breakpoints": true
+    },
+    {
+      "idx": 297,
+      "version": "7",
+      "when": 1791002500000,
+      "tag": "0320_drop_domain_proof",
+      "breakpoints": true
     }
   ]
 }

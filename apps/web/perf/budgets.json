@@ -423,19 +423,6 @@
       "htmlTransferKB": 34.3,
       "componentRenders": 431
     },
-    "sweep:doc:admin:/admin/settings/domains": {
-      "dbQueries": 11,
-      "htmlKB": 67.9
-    },
-    "sweep:ui:admin:/admin/settings/domains": {
-      "dbQueries": 11,
-      "serverRequests": 1,
-      "requests": 107,
-      "jsRequests": 103,
-      "jsKB": 404.2,
-      "htmlTransferKB": 29.7,
-      "componentRenders": 346
-    },
     "sweep:doc:admin:/admin/settings/general": {
       "dbQueries": 8,
       "htmlKB": 78.6

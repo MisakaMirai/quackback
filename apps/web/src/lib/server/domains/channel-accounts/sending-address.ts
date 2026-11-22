@@ -44,10 +44,6 @@ import {
   provisionSendingDomain,
 } from './sending-identity'
 import { clearEmailSendersFor } from './email-senders'
-import {
-  discardUnusedDomain,
-  ensureDomain,
-} from '@/lib/server/domains/domain-proof/domains.service'
 
 const log = logger.child({ component: 'sending-address' })
 
@@ -114,7 +110,6 @@ export async function addSendingAddress(input: {
   // not the single-workspace allowance that permits everything.
   if (isSendingIdentityPermitted(address, { ...ctx, pooled: true })) {
     const covering = domain ? verifiedCovering(domains, domain) : undefined
-    if (covering) await ensureDomain(covering.domain)
     return createSendingAddress({ ...input, address, sendingDomainId: covering?.id })
   }
   if (mode === 'unavailable') {
@@ -122,18 +117,7 @@ export async function addSendingAddress(input: {
   }
   if (!customSendingDomainsAvailable()) return createSendingAddress({ ...input, address })
 
-  // The domain goes on Settings > Domains first, so a sending row issued a
-  // token later takes the domain's and one record proves both. One this add
-  // created goes again if the address ends up on no sending row.
-  const ensured = domain ? await ensureDomain(domain) : null
-  try {
-    const account = await addOnItsDomain(input, address, domain, mode, domains)
-    if (ensured?.created && !account.sendingDomainId) await discardUnusedDomain(ensured.domain)
-    return account
-  } catch (err) {
-    if (ensured?.created) await discardUnusedDomain(ensured.domain)
-    throw err
-  }
+  return addOnItsDomain(input, address, domain, mode, domains)
 }
 
 /** The address on its domain's sending row: this workspace's, or a new one set up for it. */

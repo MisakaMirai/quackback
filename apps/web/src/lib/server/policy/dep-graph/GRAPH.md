@@ -57,8 +57,8 @@ Edges (27):
 
 ## 3. Server domains (lib/server/domains)
 
-Nodes (46): activity, admin-overview, analytics, api, api-keys, attribute-definitions, boards, changelog, channel-accounts, channels, comments, conversation, conversation-attributes, conversation-views, domain-proof, export, files, help-center, import, inbox, macros, moderation, notifications, office-hours, onboarding, platform-credentials, post-tags, post-views, posts, principals, push-devices, roadmaps, roles, search, segments, settings, settings-registry, sla, status, statuses, subscriptions, teams, tickets, user-attributes, users, webhooks
-Edges (86):
+Nodes (45): activity, admin-overview, analytics, api, api-keys, attribute-definitions, boards, changelog, channel-accounts, channels, comments, conversation, conversation-attributes, conversation-views, export, files, help-center, import, inbox, macros, moderation, notifications, office-hours, onboarding, platform-credentials, post-tags, post-views, posts, principals, push-devices, roadmaps, roles, search, segments, settings, settings-registry, sla, status, statuses, subscriptions, teams, tickets, user-attributes, users, webhooks
+Edges (81):
 
 - activity -> principals
 - admin-overview -> changelog
@@ -73,7 +73,6 @@ Edges (86):
 - boards -> settings
 - changelog -> settings
 - channel-accounts -> conversation
-- channel-accounts -> domain-proof
 - channel-accounts -> notifications
 - channel-accounts -> settings
 - channel-accounts -> subscriptions
@@ -93,12 +92,9 @@ Edges (86):
 - conversation -> sla
 - conversation -> teams
 - conversation -> tickets
-- domain-proof -> channel-accounts
-- domain-proof -> settings
 - export -> conversation
 - export -> users
 - files -> principals
-- help-center -> domain-proof
 - help-center -> principals
 - help-center -> settings
 - import -> principals
@@ -125,7 +121,6 @@ Edges (86):
 - roles -> settings
 - search -> help-center
 - search -> posts
-- settings -> domain-proof
 - settings -> platform-credentials
 - settings -> sla
 - settings-registry -> api
@@ -151,4 +146,6 @@ Edges (86):
 
 Strongly connected components with more than one domain. A new entry here is a new cycle and needs an explicit decision.
 
-- activity <-> changelog <-> channel-accounts <-> channels <-> comments <-> conversation <-> domain-proof <-> files <-> posts <-> principals <-> roles <-> settings <-> sla <-> status <-> subscriptions <-> tickets
+- channel-accounts <-> channels <-> conversation <-> tickets
+- posts <-> subscriptions
+- settings <-> sla

@@ -12,7 +12,7 @@
  * has no Save button of its own — every action here is immediate.
  */
 import { useState } from 'react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQueryClient } from '@tanstack/react-query'
 import { useServerFn } from '@tanstack/react-start'
 import type { IntlShape } from 'react-intl'
 import { CheckCircleIcon, ClockIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/solid'
@@ -27,7 +27,6 @@ import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { DnsRecordTable, type DnsRecordRow } from '@/components/shared/dns-record-table'
 import {
   addProviderDomainFn,
-  getSsoDomainProofsFn,
   removeVerifiedDomainFn,
   setDomainEnforcedFn,
   verifyProviderDomainFn,
@@ -35,13 +34,7 @@ import {
 } from '@/lib/server/functions/sso'
 import type { IdentityProvider } from '@/lib/server/domains/settings/identity-providers.service'
 import type { VerifiedDomain } from '@/lib/server/domains/settings/settings.types'
-import {
-  SSO_VERIFY_RECORD_HOST,
-  pendingProvenLabel,
-  ssoVerifyRecordValue,
-  verifiedThroughLabel,
-  type ShownProofSource,
-} from '@/lib/shared/domain-proof'
+import { SSO_VERIFY_RECORD_HOST, ssoVerifyRecordValue } from '@/lib/shared/sso-domain'
 import { IDENTITY_PROVIDERS_KEY, getConnectionTestState } from './provider-shared'
 import { errorText } from '@/lib/client/error-text'
 
@@ -68,8 +61,6 @@ const VERIFY_REASON_MESSAGES: Record<
     defaultMessage: 'No pending domain to verify.',
   },
 }
-
-const SSO_DOMAIN_PROOFS_KEY = ['settings', 'ssoDomainProofs'] as const
 
 /** The TXT record a pending domain needs, with what the last Verify found. */
 export function ssoTxtRecord(
@@ -114,22 +105,12 @@ export function DomainsSection({
   const [addError, setAddError] = useState('')
 
   const domains = provider?.domains ?? []
-  const getProofs = useServerFn(getSsoDomainProofsFn)
-  const proofs = useQuery({
-    queryKey: SSO_DOMAIN_PROOFS_KEY,
-    queryFn: () => getProofs(),
-    enabled: domains.length > 0,
-  })
   const hasVerified = domains.some((d) => d.verifiedAt)
   // Enforcement is available once the provider has a fresh test sign-in — same
   // predicate that drives the connection status line (see getConnectionTestState).
   const enforceable = getConnectionTestState(provider).kind === 'verified'
 
-  const refresh = () =>
-    Promise.all([
-      queryClient.invalidateQueries({ queryKey: IDENTITY_PROVIDERS_KEY }),
-      queryClient.invalidateQueries({ queryKey: SSO_DOMAIN_PROOFS_KEY }),
-    ])
+  const refresh = () => queryClient.invalidateQueries({ queryKey: IDENTITY_PROVIDERS_KEY })
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -188,7 +169,6 @@ export function DomainsSection({
                 <DomainRow
                   key={d.id}
                   domain={d}
-                  provenBy={proofs.data?.[d.id] ?? null}
                   disabled={disabled}
                   enforceable={enforceable}
                   onChanged={refresh}
@@ -258,14 +238,11 @@ export function DomainsSection({
 
 function DomainRow({
   domain,
-  provenBy,
   disabled,
   enforceable,
   onChanged,
 }: {
   domain: VerifiedDomain
-  /** Another proof this workspace holds that already covers the domain. */
-  provenBy: ShownProofSource | null
   disabled: boolean
   /** True when the provider has a fresh test sign-in — the enforcement
    *  checkbox is enabled. False disables the checkbox to prevent setting
@@ -359,9 +336,7 @@ function DomainRow({
           <span className="truncate text-sm font-medium">{domain.name}</span>
           <span className="text-sm text-muted-foreground">
             {isVerified
-              ? provenBy
-                ? verifiedThroughLabel(provenBy)
-                : null
+              ? null
               : intl.formatMessage({
                   id: 'admin.settings.security.idp.domains.pending',
                   defaultMessage: 'Pending',
@@ -440,18 +415,7 @@ function DomainRow({
         </div>
       </div>
 
-      {!isVerified && provenBy && (
-        <p className="text-xs text-muted-foreground">
-          {intl.formatMessage(
-            {
-              id: 'admin.settings.security.idp.domains.coveredNote',
-              defaultMessage: '{proven}. Click Verify to use it.',
-            },
-            { proven: pendingProvenLabel(provenBy) }
-          )}
-        </p>
-      )}
-      {!isVerified && !provenBy && (
+      {!isVerified && (
         <div className="space-y-1">
           <p className="text-xs text-muted-foreground">
             {intl.formatMessage(
@@ -466,7 +430,7 @@ function DomainRow({
         </div>
       )}
 
-      {provenBy && verifyResult && !verifyResult.verified && (
+      {verifyResult && !verifyResult.verified && (
         <Alert variant="destructive">
           <AlertDescription className="text-xs">
             {intl.formatMessage(VERIFY_REASON_MESSAGES[verifyResult.reason])}

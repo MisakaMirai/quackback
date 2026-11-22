@@ -485,7 +485,7 @@ function generateVerificationToken(): string {
  * but *unlinked* row is adopted by the given provider (a previously
  * global / backfilled domain). A row already owned by another provider is
  * returned untouched — `name` is globally unique, so a domain belongs to
- * exactly one provider. The name is put on Settings > Domains too.
+ * exactly one provider.
  */
 export async function insertVerifiedDomain(
   name: string,
@@ -542,10 +542,6 @@ export async function insertVerifiedDomain(
     log.error({ err: error }, 'insert verified domain failed')
     wrapDbError('insert verified domain', error)
   }
-  // The same domain on Settings > Domains, made in this one step. After the
-  // write and the resets, and never a reason to report the write as failed.
-  const { ensureDomainAfterUse } = await import('@/lib/server/domains/domain-proof/ensure-domain')
-  await ensureDomainAfterUse(name)
   return rowToVerifiedDomain(inserted.row)
 }
 

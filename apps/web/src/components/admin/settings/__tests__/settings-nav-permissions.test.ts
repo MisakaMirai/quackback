@@ -36,7 +36,6 @@ describe('navSectionsFor', () => {
 
     expect(labels(only(PERMISSIONS.SETTINGS_MANAGE), 'Workspace')).toEqual([
       'General',
-      'Domains',
       'Email',
       'Notifications',
     ])
@@ -45,12 +44,7 @@ describe('navSectionsFor', () => {
       'Notifications',
       'Portal',
     ])
-    expect(labels(only(PERMISSIONS.SETTINGS_CUSTOM_DOMAIN), 'Workspace')).toEqual([
-      'Domains',
-      'Notifications',
-    ])
     expect(labels(only(PERMISSIONS.AUTH_MANAGE), 'Workspace')).toEqual([
-      'Domains',
       'Notifications',
       'Access & Security',
     ])
@@ -137,7 +131,7 @@ describe('firstSettingsPath', () => {
     expect(first(contributor)).toBe('/admin/settings/members')
   })
 
-  it('never lands on the Domains overview; a domain owner opens their own page', () => {
+  it('lands on the first page the viewer can open', () => {
     expect(first(new Set([PERMISSIONS.AUTH_MANAGE]))).toBe(
       '/admin/settings/security/authentication'
     )
@@ -149,10 +143,6 @@ describe('firstSettingsPath', () => {
     expect(first(new Set([PERMISSIONS.CHANNEL_ACCOUNT_MANAGE]), email)).toBe(
       '/admin/settings/channels/email'
     )
-    // Domains holds web address setup, which this permission owns: it lands there.
-    expect(first(new Set([PERMISSIONS.SETTINGS_CUSTOM_DOMAIN]))).toBe('/admin/settings/domains')
-    // A viewer who only reaches Domains through another page's permission does not.
-    expect(first(new Set([PERMISSIONS.AUTH_MANAGE]))).not.toBe('/admin/settings/domains')
   })
 
   it('opens Notifications for a viewer with no settings permission', () => {

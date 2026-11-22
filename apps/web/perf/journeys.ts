@@ -189,7 +189,6 @@ const SWEEP_PAGES: { path: string; as: Actor }[] = [
     'channels/messenger',
     'conversation-data',
     'developers',
-    'domains',
     'general',
     'help-center',
     'imports',
