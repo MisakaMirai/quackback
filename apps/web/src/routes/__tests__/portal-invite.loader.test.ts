@@ -2,7 +2,8 @@
  * Unit tests for the portal-invite.$inviteId route loader.
  *
  * Covers fix #10: the loader must distinguish error kinds instead of
- * mapping everything to not_found.
+ * mapping everything to not_found — and must let an accepted invite's
+ * redirect through (see the redirect fixture below).
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
@@ -35,17 +36,20 @@ vi.mock('@/lib/server/functions/portal-invites', () => ({
   acceptPortalInviteFn: (args: unknown) => mockAcceptPortalInviteFn(args),
 }))
 
-// TanStack Router redirect — mimic the real throw-based API.
-const mockRedirectThrow = vi.fn((opts: { to: string; search?: Record<string, string> }) => {
-  const err = Object.assign(new Error('redirect'), { isRedirect: true, ...opts })
-  return err
-})
+// TanStack Router redirect — the REAL shape: `redirect()` returns a wrapper
+// carrying only `options`, and the router's `isRedirect` helper recognises it.
+// (An older fixture stamped `isRedirect: true` onto the throw itself, which
+// hid the route testing the wrong shape and rendering its error page for an
+// accepted invite.)
+const mockRedirectThrow = vi.fn((opts: { to: string; search?: Record<string, string> }) => ({
+  options: opts,
+}))
 
 vi.mock('@tanstack/react-router', () => ({
   createFileRoute: (_path: string) => (opts: unknown) => ({ options: opts }),
-  redirect: (opts: { to: string; search?: Record<string, string> }) => {
-    return mockRedirectThrow(opts)
-  },
+  redirect: (opts: { to: string; search?: Record<string, string> }) => mockRedirectThrow(opts),
+  isRedirect: (err: unknown) =>
+    Boolean(err && typeof err === 'object' && 'options' in (err as Record<string, unknown>)),
 }))
 
 // ---------------------------------------------------------------------------
@@ -70,6 +74,11 @@ async function runLoader(
   }
 }
 
+/** The options a redirecting loader threw (the router's own wrapper shape). */
+function redirectOptions(result: unknown): { to: string; search?: Record<string, string> } {
+  return (result as { options: { to: string; search?: Record<string, string> } }).options
+}
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
@@ -81,24 +90,21 @@ beforeEach(() => {
 describe('portal-invite route loader — unauthenticated', () => {
   it('redirects to the sign-in dialog when session is null', async () => {
     const result = await runLoader('invite_1', null)
-    const r = result as { isRedirect?: boolean; to?: string; search?: Record<string, string> }
-    expect(r.isRedirect).toBe(true)
+    const r = redirectOptions(result)
     expect(r.to).toBe('/')
     expect(r.search?.auth).toBe('signin')
   })
 
   it('redirects to the sign-in dialog when session has no user', async () => {
     const result = await runLoader('invite_1', {})
-    const r = result as { isRedirect?: boolean; to?: string; search?: Record<string, string> }
-    expect(r.isRedirect).toBe(true)
+    const r = redirectOptions(result)
     expect(r.to).toBe('/')
     expect(r.search?.auth).toBe('signin')
   })
 
   it('includes callbackUrl pointing back to the invite route', async () => {
     const result = await runLoader('invite_abc', null)
-    const r = result as { search?: { callbackUrl: string } }
-    expect(r.search?.callbackUrl).toBe('/portal-invite/invite_abc')
+    expect(redirectOptions(result).search?.callbackUrl).toBe('/portal-invite/invite_abc')
   })
 })
 
@@ -106,8 +112,7 @@ describe('portal-invite route loader — Authentication required error', () => {
   it('redirects to the sign-in dialog when acceptPortalInviteFn throws Authentication required', async () => {
     mockAcceptPortalInviteFn.mockRejectedValue(new Error('Authentication required'))
     const result = await runLoader('invite_1', { user: { id: 'u1' } })
-    const r = result as { isRedirect?: boolean; to?: string; search?: Record<string, string> }
-    expect(r.isRedirect).toBe(true)
+    const r = redirectOptions(result)
     expect(r.to).toBe('/')
     expect(r.search?.auth).toBe('signin')
   })
@@ -147,9 +152,7 @@ describe('portal-invite route loader — accepted', () => {
   it('redirects to / when invite is accepted', async () => {
     mockAcceptPortalInviteFn.mockResolvedValue({ status: 'accepted', alreadyAccepted: false })
     const result = await runLoader('invite_1', { user: { id: 'u1' } })
-    const r = result as { isRedirect?: boolean; to?: string }
-    expect(r.isRedirect).toBe(true)
-    expect(r.to).toBe('/')
+    expect(redirectOptions(result).to).toBe('/')
   })
 
   it('returns mismatch status through', async () => {

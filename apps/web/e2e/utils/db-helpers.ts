@@ -245,3 +245,16 @@ export function getTeamInvitation(email: string): TeamInvitation {
     runScript('get-team-invitation.ts', [email], 'get team invitation')
   ) as TeamInvitation
 }
+
+export interface PortalInvitation {
+  invitationId: string
+  status: string
+  email: string
+}
+
+/** The newest portal-access invitation for `email`. */
+export function getPortalInvitation(email: string): PortalInvitation {
+  return JSON.parse(
+    runScript('get-portal-invitation.ts', [email], 'get portal invitation')
+  ) as PortalInvitation
+}
