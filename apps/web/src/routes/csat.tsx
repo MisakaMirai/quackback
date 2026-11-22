@@ -22,11 +22,20 @@ import { Textarea } from '@/components/ui/textarea'
 
 const searchSchema = z.object({
   token: z.string().optional(),
-  // Kept as a raw string (not z.coerce.number()) so a malformed value fails
+  // Kept as a string (not z.coerce.number()) so a malformed value fails
   // gracefully into the same friendly error state below, instead of throwing
   // out of search validation itself — mirrors unsubscribe.tsx's own
   // validate-then-degrade-to-an-error-view pattern for its token param.
-  rating: z.string().optional(),
+  //
+  // The router JSON-parses query values that look like numbers, so the
+  // `?rating=4` every rating-request email carries arrives as the NUMBER 4
+  // here, not "4". Accept either shape and normalize to the string the view
+  // already parses; a plain z.string() rejected the emailed links with a
+  // 500 on the route's search validation.
+  rating: z
+    .union([z.string(), z.number()])
+    .optional()
+    .transform((value) => (value === undefined ? undefined : String(value))),
 })
 
 type CsatLoaderResult =

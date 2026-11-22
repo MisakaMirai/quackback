@@ -139,3 +139,59 @@ export function getMentionTarget(excludeEmail: string = 'demo@example.com'): {
     displayName: string
   }
 }
+
+/** Actions the emailed unsubscribe link carries. */
+export type UnsubscribeAction = 'unsubscribe_all' | 'unsubscribe_post' | 'unsubscribe_changelog'
+
+export interface UnsubscribeFixture {
+  token: string
+  principalId: string
+}
+
+/**
+ * Reset `email`'s notification preferences to the all-on baseline and insert
+ * one live unsubscribe token for `action`. The user must have signed in once
+ * (the seed scripts resolve principals through `"user"`).
+ */
+export function seedUnsubscribeToken(email: string, action: UnsubscribeAction): UnsubscribeFixture {
+  return JSON.parse(
+    runScript('seed-unsubscribe-token.ts', ['seed', email, action], 'seed unsubscribe token')
+  ) as UnsubscribeFixture
+}
+
+export interface UnsubscribeState {
+  emailStatusChange: boolean | null
+  emailNewComment: boolean | null
+  emailMuted: boolean | null
+}
+
+/** The preferences an unsubscribe link would change, straight from the DB. */
+export function readUnsubscribeState(email: string): UnsubscribeState {
+  return JSON.parse(
+    runScript('seed-unsubscribe-token.ts', ['state', email], 'read unsubscribe state')
+  ) as UnsubscribeState
+}
+
+/**
+ * Clear a conversation's CSAT fields and mint a real CSAT-over-email token for
+ * its visitor. `conversationTypeId` is the TypeID string (`conversation_...`).
+ */
+export function mintCsatToken(conversationTypeId: string): string {
+  const out = JSON.parse(
+    runScript('csat-token.ts', ['mint', conversationTypeId], 'mint csat token')
+  ) as { token: string }
+  return out.token
+}
+
+export interface CsatState {
+  csatRating: number | null
+  csatComment: string | null
+  csatSubmittedAt: string | null
+}
+
+/** The rating/comment stored on a conversation. */
+export function readCsatState(conversationTypeId: string): CsatState {
+  return JSON.parse(
+    runScript('csat-token.ts', ['state', conversationTypeId], 'read csat state')
+  ) as CsatState
+}
