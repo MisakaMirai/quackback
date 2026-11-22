@@ -258,3 +258,16 @@ export function getPortalInvitation(email: string): PortalInvitation {
     runScript('get-portal-invitation.ts', [email], 'get portal invitation')
   ) as PortalInvitation
 }
+
+export interface StatusIncidentFixture {
+  incidentId: string
+  status: string
+  title: string
+}
+
+/** The newest status incident with `title` (rows are found by their title). */
+export function getStatusIncident(title: string): StatusIncidentFixture {
+  return JSON.parse(
+    runScript('get-status-incident.ts', [title], 'get status incident')
+  ) as StatusIncidentFixture
+}
