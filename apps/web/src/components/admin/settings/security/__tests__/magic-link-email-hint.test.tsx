@@ -40,7 +40,6 @@ function renderTab(emailConfigured: boolean) {
       <SignInProvidersTab
         initialTeamAuthConfig={teamAuth}
         credentialStatus={{ _emailConfigured: emailConfigured }}
-        customOidcProviderTier={false}
       />
     </QueryClientProvider>
   )

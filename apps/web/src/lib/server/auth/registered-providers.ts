@@ -20,7 +20,6 @@
  */
 
 import { getWorkspaceSettings } from '@/lib/server/domains/settings/settings.service'
-import { getTierLimits } from '@/lib/server/domains/settings/tier-limits.service'
 import { getConfiguredIntegrationTypes } from '@/lib/server/domains/platform-credentials/platform-credential.service'
 import {
   listIdentityProviders,
@@ -59,14 +58,12 @@ const REGISTERED_AUTH_PROVIDERS_TTL_SECONDS = 300
 export async function getRegisteredOidcProviderIds(
   providers?: IdentityProvider[]
 ): Promise<Set<string>> {
-  const [tierLimits, configuredTypes, identityProviders] = await Promise.all([
-    getTierLimits(),
+  const [configuredTypes, identityProviders] = await Promise.all([
     getConfiguredIntegrationTypes(),
     providers ? Promise.resolve(providers) : listIdentityProviders(),
   ])
 
   const ids = new Set<string>()
-  if (!tierLimits.features.customOidcProvider) return ids
   for (const provider of identityProviders) {
     if (!provider.enabled) continue
     if (!configuredTypes.has(`${AUTH_CREDENTIAL_PREFIX}${provider.registrationId}`)) continue

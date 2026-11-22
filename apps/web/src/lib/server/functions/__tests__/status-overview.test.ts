@@ -26,10 +26,6 @@ vi.mock('@/lib/server/domains/settings/settings.status', () => ({
   getStatusSettings: vi.fn().mockResolvedValue({ enabled: true }),
   updateStatusSettings: vi.fn(),
 }))
-vi.mock('@/lib/server/domains/settings/tier-enforce', () => ({
-  enforceStatusComponentLimit: vi.fn(),
-}))
-
 const mockListStatusIncidents = vi.fn()
 vi.mock('@/lib/server/domains/status', () => ({
   listStatusComponentGroupsWithComponents: vi.fn().mockResolvedValue([]),

@@ -5,7 +5,6 @@ import type { LaunchStatus } from '../launch-checklist'
 const base: LaunchStatus = {
   hasBoards: false,
   boardCount: 0,
-  maxBoards: null,
   memberCount: 1,
   hasBranding: false,
   hasHelpArticle: false,
@@ -98,13 +97,6 @@ describe('buildLaunchTasks', () => {
       .filter((task) => task.classification === 'prerequisite')
       .map((task) => task.id)
     expect(ids).toEqual(['create-board', 'publish-changelog', 'help-article', 'add-status-service'])
-  })
-
-  it('blocks the board step at the plan limit', () => {
-    const status = { ...base, boardCount: 1, maxBoards: 1, features: noExtraModules }
-    const board = buildLaunchTasks(status).find((task) => task.id === 'create-board')
-    expect(board?.availability).toBe('blocked')
-    expect(board?.blocked?.kind).toBe('plan-limit')
   })
 
   it('hides Help Center and Support rows when those modules are off', () => {

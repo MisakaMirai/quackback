@@ -212,7 +212,6 @@ async function createAuth() {
   const { getPlatformCredentials } =
     await import('@/lib/server/domains/platform-credentials/platform-credential.service')
   const { getAllAuthProviders, socialProviderConfig } = await import('./auth-providers')
-  const { getTierLimits } = await import('@/lib/server/domains/settings/tier-limits.service')
   const { getWorkspaceSettings } = await import('@/lib/server/domains/settings/settings.service')
   const { listIdentityProviders, getIdentityProviderCredentials } =
     await import('@/lib/server/domains/settings/identity-providers.service')
@@ -225,23 +224,16 @@ async function createAuth() {
   const trustedProviders: string[] = []
   const genericOAuthConfigs: GenericOAuthConfig[] = []
 
-  // Tier limits + workspace settings are independent reads — fire them
-  // together to avoid stacking Redis round-trips on every auth-instance
-  // rebuild. workspaceSettings still drives the social-provider surface
-  // filter below; OIDC config now comes from the identity_provider list.
-  const [tierLimits, workspaceSettings] = await Promise.all([
-    getTierLimits(),
-    getWorkspaceSettings(),
-  ])
+  // workspaceSettings drives the social-provider surface filter below; OIDC
+  // config comes from the identity_provider list.
+  const workspaceSettings = await getWorkspaceSettings()
 
   // OIDC providers (single sign-on + portal custom OIDC) are registered
   // from the identity_provider list — the single source of truth. Each
   // provider keeps its own registrationId as the Better-Auth providerId
   // (migrated rows preserve 'sso'/'custom-oidc'), so the OAuth redirect
-  // URI is stable and needs no IdP reconfiguration. Tier-gated inside
-  // buildGenericOAuthConfigs: a downgraded workspace stops registering
-  // OIDC even though the rows remain. The login_hint params are carried
-  // to every provider since any may be domain-routed.
+  // URI is stable and needs no IdP reconfiguration. The login_hint params
+  // are carried to every provider since any may be domain-routed.
   // Discovery and userinfo are fetched through the SSRF-guarded helper, and
   // resolved HERE rather than inside the resolver: the plugin's getUserInfo
   // seam receives only the token set, so without closing the endpoint over at
@@ -300,7 +292,6 @@ async function createAuth() {
   const oidcConfigs = await buildGenericOAuthConfigs({
     providers: providerRows,
     creds: getIdentityProviderCredentials,
-    tierAllowsOidc: tierLimits.features.customOidcProvider,
     baseUrl: config.baseUrl,
     discovery: (discoveryUrl) => fetchJson(discoveryUrl),
     fetchUserInfo: (url, accessToken) => fetchJson(url, { authorization: `Bearer ${accessToken}` }),

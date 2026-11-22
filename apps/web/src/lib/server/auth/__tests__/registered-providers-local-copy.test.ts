@@ -25,9 +25,6 @@ vi.mock('@/lib/server/kv/pg-kv', () => ({
 vi.mock('@/lib/server/domains/settings/settings.service', () => ({
   getWorkspaceSettings: vi.fn(async () => ({ authConfig: { oauth: {} } })),
 }))
-vi.mock('@/lib/server/domains/settings/tier-limits.service', () => ({
-  getTierLimits: vi.fn(async () => ({ features: { customOidcProvider: false } })),
-}))
 vi.mock('@/lib/server/domains/platform-credentials/platform-credential.service', () => ({
   getConfiguredIntegrationTypes: vi.fn(async () => new Set<string>()),
 }))

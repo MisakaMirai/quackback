@@ -24,7 +24,6 @@ import {
 import { getSetupState } from '@/lib/shared/db-types'
 import { permissionsForLegacyRole } from '@/lib/server/policy/permissions'
 import { resolveFeatureFlags } from '@/lib/server/domains/settings/settings.types'
-import { getTierLimits } from '@/lib/server/domains/settings/tier-limits.service'
 import { detectFirstWin, internalWinScope, winOutcome } from '@/lib/server/activation-wins'
 import { isLaunchWindowOpen, launchWindowFor } from '@/lib/shared/launch-window'
 import { PERMISSIONS, type PermissionKey } from '@/lib/shared/permissions'
@@ -49,7 +48,6 @@ export async function loadLaunchStatus(caller: LaunchStatusCaller) {
     helpArticle,
     publishedChangelog,
     statusComponent,
-    tierLimits,
   ] = await Promise.all([
     db.query.boards.findMany({
       columns: { id: true, slug: true, access: true },
@@ -82,7 +80,6 @@ export async function loadLaunchStatus(caller: LaunchStatusCaller) {
       columns: { id: true },
       where: isNull(statusComponents.deletedAt),
     }),
-    getTierLimits(),
   ])
 
   const setupState = getSetupState(orgSettings?.setupState ?? null)
@@ -143,7 +140,6 @@ export async function loadLaunchStatus(caller: LaunchStatusCaller) {
     feedbackPrivate: setupState?.feedbackPrivate,
     taskResolutions: setupState?.taskResolutions ?? {},
     boardCount: orgBoards.length,
-    maxBoards: tierLimits.maxBoards,
     goalManaged: Boolean(
       orgSettings &&
       (orgSettings.managedFieldPaths as string[]).some(
@@ -163,7 +159,7 @@ export async function loadLaunchStatus(caller: LaunchStatusCaller) {
       helpCenter: flags.helpCenter,
       statusPage: flags.statusPage,
       changelog: flags.changelog,
-      integrations: tierLimits.features.integrations,
+      integrations: true,
     },
   }
 }

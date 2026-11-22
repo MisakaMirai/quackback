@@ -7,7 +7,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 const hoisted = vi.hoisted(() => ({
   mockValidateAccess: vi.fn(),
   mockListConversationsForExport: vi.fn(),
-  mockGetTierLimits: vi.fn(),
   mockRecordAuditEvent: vi.fn(),
 }))
 
@@ -21,10 +20,6 @@ vi.mock('@/lib/server/auth', () => ({
 
 vi.mock('@/lib/server/domains/conversation/conversation.export', () => ({
   listConversationsForExport: hoisted.mockListConversationsForExport,
-}))
-
-vi.mock('@/lib/server/domains/settings/tier-limits.service', () => ({
-  getTierLimits: hoisted.mockGetTierLimits,
 }))
 
 vi.mock('@/lib/server/audit/log', () => ({
@@ -45,7 +40,6 @@ beforeEach(() => {
     user: { id: 'user_admin', email: 'admin@example.com' },
     settings: { slug: 'acme' },
   })
-  hoisted.mockGetTierLimits.mockResolvedValue({ features: { analyticsExports: true } })
   hoisted.mockRecordAuditEvent.mockResolvedValue(undefined)
 })
 

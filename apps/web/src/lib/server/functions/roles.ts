@@ -50,13 +50,8 @@ function editorFromAuth(auth: Awaited<ReturnType<typeof requireAuth>>): RoleEdit
 
 export const listRolesFn = createServerFn({ method: 'GET' }).handler(async () => {
   await requireAuth({ permission: PERMISSIONS.MEMBER_VIEW })
-  const [roles, limits] = await Promise.all([
-    listRoles(),
-    import('@/lib/server/domains/settings/tier-limits.service').then((m) => m.getTierLimits()),
-  ])
-  // The cap ships so the roles tab can render the plan banner; null (the OSS
-  // default) renders nothing.
-  return { roles, maxCustomRoles: limits.maxCustomRoles }
+  const roles = await listRoles()
+  return { roles }
 })
 
 export const createRoleFn = createServerFn({ method: 'POST' })

@@ -39,7 +39,6 @@
     "test": "vitest",
     "test:api": "cd apps/web && vitest src/lib/server/domains/api/__tests__/api-integration.test.ts",
     "test:e2e": "bun run --filter @quackback/web test:e2e",
-    "db:generate": "bun run --cwd packages/db db:generate",
     "db:migrate": "bun run --cwd packages/db db:migrate",
     "db:check-drift": "bun run --cwd packages/db db:check-drift",
     "db:permissions": "bun run --cwd packages/db db:permissions",

@@ -58,7 +58,6 @@ interface WorkspaceFixture {
   identityProviders: { registrationId: string; enabled: boolean }[]
   configuredTypes: string[]
   oauth: Record<string, boolean>
-  customOidcProvider: boolean
 }
 
 const hoisted = vi.hoisted(() => ({
@@ -74,7 +73,6 @@ function fixture(): WorkspaceFixture {
       identityProviders: [],
       configuredTypes: [],
       oauth: {},
-      customOidcProvider: false,
     }
   )
 }
@@ -86,11 +84,6 @@ vi.mock('@/lib/server/domains/settings/settings.service', () => ({
     return { authConfig: { oauth: fixture().oauth } }
   },
 }))
-vi.mock('@/lib/server/domains/settings/tier-limits.service', () => ({
-  getTierLimits: async () => ({
-    features: { customOidcProvider: fixture().customOidcProvider },
-  }),
-}))
 vi.mock('@/lib/server/domains/platform-credentials/platform-credential.service', () => ({
   getConfiguredIntegrationTypes: async () => new Set(fixture().configuredTypes),
 }))
@@ -98,8 +91,7 @@ vi.mock('@/lib/server/domains/settings/identity-providers.service', () => ({
   listIdentityProviders: async () => fixture().identityProviders,
 }))
 
-const { getRegisteredAuthProviders, getRegisteredOidcProviderIds } =
-  await import('../registered-providers')
+const { getRegisteredAuthProviders } = await import('../registered-providers')
 const { CACHE_KEYS } = await import('@/lib/server/cache')
 const { getCurrentWorkspace } = await import('@/lib/server/workspaces/workspace-context')
 
@@ -111,13 +103,11 @@ const ALPHA: WorkspaceFixture = {
   identityProviders: [{ registrationId: 'alpha-workforce-idp', enabled: true }],
   configuredTypes: ['auth_alpha-workforce-idp', 'auth_google'],
   oauth: { google: true },
-  customOidcProvider: true,
 }
 const BRAVO: WorkspaceFixture = {
   identityProviders: [{ registrationId: 'bravo-partner-idp', enabled: true }],
   configuredTypes: ['auth_bravo-partner-idp'],
   oauth: {},
-  customOidcProvider: true,
 }
 
 beforeAll(async () => {
@@ -225,22 +215,5 @@ describe('REGISTERED_AUTH_PROVIDERS does not cross workspaces', () => {
     const bravo = await withRealWorkspace(BRAVO_ID, () => getRegisteredAuthProviders())
 
     expect(bravo).toEqual([])
-  })
-})
-
-describe('the shared OIDC gate underneath it', () => {
-  // getRegisteredOidcProviderIds is what the ENFORCEMENT path reads
-  // (isHardBound / isAuthMethodAllowed), not just the UI mirror. It takes no
-  // cache, but it reads getTierLimits() — which is itself a §4 cache — so a
-  // leak there would surface here as a provider registering on the wrong plan.
-  it('gates on the ACTIVE workspace’s tier flag, not a neighbour’s', async () => {
-    hoisted.fixtures.set(BRAVO_ID, { ...BRAVO, customOidcProvider: false })
-
-    expect([...(await withRealWorkspace(ALPHA_ID, () => getRegisteredOidcProviderIds()))]).toEqual([
-      'alpha-workforce-idp',
-    ])
-    expect([...(await withRealWorkspace(BRAVO_ID, () => getRegisteredOidcProviderIds()))]).toEqual(
-      []
-    )
   })
 })

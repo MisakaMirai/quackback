@@ -26,8 +26,6 @@ interface AuthSettingsProps {
   /** Full portal config — needed for the visibility card inside PortalAuthTab. */
   portalConfig: PortalConfig
   credentialStatus: Record<string, boolean> & { _emailConfigured?: boolean }
-  /** Tier flag for portal custom OIDC — passed through to <SignInProvidersTab>. */
-  customOidcProviderTier: boolean
 }
 
 /**
@@ -43,7 +41,6 @@ export function AuthSettings({
   teamAuthConfig,
   portalConfig,
   credentialStatus,
-  customOidcProviderTier,
 }: AuthSettingsProps) {
   // No `from` — passes an absolute `to`, so binding the navigate hook
   // to a route would just append paths under TanStack Router's
@@ -99,7 +96,6 @@ export function AuthSettings({
         <SignInProvidersTab
           initialTeamAuthConfig={teamAuthConfig}
           credentialStatus={credentialStatus}
-          customOidcProviderTier={customOidcProviderTier}
         />
       </TabsContent>
 

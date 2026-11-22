@@ -240,15 +240,10 @@ export const fetchTeamMembersAndInvitations = createServerFn({ method: 'GET' }).
       expiresAt: inv.expiresAt.toISOString(),
     }))
 
-    const { getTierLimits } = await import('@/lib/server/domains/settings/tier-limits.service')
     const { countSeatUsage } = await import('@/lib/server/domains/principals/seat-usage')
-    const [limits, seats] = await Promise.all([getTierLimits(), countSeatUsage()])
-    const seatUsage = {
-      used: seats.used,
-      members: seats.members,
-      pendingInvites: seats.pendingInvites,
-      limit: limits.maxTeamSeats,
-    }
+    const seats = await countSeatUsage()
+    // A single-workspace install has no seat cap.
+    const seatUsage = { ...seats, limit: null }
 
     return { members, avatarMap, formattedInvitations, seatUsage }
   }

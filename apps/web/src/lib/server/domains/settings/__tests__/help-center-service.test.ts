@@ -9,7 +9,6 @@
  * - getWorkspaceSettings() includes helpCenterConfig
  */
 
-import { TierLimitError } from '@/lib/server/errors/tier-limit-error'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 // --- Cache mocks ---
@@ -17,10 +16,6 @@ const mockCacheGet = vi.fn()
 const mockCacheSet = vi.fn()
 const mockCacheDel = vi.fn()
 
-const localeLimit = vi.hoisted(() => ({ cap: null as number | null }))
-vi.mock('@/lib/server/domains/settings/tier-limits.service', () => ({
-  getTierLimits: async () => ({ maxHelpCenterLocales: localeLimit.cap }),
-}))
 vi.mock('@/lib/server/cache', () => ({
   cacheGet: (...args: unknown[]) => mockCacheGet(...args),
   cacheSet: (...args: unknown[]) => mockCacheSet(...args),
@@ -41,8 +36,6 @@ const mockSet = vi.fn()
 const mockWhere = vi.fn()
 const mockReturning = vi.fn()
 
-const mockExecute = vi.fn(async (..._args: unknown[]) => [])
-
 vi.mock('@/lib/server/db', async (importOriginal) => {
   const mockDb = {
     query: {
@@ -51,7 +44,6 @@ vi.mock('@/lib/server/db', async (importOriginal) => {
       },
     },
     update: (...args: unknown[]) => mockUpdate(...args),
-    execute: (...args: unknown[]) => mockExecute(...args),
     select: () => ({
       from: () => ({
         where: () => Promise.resolve([]),
@@ -415,68 +407,6 @@ describe('enableHelpCenterLocale', () => {
 
     expect(result.additional).toEqual(['zh-cn'])
     expect(result.chrome['zh-cn'].homepageTitle).toBe('New title')
-  })
-})
-
-describe('enableHelpCenterLocale plan cap', () => {
-  const chrome = { homepageTitle: '你好', homepageDescription: '', searchPlaceholder: '' }
-  const withLocales = (additional: string[]) =>
-    JSON.stringify({
-      locales: { default: 'en', additional, chrome: {} },
-    })
-
-  beforeEach(() => {
-    localeLimit.cap = null
-  })
-
-  it('takes the locale slot lock before it reads the language count', async () => {
-    localeLimit.cap = 2
-    mockFindFirst.mockResolvedValue(makeSettingsRow({ helpCenterConfig: null }))
-
-    await enableHelpCenterLocale({ locale: 'zh-cn', chrome })
-
-    expect(mockExecute).toHaveBeenCalledOnce()
-    expect(mockExecute.mock.invocationCallOrder[0]).toBeLessThan(
-      mockFindFirst.mock.invocationCallOrder[0]
-    )
-  })
-
-  it('refuses a new locale when the default is the only language the plan allows', async () => {
-    localeLimit.cap = 1
-    mockFindFirst.mockResolvedValue(makeSettingsRow({ helpCenterConfig: null }))
-
-    await expect(enableHelpCenterLocale({ locale: 'zh-cn', chrome })).rejects.toBeInstanceOf(
-      TierLimitError
-    )
-    expect(mockUpdate).not.toHaveBeenCalled()
-  })
-
-  it('counts the default language and allows a new locale below the cap', async () => {
-    localeLimit.cap = 2
-    mockFindFirst.mockResolvedValue(makeSettingsRow({ helpCenterConfig: null }))
-
-    const result = await enableHelpCenterLocale({ locale: 'zh-cn', chrome })
-    expect(result.additional).toEqual(['zh-cn'])
-  })
-
-  it('refuses a language past the cap once the plan is full', async () => {
-    localeLimit.cap = 2
-    mockFindFirst.mockResolvedValue(makeSettingsRow({ helpCenterConfig: withLocales(['zh-cn']) }))
-
-    await expect(enableHelpCenterLocale({ locale: 'zh-tw', chrome })).rejects.toBeInstanceOf(
-      TierLimitError
-    )
-    expect(mockUpdate).not.toHaveBeenCalled()
-  })
-
-  it('does not refuse re-enabling a locale that is already on', async () => {
-    localeLimit.cap = 3
-    mockFindFirst.mockResolvedValue(
-      makeSettingsRow({ helpCenterConfig: withLocales(['zh-cn', 'zh-tw']) })
-    )
-
-    const result = await enableHelpCenterLocale({ locale: 'zh-cn', chrome })
-    expect(result.additional).toEqual(['zh-cn', 'zh-tw'])
   })
 })
 

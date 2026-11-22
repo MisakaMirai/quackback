@@ -6,14 +6,14 @@
  * written, and written in one transaction. The picker query lives in
  * people-to-add.ts.
  */
-import { and, db, eq, inArray, invitation, sql, user } from '@/lib/server/db'
+import { db } from '@/lib/server/db'
 import type { InviteId, PrincipalId, RoleId, UserId } from '@quackback/ids'
 import { ConflictError, ValidationError } from '@/lib/shared/errors'
 import { realEmail } from '@/lib/shared/anonymous-email'
 import { recordAuditEvent, type AuditActor } from '@/lib/server/audit/log'
 import { cacheDel } from '@/lib/server/cache'
 import { logger } from '@/lib/server/logger'
-import { assertSeatsAvailable, lockSeatLedger } from './seat-limit'
+import { lockSeatLedger } from './seat-limit'
 import { mapWithConcurrency } from '@/lib/server/utils/concurrency'
 import {
   classifyTeamCandidate,
@@ -42,25 +42,6 @@ const log = logger.child({ component: 'team-additions' })
 export const MAX_TEAM_ADDITIONS = 50
 /** Invitation emails sent at once after commit. */
 const SEND_CONCURRENCY = 5
-
-/** How many of these people already hold a seat through a pending team invite to their email. */
-async function countPendingInvitesFor(people: readonly TeamCandidate[]): Promise<number> {
-  const userIds = people.map((p) => p.userId).filter((id): id is UserId => id != null)
-  if (userIds.length === 0) return 0
-  const rows = await db
-    .selectDistinct({ userId: user.id })
-    .from(user)
-    .innerJoin(invitation, sql`lower(${invitation.email}) = lower(${user.email})`)
-    .where(
-      and(
-        inArray(user.id, userIds),
-        eq(invitation.kind, 'team'),
-        eq(invitation.status, 'pending'),
-        sql`${invitation.expiresAt} > now()`
-      )
-    )
-  return rows.length
-}
 
 export interface AddTeamMembersInput {
   principalIds: string[]
@@ -216,9 +197,6 @@ export async function addTeamMembers(
 
   // Whole-batch seat check before minting anything. A pending invite for a
   // person joining directly already holds their seat.
-  const holding = await countPendingInvitesFor(toPromote)
-  await assertSeatsAvailable(total - holding)
-
   const minted: MintedTeamInvite[] = []
   let written: { cacheKeys: string[]; retiredTokens: string[] }
   try {
@@ -230,7 +208,6 @@ export async function addTeamMembers(
         tx,
         toPromote.map((p) => p.userId as UserId)
       )
-      await assertSeatsAvailable(total, { executor: tx })
       const cacheKeys = await promotePortalUsers(tx, toPromote, input.role, {
         assignRoleId: input.roleId,
         grantedBy: granter.principalId,

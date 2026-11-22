@@ -6,7 +6,6 @@ import {
   db,
   and,
   boards,
-  count,
   eq,
   getSetupState,
   helpCenterArticles,
@@ -21,7 +20,6 @@ import {
   applyDeferredLaunchStartingPoint,
 } from '@/lib/server/setup-state'
 import { isPathManaged } from '@/lib/server/config-file/managed-paths'
-import { getTierLimits } from '@/lib/server/domains/settings/tier-limits.service'
 import { resolveFeatureFlags } from '@/lib/server/domains/settings/settings.types'
 import { logger } from '@/lib/server/logger'
 
@@ -29,22 +27,9 @@ const log = logger.child({ component: 'activation' })
 
 const markPublicBoardLinkCopiedSchema = z.object({ boardId: z.string().min(1) })
 
-async function boardCapacity() {
-  const [limits, [row]] = await Promise.all([
-    getTierLimits(),
-    db.select({ count: count() }).from(boards).where(isNull(boards.deletedAt)),
-  ])
-  const existingCount = Number(row?.count ?? 0)
-  return {
-    maxBoards: limits.maxBoards,
-    existingCount,
-    remaining: limits.maxBoards == null ? null : Math.max(0, limits.maxBoards - existingCount),
-  }
-}
-
 export const getStartingPointContextFn = createServerFn({ method: 'GET' }).handler(async () => {
   await requireAuth({ permission: PERMISSIONS.SETTINGS_MANAGE })
-  const [row, capacity] = await Promise.all([db.query.settings.findFirst(), boardCapacity()])
+  const row = await db.query.settings.findFirst()
   if (!row) throw new Error('Workspace is not set up yet')
   const { getSetupState } = await import('@/lib/shared/db-types')
   const state = getSetupState(row.setupState)
@@ -75,24 +60,19 @@ export const getStartingPointContextFn = createServerFn({ method: 'GET' }).handl
       ? flags.supportInbox
       : outcome === 'help_center'
         ? flags.helpCenter
-        : Boolean(existingBoard) || capacity.remaining === null || capacity.remaining > 0
+        : true
   const blockedReason = available
     ? null
     : outcome === 'customer_support'
       ? 'Customer support is turned off for this workspace. Ask a workspace admin to enable it.'
-      : outcome === 'help_center'
-        ? 'Help Center is turned off for this workspace. Ask a workspace admin to enable it.'
-        : "You've reached the board limit for your plan. Remove a board or upgrade to continue."
+      : 'Help Center is turned off for this workspace. Ask a workspace admin to enable it.'
 
   return {
     outcome,
     available,
     blockedReason,
     goalManaged: isPathManaged('workspace.useCase', row.managedFieldPaths),
-    maxBoards: capacity.maxBoards,
-    remainingBoards: capacity.remaining,
-    existingBoardName:
-      preferredBoard || capacity.remaining === 0 ? (existingBoard?.name ?? null) : null,
+    existingBoardName: existingBoard?.name ?? null,
     startingPoint: state?.steps.startingPoint ?? null,
   }
 })

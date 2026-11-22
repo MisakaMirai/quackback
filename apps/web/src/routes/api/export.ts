@@ -33,10 +33,6 @@ export const Route = createFileRoute('/api/export')({
             return Response.json({ error: 'Access denied' }, { status: 403 })
           }
 
-          // Tier gate: analyticsExports is a Pro+ feature.
-          const { assertTierFeature } = await import('@/lib/server/domains/settings/tier-enforce')
-          await assertTierFeature('analyticsExports', 'Data export')
-
           // Validate boardId TypeID format
           let boardId: BoardId | undefined
           if (boardIdParam) {
@@ -101,10 +97,6 @@ export const Route = createFileRoute('/api/export')({
             },
           })
         } catch (error) {
-          const { TierLimitError } = await import('@/lib/server/errors/tier-limit-error')
-          if (error instanceof TierLimitError) {
-            return Response.json(error.toResponseBody(), { status: error.statusCode })
-          }
           log.error({ err: error }, 'csv export failed')
           return internalRouteErrorResponse()
         }

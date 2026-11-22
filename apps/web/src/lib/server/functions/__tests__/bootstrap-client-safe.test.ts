@@ -76,7 +76,6 @@ function workspaceSettings(rawSetupState: string) {
       slug: 'acme',
       setupState: rawSetupState,
       cloud: { billing: { customerRef: BILLING_REF } },
-      tierLimits: { seats: 3 },
       metadata: '{"status":{"allowedSegmentIds":["seg_hidden"]}}',
       portalConfig: JSON.stringify(portalConfig),
     },

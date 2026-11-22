@@ -28,10 +28,6 @@ import type { IdentityProvider } from '@/lib/server/domains/settings/identity-pr
 import { isSignInMethodEnabled } from '@/lib/shared/signin-methods'
 
 export interface WorkingMethodInputs {
-  /** Whether the `customOidcProvider` tier feature is on. The runtime only
-   *  registers OIDC providers when it is, so a tier-off workspace has no
-   *  working IdP however many are enabled + configured. */
-  tierEnabled: boolean
   /** Every identity provider with its enabled + configured (secret saved) state. */
   providers: ReadonlyArray<{ id: string; enabled: boolean; configured: boolean }>
   /** The unified workspace sign-in config — `authConfig.oauth`. */
@@ -56,8 +52,8 @@ export interface SignInMethodSnapshot extends WorkingMethodInputs {
  * backstop.
  */
 export function hasAnyWorkingSignInMethod(snap: WorkingMethodInputs): boolean {
-  // Registered IdP — enabled + configured + tier on.
-  if (snap.tierEnabled && snap.providers.some((p) => p.enabled && p.configured)) return true
+  // Registered IdP — enabled + configured.
+  if (snap.providers.some((p) => p.enabled && p.configured)) return true
   // Password — enabled (absent ⇒ on), matching the runtime gate.
   if (isSignInMethodEnabled(snap.oauth, 'password')) return true
   // Magic link — opt-in (absent ⇒ off) AND email delivery wired (else rejected).
@@ -82,7 +78,7 @@ export function hasAnyWorkingSignInMethod(snap: WorkingMethodInputs): boolean {
  * SSO-only — which made it exactly the wrong one to leave unguarded.
  */
 export function isSsoOnlySignIn(snap: WorkingMethodInputs): boolean {
-  const anyProviderWorks = snap.tierEnabled && snap.providers.some((p) => p.enabled && p.configured)
+  const anyProviderWorks = snap.providers.some((p) => p.enabled && p.configured)
   if (!anyProviderWorks) return false
 
   // Take the providers out of the picture — matching how isOnlyWorkingSignInMethod
@@ -97,9 +93,9 @@ export function isSsoOnlySignIn(snap: WorkingMethodInputs): boolean {
  */
 export function isOnlyWorkingSignInMethod(snap: SignInMethodSnapshot): boolean {
   const target = snap.providers.find((p) => p.id === snap.targetIdpId)
-  // Not a working method (tier off, disabled, or no secret) → removing it can't
-  // cause a lockout. Tier gates every IdP, mirroring `getRegisteredOidcProviderIds`.
-  if (!snap.tierEnabled || !target?.enabled || !target.configured) return false
+  // Not a working method (disabled or no secret) → removing it can't cause a
+  // lockout.
+  if (!target?.enabled || !target.configured) return false
 
   // It IS working — so it's the only method iff nothing else works once it's gone.
   return !hasAnyWorkingSignInMethod({
@@ -121,19 +117,16 @@ async function gatherWorkingMethodInputs(
     await import('@/lib/server/domains/platform-credentials/platform-credential.service')
   const { listIdentityProviders } =
     await import('@/lib/server/domains/settings/identity-providers.service')
-  const { getTierLimits } = await import('@/lib/server/domains/settings/tier-limits.service')
   const { isEmailConfigured } = await import('@quackback/email')
   const { AUTH_PROVIDERS } = await import('@/lib/server/auth/auth-providers')
 
-  const [configuredTypes, providers, tierLimits] = await Promise.all([
+  const [configuredTypes, providers] = await Promise.all([
     getConfiguredIntegrationTypes(),
     knownProviders ?? listIdentityProviders(),
-    getTierLimits(),
   ])
 
   const socials = AUTH_PROVIDERS.filter((p) => p.type !== 'generic-oauth')
   return {
-    tierEnabled: tierLimits.features.customOidcProvider,
     providers: providers.map((p) => ({ id: p.id, enabled: p.enabled, configured: p.configured })),
     oauth,
     emailConfigured: isEmailConfigured(),

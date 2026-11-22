@@ -46,10 +46,6 @@ vi.mock('@/lib/server/domains/settings/settings.helpers', () => ({
   invalidateSettingsCache: vi.fn(async () => {}),
 }))
 
-vi.mock('@/lib/server/domains/settings/tier-limits.service', () => ({
-  invalidateTierLimitsCache: vi.fn(),
-}))
-
 vi.mock('@/lib/server/auth/index', () => ({
   resetAuth: vi.fn(),
 }))

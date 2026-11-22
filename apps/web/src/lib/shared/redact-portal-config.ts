@@ -46,15 +46,14 @@ function statusConfigNeedsRedaction(statusConfig: StatusSettings): boolean {
 
 /**
  * Raw settings-row columns that must never reach a client-bound context.
- * The rest are server-side state (tier enforcement, setup progress, metadata
- * config bags) with no client reader.
+ * The rest are server-side state (setup progress, metadata config bags) with
+ * no client reader.
  *
- * `cloud` sits here alongside `tierLimits` for the same reason and one more:
- * its `billing` sub-block holds provider customer and subscription references,
- * which are account identifiers rather than product config and must never be
- * serialized into a router context or loader payload.
+ * `cloud` sits here because its `billing` sub-block holds provider customer and
+ * subscription references, which are account identifiers rather than product
+ * config and must never be serialized into a router context or loader payload.
  */
-const SERVER_ONLY_SETTINGS_KEYS = ['metadata', 'tierLimits', 'cloud', 'setupState'] as const
+const SERVER_ONLY_SETTINGS_KEYS = ['metadata', 'cloud', 'setupState'] as const
 
 function stripServerOnlyKeys<T extends object>(row: T): T {
   if (!SERVER_ONLY_SETTINGS_KEYS.some((key) => key in row)) return row

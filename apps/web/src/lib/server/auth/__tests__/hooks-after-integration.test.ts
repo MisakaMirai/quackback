@@ -150,10 +150,6 @@ vi.mock('@/lib/server/auth/sso-secret', () => ({
   isSsoActuallyRegistered: async () => true,
 }))
 
-vi.mock('@/lib/server/domains/settings/tier-limits.service', () => ({
-  getTierLimits: async () => ({ features: { customOidcProvider: true } }),
-}))
-
 // Task 12/13: hooksAfter loads the provider registry on callback paths and
 // threads it to the after-hooks. Mock both; derive the single owning
 // provider 'sso' from the workspace's verified domains AND its ssoOidc config so

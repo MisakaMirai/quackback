@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 const hoisted = vi.hoisted(() => ({
   mockSavePlatformCredentials: vi.fn(async () => undefined),
-  mockGetTierLimits: vi.fn(),
   mockCheckUrlSafety: vi.fn(),
   mockGetIntegration: vi.fn(),
 }))
@@ -16,9 +15,6 @@ vi.mock('@/lib/server/domains/platform-credentials/platform-credential.service',
   getPlatformCredentials: vi.fn(),
   arePlatformCredentialsManaged: vi.fn(() => false),
 }))
-vi.mock('@/lib/server/domains/settings/tier-limits.service', () => ({
-  getTierLimits: hoisted.mockGetTierLimits,
-}))
 vi.mock('@/lib/server/integrations', () => ({
   getIntegration: (...args: unknown[]) => hoisted.mockGetIntegration(...args),
 }))
@@ -26,7 +22,6 @@ vi.mock('@/lib/server/content/ssrf-guard', () => ({
   checkUrlSafety: (...args: unknown[]) => hoisted.mockCheckUrlSafety(...args),
 }))
 
-import { OSS_TIER_LIMITS } from '@/lib/server/domains/settings/tier-limits.types'
 import { savePlatformCredentialsFn } from '../platform-credentials'
 
 const gitlabFields = [
@@ -44,7 +39,6 @@ const gitlabFields = [
 describe('savePlatformCredentialsFn — SSRF URL guard', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    hoisted.mockGetTierLimits.mockResolvedValue(OSS_TIER_LIMITS)
     hoisted.mockGetIntegration.mockReturnValue({ platformCredentials: gitlabFields })
   })
 

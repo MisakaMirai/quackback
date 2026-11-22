@@ -6,11 +6,11 @@ Regenerate with `bunx vitest run apps/web/src/lib/server/policy/migration-contra
 
 ## Summary
 
-Migrations scanned: 297. Migrations with destructive DDL: 46.
+Migrations scanned: 298. Migrations with destructive DDL: 47.
 
 | Kind | Occurrences |
 | --- | --- |
-| DROP COLUMN | 55 |
+| DROP COLUMN | 56 |
 | DROP TABLE | 51 |
 | DROP CONSTRAINT | 23 |
 | RENAME COLUMN | 17 |
@@ -69,6 +69,7 @@ Migrations scanned: 297. Migrations with destructive DDL: 46.
 | 0320_drop_domain_proof.sql | DROP TABLE domains | annotated (safe-after 0.15.0) |
 | 0321_drop_push_devices.sql | DROP TABLE push_devices | annotated (safe-after 0.15.0) |
 | 0322_drop_apps.sql | DROP TABLE apps | annotated (safe-after 0.15.0) |
+| 0323_drop_tier_limits.sql | DROP COLUMN settings.tier_limits | annotated (safe-after 0.15.0) |
 
 ## Grandfathered (29)
 

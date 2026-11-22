@@ -2,7 +2,6 @@ import {
   db,
   eq,
   settings,
-  sql,
   ssoVerifiedDomain,
   type Database,
   type Transaction,
@@ -70,8 +69,6 @@ import {
 import { withCurrentStorageReadTokens } from '@/lib/server/content/storage-read-urls'
 
 import { logSettingsReadError } from './settings-log'
-import { getTierLimits } from './tier-limits.service'
-import { TierLimitError } from '@/lib/server/errors/tier-limit-error'
 
 const log = logger.child({ component: 'settings' })
 
@@ -187,12 +184,6 @@ export async function getAuthConfig(freshness: SettingsFreshness = 'cached'): Pr
   }
 }
 
-/**
- * OAuth providers that are always available regardless of tier.
- * Anything outside this set requires the customOidcProvider feature flag.
- */
-const STANDARD_OAUTH_PROVIDERS = new Set(['google', 'github', 'microsoft', 'discord'])
-
 export async function updateAuthConfig(input: UpdateAuthConfigInput): Promise<AuthConfig> {
   log.info('update auth config')
   try {
@@ -202,29 +193,12 @@ export async function updateAuthConfig(input: UpdateAuthConfigInput): Promise<Au
       }
     }
 
-    // Tier gate: refuse non-standard OAuth providers when
-    // customOidcProvider is off. No-op when the feature is unlimited.
-    if (input.oauth) {
-      const enablingNonStandard = Object.entries(input.oauth).some(
-        ([id, enabled]) => enabled && !STANDARD_OAUTH_PROVIDERS.has(id)
-      )
-      if (enablingNonStandard) {
-        const { assertTierFeature } = await import('@/lib/server/domains/settings/tier-enforce')
-        await assertTierFeature('customOidcProvider', 'Custom OIDC providers')
-      }
-    }
-
-    // Tier gate: ssoOidc itself requires customOidcProvider. Reject
-    // attempts to enable or configure SSO when the tier is off.
+    // Secret-presence gate: enabling SSO without a saved client
+    // secret would register a Better-Auth provider that 4xxs on
+    // every callback. Force the admin to paste the secret first via
+    // the UI's ClientSecretField component (which writes to
+    // platform_credentials and triggers a rebuild on save).
     if (input.ssoOidc?.enabled === true) {
-      const { assertTierFeature } = await import('@/lib/server/domains/settings/tier-enforce')
-      await assertTierFeature('customOidcProvider', 'Single sign-on (OIDC)')
-
-      // Secret-presence gate: enabling SSO without a saved client
-      // secret would register a Better-Auth provider that 4xxs on
-      // every callback. Force the admin to paste the secret first via
-      // the UI's ClientSecretField component (which writes to
-      // platform_credentials and triggers a rebuild on save).
       const { ValidationError } = await import('@/lib/shared/errors')
       const { hasSsoClientSecret } = await import('@/lib/server/auth/sso-secret')
       if (!(await hasSsoClientSecret())) {
@@ -711,13 +685,6 @@ export async function updateDeveloperConfig(
 ): Promise<DeveloperConfig> {
   log.info('update developer config')
   try {
-    // The operator limit gates enabling MCP. Disabling stays open so a
-    // restricted workspace can always turn the endpoint off.
-    if (input.mcpEnabled === true) {
-      const { assertTierFeature } = await import('@/lib/server/domains/settings/tier-enforce')
-      await assertTierFeature('mcpServer', 'MCP server')
-    }
-
     const org = await requireSettings()
     const existing = parseJsonConfig(org.developerConfig, DEFAULT_DEVELOPER_CONFIG)
     const updated = deepMerge(existing, input as Partial<DeveloperConfig>)
@@ -835,32 +802,13 @@ export async function enableHelpCenterLocale(input: {
       'Enabling a locale requires a homepage title'
     )
   }
-  const limit = (await getTierLimits()).maxHelpCenterLocales
-  // The lock is held to the end of the transaction, so two concurrent enables
-  // read the same language count only one at a time and cannot both take the
-  // last slot. The read and the write both run on the transaction.
   const locales = await db.transaction(async (tx) => {
-    await tx.execute(
-      sql`SELECT pg_advisory_xact_lock(hashtext('quackback:help_center_locale_slot'))`
-    )
     const org = await requireSettings(tx)
     const existing = parseJsonConfig(org.helpCenterConfig, DEFAULT_HELP_CENTER_CONFIG)
     if (input.locale === existing.locales.default) {
       throw new ValidationError('HC_LOCALE_IS_DEFAULT', 'The default locale is always enabled')
     }
     const alreadyEnabled = existing.locales.additional.includes(input.locale)
-    if (!alreadyEnabled && limit !== null) {
-      // The default language counts toward the workspace's language cap.
-      const enabled = 1 + existing.locales.additional.length
-      if (enabled >= limit) {
-        throw new TierLimitError({
-          limit: 'maxHelpCenterLocales',
-          current: enabled,
-          max: limit,
-          message: `You've reached your workspace's help center languages limit (${limit}). Raise the limit to add more.`,
-        })
-      }
-    }
     const additional = alreadyEnabled
       ? existing.locales.additional
       : [...existing.locales.additional, input.locale]

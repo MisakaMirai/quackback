@@ -58,19 +58,16 @@ Edges (27):
 ## 3. Server domains (lib/server/domains)
 
 Nodes (44): activity, admin-overview, analytics, api, api-keys, attribute-definitions, boards, changelog, channel-accounts, channels, comments, conversation, conversation-attributes, conversation-views, export, files, help-center, import, inbox, macros, moderation, notifications, office-hours, onboarding, platform-credentials, post-tags, post-views, posts, principals, roadmaps, roles, search, segments, settings, settings-registry, sla, status, statuses, subscriptions, teams, tickets, user-attributes, users, webhooks
-Edges (81):
+Edges (74):
 
 - activity -> principals
 - admin-overview -> changelog
 - analytics -> api
-- analytics -> settings
 - api -> api-keys
-- api -> settings
 - api -> webhooks
 - api-keys -> principals
 - api-keys -> roles
 - boards -> posts
-- boards -> settings
 - changelog -> settings
 - channel-accounts -> conversation
 - channel-accounts -> notifications
@@ -115,10 +112,8 @@ Edges (81):
 - posts -> settings
 - posts -> subscriptions
 - principals -> roles
-- principals -> settings
 - principals -> teams
 - roadmaps -> posts
-- roles -> settings
 - search -> help-center
 - search -> posts
 - settings -> platform-credentials
@@ -128,7 +123,6 @@ Edges (81):
 - settings-registry -> settings
 - sla -> office-hours
 - sla -> settings
-- status -> settings
 - subscriptions -> changelog
 - subscriptions -> posts
 - subscriptions -> status
@@ -140,7 +134,6 @@ Edges (81):
 - tickets -> teams
 - user-attributes -> attribute-definitions
 - users -> principals
-- webhooks -> settings
 
 ### Cycles
 

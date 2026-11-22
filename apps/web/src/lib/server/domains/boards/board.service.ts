@@ -30,7 +30,6 @@ import { NotFoundError, ValidationError, ConflictError } from '@/lib/shared/erro
 import type { CreateBoardInput, UpdateBoardInput, BoardWithDetails } from './board.types'
 import { slugify } from '@/lib/shared/utils/slugify'
 import { type BoardAccess } from '@/lib/server/db'
-import { getTierLimits } from '@/lib/server/domains/settings/tier-limits.service'
 
 /**
  * Legacy API-contract shape — derived from BoardAccess for backward
@@ -67,7 +66,6 @@ export function accessToAudience(access: BoardAccess): LegacyBoardAudience {
       return { kind: 'public' }
   }
 }
-import { enforceCountLimit } from '@/lib/server/domains/settings/tier-enforce'
 import { notTestPrincipal } from '@/lib/server/test-data'
 import { logger } from '@/lib/server/logger'
 
@@ -94,21 +92,6 @@ export async function createBoard(input: CreateBoardInput): Promise<Board> {
   if (input.description && input.description.length > 500) {
     throw new ValidationError('VALIDATION_ERROR', 'Description must be 500 characters or less')
   }
-
-  // Tier-limit gate (no-op in OSS).
-  const limits = await getTierLimits()
-  await enforceCountLimit({
-    limit: limits.maxBoards,
-    name: 'maxBoards',
-    friendly: 'boards',
-    currentCount: async () => {
-      const [row] = await db
-        .select({ count: sql<number>`count(*)::int` })
-        .from(boards)
-        .where(isNull(boards.deletedAt))
-      return row?.count ?? 0
-    },
-  })
 
   // Derive the slug. An explicit slug that slugifies to nothing is a caller
   // error worth rejecting (mirrors updateBoard, and avoids silently turning

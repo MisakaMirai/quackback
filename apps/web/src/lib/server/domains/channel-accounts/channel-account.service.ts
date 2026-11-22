@@ -32,8 +32,6 @@ import {
 } from '@/lib/server/db'
 import type { ChannelAccountId, IntegrationId, SendingDomainId, TeamId } from '@quackback/ids'
 import { requireChannelDescriptor } from '@/lib/shared/channels'
-import * as tierEnforce from '@/lib/server/domains/settings/tier-enforce'
-import { getTierLimits } from '@/lib/server/domains/settings/tier-limits.service'
 import {
   isPlatformInboxRecipient,
   platformInboxAddress,
@@ -73,10 +71,7 @@ export async function createSendingDomain(input: {
   dnsRecords?: SendingDomainDnsRecord[]
   dkimMode?: EmailSendingDomain['dkimMode']
 }): Promise<EmailSendingDomain> {
-  const limit = (await getTierLimits()).maxSendingDomains
   return db.transaction(async (tx) => {
-    await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext('quackback:sending_domain_slot'))`)
-    await tierEnforce.enforceSendingDomainLimit(limit, tx)
     const [row] = await tx
       .insert(emailSendingDomains)
       // Records and signing mode left out take the column defaults.
@@ -163,9 +158,7 @@ export async function createInboundRoute(input: {
   config: ChannelAccountConfig
   inboundTrust?: 'strict' | 'lenient'
 }): Promise<ChannelAccount> {
-  const limit = (await getTierLimits()).maxInboundEmailAddresses
   const created = await db.transaction(async (tx) => {
-    await tierEnforce.enforceInboundEmailAddressLimit(limit, tx)
     const [row] = await tx
       .insert(channelAccounts)
       .values({

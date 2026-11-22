@@ -87,17 +87,6 @@ vi.mock('../outbound-identity', async (importOriginal) => {
   }
 })
 
-const maxSendingDomains = vi.fn<() => number | null>(() => null)
-vi.mock('@/lib/server/domains/settings/tier-limits.service', async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import('@/lib/server/domains/settings/tier-limits.service')>()
-  const { OSS_TIER_LIMITS } = await import('@/lib/server/domains/settings/tier-limits.types')
-  return {
-    ...actual,
-    getTierLimits: async () => ({ ...OSS_TIER_LIMITS, maxSendingDomains: maxSendingDomains() }),
-  }
-})
-
 import {
   addSendingAddress,
   removeSendingAddress,
@@ -175,7 +164,6 @@ describe.skipIf(!fixture.available)('sending addresses (real DB, rolled back)', 
     createIdentity
       .mockReset()
       .mockImplementation(async (domain) => ({ identity: identity(domain), preexisting: false }))
-    maxSendingDomains.mockReset().mockReturnValue(null)
     existingIdentity.mockReset().mockReturnValue(null)
     duringPreflight.mockReset().mockResolvedValue()
     sent.mockReset()
@@ -255,23 +243,6 @@ describe.skipIf(!fixture.available)('sending addresses (real DB, rolled back)', 
       expect(account.sendingDomainId).toBe(domain.id)
     })
 
-    it('still adds the address on a single-workspace server when its domain cannot be set up', async () => {
-      // The address was always accepted here; a refused setup must not refuse it.
-      const teamId = await seedTeam()
-      maxSendingDomains.mockReturnValue(1)
-      await addSendingAddress({
-        owningTeamId: teamId,
-        address: 'help@a.example',
-      })
-
-      const account = await addSendingAddress({
-        owningTeamId: teamId,
-        address: 'help@b.example',
-      })
-      expect(account).toMatchObject({ address: 'help@b.example', sendingDomainId: null })
-      expect((await domainsOf(teamId)).map((d) => d.domain)).toEqual(['a.example'])
-    })
-
     it('leaves a domain verified by hand alone on a single-workspace server', async () => {
       // The operator verified acme.com themselves; creating a row and an
       // identity setup over it would only get in the way.
@@ -322,24 +293,6 @@ describe.skipIf(!fixture.available)('sending addresses (real DB, rolled back)', 
     it('reuses the row another add created for the same domain a moment earlier', async () => {
       // The other add's row lands after this one looked for it and before it
       // inserted its own, which is the unique-key race.
-      const teamId = await seedTeam()
-      let winner: { id: string } | undefined
-      duringPreflight.mockImplementationOnce(async () => {
-        winner = await seedDomain(teamId, 'acme.com', 'pending')
-      })
-      const account = await addSendingAddress({
-        owningTeamId: teamId,
-        address: 'help@acme.com',
-      })
-      expect(winner).toBeDefined()
-      expect(await domainsOf(teamId)).toHaveLength(1)
-      expect(account.sendingDomainId).toBe(winner?.id)
-    })
-
-    it('reuses the row another add created when that add took the last plan slot', async () => {
-      // The winner's row fills the plan, so this add is refused at the cap
-      // before it ever reaches the unique key. The domain exists all the same.
-      maxSendingDomains.mockReturnValue(1)
       const teamId = await seedTeam()
       let winner: { id: string } | undefined
       duringPreflight.mockImplementationOnce(async () => {

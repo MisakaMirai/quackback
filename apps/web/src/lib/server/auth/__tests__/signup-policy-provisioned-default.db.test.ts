@@ -38,10 +38,6 @@ vi.mock('@/lib/server/domains/settings/settings.helpers', async (importOriginal)
   ...(await importOriginal<typeof import('@/lib/server/domains/settings/settings.helpers')>()),
   invalidateSettingsCache: vi.fn(async () => undefined),
 }))
-vi.mock('@/lib/server/domains/settings/tier-limits.service', () => ({
-  invalidateTierLimitsCache: vi.fn(),
-}))
-
 const { isAccountCreationAllowed } = await import('../signup-policy')
 const { makeReconcileDeps } = await import('@/lib/server/config-file/deps')
 const { parseJsonConfig } = await import('@/lib/server/domains/settings/settings.helpers')

@@ -16,10 +16,8 @@ describe('_internalAssertNotManaged', () => {
   })
 
   it('throws when the path is under a whole-block managed parent', async () => {
-    const readPaths = vi.fn(async () => ['tierLimits'])
-    await expect(
-      _internalAssertNotManaged('tierLimits.maxBoards', readPaths)
-    ).rejects.toMatchObject({
+    const readPaths = vi.fn(async () => ['portalConfig'])
+    await expect(_internalAssertNotManaged('portalConfig.oauth', readPaths)).rejects.toMatchObject({
       statusCode: 403,
       code: 'FIELD_MANAGED',
     })
