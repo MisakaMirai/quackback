@@ -231,3 +231,17 @@ export function getNotificationPreferences(email: string): NotificationPreferenc
 export function getResetToken(email: string): string {
   return runScript('get-reset-token.ts', [email], 'get reset token')
 }
+
+export interface TeamInvitation {
+  invitationId: string
+  status: string
+  role: string | null
+  email: string
+}
+
+/** The newest team invitation for `email` (created by the members page). */
+export function getTeamInvitation(email: string): TeamInvitation {
+  return JSON.parse(
+    runScript('get-team-invitation.ts', [email], 'get team invitation')
+  ) as TeamInvitation
+}
