@@ -41,17 +41,11 @@ describe('pooled default From', () => {
   it('falls back to EMAIL_FROM outside a workspace scope', () => {
     expect(getEmailFrom()).toBe('Fleet <noreply@fleet.example>')
   })
-
-  it("never speaks for a workspace under the fleet's name, even outside a scope", () => {
-    vi.stubEnv('QUACKBACK_TENANCY', 'pooled')
-    expect(platformFromPreview('Acme')).toBe('Acme <noreply@fleet.example>')
-  })
 })
 
 describe('self-host default From', () => {
   beforeEach(() => {
     vi.stubEnv('EMAIL_FROM', 'Selfhost <noreply@self.example>')
-    vi.stubEnv('QUACKBACK_TENANCY', 'single')
     ensureEmailLogSink()
   })
 

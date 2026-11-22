@@ -308,7 +308,6 @@ beforeEach(() => {
   vi.clearAllMocks()
   dbTouches.length = 0
   logLines.length = 0
-  vi.stubEnv('QUACKBACK_TENANCY', 'pooled')
   vi.stubEnv('INBOUND_HMAC_SECRET', SECRET)
   vi.stubEnv('EMAIL_INBOUND_DOMAIN', DOMAIN)
   // The addressing half of the channel. Set for every case because a front door

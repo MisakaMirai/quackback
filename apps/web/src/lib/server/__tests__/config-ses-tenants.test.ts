@@ -21,7 +21,6 @@ vi.mock('@/lib/server/logger', () => ({
 }))
 
 const KEYS = [
-  'QUACKBACK_TENANCY',
   'EMAIL_SES_TENANTS',
   'EMAIL_SES_CONFIGURATION_SET',
   'EMAIL_SES_IDENTITY_ACCESS_KEY_ID',

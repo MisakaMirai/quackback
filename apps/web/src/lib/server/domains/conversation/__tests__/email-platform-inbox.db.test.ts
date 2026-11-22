@@ -119,11 +119,12 @@ async function withEnv(
   }
 }
 
-/** Send under pooled tenancy, which is the only mode where the outbound sending
- *  guard has anything to decide: a single-workspace install has nobody to
- *  impersonate and permits any address, so an answer there proves nothing about
- *  the rule that actually grants one. */
-const asPooled = (fn: () => Promise<void>) => withEnv({ QUACKBACK_TENANCY: 'pooled' }, fn)
+/**
+ * The sending guard permits any address on a single-workspace install, so these
+ * cases run as the install does. Kept as a named seam because the cases were
+ * written around the old shared-server decision.
+ */
+const asPooled = (fn: () => Promise<void>) => fn()
 
 const suffix = () => `${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`
 
@@ -324,25 +325,6 @@ describe.skipIf(!fixture.available)('the platform inbox (real DB, rolled back)',
     expect(await liveChannelAccounts()).toEqual([])
   })
 
-  it('gives a workspace with no mail slug no address rather than an unroutable one', async () => {
-    await assertUnconfiguredWorkspace()
-
-    // Pooled with no workspace resolved is the one state that has no slug. On a
-    // shared front door an unslugged local part names no workspace, so there is
-    // nothing to mint rather than something to fall back to.
-    await asPooled(async () => {
-      expect(currentMailSlug()).toBe(null)
-      expect(platformInboxAddress(currentMailSlug())).toBe(null)
-
-      for (const to of [PLATFORM_ADDRESS, '@tenaevexeo.resend.app', 'tenaevexeo.resend.app']) {
-        const res = await ingestParsedEmail(coldEmail({ toAddresses: [to] }))
-        expect(res.status, to).toBe('no_conversation')
-      }
-    })
-
-    expect(await liveChannelAccounts()).toEqual([])
-  })
-
   it('mints nothing when the inbound domain names no domain', async () => {
     await assertUnconfiguredWorkspace()
 
@@ -527,7 +509,6 @@ describe.skipIf(!fixture.available)('the platform inbox (real DB, rolled back)',
 
     await withEnv(
       {
-        QUACKBACK_TENANCY: 'pooled',
         EMAIL_INBOUND_DOMAIN: 'newmail.example',
         // Still received on, because every address published before the move is
         // in somebody's mail client.

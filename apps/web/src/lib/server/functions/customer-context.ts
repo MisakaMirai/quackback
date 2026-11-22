@@ -1,7 +1,7 @@
 /**
  * Customer-context enrichment (IF WO-9). Fetches normalized context cards from
  * every connected integration that provides a `context` capability
- * (zendesk/hubspot/intercom today), looked up by email on demand. Providers
+ * (hubspot/intercom today), looked up by email on demand. Providers
  * that error or don't match are simply omitted.
  */
 import { createServerFn } from '@tanstack/react-start'

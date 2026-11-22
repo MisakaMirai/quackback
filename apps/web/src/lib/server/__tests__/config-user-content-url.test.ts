@@ -27,12 +27,7 @@ let saved: NodeJS.ProcessEnv
 
 beforeEach(() => {
   saved = { ...process.env }
-  for (const key of [
-    'DATABASE_URL',
-    'QUACKBACK_TENANCY',
-    'QUACKBACK_CONTROL_DATABASE_URL',
-    'USER_CONTENT_URL',
-  ]) {
+  for (const key of ['DATABASE_URL', 'QUACKBACK_CONTROL_DATABASE_URL', 'USER_CONTENT_URL']) {
     delete process.env[key]
   }
   Object.assign(process.env, {

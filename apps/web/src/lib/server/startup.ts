@@ -4,7 +4,6 @@
  */
 import { logger } from '@/lib/server/logger'
 import { getProcessRole, shouldRunWorkers } from './process-role'
-import { config } from './config'
 import { logUnusedRedisUrl } from './unused-env'
 
 const log = logger.child({ component: 'startup' })
@@ -144,14 +143,10 @@ export function logStartupBanner(): void {
     })
     .catch((err) => log.error({ err }, 'inbound mail domain validation failed'))
 
-  // Reads the workspace's integration rows, so it is per-database work. Under
-  // pooled tenancy it runs once per workspace — and, like the startup backfill
-  // below, only on a replica that already does background work. A fleet-wide
-  // read on every web boot would be extra connections from the HTTP tier.
-  //
-  // This one was found by the `db` proxy's own scope tripwire rather than by the
-  // sweep that preceded it: it is a boot-time configuration warning, which is
-  // not where anyone looks for a database query.
+  // Reads the workspace's integration rows, so it is per-database work. It runs
+  // once per process — and, like the startup backfill below, only on a replica
+  // that already does background work. Running it on every web boot would be
+  // extra connections from the HTTP tier.
   import('@/integrations/segment/server/user-sync')
     .then(({ warnIfSegmentInboundIsInsecure }) => warnIfSegmentInboundIsInsecure())
     .catch((err) => log.error({ err }, 'failed to validate Segment inbound configuration'))
@@ -178,34 +173,17 @@ export function logStartupBanner(): void {
     .catch((err) => log.error({ err }, 'failed to run startup backfills'))
 
   // First-run setup token: on an install that still has no admin, either note
-  // that SETUP_TOKEN is live or print a generated one once. Self-hosted only:
-  // a pooled workspace is provisioned for a named owner and never takes one.
-  if (!config.isPooledTenancy) {
-    import('@/lib/server/domains/onboarding/headless-setup')
-      .then(({ ensureBootSetupToken }) => ensureBootSetupToken())
-      .catch((err) => log.error({ err }, 'failed to prepare the first-run setup token'))
-  }
+  // that SETUP_TOKEN is live or print a generated one once.
+  import('@/lib/server/domains/onboarding/headless-setup')
+    .then(({ ensureBootSetupToken }) => ensureBootSetupToken())
+    .catch((err) => log.error({ err }, 'failed to prepare the first-run setup token'))
 
   // Quackback config file watcher — reconciles managed fields from
   // /etc/quackback/config.yaml on every change. No-op when the file
   // is absent (self-host default).
-  //
-  // Deliberately NOT started under pooled tenancy. The mechanism is a single
-  // file at a single path with no workspace parameter anywhere in `ReconcileDeps`,
-  // and you cannot mount N files at one path — so it has to be replaced by a
-  // workspace-keyed entrypoint behind an authenticated control-plane route, not
-  // adapted. Starting it here would reconcile whichever workspace the fleet pass
-  // happened to visit with one file's contents (SAAS-HOSTING-STACK.md §8).
-  if (config.isPooledTenancy) {
-    log.info(
-      'pooled tenancy — the /etc/quackback/config.yaml watcher is not started; ' +
-        'per-workspace config arrives through the control plane'
-    )
-  } else {
-    import('@/lib/server/config-file')
-      .then(({ startQuackbackConfigWatcher }) => startQuackbackConfigWatcher())
-      .catch((err) => log.error({ err }, 'failed to start config-file watcher'))
-  }
+  import('@/lib/server/config-file')
+    .then(({ startQuackbackConfigWatcher }) => startQuackbackConfigWatcher())
+    .catch((err) => log.error({ err }, 'failed to start config-file watcher'))
 
   // Background processing is role-gated: QUACKBACK_ROLE=web replicas serve
   // HTTP and enqueue only. Cloud runs a dedicated worker replica.
@@ -234,15 +212,9 @@ export function logStartupBanner(): void {
  * `QUACKBACK_ROLE=worker` and the single-process default (`all`), never on
  * web-role replicas. Every sweeper holds a cross-instance sweep lock, so
  * multiple worker replicas stay safe.
- *
- * Under pooled tenancy the same timers run: compute and Postgres stay up, so
- * fanning a tick across the fleet is just the work, not a reason to park it
- * on a cron container that starts, sweeps, and exits.
  */
 function startBackgroundProcessing(): void {
-  // The job worker — every background queue in the process. It runs
-  // under BOTH tenancy modes, because a job row lives in the workspace's own
-  // database and the job worker opens a real workspace scope around every claim.
+  // The job worker — every background queue in the process.
   import('./jobs/worker')
     .then(({ startJobWorker }) => startJobWorker())
     .catch((err) => log.error({ err }, 'failed to start the job worker'))
@@ -256,14 +228,11 @@ function startBackgroundProcessing(): void {
     .catch((err) => log.error({ err }, 'boot-time partition ensure failed'))
 
   // One-time copy of files stored before the workspace storage layout into it
-  // (`storage/legacy-relocation.ts`). Single-workspace only: under pooled
-  // tenancy the bucket is shared and a bare key belongs to nobody. Runs in the
-  // background so readiness never waits on a bucket listing.
-  if (!config.isPooledTenancy) {
-    import('@/lib/server/storage/legacy-relocation')
-      .then(({ armLegacyStorageRelocation }) => armLegacyStorageRelocation())
-      .catch((err) => log.error({ err }, 'failed to arm the storage relocation'))
-  }
+  // (`storage/legacy-relocation.ts`). Runs in the background so readiness never
+  // waits on a bucket listing.
+  import('@/lib/server/storage/legacy-relocation')
+    .then(({ armLegacyStorageRelocation }) => armLegacyStorageRelocation())
+    .catch((err) => log.error({ err }, 'failed to arm the storage relocation'))
 
   // The scheduled sweeps. Bodies live in `cron/scheduled-jobs.ts` so a one-shot
   // `QUACKBACK_CRON_JOB` run and this timer schedule execute the same code.

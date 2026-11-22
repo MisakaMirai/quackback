@@ -74,10 +74,4 @@ describe('getEmailChannelStatusFn ownServer', () => {
     stubEnv(SES_ENV)
     expect(await getStatus()).toMatchObject({ ownServer: true })
   })
-
-  it('says it is not on a server shared by many workspaces', async () => {
-    stubEnv(SES_ENV)
-    vi.stubEnv('QUACKBACK_TENANCY', 'pooled')
-    expect(await getStatus()).toMatchObject({ ownServer: false })
-  })
 })

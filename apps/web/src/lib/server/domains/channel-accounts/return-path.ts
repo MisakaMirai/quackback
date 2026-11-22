@@ -19,7 +19,6 @@
 import { createHash } from 'node:crypto'
 import { sesReturnPathDomain } from '@quackback/email/ses-identity'
 import { SINGLE_WORKSPACE_KEY } from '@/lib/server/jobs/after-commit'
-import { isPooledTenancy } from '@/lib/server/workspaces/mode'
 import { getCurrentWorkspace } from '@/lib/server/workspaces/workspace-context'
 
 type EnvLike = Record<string, string | undefined>
@@ -35,21 +34,19 @@ export function returnPathLabel(workspaceKey: string): string {
 /**
  * The key of the workspace this process is acting for: the scoped one, the
  * instance id a single-workspace process is given, or the single workspace.
- * Null on a pooled process outside any scope, where no workspace is known.
  */
 function currentWorkspaceKey(env: EnvLike): string | null {
   const scoped = getCurrentWorkspace()?.workspaceKey
   if (scoped) return scoped
   const instance = env.QUACKBACK_INSTANCE_ID?.trim()
   if (instance) return instance
-  return isPooledTenancy(env) ? null : SINGLE_WORKSPACE_KEY
+  return SINGLE_WORKSPACE_KEY
 }
 
 /**
- * The per-workspace label for the workspace this process is acting for, or
- * null on a pooled process outside any scope. Also the workspace's mail
- * provider tenant name (see `ses-tenant-state.ts`), so an operator reading
- * either sees the same label.
+ * The per-workspace label for the workspace this process is acting for. Also
+ * the workspace's mail provider tenant name (see `ses-tenant-state.ts`), so an
+ * operator reading either sees the same label.
  */
 export function currentWorkspaceLabel(env: EnvLike = process.env): string | null {
   const key = currentWorkspaceKey(env)

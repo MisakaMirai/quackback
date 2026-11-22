@@ -2073,6 +2073,13 @@
       "when": 1791002600000,
       "tag": "0321_drop_push_devices",
       "breakpoints": true
+    },
+    {
+      "idx": 299,
+      "version": "7",
+      "when": 1791002700000,
+      "tag": "0322_drop_apps",
+      "breakpoints": true
     }
   ]
 }

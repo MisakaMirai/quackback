@@ -21,8 +21,7 @@
  *    token in that zone that exists in no other workspace's row.
  * 2. It is exactly the platform's own default sender. Exactly, not
  *    domain-matched: matching its domain would let any workspace mint any local
- *    part on the platform's brand. Under pooled tenancy this is the workspace's
- *    registry `email.from`; self-host it is `EMAIL_FROM`.
+ *    part on the platform's brand. It is `EMAIL_FROM` on a self-hosted install.
  * 3. It is an address on the platform's shared MINTING domain whose label is
  *    THIS workspace's mail slug. That domain is where every workspace's new
  *    reply addresses live, so the slug is what separates them.
@@ -69,7 +68,6 @@ import { addressDomain, applyDisplayName, bareAddress } from '@quackback/email/s
 import type { SendingIdentity } from '@quackback/email/sender'
 import { logger } from '@/lib/server/logger'
 import { db, eq, emailSendingDomains } from '@/lib/server/db'
-import { isPooledTenancy } from '@/lib/server/workspaces/mode'
 import { toAsciiDomain } from '@/lib/server/utils/mail-domain'
 import {
   inboundAcceptDomains,
@@ -173,8 +171,12 @@ export interface SendingIdentityContext {
   inboundDomain: string | null
   /** This workspace's label on that shared domain. */
   mailSlug: string | null
-  /** Whether this process serves more than one workspace. */
-  pooled: boolean
+  /**
+   * Ask the strict question: may this workspace send as the address for a
+   * proven reason, rather than on the single-workspace allowance that permits
+   * any address.
+   */
+  strict: boolean
 }
 
 /**
@@ -209,7 +211,7 @@ export function isSendingIdentityPermitted(from: string, ctx: SendingIdentityCon
   }
 
   // One workspace, one provider account, nobody to impersonate.
-  return !ctx.pooled
+  return !ctx.strict
 }
 
 /** Gather the context from this process and this workspace's database. */
@@ -229,7 +231,7 @@ export async function sendingIdentityContext(
     platformFrom: getCurrentWorkspace()?.email.from ?? env[EMAIL_FROM_ENV] ?? null,
     inboundDomain: inboundMintDomain(env),
     mailSlug: currentMailSlug(),
-    pooled: isPooledTenancy(env),
+    strict: false,
   }
 }
 

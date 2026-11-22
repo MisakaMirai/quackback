@@ -77,7 +77,6 @@ import { db } from '@/lib/server/db'
 import { getExecuteRows } from '@/lib/server/utils/execute-rows'
 import { logger } from '@/lib/server/logger'
 import { getCurrentWorkspace } from '@/lib/server/workspaces/workspace-context'
-import { isPooledTenancy } from '@/lib/server/workspaces/mode'
 import { noteDurableWork, SINGLE_WORKSPACE_KEY } from '@/lib/server/jobs/after-commit'
 import { pausedQueues } from './definitions'
 import {
@@ -289,7 +288,7 @@ function currentWorkspaceKey(): string | null {
 
 /** Workspace the after-commit scheduler should ring for this insert. */
 function workKeyForSignal(): string | null {
-  return currentWorkspaceKey() ?? (isPooledTenancy() ? null : SINGLE_WORKSPACE_KEY)
+  return currentWorkspaceKey() ?? SINGLE_WORKSPACE_KEY
 }
 
 function noteInsertedWork(executor: JobSqlExecutor | undefined, jobIds: readonly string[]): void {

@@ -24,7 +24,6 @@ import {
   incrementBucket,
   incrementBuckets,
 } from '@/lib/server/utils/rate-bucket'
-import { config } from '@/lib/server/config'
 import { logger } from '@/lib/server/logger'
 import {
   headlessSetupSchema,
@@ -71,10 +70,9 @@ export async function handleSetupRequest(request: Request): Promise<Response> {
     if (retryAfter !== null) return rateLimitedResponse(retryAfter)
 
     // The endpoint exists only on an install that is waiting for its first
-    // admin and is not a control plane's. Anywhere else it is not there, for
-    // every caller and without a trace, so nothing about the install's state
-    // can be read from it.
-    if (config.isPooledTenancy || !(await isAwaitingFirstAdmin())) {
+    // admin. Anywhere else it is not there, for every caller and without a
+    // trace, so nothing about the install's state can be read from it.
+    if (!(await isAwaitingFirstAdmin())) {
       return notFoundResponse('Endpoint')
     }
 

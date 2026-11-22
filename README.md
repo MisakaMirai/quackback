@@ -91,7 +91,7 @@ Setup for other clients is in the [MCP docs](https://feedback.quackback.io/hc/en
 | --------------- | ------------------------------------------------------------------------------------------------ |
 | Issue trackers  | Linear, GitHub, GitLab, Jira, Azure DevOps, Asana, ClickUp, Shortcut, Trello, Monday.com, Notion |
 | Chat and alerts | Slack, Microsoft Teams, Discord, ntfy                                                            |
-| Support and CRM | Zendesk, Intercom, Freshdesk, HubSpot, Salesforce, Stripe                                        |
+| Support and CRM | Intercom, Freshdesk, HubSpot, Salesforce, Stripe                                                 |
 | Automation      | Zapier, Make, n8n, Segment, webhooks                                                             |
 
 Each has a setup guide in the [docs](https://feedback.quackback.io/hc/en/collections/11-integrations).

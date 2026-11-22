@@ -9,7 +9,6 @@ import { registerResolver } from './registry'
 import { webhookResolver } from './webhook.resolver'
 import { integrationResolver } from './integration.resolver'
 import { notificationResolver } from './notification.resolver'
-import { appWebhookResolver } from './app-webhook.resolver'
 import { remoteStatusPushResolver } from './remote-status-push.resolver'
 
 let registered = false
@@ -21,7 +20,6 @@ export function registerAllResolvers(): void {
   registerResolver(webhookResolver)
   registerResolver(integrationResolver)
   registerResolver(notificationResolver)
-  registerResolver(appWebhookResolver)
   registerResolver(remoteStatusPushResolver)
 }
 

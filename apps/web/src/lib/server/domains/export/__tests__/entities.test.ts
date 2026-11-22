@@ -108,10 +108,10 @@ describe('votesExporter.serialize', () => {
       id: 'post_vote_1',
       postId: 'post_1',
       voterEmail: 'voter@example.com',
-      sourceType: 'zendesk',
+      sourceType: 'intercom',
       createdAt: d('2026-07-03T12:00:00Z'),
     } as never)
-    expect(line).toBe('post_vote_1,post_1,"voter@example.com","zendesk",2026-07-03T12:00:00.000Z')
+    expect(line).toBe('post_vote_1,post_1,"voter@example.com","intercom",2026-07-03T12:00:00.000Z')
   })
 })
 

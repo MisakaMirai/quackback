@@ -864,21 +864,12 @@ describe('outbound Message-ID threading', () => {
     expect(domains).toEqual(new Set(['acme.example', 'x.resend.app', 'old.example']))
   })
 
-  it('claims a Message-ID host for a workspace only when the workspace owns it', () => {
-    // The install's domains and THIS WORKSPACE's domains are the same set only
-    // when the process serves one workspace. Pooled, every workspace's mail
-    // leaves through the same sending domain, so a host names the fleet and not
-    // the sender: read as authorship it refuses the neighbour's mail, which is
-    // the same mistake as adopting a sending provider's regional host, one level
-    // in. Nothing is given up by emptying it there, since ids are minted on that
-    // shared domain and the fleet's transport replaces them anyway.
+  it('claims the install’s own hosts as Message-ID evidence', () => {
+    // A single-workspace install owns its domains outright, so the Message-ID
+    // host set and the install's sending/receiving set answer the same question.
     const env = { ...FROM_ENV, EMAIL_INBOUND_DOMAIN: 'x.resend.app' }
     expect(ownMessageIdDomains(env)).toEqual(new Set(['acme.example', 'x.resend.app']))
-    expect(ownMessageIdDomains({ ...env, QUACKBACK_TENANCY: 'pooled' })).toEqual(new Set())
-    // The install-level set is unchanged by tenancy: it answers a different
-    // question (what this process sends and receives on) and other readers
-    // depend on that answer.
-    expect(ownEmailDomains({ ...env, QUACKBACK_TENANCY: 'pooled' }).size).toBe(2)
+    expect(ownEmailDomains(env)).toEqual(new Set(['acme.example', 'x.resend.app']))
   })
 
   it('holds every domain in the spelling a Message-ID actually arrives in', () => {

@@ -10,11 +10,7 @@
 
 import { createDb, type Database as PostgresDatabase } from '@quackback/db/client'
 import { config } from '@/lib/server/config'
-import { isPooledTenancy } from '@/lib/server/workspaces/mode'
-import {
-  getScopedDatabase,
-  WorkspaceScopeMissingError,
-} from '@/lib/server/workspaces/workspace-context'
+import { getScopedDatabase } from '@/lib/server/workspaces/workspace-context'
 import { wrapDbTransaction } from '@/lib/server/jobs/after-commit'
 import { countingQueryLogger } from '@/lib/server/request-metrics'
 
@@ -86,31 +82,13 @@ declare global {
 /**
  * Get the database instance for the caller's scope.
  *
- * Two modes, decided by `QUACKBACK_TENANCY`:
- *
- * - **`single`** (the default, and every self-hosted install): one memoized
- *   connection from `DATABASE_URL`. Byte-for-byte the behaviour this function
- *   has always had.
- * - **`pooled`**: the connection belongs to whichever workspace the request
- *   resolved to, and there is no fleet-wide fallback. A missing scope throws.
- *   That is deliberate and it is the point — SAAS-HOSTING-STACK.md §3 is the
- *   observation that a *wrong* pool passes every RBAC and permission check,
- *   because that database's own rows are self-consistent. A silent default
- *   would be the same failure with a friendlier name.
+ * Production is single-workspace: one memoized connection from `DATABASE_URL`.
+ * The test fixture may open a scope with its own handle, which is the only
+ * reason this still resolves one; every production call gets the singleton.
  */
 function getDatabase(): Database {
   const scoped = getScopedDatabase()
   if (scoped) return scoped
-
-  // Read from the environment rather than through `config`. `config` validates
-  // the whole application configuration, and making the first `db` access
-  // anywhere do that would turn an unrelated missing variable into a database
-  // error — including inside unit tests that mock `db` and never wanted a
-  // config. `tenancy/mode.ts` documents the pairing, and a test pins the two
-  // readings together.
-  if (isPooledTenancy()) {
-    throw new WorkspaceScopeMissingError('A `db` call was made with no workspace resolved.')
-  }
 
   if (!globalThis.__db) {
     globalThis.__db = createDb(config.databaseUrl, {
@@ -341,8 +319,6 @@ export {
   hookDeliveries,
   // Schema tables - durable event outbox (EVENTING-V2 spine)
   events,
-  // Schema tables - third-party app platform
-  apps,
   // Schema tables - audit log
   auditLog,
   RESTORE_SETTLEMENT_AUDIT_EVENT,

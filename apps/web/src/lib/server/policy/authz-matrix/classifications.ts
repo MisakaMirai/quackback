@@ -406,7 +406,6 @@ export const BARE_GATE_CLASSIFICATIONS: Record<string, Classification> = {
 
   // Public-tier REST reads: a valid key is required, but the data is portal-public
   // so no permission is checked. Anonymous (no key) is still rejected.
-  'routes/api/v1/apps/boards.ts::GET': PUBLIC_DATA('public board list'),
   'routes/api/v1/boards/$boardId.ts::GET': PUBLIC_DATA('public board'),
   'routes/api/v1/boards/index.ts::GET': PUBLIC_DATA('public board list'),
   // Status page read API: a valid key reads the public status surface (the

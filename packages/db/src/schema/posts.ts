@@ -200,7 +200,7 @@ export const postVotes = pgTable(
     principalId: typeIdColumn('principal')('principal_id')
       .notNull()
       .references(() => principal.id, { onDelete: 'cascade' }),
-    // Source tracking for integration-created votes (e.g. Zendesk sidebar)
+    // Source tracking for integration-created votes (e.g. an Intercom ticket)
     sourceType: varchar('source_type', { length: 40 }),
     sourceExternalUrl: text('source_external_url'),
     // Which admin/member added this vote on behalf of the voter

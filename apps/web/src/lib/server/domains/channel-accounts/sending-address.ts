@@ -62,7 +62,7 @@ export type SendingAddressMode = 'any' | 'verified-domains' | 'unavailable'
 
 /** The mode for a guard context: the same answer the guard gives for an unknown From. */
 export function addressModeFor(ctx: SendingIdentityContext): SendingAddressMode {
-  if (!ctx.pooled) return 'any'
+  if (!ctx.strict) return 'any'
   return customSendingDomainsAvailable() ? 'verified-domains' : 'unavailable'
 }
 
@@ -106,9 +106,9 @@ export async function addSendingAddress(input: {
   const mode = addressModeFor(ctx)
   const domains = await listSendingDomains(input.owningTeamId)
 
-  // Asked as if the server were shared, so "may send" means a real reason to,
-  // not the single-workspace allowance that permits everything.
-  if (isSendingIdentityPermitted(address, { ...ctx, pooled: true })) {
+  // Asked strictly, so "may send" means a real reason to, not the
+  // single-workspace allowance that permits everything.
+  if (isSendingIdentityPermitted(address, { ...ctx, strict: true })) {
     const covering = domain ? verifiedCovering(domains, domain) : undefined
     return createSendingAddress({ ...input, address, sendingDomainId: covering?.id })
   }

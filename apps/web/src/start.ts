@@ -36,10 +36,9 @@ const csrfMiddleware = createCsrfMiddleware({
 export const startInstance = createStart(() => {
   return {
     // Request-context/logging first so even CSRF-rejected requests get a
-    // request_id and an access log. Workspace resolution second — before CSRF and
-    // before auth, because auth is full of `db` queries and cannot run until the
-    // database has been chosen (SAAS-HOSTING-STACK.md §6). Under
-    // QUACKBACK_TENANCY=single it is a pass-through.
+    // request_id and an access log. Workspace resolution is a pass-through on a
+    // single-workspace install, but stays before CSRF and auth because auth is
+    // full of `db` queries and cannot run until the database has been chosen.
     // OAuth/MCP CORS answers preflights before workspace resolution: a
     // preflight carries no credentials and needs no database.
     // The user-content host (USER_CONTENT_URL) is narrowed to stored-file

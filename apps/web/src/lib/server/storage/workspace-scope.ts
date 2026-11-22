@@ -21,9 +21,9 @@
  *   `settings.id` is a primary key, so the answer is a process-lifetime
  *   constant.
  *
- * The two are not a `isPooledTenancy()` test wearing a disguise. Neither asks
- * which workspaces mode is configured; both ask the same database the same
- * question, and the difference is only whether the answer was already on hand.
+ * The two are not a tenancy-mode branch wearing a disguise. Neither asks which
+ * deployment shape this is; both ask the same database the same question, and
+ * the difference is only whether the answer was already on hand.
  *
  * ## What an unscoped storage access does, and why it needs no check of its own
  *
@@ -80,8 +80,8 @@ import { WorkspaceKeyedCache } from '@/lib/server/workspaces/workspace-keyed'
  * is the ledger rather than convenience. §4.4's control on module-scope state
  * verifies three of its six categories against the source; the honest category
  * for a bare binding here would have been `refuses-pooled`, which the scanner
- * checks by requiring `isPooledTenancy` in the declaring file — and this file
- * deliberately never asks which workspaces mode is configured. Rather than write a
+ * checked by requiring a tenancy-mode test in the declaring file — and this file
+ * deliberately never asks which tenancy mode is configured. Rather than write a
  * category the scanner cannot check, the state takes the shape the scanner can:
  * partitioned by the active workspace, which is what it needs to be anyway.
  *

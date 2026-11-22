@@ -215,15 +215,7 @@ const EXEMPTIONS: { reason: string; pattern: RegExp; optional?: boolean }[] = [
   },
   {
     // Same empty text[] default false positive as invitation.magic_link_tokens
-    // above: '{}'::text[] reads back as '{""}', so drizzle-kit always thinks the
-    // default changed. Semantically identical. (apps, 0193.)
-    reason: 'drizzle-kit false positive: empty text[] default reads back as \'{""}\'',
-    pattern:
-      /^ALTER TABLE "apps" ALTER COLUMN "(granted_scopes|subscribed_event_types)" SET DEFAULT '\{\}';?$/,
-  },
-  {
-    // Same empty text[] default false positive as apps / invitation
-    // (0279 Better Auth 1.7 oauth_client.client_credentials_scopes).
+    // above (0279 Better Auth 1.7 oauth_client.client_credentials_scopes).
     reason: 'drizzle-kit false positive: empty text[] default reads back as \'{""}\'',
     pattern:
       /^ALTER TABLE "oauth_client" ALTER COLUMN "client_credentials_scopes" SET DEFAULT '\{\}';?$/,

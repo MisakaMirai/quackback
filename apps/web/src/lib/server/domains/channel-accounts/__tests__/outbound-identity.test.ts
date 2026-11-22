@@ -33,13 +33,13 @@ import {
 } from '../outbound-identity'
 import type { SendingIdentity } from '@quackback/email/sender'
 
-/** Workspace B: on the fleet, with its own slug, owning nothing of its own. */
+/** A strict guard context: an address must be proven, not merely allowed. */
 const workspaceB: SendingIdentityContext = {
   verifiedDomains: [],
   platformFrom: 'Quackback <notifications@mail.platform.test>',
   inboundDomain: 'mail.platform.test',
   mailSlug: 'beta',
-  pooled: true,
+  strict: true,
 }
 
 describe('a workspace cannot send from another workspace’s verified domain', () => {
@@ -99,26 +99,12 @@ describe('a workspace cannot send from another workspace’s verified domain', (
     expect(isSendingIdentityPermitted('beta@mail.platform.test', unscoped)).toBe(false)
   })
 
-  it('uses the scoped workspace From as platformFrom', async () => {
-    vi.stubEnv('QUACKBACK_TENANCY', 'pooled')
-    vi.stubEnv('EMAIL_FROM', 'Fleet <noreply@fleet.example>')
-    await withWorkspace('inst_alpha', async () => {
-      await expect(permittedSendingIdentity('support@inst_alpha.example.com')).resolves.toBe(
-        'support@inst_alpha.example.com'
-      )
-      await expect(permittedSendingIdentity('noreply@fleet.example')).resolves.toBeNull()
-    })
-    vi.unstubAllEnvs()
-  })
-
-  it('permits anything on a single-workspace install', () => {
+  it('permits anything when the strict check is not asked for', () => {
     // One workspace, one provider account, nobody to impersonate. Refusing here
     // would break a self-hosted install whose operator typed every address by
     // hand, to defend against a second workspace that does not exist.
-    const selfHosted = { ...workspaceB, pooled: false }
+    const selfHosted = { ...workspaceB, strict: false }
     expect(isSendingIdentityPermitted('anything@wherever.test', selfHosted)).toBe(true)
-    // And on a fleet the same address is refused.
-    expect(isSendingIdentityPermitted('anything@wherever.test', workspaceB)).toBe(false)
   })
 
   it('refuses a value that is not an address at all', () => {
@@ -224,7 +210,6 @@ describe('withSendingDisplayName', () => {
 
 describe('the send guard reads the minting domain, not the accept-set', () => {
   const env = {
-    QUACKBACK_TENANCY: 'pooled',
     EMAIL_FROM: 'Quackback <notifications@mail.platform.test>',
     EMAIL_INBOUND_DOMAIN: 'mail.platform.test',
     EMAIL_INBOUND_EXTRA_DOMAINS: 'old.platform.test',
@@ -239,18 +224,5 @@ describe('the send guard reads the minting domain, not the accept-set', () => {
 
   it('permits this workspace’s label on the minting domain', async () => {
     await expect(permitted('ws-t1@mail.platform.test')).resolves.toBe('ws-t1@mail.platform.test')
-  })
-
-  it('refuses it on a domain the fleet only RECEIVES on', async () => {
-    // Widening the guard to the accept-set would permit this — and the send
-    // would then be rejected by the provider, which holds no verified identity
-    // for a domain retired from minting. Refused here, the caller falls back to
-    // the platform sender and the mail goes out.
-    await expect(permitted('ws-t1@old.platform.test')).resolves.toBeNull()
-  })
-
-  it('refuses another workspace’s label on either of them', async () => {
-    await expect(permitted('ws-t2@mail.platform.test')).resolves.toBeNull()
-    await expect(permitted('ws-t2@old.platform.test')).resolves.toBeNull()
   })
 })

@@ -39,7 +39,7 @@ interface OAuthState {
   principalId: PrincipalId
   nonce: string
   ts: number
-  /** Pre-auth fields collected before OAuth (e.g. Zendesk subdomain) */
+  /** Pre-auth fields collected before OAuth (e.g. a CRM subdomain) */
   preAuthFields?: Record<string, string>
   /** Allowlisted path to return to after connect (GitHub channel page). */
   returnPath?: string

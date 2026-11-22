@@ -46,7 +46,6 @@ import { sql } from 'drizzle-orm'
 import { db } from '@/lib/server/db'
 import { getExecuteRows } from '@/lib/server/utils/execute-rows'
 import { currentWorkspaceNamespace } from '../workspaces/workspace-keyed'
-import { isPooledTenancy } from '../workspaces/mode'
 import { config } from '@/lib/server/config'
 import { openRealtimeListener, type RealtimeListener } from './pg-listener'
 import { logger } from '@/lib/server/logger'
@@ -187,13 +186,7 @@ async function checkDelivery(namespace: string, listener: RealtimeListener): Pro
     return
   }
   if (ok) return
-  // The remedy differs by tenancy: a single-workspace install is told which
-  // variable to change, a pooled one which registry field, by workspace id and
-  // never by URL.
-  const remedy = isPooledTenancy()
-    ? `the direct database URL registered for workspace ${namespace} must be a direct or ` +
-      'session-mode connection'
-    : 'DATABASE_URL must be a direct or session-mode connection'
+  const remedy = 'DATABASE_URL must be a direct or session-mode connection'
   log.error(
     { workspace: namespace },
     'realtime notifications are not being delivered. Realtime uses Postgres LISTEN/NOTIFY, ' +

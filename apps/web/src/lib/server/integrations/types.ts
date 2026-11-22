@@ -4,7 +4,7 @@ import type { UserSyncHandler } from './user-sync-types'
 
 /**
  * A field collected from the user before starting the OAuth flow.
- * Used for providers that need user-specific info in their OAuth URLs (e.g. Zendesk subdomain).
+ * Used for providers that need user-specific info in their OAuth URLs (e.g. a CRM subdomain).
  */
 export interface PreAuthField {
   name: string
@@ -49,7 +49,7 @@ export interface IntegrationOAuthConfig {
   stateType: string
   /** Provider's error query param name (default: 'error') */
   errorParam?: string
-  /** Fields collected before OAuth (e.g. subdomain for Zendesk). Rendered by the settings UI. */
+  /** Fields collected before OAuth (e.g. a CRM subdomain). Rendered by the settings UI. */
   preAuthFields?: PreAuthField[]
   /** Build the external authorization URL */
   buildAuthUrl(

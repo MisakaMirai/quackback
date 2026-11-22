@@ -14,7 +14,11 @@ function scopeFor(workspaceKey: string) {
     workspace: {
       workspaceKey,
       revision: 1,
-      routing: { primaryHostname: 'ws.example.com', hostnames: [], baseUrl: 'https://ws.example.com' },
+      routing: {
+        primaryHostname: 'ws.example.com',
+        hostnames: [],
+        baseUrl: 'https://ws.example.com',
+      },
       email: { from: null, mailSlug: 'acme' },
     },
     db: {},
@@ -54,9 +58,5 @@ describe('returnPathTarget', () => {
       'ws-8fc0ff855f96e8aa09b38e87.bounces.example.net'
     )
     expect(returnPathTarget(ON)).toBe(`${returnPathLabel('__single__')}.bounces.example.net`)
-  })
-
-  it('is null on a pooled process with no workspace scope', () => {
-    expect(returnPathTarget({ ...ON, QUACKBACK_TENANCY: 'pooled' })).toBeNull()
   })
 })

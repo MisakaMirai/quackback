@@ -60,15 +60,14 @@
  * {@link isPreNamespaceObject}.
  *
  * It reaches the bucket root through {@link openLegacyRelocationBucket}, which
- * refuses under pooled tenancy and inside any workspace scope. Listing and
- * copying at the root is correct against a bucket that holds one workspace and
- * catastrophic against one that holds the fleet, so that capability exists for
- * this one job, only where the bucket provably holds one workspace, and it has
- * no delete.
+ * refuses inside any workspace scope. Listing and copying at the root is correct
+ * against a bucket that holds one workspace, so that capability exists for this
+ * one job, only where the bucket provably holds one workspace, and it has no
+ * delete.
  *
- * For anything the automatic copy does not cover (pooled tenancy, a bulk move
- * between buckets, or an object over CopyObject's 5 GB single-request limit,
- * which the application never writes), the operator fallback is:
+ * For anything the automatic copy does not cover (a bulk move between buckets,
+ * or an object over CopyObject's 5 GB single-request limit, which the
+ * application never writes), the operator fallback is:
  *
  * ```
  * aws s3 cp s3://<bucket>/ s3://<bucket>/w/<workspace TypeID>/ --recursive --exclude 'w/workspace_*'
@@ -108,7 +107,6 @@ import { absolutizeOffHostAssetUrl, storedAssetKeyFromSrc } from './asset-url'
 import { composeNamespacedKey, workspaceNamespace } from './namespace'
 import { attachmentDisposition } from './serve-policy'
 import { currentWorkspaceId } from './workspace-scope'
-import { isPooledTenancy } from '@/lib/server/workspaces/mode'
 
 // ============================================================================
 // Configuration
@@ -667,10 +665,9 @@ export interface ListedObject {
  *
  * Listing the bucket root and copying an arbitrary key are exactly what the
  * workspace-scoped client withholds. They are safe here, and only here, because
- * {@link openLegacyRelocationBucket} refuses to build this under pooled tenancy
- * or inside a workspace scope: on a single-workspace install the bucket holds
- * one workspace, so its root is that workspace's and nobody else's. There is no
- * delete.
+ * {@link openLegacyRelocationBucket} refuses to build this inside a workspace
+ * scope: on a single-workspace install the bucket holds one workspace, so its
+ * root is that workspace's and nobody else's. There is no delete.
  */
 export interface LegacyRelocationBucket {
   /** `w/<workspace TypeID>/`, the namespace every relocated object lands in. */
@@ -706,12 +703,10 @@ export class LegacyRelocationRefused extends Error {
  * Open the bucket root for the single-workspace relocation, or null when this
  * install has no object storage configured.
  *
- * Refuses (throws) under pooled tenancy and inside any workspace scope, because
- * under one fleet bucket a bare key is nobody's namespace and the root is every
- * workspace's.
+ * Refuses inside any workspace scope, because a bare key is nobody's namespace
+ * and the root is the whole install's.
  */
 export async function openLegacyRelocationBucket(): Promise<LegacyRelocationBucket | null> {
-  if (isPooledTenancy()) throw new LegacyRelocationRefused('pooled tenancy')
   if (getCurrentWorkspace()) throw new LegacyRelocationRefused('a workspace scope is active')
   if (!isS3Configured()) return null
 
@@ -854,9 +849,8 @@ function createAnswerCache(ttlMs: number) {
  * Where a pre-namespace original was last seen present (hits) or absent
  * (misses). Two caches, so a flood of made-up keys fills only the miss cache
  * and never pushes out a real link's answer. Only ever used by
- * {@link isPreNamespaceObject}, which refuses under pooled tenancy and inside
- * any workspace scope, so the one bucket they describe is the one this
- * process's only workspace owns.
+ * {@link isPreNamespaceObject}, which refuses inside any workspace scope, so the
+ * one bucket they describe is the one this process's only workspace owns.
  */
 const preNamespaceHits = createAnswerCache(PRE_NAMESPACE_HIT_TTL_MS)
 const preNamespaceMisses = createAnswerCache(PRE_NAMESPACE_MISS_TTL_MS)
@@ -878,9 +872,8 @@ const preNamespaceMisses = createAnswerCache(PRE_NAMESPACE_MISS_TTL_MS)
  * fall back to a bare key, and it is why this is safe to answer from a HEAD.
  *
  * Narrowed on purpose:
- * - **Single-workspace only.** Under pooled tenancy, or inside any workspace
- *   scope, a bucket-root key is nobody's namespace, so the answer is no without
- *   asking.
+ * - **Single-workspace only.** Inside any workspace scope, a bucket-root key is
+ *   nobody's namespace, so the answer is no without asking.
  * - **Pre-token private prefixes only** ({@link PRE_TOKEN_PRIVATE_PREFIXES}).
  *   A key under `w/<workspace>/` is therefore never asked about, so no other
  *   namespace's object, nor this workspace's own new upload, can stand in for
@@ -902,7 +895,6 @@ export async function isPreNamespaceObject(
   key: string,
   mayAskBucket: () => Promise<boolean> = async () => true
 ): Promise<boolean> {
-  if (isPooledTenancy() || config.isPooledTenancy) return false
   if (getCurrentWorkspace()) return false
   if (!PRE_TOKEN_PRIVATE_PREFIXES.has(key.split('/', 1)[0] ?? '')) return false
   if (!isS3Usable()) return false

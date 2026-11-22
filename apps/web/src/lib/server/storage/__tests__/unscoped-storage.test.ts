@@ -135,11 +135,10 @@ describe('a self-hosted process', () => {
   })
 })
 
-describe('a pooled process with no scope', () => {
+describe('a database that will not name the workspace', () => {
   it('refuses, and the refusal is the database proxy s own', async () => {
-    // Exactly what `db.ts` does under QUACKBACK_TENANCY=pooled: there is no
-    // fleet-wide connection to fall back to, so the read throws. Storage adds no
-    // check of its own — it inherits this one.
+    // The test double models a database that refuses an unscoped read. Storage
+    // adds no check of its own — it inherits this one.
     const { WorkspaceScopeMissingError } = await import('@/lib/server/workspaces/workspace-context')
     findFirst.mockImplementation(() => {
       throw new WorkspaceScopeMissingError('A `db` call was made with no workspace resolved.')
