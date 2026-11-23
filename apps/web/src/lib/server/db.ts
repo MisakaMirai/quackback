@@ -71,6 +71,16 @@ export const max = _max
 
 // Database type - postgres.js for self-hosted
 export type Database = PostgresDatabase
+/**
+ * A transaction handle.
+ *
+ * Inside a `db.transaction(async (tx) => ...)` callback every query MUST go
+ * through `tx`, or through a helper that accepts the transaction. Calling the
+ * global `db` there requests a SECOND connection from the pool while the first
+ * one is still held: a one-slot pool deadlocks, and a larger pool can exhaust
+ * itself under concurrency. Helpers that may run either standalone or in a
+ * caller's transaction take an `executor`/`tx` parameter for exactly this.
+ */
 export type Transaction = Parameters<Parameters<Database['transaction']>[0]>[0]
 
 // Use globalThis to persist database instance across hot reloads in development
@@ -347,6 +357,8 @@ export {
   VISITOR_SURFACES,
   VISITOR_TOP_DIMENSIONS,
   ensurePageViewPartitions,
+  ensurePageViewPartitionForToday,
+  isMissingPageViewPartition,
   dropExpiredPageViewPartitions,
   refreshVisitorAnalytics,
   VISITOR_PERIODS,
