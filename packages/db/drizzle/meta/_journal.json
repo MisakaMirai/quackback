@@ -2094,6 +2094,13 @@
       "when": 1791002900000,
       "tag": "0324_drop_workspace_columns",
       "breakpoints": true
+    },
+    {
+      "idx": 302,
+      "version": "7",
+      "when": 1791003000000,
+      "tag": "0325_presence_agents_index",
+      "breakpoints": true
     }
   ]
 }

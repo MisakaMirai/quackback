@@ -19,32 +19,30 @@ import {
   index,
 } from 'drizzle-orm/pg-core'
 import { primaryKey } from 'drizzle-orm/pg-core'
+import { sql } from 'drizzle-orm'
 
 /** Generic cache entries, SET-NX locks and single values. */
 export const kvStore = pgTable(
   'kv_store',
   {
     /** Logical key, exactly as the caller named it. Never prefixed again. */
-    key: text('key').notNull(),
+    key: text('key').primaryKey(),
     value: jsonb('value').notNull(),
     /** Reads filter on this; the sweeper only reclaims space. */
     expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
   },
-  (t) => [primaryKey({ columns: [t.key] }), index('kv_store_expires_at_idx').on(t.expiresAt)]
+  (t) => [index('kv_store_expires_at_idx').on(t.expiresAt)]
 )
 
 /** Fixed-window rate-limit counters. */
 export const rateBucket = pgTable(
   'rate_bucket',
   {
-    key: text('key').notNull(),
+    key: text('key').primaryKey(),
     count: integer('count').notNull().default(0),
     windowExpiresAt: timestamp('window_expires_at', { withTimezone: true }).notNull(),
   },
-  (t) => [
-    primaryKey({ columns: [t.key] }),
-    index('rate_bucket_window_expires_at_idx').on(t.windowExpiresAt),
-  ]
+  (t) => [index('rate_bucket_window_expires_at_idx').on(t.windowExpiresAt)]
 )
 
 /** Members of a keyed set — today only `user:devices:v3:<userId>`. */
@@ -56,7 +54,7 @@ export const kvSetMember = pgTable(
     expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
   },
   (t) => [
-    primaryKey({ columns: [t.setKey, t.member] }),
+    primaryKey({ name: 'kv_set_member_pkey', columns: [t.setKey, t.member] }),
     index('kv_set_member_expires_at_idx').on(t.expiresAt),
   ]
 )
@@ -71,8 +69,13 @@ export const presenceStream = pgTable(
     heartbeatAt: timestamp('heartbeat_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
-    primaryKey({ columns: [t.principalId, t.streamId] }),
+    primaryKey({ name: 'presence_stream_pkey', columns: [t.principalId, t.streamId] }),
     index('presence_stream_heartbeat_idx').on(t.heartbeatAt),
+    // Serves `listOnlineAgentIds()` / `isAnyAgentAvailable()`:
+    // `WHERE is_agent AND heartbeat_at > now() - interval`.
+    index('presence_stream_agents_idx')
+      .on(t.heartbeatAt)
+      .where(sql`is_agent`),
   ]
 )
 
