@@ -5,6 +5,11 @@ import { ArrowRightIcon } from '@heroicons/react/24/outline'
 import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { adminQueries } from '@/lib/client/queries/admin'
 
+/**
+ * The moderation backlog banner on the Feedback inbox. Every string goes
+ * through the catalog: this is the first place an agent sees the queue, so an
+ * untranslated link here leaves the whole affordance half-English.
+ */
 export function ModerationPendingBanner() {
   const intl = useOptionalIntl()
   const { data } = useQuery(adminQueries.moderationStatus())
@@ -28,7 +33,10 @@ export function ModerationPendingBanner() {
           to="/admin/feedback/moderation"
           className="ml-auto inline-flex items-center gap-1 text-primary hover:underline font-medium"
         >
-          Review
+          {intl.formatMessage({
+            id: 'admin.feedback.moderation.review',
+            defaultMessage: 'Review',
+          })}
           <ArrowRightIcon className="h-3.5 w-3.5" />
         </Link>
       </div>

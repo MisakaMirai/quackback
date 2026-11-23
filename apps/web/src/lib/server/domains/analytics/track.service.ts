@@ -10,7 +10,12 @@
 import { z } from 'zod'
 import Bowser from 'bowser'
 import { isbot } from 'isbot'
-import { db, pageViews } from '@/lib/server/db'
+import {
+  db,
+  pageViews,
+  ensurePageViewPartitionForToday,
+  isMissingPageViewPartition,
+} from '@/lib/server/db'
 import { logger } from '@/lib/server/logger'
 import { getClientIp } from '@/lib/server/domains/api/rate-limit'
 import { incrementBucket } from '@/lib/server/utils/rate-bucket'
@@ -134,25 +139,46 @@ export async function recordPageView(request: Request): Promise<void> {
   const { device, browser, os } = parseUserAgent(userAgent)
   const country = captureCountryFromHeaders(request.headers)
 
+  const row = {
+    siteOrigin: url.origin,
+    surface: beacon.surface,
+    path: url.pathname,
+    source: deriveSource(url, beacon.referrer),
+    country,
+    device,
+    browser,
+    os,
+    visitorHash,
+    deviceId: beacon.deviceId ?? null,
+  }
   try {
-    await db.insert(pageViews).values({
-      siteOrigin: url.origin,
-      surface: beacon.surface,
-      path: url.pathname,
-      source: deriveSource(url, beacon.referrer),
-      country,
-      device,
-      browser,
-      os,
-      visitorHash,
-      deviceId: beacon.deviceId ?? null,
-    })
-    if (beacon.deviceId) {
+    await db.insert(pageViews).values(row)
+  } catch (error) {
+    if (!isMissingPageViewPartition(error)) {
+      log.error({ err: error }, 'pageview insert failed, dropping')
+      return
+    }
+    // The view is not invalid just because its day partition was never
+    // created (maintenance has not run, or the clock crossed midnight). Create
+    // the partition the insert needed and store the view, rather than letting
+    // the failure throw the beacon away.
+    try {
+      await ensurePageViewPartitionForToday(db)
+      await db.insert(pageViews).values(row)
+    } catch (retryError) {
+      log.error({ err: retryError }, 'pageview insert failed, dropping')
+      return
+    }
+  }
+
+  if (beacon.deviceId) {
+    try {
       const { touchVisitorDevice } = await import('./device-link.service')
       await touchVisitorDevice(beacon.deviceId, country)
+    } catch (error) {
+      // Device linking is an enrichment; a failure must not surface from the
+      // fire-and-forget beacon route after the view itself was stored.
+      log.error({ err: error }, 'visitor device touch failed')
     }
-  } catch (error) {
-    // Most likely a missing day partition (maintenance job not running).
-    log.error({ err: error }, 'pageview insert failed, dropping')
   }
 }

@@ -20,7 +20,7 @@ interface HelpCenterLocaleSwitcherProps {
   currentLocale: string
   defaultLocale: string
   additionalLocales: string[]
-  /** The unprefixed /hc path of the page currently being viewed. */
+  /** The locale-less /hc path of the page currently being viewed (`/hc/articles/...`). */
   canonicalPath: string
 }
 

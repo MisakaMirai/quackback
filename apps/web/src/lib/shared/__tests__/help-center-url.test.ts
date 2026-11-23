@@ -59,8 +59,8 @@ describe('hcArticlePath / hcCollectionPath', () => {
 })
 
 describe('localizedHcPath', () => {
-  it('leaves the default-locale homepage unprefixed', () => {
-    expect(localizedHcPath('en', '/hc')).toBe('/hc')
+  it('prefixes the default-locale homepage too, so every page has one scheme', () => {
+    expect(localizedHcPath('en', '/hc')).toBe('/hc/en')
   })
 
   it('prefixes content paths even for the default locale', () => {

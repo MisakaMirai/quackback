@@ -42,6 +42,60 @@ END $$;`)
 }
 
 /**
+ * Whether an insert failure is the "no partition for this row" case: the day
+ * partition covering `occurred_at` does not exist yet (maintenance has not run,
+ * or the clock crossed midnight). SQLSTATE 23514 with the parent's name in the
+ * message; anything else is not healed by creating a partition.
+ */
+export function isMissingPageViewPartition(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false
+  const code = (error as { code?: unknown }).code
+  const message = (error as { message?: unknown }).message
+  return (
+    code === '23514' &&
+    typeof message === 'string' &&
+    message.includes('no partition of relation') &&
+    message.includes('page_views')
+  )
+}
+
+/** Postgres reports a concurrent `CREATE TABLE IF NOT EXISTS` losing the race as a duplicate-table error. */
+function isDuplicateTable(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false
+  const code = (error as { code?: unknown }).code
+  return code === '42P07' || code === '23505'
+}
+
+/**
+ * Create the day partition covering the database's current date (the insert
+ * default for `occurred_at`), so one late/missing-partition beacon is stored
+ * instead of being dropped. Idempotent; a concurrent creator losing the race is
+ * treated as success. On a one-connection pool this runs after the failed
+ * insert's own statement, never inside its transaction, so it takes the same
+ * connection rather than requesting a second one.
+ */
+export async function ensurePageViewPartitionForToday(db: Database): Promise<void> {
+  try {
+    await db.execute(
+      sql.raw(`DO $$
+DECLARE
+	d date := current_date;
+BEGIN
+	EXECUTE format(
+		'CREATE TABLE IF NOT EXISTS %I PARTITION OF "page_views" FOR VALUES FROM (%L) TO (%L)',
+		'page_views_' || to_char(d, 'YYYYMMDD'),
+		d,
+		d + 1
+	);
+END $$;`)
+    )
+  } catch (error) {
+    if (isDuplicateTable(error)) return
+    throw error
+  }
+}
+
+/**
  * Drop day partitions older than the retention window. Returns the dropped
  * partition names. Rollup tables are unaffected — they carry no identifiers
  * and are kept indefinitely.

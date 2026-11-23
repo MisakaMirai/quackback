@@ -36,6 +36,7 @@ import { getPublicUrlOrNull } from '@/lib/server/storage/s3'
 import { actorFromAuth, recordAuditEvent, type AuditEventType } from '@/lib/server/audit/log'
 import { requireAuth } from './auth-helpers'
 import { teamMemberWhere } from '@/lib/server/domains/principals/principal.service'
+import { latestSignInAt } from '@/lib/server/domains/principals/last-sign-in'
 import { resolveUserAvatarUrl } from '@/lib/server/domains/principals/principal-display'
 import { getSession } from '@/lib/server/auth/session'
 import { db, principal, user, invitation, account, eq, and } from '@/lib/server/db'
@@ -120,7 +121,8 @@ export const fetchTeamMembersAndInvitations = createServerFn({ method: 'GET' }).
 
     // Subquery: latest session timestamp per user. Left-joined so
     // a team member with no sessions still appears (lastSignInAt
-    // = null) — useful for spotting stale accounts.
+    // = null) — useful for spotting stale accounts. The principal's
+    // lastSsoSignInAt is the fallback when sessions have been pruned.
     const { session, max, sql: sqlOp } = await import('@/lib/server/db')
     const lastSession = db
       .select({
@@ -143,6 +145,7 @@ export const fetchTeamMembersAndInvitations = createServerFn({ method: 'GET' }).
         userName: user.name,
         userEmail: user.email,
         lastSignInAt: sqlOp<Date | null>`${lastSession.lastSignInAt}`,
+        lastSsoSignInAt: principal.lastSsoSignInAt,
       })
       .from(principal)
       .innerJoin(user, eq(principal.userId, user.id))
@@ -183,9 +186,10 @@ export const fetchTeamMembersAndInvitations = createServerFn({ method: 'GET' }).
 
     const members = membersRaw.map((m) => {
       const assigned = assignmentByPrincipal.get(m.id)
+      const { lastSsoSignInAt, ...member } = m
       return {
-        ...m,
-        lastSignInAt: toIsoStringOrNull(m.lastSignInAt),
+        ...member,
+        lastSignInAt: toIsoStringOrNull(latestSignInAt(m.lastSignInAt, lastSsoSignInAt)),
         assignedRole: assigned
           ? {
               id: assigned.roleId,

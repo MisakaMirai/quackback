@@ -3,7 +3,7 @@
  * Extracted for testability — no React dependencies.
  */
 
-import { hcCollectionPath } from '@/lib/shared/help-center-url'
+import { hcCollectionPath, localizedHcPath } from '@/lib/shared/help-center-url'
 import { buildAncestorChain } from '@/lib/shared/help-center-tree'
 
 interface CategoryLike {
@@ -42,7 +42,10 @@ export function buildCategoryBreadcrumbs<T extends CategoryLikeWithSlug>(params:
   const locale = params.locale ?? 'en'
   const chain = buildAncestorChain(params.allCategories, params.categoryId)
   const items: Array<{ label: string; href?: string }> = [
-    { label: params.rootLabel ?? 'Help Center', href: '/hc' },
+    {
+      label: params.rootLabel ?? 'Help Center',
+      href: localizedHcPath(locale, '/hc'),
+    },
   ]
 
   if (chain.length === 0) {

@@ -54,7 +54,7 @@ describe('help center sitemap origin', () => {
   it('lists https URLs when the request reaches the app over http behind a proxy', async () => {
     state.domain = { domain: null, verifiedAt: null }
     expect(await sitemapLocs('http://feedback.example.com/hc/sitemap.xml')).toEqual([
-      'https://feedback.example.com/hc',
+      'https://feedback.example.com/hc/en',
       'https://feedback.example.com/hc/en/collections/1-basics',
     ])
   })
@@ -63,7 +63,7 @@ describe('help center sitemap origin', () => {
     state.domain = { domain: 'help.acme.com', verifiedAt: '2026-10-01T00:00:00.000Z' }
     const locs = await sitemapLocs('https://help.acme.com/hc/sitemap.xml')
     expect(locs).toEqual([
-      'https://help.acme.com/hc',
+      'https://help.acme.com/hc/en',
       'https://help.acme.com/hc/en/collections/1-basics',
     ])
   })

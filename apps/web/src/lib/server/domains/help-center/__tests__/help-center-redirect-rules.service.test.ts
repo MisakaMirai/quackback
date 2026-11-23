@@ -51,6 +51,10 @@ vi.mock('@/lib/server/db', () => ({
   helpCenterCategories: { id: 'id' },
 }))
 
+vi.mock('@/lib/server/domains/settings/settings.service', () => ({
+  getHelpCenterConfig: async () => ({ locales: { default: 'en' } }),
+}))
+
 const {
   createRedirectRule,
   deleteRedirectRule,
@@ -252,12 +256,13 @@ describe('resolveRedirectRule', () => {
     })
     mockArticleFindFirst.mockResolvedValue({
       slug: 'getting-started',
+      urlId: 7,
       publishedAt: new Date(),
       deletedAt: null,
       category: { slug: 'basics' },
     })
 
-    expect(await resolveRedirectRule('/old-slug')).toBe('/hc/articles/basics/getting-started')
+    expect(await resolveRedirectRule('/old-slug')).toBe('/hc/en/articles/7-getting-started')
   })
 
   it('returns null when the article target is no longer published', async () => {
@@ -274,8 +279,13 @@ describe('resolveRedirectRule', () => {
 
   it('resolves a category rule to its canonical /hc path', async () => {
     mockRuleFindFirst.mockResolvedValue({ targetType: 'category', targetId: 'kb_category_1' })
-    mockCategoryFindFirst.mockResolvedValue({ slug: 'billing', isPublic: true, deletedAt: null })
+    mockCategoryFindFirst.mockResolvedValue({
+      slug: 'billing',
+      urlId: 9,
+      isPublic: true,
+      deletedAt: null,
+    })
 
-    expect(await resolveRedirectRule('/old-category')).toBe('/hc/categories/billing')
+    expect(await resolveRedirectRule('/old-category')).toBe('/hc/en/collections/9-billing')
   })
 })

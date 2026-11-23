@@ -18,6 +18,7 @@ import {
   createdResponse,
   badRequestResponse,
   notFoundResponse,
+  noContentResponse,
   handleDomainError,
 } from '@/lib/server/domains/api/responses'
 import { parseTypeId, parseTypeIdArray } from '@/lib/server/domains/api/validation'
@@ -128,6 +129,34 @@ export async function createStatusComponentHandler({ request }: { request: Reque
     })
 
     return createdResponse(serializeStatusComponent(component))
+  } catch (error) {
+    return handleDomainError(error)
+  }
+}
+
+/**
+ * DELETE /api/v1/status/components/:componentId (aliased at
+ * /api/v1/status/services/:serviceId)
+ *
+ * Soft-deletes the service (a hard delete would orphan incident history), so
+ * a monitoring integration can retire a service without the control panel.
+ */
+export async function deleteStatusComponentHandler({
+  request,
+  id,
+}: {
+  request: Request
+  id: string
+}) {
+  try {
+    await withApiKeyAuth(request, { permission: PERMISSIONS.STATUS_PAGE_MANAGE })
+
+    const componentId = parseTypeId<StatusComponentId>(id, 'status_component', 'component ID')
+
+    const { deleteStatusComponent } = await import('@/lib/server/domains/status')
+    await deleteStatusComponent(componentId)
+
+    return noContentResponse()
   } catch (error) {
     return handleDomainError(error)
   }

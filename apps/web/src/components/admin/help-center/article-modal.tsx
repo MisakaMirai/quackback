@@ -26,6 +26,9 @@ import {
   useUnpublishArticle,
 } from '@/lib/client/mutations/help-center'
 import { helpCenterQueries } from '@/lib/client/queries/help-center'
+import { useWorkspaceSettings } from '@/lib/client/hooks/use-root-context'
+import { hcArticlePath } from '@/lib/shared/help-center-url'
+import { DEFAULT_LOCALE } from '@/lib/shared/i18n'
 import { listSegmentsFn } from '@/lib/server/functions/admin'
 import { getInitialContentJson } from '@/components/admin/feedback/detail/post-utils'
 import type { ArticleId } from '@quackback/ids'
@@ -39,6 +42,7 @@ interface ArticleModalContentProps {
 
 export function ArticleModalContent({ articleId, onClose }: ArticleModalContentProps) {
   const intl = useOptionalIntl()
+  const settings = useWorkspaceSettings()
   const [contentJson, setContentJson] = useState<JSONContent | null>(null)
   const [translationsOpen, setTranslationsOpen] = useState(false)
   const [feedbackOpen, setFeedbackOpen] = useState(false)
@@ -150,8 +154,14 @@ export function ArticleModalContent({ articleId, onClose }: ArticleModalContentP
   }
 
   const publicArticleUrl =
-    isPublished && article.category?.slug && article.slug
-      ? `/hc/articles/${article.category.slug}/${article.slug}`
+    isPublished && article.slug
+      ? hcArticlePath({
+          locale:
+            (settings?.helpCenterConfig as { locales?: { default?: string } } | null | undefined)
+              ?.locales?.default ?? DEFAULT_LOCALE,
+          urlId: article.urlId,
+          slug: article.slug,
+        })
       : null
 
   const sidebar = {

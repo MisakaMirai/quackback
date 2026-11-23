@@ -696,11 +696,11 @@
       "htmlTransferKB": 15.7,
       "componentRenders": 182
     },
-    "sweep:doc:anon:/hc": {
+    "sweep:doc:anon:/hc/en": {
       "dbQueries": 3,
       "htmlKB": 28
     },
-    "sweep:ui:anon:/hc": {
+    "sweep:ui:anon:/hc/en": {
       "dbQueries": 3,
       "serverRequests": 3,
       "requests": 102,

@@ -130,8 +130,8 @@ test.describe('Public Help Center', () => {
     await categoryCards.first().click()
     await page.waitForLoadState('networkidle')
 
-    // Article rows link to /hc/articles/<categorySlug>/<articleSlug>
-    const articleLinks = page.locator('a[href*="/hc/articles/"]')
+    // Article rows link to /hc/{locale}/articles/{urlId}-{slug}
+    const articleLinks = page.locator('a[href*="/articles/"]')
     if ((await articleLinks.count()) === 0) {
       // Category exists but has no articles yet
       await expect(page.getByText(/No articles in this category yet|No articles yet/)).toBeVisible()
@@ -156,7 +156,7 @@ test.describe('Public Help Center', () => {
     await categoryCards.first().click()
     await page.waitForLoadState('networkidle')
 
-    const articleLinks = page.locator('a[href*="/hc/articles/"]')
+    const articleLinks = page.locator('a[href*="/articles/"]')
     if ((await articleLinks.count()) === 0) return
 
     await articleLinks.first().click()
@@ -175,7 +175,7 @@ test.describe('Public Help Center', () => {
     await categoryCards.first().click()
     await page.waitForLoadState('networkidle')
 
-    const articleLinks = page.locator('a[href*="/hc/articles/"]')
+    const articleLinks = page.locator('a[href*="/articles/"]')
     if ((await articleLinks.count()) === 0) return
 
     await articleLinks.first().click()
@@ -195,7 +195,7 @@ test.describe('Public Help Center', () => {
     await categoryCards.first().click()
     await page.waitForLoadState('networkidle')
 
-    const articleLinks = page.locator('a[href*="/hc/articles/"]')
+    const articleLinks = page.locator('a[href*="/articles/"]')
     if ((await articleLinks.count()) === 0) return
 
     await articleLinks.first().click()
@@ -216,7 +216,7 @@ test.describe('Public Help Center', () => {
     await categoryCards.first().click()
     await page.waitForLoadState('networkidle')
 
-    const articleLinks = page.locator('a[href*="/hc/articles/"]')
+    const articleLinks = page.locator('a[href*="/articles/"]')
     if ((await articleLinks.count()) === 0) return
 
     await articleLinks.first().click()
@@ -237,7 +237,7 @@ test.describe('Public Help Center', () => {
     await categoryCards.first().click()
     await page.waitForLoadState('networkidle')
 
-    const articleLinks = page.locator('a[href*="/hc/articles/"]')
+    const articleLinks = page.locator('a[href*="/articles/"]')
     if ((await articleLinks.count()) === 0) return
 
     await articleLinks.first().click()
@@ -260,7 +260,7 @@ test.describe('Public Help Center', () => {
     await categoryCards.first().click()
     await page.waitForLoadState('networkidle')
 
-    const articleLinks = page.locator('a[href*="/hc/articles/"]')
+    const articleLinks = page.locator('a[href*="/articles/"]')
     if ((await articleLinks.count()) === 0) return
 
     await articleLinks.first().click()
@@ -302,7 +302,7 @@ test.describe('Public Help Center', () => {
     if ((await helpCenterLink.count()) > 0) {
       await helpCenterLink.click()
       await page.waitForLoadState('networkidle')
-      await expect(page).toHaveURL(/\/hc\/?$/)
+      await expect(page).toHaveURL(/\/hc\/[^/]+\/?$/)
     }
   })
 
@@ -316,7 +316,7 @@ test.describe('Public Help Center', () => {
     await categoryCards.first().click()
     await page.waitForLoadState('networkidle')
 
-    const articleLinks = page.locator('a[href*="/hc/articles/"]')
+    const articleLinks = page.locator('a[href*="/articles/"]')
     if ((await articleLinks.count()) === 0) return
 
     await articleLinks.first().click()
@@ -352,7 +352,7 @@ test.describe('Public Help Center', () => {
     if ((await allCategoriesLink.count()) > 0) {
       await allCategoriesLink.first().click()
       await page.waitForLoadState('networkidle')
-      await expect(page).toHaveURL(/\/hc\/?$/)
+      await expect(page).toHaveURL(/\/hc\/[^/]+\/?$/)
     }
   })
 
@@ -432,7 +432,7 @@ test.describe('Public Help Center', () => {
     await categoryCards.first().click()
     await page.waitForLoadState('networkidle')
 
-    const articleLinks = page.locator('a[href*="/hc/articles/"]')
+    const articleLinks = page.locator('a[href*="/articles/"]')
     if ((await articleLinks.count()) < 2) return // need at least 2 articles for prev/next
 
     // Navigate to the second article so there's a "Previous" link
@@ -600,7 +600,7 @@ test.describe('Help Center - Article Content Verification', () => {
     await categoryCards.first().click()
     await page.waitForLoadState('networkidle')
 
-    const articleLinks = page.locator('a[href*="/hc/articles/"]')
+    const articleLinks = page.locator('a[href*="/articles/"]')
     if ((await articleLinks.count()) === 0) return false
 
     await articleLinks.first().click()
@@ -622,7 +622,7 @@ test.describe('Help Center - Article Content Verification', () => {
     await categoryCards.first().click()
     await page.waitForLoadState('networkidle')
 
-    const articleLinks = page.locator('a[href*="/hc/articles/"]')
+    const articleLinks = page.locator('a[href*="/articles/"]')
     if ((await articleLinks.count()) === 0) return
 
     // Capture the title text from the category listing row before navigating
@@ -747,7 +747,7 @@ test.describe('Help Center - Article Feedback Widget', () => {
     await categoryCards.first().click()
     await page.waitForLoadState('networkidle')
 
-    const articleLinks = page.locator('a[href*="/hc/articles/"]')
+    const articleLinks = page.locator('a[href*="/articles/"]')
     if ((await articleLinks.count()) === 0) return false
 
     await articleLinks.first().click()
@@ -888,7 +888,7 @@ test.describe('Help Center - Navigation Accuracy', () => {
     await categoryCards.first().click()
     await page.waitForLoadState('networkidle')
 
-    const articleLinks = page.locator('a[href*="/hc/articles/"]')
+    const articleLinks = page.locator('a[href*="/articles/"]')
     if ((await articleLinks.count()) === 0) return
 
     await articleLinks.first().click()
@@ -951,7 +951,7 @@ test.describe('Help Center - Navigation Accuracy', () => {
     await categoryCards.first().click()
     await page.waitForLoadState('networkidle')
 
-    const articleLinks = page.locator('a[href*="/hc/articles/"]')
+    const articleLinks = page.locator('a[href*="/articles/"]')
     if ((await articleLinks.count()) === 0) return
 
     await articleLinks.first().click()

@@ -31,6 +31,7 @@ import type { PermissionKey } from '@/lib/shared/permissions'
 import { recordAuditEvent, type AuditActor } from '@/lib/server/audit/log'
 import type { TeamMember } from './principal.types'
 import { resolveUserAvatarUrl } from './principal-display'
+import { latestSignInAt } from './last-sign-in'
 import { logger } from '@/lib/server/logger'
 import { setPrincipalRole } from './principal.factory'
 import {
@@ -103,10 +104,10 @@ export function teamMemberWhere() {
 /**
  * List all team members with user details
  *
- * `lastSignInAt` is computed as `max(session.created_at)` per user
- * via a left-join subquery so the admin team list can show a
- * "last sign-in" column without a second round-trip. Users with no
- * sessions show `null` (never signed in or all sessions pruned).
+ * `lastSignInAt` is the later of `max(session.created_at)` per user and the
+ * principal's `last_sso_sign_in_at` (see {@link latestSignInAt}), so pruning
+ * sessions does not erase an SSO member's last sign-in. Users with neither
+ * show `null` (never signed in).
  */
 export async function listTeamMembers(): Promise<TeamMember[]> {
   try {
@@ -132,6 +133,7 @@ export async function listTeamMembers(): Promise<TeamMember[]> {
         role: principal.role,
         createdAt: principal.createdAt,
         lastSignInAt: sql<Date | string | null>`${lastSession.lastSignInAt}`,
+        lastSsoSignInAt: principal.lastSsoSignInAt,
       })
       .from(principal)
       .innerJoin(user, eq(principal.userId, user.id))
@@ -151,7 +153,7 @@ export async function listTeamMembers(): Promise<TeamMember[]> {
       image: resolveUserAvatarUrl({ userImage: m.image, userImageKey: m.imageKey }),
       role: m.role,
       createdAt: m.createdAt,
-      lastSignInAt: m.lastSignInAt == null ? null : new Date(m.lastSignInAt),
+      lastSignInAt: latestSignInAt(m.lastSignInAt, m.lastSsoSignInAt),
     }))
   } catch (error) {
     log.error({ err: error }, 'failed to list team members')

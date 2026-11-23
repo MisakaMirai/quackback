@@ -209,7 +209,7 @@ const SWEEP_PAGES: { path: string; as: Actor }[] = [
     'ticket-statuses',
     'ticket-types',
   ].map((page) => ({ path: `/admin/settings/${page}`, as: 'admin' as const })),
-  ...['/roadmap', '/changelog', '/hc', '/support', '/notifications'].map((path) => ({
+  ...['/roadmap', '/changelog', '/hc/en', '/support', '/notifications'].map((path) => ({
     path,
     as: 'anon' as const,
   })),
@@ -242,7 +242,7 @@ export const journeys: Journey[] = [
   // A post page streams a query after the shell, so its document only ends
   // once that query has been written into it.
   { kind: 'document', name: 'doc:portal-post', as: 'anon', path: firstPostPath },
-  { kind: 'document', name: 'doc:help-center', as: 'anon', path: '/hc' },
+  { kind: 'document', name: 'doc:help-center', as: 'anon', path: '/hc/en' },
 
   // The same portal pages for a signed-in user: the difference is the
   // per-request cost of a session.
