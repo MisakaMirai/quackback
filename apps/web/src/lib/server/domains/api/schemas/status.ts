@@ -349,6 +349,18 @@ function componentDetailPath(label: string, paramName: string, deprecatedNote?: 
         404: componentNotFoundResponse(label),
       },
     },
+    delete: {
+      tags: ['Status'],
+      summary: `Delete a status ${label}`,
+      description: `Soft-deletes the status ${label}. Incident history that referenced it stays readable.${deprecatedNote ?? ''}`,
+      ...deprecated,
+      parameters: componentIdParam(paramName, label),
+      responses: {
+        204: { description: `Status ${label} deleted` },
+        401: componentUnauthorizedResponse,
+        404: componentNotFoundResponse(label),
+      },
+    },
   }
 }
 
@@ -464,6 +476,32 @@ registerPath('/status/incidents/{incidentId}', {
           },
         },
       },
+      401: {
+        description: 'Unauthorized',
+        content: { 'application/json': { schema: UnauthorizedErrorSchema } },
+      },
+      404: {
+        description: 'Status incident not found',
+        content: { 'application/json': { schema: NotFoundErrorSchema } },
+      },
+    },
+  },
+  delete: {
+    tags: ['Status'],
+    summary: 'Delete a status incident',
+    description:
+      'Soft-deletes an incident or maintenance window and releases any services it was holding down.',
+    parameters: [
+      {
+        name: 'incidentId',
+        in: 'path',
+        required: true,
+        schema: { type: 'string' },
+        description: 'Status incident ID',
+      },
+    ],
+    responses: {
+      204: { description: 'Status incident deleted' },
       401: {
         description: 'Unauthorized',
         content: { 'application/json': { schema: UnauthorizedErrorSchema } },
