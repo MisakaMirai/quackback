@@ -714,13 +714,12 @@ export const DEFAULT_HELP_CENTER_LOCALE_CHROME: HelpCenterLocaleChromeStrings = 
 }
 
 /**
- * Help center locales (domains/languages §2). The default locale is
- * unprefixed (`/hc/...`) and keeps using the top-level `homepageTitle`/
- * `homepageDescription` above -- it needs no chrome entry of its own.
- * Additional locales are URL-prefixed (`/hc/{locale}/...`) and require a
- * `chrome` entry with a non-empty `homepageTitle` before they can be
- * enabled: a locale with no title strings has
- * nothing to show on its own homepage.
+ * Help center locales (domains/languages §2). Every locale's pages are
+ * URL-prefixed (`/hc/{locale}/...`), including the default. The default locale
+ * keeps using the top-level `homepageTitle`/`homepageDescription` above — it
+ * needs no chrome entry of its own. Additional locales require a `chrome` entry
+ * with a non-empty `homepageTitle` before they can be enabled: a locale with no
+ * title strings has nothing to show on its own homepage.
  */
 export interface HelpCenterLocalesConfig {
   /** Always the app's DEFAULT_LOCALE; not independently configurable in v1. */

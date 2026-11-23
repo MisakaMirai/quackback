@@ -7,10 +7,10 @@ import {
 describe('buildHelpCenterSitemapUrls', () => {
   const baseUrl = 'https://help.example.com'
 
-  it('always includes the landing page first, under /hc', () => {
+  it('always includes the locale-prefixed landing page first', () => {
     const urls = buildHelpCenterSitemapUrls(baseUrl, [], [])
     expect(urls).toHaveLength(1)
-    expect(urls[0]).toEqual({ loc: 'https://help.example.com/hc' })
+    expect(urls[0]).toEqual({ loc: 'https://help.example.com/hc/en' })
   })
 
   it('includes collection pages without lastmod', () => {
@@ -70,7 +70,7 @@ describe('buildHelpCenterSitemapUrls', () => {
 
     expect(urls).toHaveLength(5) // 1 landing + 2 collections + 2 articles
     expect(urls.map((u) => u.loc)).toEqual([
-      'https://help.example.com/hc',
+      'https://help.example.com/hc/en',
       'https://help.example.com/hc/en/collections/1-basics',
       'https://help.example.com/hc/en/collections/2-api',
       'https://help.example.com/hc/en/articles/1-getting-started',
@@ -122,13 +122,13 @@ describe('buildHelpCenterSitemapUrlsMultiLocale', () => {
     ])
 
     expect(urls).toHaveLength(2)
-    const en = urls.find((u) => u.loc === 'https://help.example.com/hc')!
+    const en = urls.find((u) => u.loc === 'https://help.example.com/hc/en')!
     const de = urls.find((u) => u.loc === 'https://help.example.com/hc/de')!
     expect(en.alternates).toEqual(
       expect.arrayContaining([
-        { hreflang: 'en', href: 'https://help.example.com/hc' },
+        { hreflang: 'en', href: 'https://help.example.com/hc/en' },
         { hreflang: 'de', href: 'https://help.example.com/hc/de' },
-        { hreflang: 'x-default', href: 'https://help.example.com/hc' },
+        { hreflang: 'x-default', href: 'https://help.example.com/hc/en' },
       ])
     )
     expect(de.alternates).toEqual(en.alternates)

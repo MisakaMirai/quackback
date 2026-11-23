@@ -50,7 +50,7 @@ describe('buildCategoryBreadcrumbs (hierarchical)', () => {
       categoryId: 'root',
     })
     expect(items.map((i) => i.label)).toEqual(['Help Center', 'Root'])
-    expect(items[0].href).toBe('/hc')
+    expect(items[0].href).toBe('/hc/en')
     expect(items[1].href).toBeUndefined()
   })
 

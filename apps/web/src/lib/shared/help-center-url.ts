@@ -35,15 +35,12 @@ export function hcCollectionPath(opts: { locale: string; urlId: number; slug: st
 }
 
 /**
- * Build an /hc path for a given locale from its canonical (unprefixed) form.
- * The homepage stays unprefixed for the default locale (`/hc`); every other
- * path — including default-locale articles and collections — carries the
- * locale (`/hc/en/articles/...`).
+ * Build the one canonical /hc path for a locale. Every page — including the
+ * default-locale homepage — carries the locale prefix (`/hc/{locale}/...`), so
+ * there is a single URL scheme. The bare `/hc` entry point redirects here.
  */
 export function localizedHcPath(locale: string, path: string): string {
-  const isHome = path === '/hc' || path === '/hc/'
-  if (isHome) return locale === DEFAULT_LOCALE ? '/hc' : `/hc/${locale}`
-  const rest = path.replace(/^\/hc/, '')
+  const rest = path === '/hc' || path === '/hc/' ? '' : path.replace(/^\/hc/, '')
   return `/hc/${locale}${rest}`
 }
 
