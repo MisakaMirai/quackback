@@ -54,16 +54,13 @@
  * hourly for a day afterwards so bare keys an older replica writes during a
  * rolling upgrade are picked up too.
  *
- * Links to those objects were minted before read tokens and carry none. On a
- * single-workspace install the storage route still serves such a link while
- * the bare original remains, reading the relocated copy; see
- * {@link isPreNamespaceObject}.
+ * Links to those objects were minted before read tokens and carry none. The
+ * storage route still serves such a link while the bare original remains,
+ * reading the relocated copy; see {@link isPreNamespaceObject}.
  *
- * It reaches the bucket root through {@link openLegacyRelocationBucket}, which
- * refuses inside any workspace scope. Listing and copying at the root is correct
- * against a bucket that holds one workspace, so that capability exists for this
- * one job, only where the bucket provably holds one workspace, and it has no
- * delete.
+ * It reaches the bucket root through {@link openLegacyRelocationBucket}.
+ * Listing and copying at the root is correct against a bucket that holds one
+ * install, so that capability exists for this one job and it has no delete.
  *
  * For anything the automatic copy does not cover (a bulk move between buckets,
  * or an object over CopyObject's 5 GB single-request limit, which the
@@ -94,19 +91,9 @@ import {
 } from '@/lib/server/content/magic-bytes'
 import { resolveVideoMimeType } from '@/lib/shared/storage-config'
 import { PIPELINE_FILES_PREFIX } from '@/lib/shared/files/file-types'
-import {
-  getCurrentWorkspace,
-  getWorkspaceStorageCredential,
-  requireWorkspaceScope,
-} from '@/lib/server/workspaces/workspace-context'
-import {
-  currentWorkspaceNamespace,
-  SINGLE_WORKSPACE_NAMESPACE,
-} from '@/lib/server/workspaces/workspace-keyed'
 import { absolutizeOffHostAssetUrl, storedAssetKeyFromSrc } from './asset-url'
-import { composeNamespacedKey, workspaceNamespace } from './namespace'
+import { composeNamespacedKey, currentWorkspaceId, workspaceNamespace } from './namespace'
 import { attachmentDisposition } from './serve-policy'
-import { currentWorkspaceId } from './workspace-scope'
 
 // ============================================================================
 // Configuration
@@ -132,7 +119,7 @@ interface S3Config {
 }
 
 /**
- * Where a workspace's objects live and how their URLs are formed. Deliberately
+ * Where this install's objects live and how their URLs are formed. Deliberately
  * carries no credentials: rendering a public asset URL must not depend on
  * resolving a secret, so the two are split and only the paths that actually
  * talk to storage pay for credential resolution.
@@ -150,23 +137,8 @@ interface StoragePlacement {
   originUrl: string
 }
 
-/**
- * The active workspace's placement, or the process-wide one when unscoped.
- * Returns null when storage is not configured at all.
- */
+/** The install's placement, or null when storage is not configured at all. */
 function getStoragePlacementOrNull(): StoragePlacement | null {
-  const workspace = getCurrentWorkspace()
-  if (workspace) {
-    const storage = workspace.storage
-    return {
-      endpoint: storage.endpoint || undefined,
-      bucket: storage.bucket,
-      region: storage.region,
-      forcePathStyle: storage.forcePathStyle,
-      publicUrl: storage.publicUrl || undefined,
-      originUrl: workspace.routing.baseUrl,
-    }
-  }
   if (!config.s3Bucket || !config.s3Region) return null
   return {
     endpoint: config.s3Endpoint || undefined,
@@ -188,81 +160,44 @@ function getStoragePlacement(): StoragePlacement {
   return placement
 }
 
-/** Credentials for one bucket. Never logged, never cached to disk. */
+/** Credentials for the bucket. Never logged, never cached to disk. */
 export interface StorageCredentials {
   accessKeyId: string
   secretAccessKey: string
 }
 
-/** Storage is addressable but its credentials could not be resolved. */
-export class StorageUnavailableError extends Error {
-  readonly workspaceKey: string
-  constructor(workspaceKey: string, detail: string) {
-    super(`Storage is not usable for workspace ${workspaceKey}: ${detail}`)
-    this.name = 'StorageUnavailableError'
-    this.workspaceKey = workspaceKey
-  }
-}
-
 /**
- * Storage credentials for the active install.
- *
- * Production is single-workspace: one bucket and one credential pair from the
- * environment. A test fixture may open a scope carrying its own credential to
- * exercise per-install isolation; when it does, that credential wins.
- *
- * When a scope's credential did not resolve this throws
- * {@link StorageUnavailableError} rather than falling back to another pair.
+ * Storage credentials for this install: one bucket and one credential pair from
+ * the environment.
  */
 function resolveStorageCredentials(): StorageCredentials {
-  const resolved = getWorkspaceStorageCredential()
-  if (!resolved) {
-    if (!config.s3AccessKeyId || !config.s3SecretAccessKey) {
-      throw new Error(
-        'S3 storage is not configured. Set S3_BUCKET, S3_REGION, S3_ACCESS_KEY_ID, and S3_SECRET_ACCESS_KEY.'
-      )
-    }
-    return { accessKeyId: config.s3AccessKeyId, secretAccessKey: config.s3SecretAccessKey }
+  if (!config.s3AccessKeyId || !config.s3SecretAccessKey) {
+    throw new Error(
+      'S3 storage is not configured. Set S3_BUCKET, S3_REGION, S3_ACCESS_KEY_ID, and S3_SECRET_ACCESS_KEY.'
+    )
   }
-  if (resolved.ok) return resolved.credential
-  // A credential result at all means a scope is active, so the identity read is
-  // total. Asserted rather than defaulted: a placeholder workspace id in this
-  // message would be indistinguishable from a real one nobody recognises.
-  throw new StorageUnavailableError(
-    requireWorkspaceScope().workspace.workspaceKey,
-    resolved.problem
-  )
+  return { accessKeyId: config.s3AccessKeyId, secretAccessKey: config.s3SecretAccessKey }
 }
 
 /**
  * Whether a bucket can be *addressed*. Deliberately does NOT ask about
  * credentials: `buildPublicUrl` needs a placement and nothing else, and a
- * public asset URL must keep resolving for a workspace whose credentials this
+ * public asset URL must keep resolving for an install whose credentials this
  * process cannot dereference.
  */
 export function isS3Configured(): boolean {
-  if (getCurrentWorkspace()) return true
   return !!(config.s3Bucket && config.s3Region && config.s3AccessKeyId && config.s3SecretAccessKey)
 }
 
 /**
  * Whether an operation that actually touches the bucket can be attempted.
  *
- * Addressability and usability are different questions, and under pooled
- * workspaces they diverge: a workspace record always names a bucket, so
- * {@link isS3Configured} is true while every upload throws, because the
- * credential reference is an `openbao+kv://` ref no resolver has been
- * registered for.
- *
- * Callers that gate an upload want this one. Both of them already handle
+ * Callers that gate an upload want this one: both of them already handle
  * "storage is off" by skipping, so asking the addressability question there
  * turned a clean skip into an exception.
  */
 export function isS3Usable(): boolean {
-  if (!isS3Configured()) return false
-  // `null` is "no scope", where addressability was already the whole question.
-  const resolved = getWorkspaceStorageCredential()
-  return resolved === null || resolved.ok
+  return isS3Configured()
 }
 
 /**
@@ -298,8 +233,7 @@ function getS3Config(): S3Config {
  * changing the signing key is a fleet of dead asset links rather than a
  * rotation. The narrowing here is of who can *see* the value, not of what it is.
  *
- * Throws {@link StorageUnavailableError} for a workspace whose credentials did not
- * resolve, exactly as `getS3Config()` did. Both callers gate on
+ * Throws when the credentials are not configured at all. Both callers gate on
  * {@link isS3Usable} first.
  */
 export function getStorageSigningSecret(): string {
@@ -402,10 +336,8 @@ let _presignerModule: PresignerModule | null = null
  * somebody else's endpoint and credentials.
  *
  * Keyed by the parameters instead, the value is a pure function of the key, so
- * a hit across two scopes is byte-identical to what the asking scope would have
- * built. Under §9's one fleet credential that is one client for the fleet, which
- * is the correct number; under per-workspace credentials the keys differ and so do
- * the clients.
+ * a hit is byte-identical to what the asking caller would have built. One
+ * install has one credential and one client.
  *
  * The bound is a client count, not a correctness limit: eviction only costs a
  * rebuild on the next command.
@@ -482,11 +414,11 @@ async function getS3Client(s3Config: S3Config): Promise<S3ClientInstance> {
 }
 
 // ============================================================================
-// The workspace-scoped client — the only way to reach the bucket
+// The storage client — the only way to reach the bucket
 // ============================================================================
 
 /**
- * Every operation this application performs on an object, for one workspace.
+ * Every operation this application performs on an object.
  *
  * The methods take the **stored** key — `uploads/2026/08/…`, exactly what the
  * database holds — and compose `w/<selfReportedWorkspaceId>/` themselves. There is no method
@@ -519,17 +451,10 @@ export interface WorkspaceStorage {
 /**
  * A client bound to one workspace and to one set of connection parameters.
  *
- * **Not exported, and that is the fix for the hole this function used to be.**
- * An earlier revision exported it and guarded it by comparing `selfReportedWorkspaceId`
- * against the ambient scope — which skipped the comparison when there was no
- * scope, so an unscoped caller in a pooled process could name any workspace and
- * reach the fleet bucket with the fleet credential. The refusal that makes an
- * unscoped access safe lives in {@link currentWorkspaceId}, and this function
- * did not call it.
- *
- * A guard cannot repair that, because "no scope" is a legitimate state: it is
- * every self-hosted install, and that path resolves correctly by reading its own
- * `settings.id`. So the fix is to remove the choice rather than to police it —
+ * **Not exported, and that is what makes the namespace unavoidable.** The only
+ * way to obtain a client is {@link currentWorkspaceStorage}, which resolves the
+ * install's `settings.id` and hands it here, so no caller can name a namespace
+ * of its own.
  * {@link currentWorkspaceStorage} is the only door, and it always resolves.
  *
  * Nor could the type system have carried it. `TypeId<'workspace'>` is
@@ -664,10 +589,8 @@ export interface ListedObject {
  * The bucket-root capability the one-time relocation needs, and nothing else.
  *
  * Listing the bucket root and copying an arbitrary key are exactly what the
- * workspace-scoped client withholds. They are safe here, and only here, because
- * {@link openLegacyRelocationBucket} refuses to build this inside a workspace
- * scope: on a single-workspace install the bucket holds one workspace, so its
- * root is that workspace's and nobody else's. There is no delete.
+ * storage client withholds. They are safe here, and only here, because the
+ * bucket holds one install: its root is that install's. There is no delete.
  */
 export interface LegacyRelocationBucket {
   /** `w/<workspace TypeID>/`, the namespace every relocated object lands in. */
@@ -691,23 +614,13 @@ export interface LegacyRelocationBucket {
   copyIfAbsent(fromKey: string, toKey: string): Promise<'copied' | 'exists'>
 }
 
-/** A workspace-scoped or pooled process asked for the bucket root. */
-export class LegacyRelocationRefused extends Error {
-  constructor(reason: string) {
-    super(`Refusing to open the bucket root for relocation: ${reason}`)
-    this.name = 'LegacyRelocationRefused'
-  }
-}
-
 /**
- * Open the bucket root for the single-workspace relocation, or null when this
- * install has no object storage configured.
+ * Open the bucket root for the one-time relocation, or null when this install
+ * has no object storage configured.
  *
- * Refuses inside any workspace scope, because a bare key is nobody's namespace
- * and the root is the whole install's.
+ * The bucket holds one install's objects, so its root is this install's.
  */
 export async function openLegacyRelocationBucket(): Promise<LegacyRelocationBucket | null> {
-  if (getCurrentWorkspace()) throw new LegacyRelocationRefused('a workspace scope is active')
   if (!isS3Configured()) return null
 
   const connection = getS3Config()
@@ -849,8 +762,8 @@ function createAnswerCache(ttlMs: number) {
  * Where a pre-namespace original was last seen present (hits) or absent
  * (misses). Two caches, so a flood of made-up keys fills only the miss cache
  * and never pushes out a real link's answer. Only ever used by
- * {@link isPreNamespaceObject}, which refuses inside any workspace scope, so the
- * one bucket they describe is the one this process's only workspace owns.
+ * {@link isPreNamespaceObject}, so the one bucket they describe is the
+ * install's own.
  */
 const preNamespaceHits = createAnswerCache(PRE_NAMESPACE_HIT_TTL_MS)
 const preNamespaceMisses = createAnswerCache(PRE_NAMESPACE_MISS_TTL_MS)
@@ -872,8 +785,6 @@ const preNamespaceMisses = createAnswerCache(PRE_NAMESPACE_MISS_TTL_MS)
  * fall back to a bare key, and it is why this is safe to answer from a HEAD.
  *
  * Narrowed on purpose:
- * - **Single-workspace only.** Inside any workspace scope, a bucket-root key is
- *   nobody's namespace, so the answer is no without asking.
  * - **Pre-token private prefixes only** ({@link PRE_TOKEN_PRIVATE_PREFIXES}).
  *   A key under `w/<workspace>/` is therefore never asked about, so no other
  *   namespace's object, nor this workspace's own new upload, can stand in for
@@ -895,7 +806,6 @@ export async function isPreNamespaceObject(
   key: string,
   mayAskBucket: () => Promise<boolean> = async () => true
 ): Promise<boolean> {
-  if (getCurrentWorkspace()) return false
   if (!PRE_TOKEN_PRIVATE_PREFIXES.has(key.split('/', 1)[0] ?? '')) return false
   if (!isS3Usable()) return false
 
@@ -979,29 +889,15 @@ export function isPublicStorageKey(key: string): boolean {
 }
 
 /**
- * The signed message binds the workspace as well as the object key.
+ * The signed message binds the object key. It has no tenant component: one
+ * install, one signing secret, one bucket.
  *
- * Object keys are per-bucket, so `attachments/<uuid>` names a different object
- * in every workspace while reading identically here. If the signing secret is ever
- * shared across workspaces — which it is whenever the fleet-wide environment keys
- * are in play — a read token minted for one workspace would verify against
- * another's object without the binding.
- *
- * The single-workspace namespace signs the historical message byte for byte:
- * these tokens are embedded in absolute URLs stored in contentJson, so a
- * changed message invalidates every private asset link already written.
+ * The message is the historical one byte for byte: these tokens are embedded in
+ * absolute URLs stored in contentJson, so a changed message invalidates every
+ * private asset link already written.
  */
-function workspaceBind(message: string): string {
-  const namespace = currentWorkspaceNamespace()
-  if (namespace === SINGLE_WORKSPACE_NAMESPACE) return message
-  return `t:${namespace}|${message}`
-}
-
 function storageReadSig(secret: string, key: string): string {
-  return createHmac('sha256', secret)
-    .update(workspaceBind(`read|${key}`))
-    .digest('hex')
-    .slice(0, 32)
+  return createHmac('sha256', secret).update(`read|${key}`).digest('hex').slice(0, 32)
 }
 
 /**
@@ -1040,10 +936,7 @@ export function fileReadTokenExpiry(now: number = Date.now()): number {
 }
 
 function expiringReadSig(secret: string, key: string, exp: number): string {
-  return createHmac('sha256', secret)
-    .update(workspaceBind(`read|${key}|${exp}`))
-    .digest('hex')
-    .slice(0, 32)
+  return createHmac('sha256', secret).update(`read|${key}|${exp}`).digest('hex').slice(0, 32)
 }
 
 /** A canonical millisecond timestamp: no sign, no leading zero, no exponent. */
@@ -1131,8 +1024,8 @@ export async function generatePresignedUploadUrl(
   contentType: string,
   expiresIn: number = 900
 ): Promise<PresignedUploadUrl> {
-  // Resolve the workspace first so a pooled call with no scope still refuses.
-  // The client is not used to presign: the browser PUTs to /api/storage.
+  // Resolve the namespace first; it is not used to presign, because the browser
+  // PUTs to /api/storage.
   await currentWorkspaceStorage()
   const publicUrl = buildPublicUrl(getStoragePlacement(), key)
   const uploadUrl = buildProxyUploadUrl(getStorageSigningSecret(), key, contentType, expiresIn)
@@ -1145,10 +1038,8 @@ export async function generatePresignedUploadUrl(
 
 function proxyUploadSig(secret: string, key: string, contentType: string, exp: number): string {
   // truncated to 128 bits; sufficient for short-lived upload auth
-  // Workspace-bound for the same reason as the read token: the object key alone
-  // does not say which bucket the write lands in.
   return createHmac('sha256', secret)
-    .update(workspaceBind(`${key}|${contentType}|${exp}`))
+    .update(`${key}|${contentType}|${exp}`)
     .digest('hex')
     .slice(0, 32)
 }

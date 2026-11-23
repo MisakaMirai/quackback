@@ -1,6 +1,4 @@
 import {
-  setDefaultFromResolver,
-  setDefaultFromShared,
   setEmailLogSink,
   setEmailPoweredByResolver,
   setSesTenantHooks,
@@ -9,7 +7,6 @@ import {
 import type { ConversationId, PostId, TicketId } from '@quackback/ids'
 import { db, emailLog } from '@/lib/server/db'
 import { logger } from '@/lib/server/logger'
-import { getCurrentWorkspace } from '@/lib/server/workspaces/workspace-context'
 
 const log = logger.child({ component: 'email-log' })
 
@@ -77,9 +74,6 @@ export function ensureEmailLogSink(): void {
     void writeOutbound(entry)
   })
   setEmailPoweredByResolver(async () => false)
-  setDefaultFromResolver(() => getCurrentWorkspace()?.email.from ?? null)
-  // A single-workspace install lends its own From to every send.
-  setDefaultFromShared(() => false)
   // Per-workspace provider tenants. Each lookup returns null without touching
   // the database when tenants are off or no workspace is in scope.
   setSesTenantHooks({

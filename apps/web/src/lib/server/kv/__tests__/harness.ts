@@ -2,10 +2,9 @@
  * Real-Postgres harness for the KV / presence / realtime suites.
  *
  * These substrates replaced Redis, and the properties that matter about them —
- * atomicity under concurrency, TTL semantics, and workspace separation — are
- * properties of *statements executing against a real server*. A fake `db` would
- * let every one of these suites pass while the shipped SQL was wrong, which is
- * exactly the shape this run has caught nineteen times.
+ * atomicity under concurrency and TTL semantics — are properties of *statements
+ * executing against a real server*. A fake `db` would let every one of these
+ * suites pass while the shipped SQL was wrong.
  *
  * **Every key is unique per test.** `DATABASE_URL` is hard-coded to one shared
  * `quackback_test` for every worktree and agent on the machine, so a suite that
@@ -21,17 +20,15 @@ import postgres from 'postgres'
 // db-test-fixture.ts and jobs/__tests__/harness.ts.
 // oxlint-disable-next-line no-restricted-imports
 import { createDbFromSql, type Database } from '@quackback/db/client'
-import {
-  createWorkspaceScope,
-  runWithWorkspaceScope,
-} from '@/lib/server/workspaces/workspace-context'
-import {
-  makeWorkspaceDescriptor,
-  makeWorkspaceSecrets,
-} from '@/lib/server/__tests__/workspace-scope'
+import { seedTestConfigEnv } from '@/lib/server/__tests__/test-env'
 
 const URL =
   process.env.DATABASE_URL ?? 'postgresql://postgres:password@localhost:5432/quackback_test'
+
+// The code under test reaches the database through the app's `db`, which loads
+// the validated config.
+seedTestConfigEnv()
+process.env.DATABASE_URL = process.env.DATABASE_URL || URL
 
 const MIGRATION = path.resolve(
   __dirname,
@@ -71,47 +68,37 @@ export async function ensureKvSchema(): Promise<void> {
   await sql.unsafe(readFileSync(MIGRATION, 'utf8'))
 }
 
-/**
- * Run `fn` with `workspaceKey` as the ambient workspace AND a real database handle in
- * the scope, so `db` inside the code under test reaches Postgres.
- *
- * Deliberately not `__tests__/workspace-scope.ts`'s `withWorkspace`, which stubs the
- * handles: these suites exist to observe what the statements do.
- */
-export function withRealWorkspace<T>(workspaceKey: string, fn: () => Promise<T>): Promise<T> {
-  return runWithWorkspaceScope(
-    createWorkspaceScope({
-      workspace: makeWorkspaceDescriptor(workspaceKey),
-      db: testDb(),
-      sql: testSql() as never,
-      secrets: makeWorkspaceSecrets(workspaceKey),
-      origin: 'test',
-    }),
-    fn
-  )
-}
-
 /** A key nothing else on this machine can collide with. */
 export function uniqueKey(prefix: string): string {
   return `${prefix}:${randomUUID()}`
 }
 
-/** Two workspace ids for one test, distinct and unique across concurrent runs. */
+/**
+ * Run against the real test database. One install is one namespace, so the
+ * argument only tags this suite's rows; there is no scope to open.
+ */
+export function withRealWorkspace<T>(_installKey: string, fn: () => Promise<T>): Promise<T> {
+  return fn()
+}
+
+/** A unique run token, for tests that need two distinct principals. */
 export function workspacePair(): [string, string] {
   const run = randomUUID().slice(0, 8)
   return [`kvt-a-${run}`, `kvt-b-${run}`]
 }
 
-/** Remove everything this test wrote, by workspace id. Never by table. */
-export async function cleanupWorkspaces(...workspaceKeys: string[]): Promise<void> {
+/** Reclaim the expired rows these suites leave behind. Never deletes live rows. */
+export async function cleanupWorkspaces(..._installKeys: string[]): Promise<void> {
+  await cleanupExpired()
+}
+
+/** Reclaim the expired rows these suites leave behind. Never deletes live rows. */
+export async function cleanupExpired(): Promise<void> {
   const sql = testSql()
-  for (const t of workspaceKeys) {
-    await sql`DELETE FROM kv_store WHERE workspace_key = ${t}`
-    await sql`DELETE FROM rate_bucket WHERE workspace_key = ${t}`
-    await sql`DELETE FROM kv_set_member WHERE workspace_key = ${t}`
-    await sql`DELETE FROM presence_stream WHERE workspace_key = ${t}`
-    await sql`DELETE FROM realtime_overflow WHERE workspace_key = ${t}`
-  }
+  await sql`DELETE FROM kv_store WHERE expires_at <= now()`
+  await sql`DELETE FROM rate_bucket WHERE window_expires_at <= now()`
+  await sql`DELETE FROM kv_set_member WHERE expires_at <= now()`
+  await sql`DELETE FROM realtime_overflow WHERE expires_at <= now()`
 }
 
 export async function closeHarness(): Promise<void> {

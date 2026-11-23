@@ -37,7 +37,7 @@ import { config } from '@/lib/server/config'
 import { logger } from '@/lib/server/logger'
 import { kvGet, kvSet } from '@/lib/server/kv/pg-kv'
 import { enqueueJob, findJobByDedupeKey } from '@/lib/server/jobs/job-queue'
-import { WorkspaceKeyedCache } from '@/lib/server/workspaces/workspace-keyed'
+import { BoundedCache } from '@/lib/server/bounded-cache'
 import { DURABLE_KV_TTL_SECONDS, maxAttemptsOf } from './batched'
 
 const log = logger.child({ component: 'deferred-index-build' })
@@ -80,7 +80,7 @@ interface IndexPassState {
   allBuiltFor?: string
 }
 
-const indexPassState = new WorkspaceKeyedCache<IndexPassState>(10_000)
+const indexPassState = new BoundedCache<IndexPassState>(10_000)
 
 function passState(): IndexPassState {
   return indexPassState.memo('state', () => ({ passed: false, warned: new Set() }))

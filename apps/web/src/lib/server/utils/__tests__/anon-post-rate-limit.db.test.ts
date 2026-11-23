@@ -15,11 +15,11 @@ import {
 } from '@/lib/server/kv/__tests__/harness'
 import { ANON_POST_RATE_LIMIT, reserveAnonPostSlot } from '../anon-rate-limit'
 
-const [T, U] = workspacePair()
+const [T] = workspacePair()
 
 beforeAll(ensureKvSchema)
 afterAll(async () => {
-  await cleanupWorkspaces(T, U)
+  await cleanupWorkspaces(T)
   await closeHarness()
 })
 
@@ -46,13 +46,4 @@ it('charges only the address an idea was submitted from', async () => {
   expect(await withRealWorkspace(T, () => reserveAnonPostSlot(home))).toBe(false)
   // The same visitor moving on does not spend the address they left.
   expect(await withRealWorkspace(T, () => reserveAnonPostSlot(office))).toBe(true)
-})
-
-it('keeps one workspace from spending another workspace budget', async () => {
-  const ip = address()
-  for (let i = 0; i < ANON_POST_RATE_LIMIT; i++) {
-    await withRealWorkspace(T, () => reserveAnonPostSlot(ip))
-  }
-  expect(await withRealWorkspace(T, () => reserveAnonPostSlot(ip))).toBe(false)
-  expect(await withRealWorkspace(U, () => reserveAnonPostSlot(ip))).toBe(true)
 })

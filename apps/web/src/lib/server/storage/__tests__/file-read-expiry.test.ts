@@ -198,37 +198,6 @@ describe('verifying a files/ read link', () => {
   })
 })
 
-describe('workspace binding', () => {
-  const SHARED_SECRET = {
-    storage: { accessKeyId: 'shared-key', secretAccessKey: SECRET },
-  } as const
-
-  it('signs a files/ key differently per workspace on one shared secret', () => {
-    const alpha = withWorkspace('workspace-alpha', () => getPublicUrlOrNull(FILE_KEY), {
-      secrets: SHARED_SECRET,
-    })
-    const bravo = withWorkspace('workspace-bravo', () => getPublicUrlOrNull(FILE_KEY), {
-      secrets: SHARED_SECRET,
-    })
-    expect(params(alpha).get('exp')).toBe(params(bravo).get('exp'))
-    expect(params(alpha).get('read')).not.toBe(params(bravo).get('read'))
-    // Neither is the single-workspace message.
-    expect(params(alpha).get('read')).not.toBe(handSigned(FILE_KEY, EXP))
-
-    const a = params(alpha)
-    expect(
-      withWorkspace('workspace-alpha', () =>
-        verifyStorageReadToken(SECRET, FILE_KEY, a.get('read'), a.get('exp'))
-      )
-    ).toBe(true)
-    expect(
-      withWorkspace('workspace-bravo', () =>
-        verifyStorageReadToken(SECRET, FILE_KEY, a.get('read'), a.get('exp'))
-      )
-    ).toBe(false)
-  })
-})
-
 describe('every other prefix is unchanged', () => {
   it('mints the historical non-expiring token, pinned', () => {
     // HMAC-SHA256('fixture-secret', 'read|attachments/2026/08/contract.pdf'),

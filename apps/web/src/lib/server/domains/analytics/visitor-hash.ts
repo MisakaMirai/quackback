@@ -9,7 +9,7 @@
  */
 import { createHash, randomBytes } from 'node:crypto'
 import { kvGetOrCreate } from '@/lib/server/kv/pg-kv'
-import { WorkspaceKeyedCache } from '@/lib/server/workspaces/workspace-keyed'
+import { BoundedCache } from '@/lib/server/bounded-cache'
 import { logger } from '@/lib/server/logger'
 import { toIsoDateOnly } from '@/lib/shared/utils/date'
 
@@ -31,7 +31,7 @@ export function utcDateKey(now: Date = new Date()): string {
 // fleet-wide visitor identifier — exactly the cross-site correlation the daily
 // rotation exists to make impossible, reintroduced across workspaces instead of
 // across days.
-const cachedSalts = new WorkspaceKeyedCache<string>()
+const cachedSalts = new BoundedCache<string>()
 
 /**
  * Get-or-create the salt for the given UTC day. Race-safe across pods: the

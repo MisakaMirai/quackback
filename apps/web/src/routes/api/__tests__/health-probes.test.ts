@@ -24,7 +24,7 @@ beforeEach(() => {
   getMigrationStatus.mockResolvedValue({ upToDate: true, bundledCount: 1, appliedCount: 1 })
   getJobWorkerStatus.mockReturnValue({
     running: true,
-    workspaces: [{ workspaceKey: 't1', inFlight: 0, schemaMissing: false, refusedCode: null }],
+    loop: { inFlight: 0, schemaMissing: false, refusedCode: null },
   })
 })
 
@@ -127,7 +127,7 @@ describe('GET /api/health/ready', () => {
     // pooled replica running no consumer at all reported
     // `workers ok:true total:0` while every queue accumulated silently. This is
     // the case that reading has to fail.
-    getJobWorkerStatus.mockReturnValue({ running: false, workspaces: [] })
+    getJobWorkerStatus.mockReturnValue({ running: false, loop: null })
     const res = await handleReadinessProbe()
     expect(res.status).toBe(503)
     const body = await res.json()
@@ -136,7 +136,7 @@ describe('GET /api/health/ready', () => {
 
   it('stays ready on a web-role replica, which is not supposed to run the job worker', async () => {
     vi.stubEnv('QUACKBACK_ROLE', 'web')
-    getJobWorkerStatus.mockReturnValue({ running: false, workspaces: [] })
+    getJobWorkerStatus.mockReturnValue({ running: false, loop: null })
     const res = await handleReadinessProbe()
     expect(res.status).toBe(200)
     const body = await res.json()
@@ -144,17 +144,14 @@ describe('GET /api/health/ready', () => {
     vi.unstubAllEnvs()
   })
 
-  it('reports how many workspace loops the job worker is serving', async () => {
+  it('reports whether the job worker is serving, and its in-flight work', async () => {
     getJobWorkerStatus.mockReturnValue({
       running: true,
-      workspaces: [
-        { workspaceKey: 'a', inFlight: 2, schemaMissing: false },
-        { workspaceKey: 'b', inFlight: 1, schemaMissing: true },
-      ],
+      loop: { inFlight: 3, schemaMissing: true, refusedCode: null },
     })
     const res = await handleReadinessProbe()
     expect(res.status).toBe(200)
     const body = await res.json()
-    expect(body.checks.workers).toMatchObject({ loops: 2, inFlight: 3, schemaMissing: 1 })
+    expect(body.checks.workers).toMatchObject({ loops: 1, inFlight: 3, schemaMissing: 1 })
   })
 })

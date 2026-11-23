@@ -18,9 +18,8 @@
  * supervisor watching liveness sees a process that is up and answering. It also
  * does not stop: measured, a process in that state kept its socket open and
  * made **7,417 connection attempts** to the database it had just declared
- * itself unfit to serve. On a pooled fleet each of those wakes a workspace
- * database, so a single mistyped variable becomes a fleet-wide cost and
- * availability problem rather than one dead replica.
+ * itself unfit to serve. Against a managed database that is a connection storm
+ * and an availability problem, not one dead replica.
  *
  * A non-zero exit is the correct failure for bad configuration. A supervisor
  * can see a crash loop, it stops the dialling, and it cannot be mistaken for a

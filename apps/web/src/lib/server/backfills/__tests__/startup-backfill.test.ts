@@ -187,7 +187,6 @@ function jobFor(payload: Record<string, unknown>, queue = 'startup-backfill'): C
     queue,
     dedupeKey: null,
     payload,
-    workspaceKey: null,
     attempts: 1,
     maxAttempts: 20,
     leaseToken: 'x',

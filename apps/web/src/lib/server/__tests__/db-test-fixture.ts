@@ -25,6 +25,10 @@ import { sql, type Logger } from 'drizzle-orm'
 // sanctioned caller of `createDb`, like board-view-filter-parity.test.ts.
 // oxlint-disable-next-line no-restricted-imports
 import { createDb, type Database } from '@quackback/db/client'
+import { seedTestConfigEnv } from './test-env'
+
+// The global `db` these suites exercise resolves through the app config.
+seedTestConfigEnv()
 
 /** The transaction handle type the fixture parks each test inside. */
 export type TestTransaction = Parameters<Parameters<Database['transaction']>[0]>[0]

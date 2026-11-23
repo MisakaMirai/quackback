@@ -2,37 +2,28 @@
  * The realtime bus's receive side — `LISTEN quackback_realtime` on a
  * session-mode connection.
  *
- * The discipline is the same one the job queue used to take, and the reason is the same
- * measurement: through a transaction-mode pooler a notify **never
- * arrives, at any concurrency — including a single client**, while
- * `pg_listening_channels()` reports the registration as held the whole time
- * (SAAS-HOSTING-STACK.md §7.3, measured 2026-08-08). So:
+ * The reason is a measurement: through a transaction-mode pooler a notify
+ * **never arrives, at any concurrency — including a single client**, while
+ * `pg_listening_channels()` reports the registration as held the whole time.
+ * So:
  *
- * 1. The connection is built from the workspace's **direct** DSN, never from the
- *    pool cache.
+ * 1. The connection is built from the install's **direct** DSN.
  * 2. A listener is only ever verified by round-tripping a real NOTIFY.
  *    `verify()` sends one from a *separate* connection and waits for it —
  *    nothing here asks the catalogue whether it is registered, and nothing
  *    should.
  *
- * ## One channel, not one per topic
+ * ## One channel
  *
- * `pg_notify`'s channel is an identifier, capped at 63 bytes, and a logical
- * channel like `conversation:<uuid>` under a workspace prefix does not fit. So
- * every workspace database uses ONE channel and carries the logical channel inside
- * the payload. That also means one LISTEN per connection rather than one per
- * SSE stream, which is what keeps the connection count proportional to *workspaces
- * with live streams on this replica* rather than to streams.
+ * `pg_notify`'s channel is an identifier, capped at 63 bytes, so every message
+ * travels on {@link REALTIME_CHANNEL} with the logical channel inside the
+ * payload. One LISTEN per process, not one per stream.
  *
- * ## What this costs, stated plainly
+ * ## What this costs
  *
- * §7.3's warning is that a pooled process holding N permanent session
- * connections purely to receive notifies inverts the reason for pooling. That
- * warning applies to a process that listens for *every* workspace. This one opens
- * a connection when a workspace's first SSE stream arrives on this replica and
- * closes it when the last one leaves, so the bound is the number of workspaces
- * currently holding an SSE stream here — a resource that is already long-lived
- * and already proportional to the same thing.
+ * A process holds one permanent session connection while it has live SSE
+ * streams. That is the price of cross-replica delivery through Postgres rather
+ * than a broker; the connection closes with the last subscriber.
  */
 import postgres from 'postgres'
 import type { Sql } from 'postgres'
@@ -40,7 +31,7 @@ import { logger } from '@/lib/server/logger'
 
 const log = logger.child({ component: 'realtime-listen' })
 
-/** The single NOTIFY channel per workspace database. */
+/** The single NOTIFY channel for the install's database. */
 export const REALTIME_CHANNEL = 'quackback_realtime'
 
 export interface RealtimeListener {
@@ -48,12 +39,10 @@ export interface RealtimeListener {
    * Read an oversized payload back, **on this listener's own connection**.
    *
    * Deliberately not through `db`: a NOTIFY callback fires outside any request,
-   * so there is no workspace scope to resolve a pooled handle from, and relying on
-   * an ALS context that happened to survive into a socket callback would be an
-   * accident rather than a design. This connection is already bound to exactly
-   * the database the notify came from, which is the only correct source.
+   * and this connection is already bound to exactly the database the notify
+   * came from, which is the only correct source.
    */
-  fetchOverflow(workspaceKey: string, id: string): Promise<unknown | null>
+  fetchOverflow(id: string): Promise<unknown | null>
   /** Release the LISTEN and close the dedicated connection. */
   close(): Promise<void>
   /**
@@ -73,7 +62,7 @@ export interface OpenRealtimeListenerInput {
   password?: () => Promise<string>
   /** Called with the raw NOTIFY payload for every delivered message. */
   onPayload: (payload: string) => void
-  /** Label for logs — the workspace id, or 'single'. */
+  /** Label for logs — `single` for a self-hosted install. */
   label: string
 }
 
@@ -96,13 +85,13 @@ export async function openRealtimeListener(
     input.onPayload(payload)
   })
 
-  log.info({ workspace: input.label }, 'realtime listener attached (direct, session mode)')
+  log.info({ label: input.label }, 'realtime listener attached (direct, session mode)')
 
   return {
-    async fetchOverflow(workspaceKey: string, id: string) {
+    async fetchOverflow(id: string) {
       const rows = await sql<{ payload: unknown }[]>`
         SELECT payload FROM realtime_overflow
-        WHERE workspace_key = ${workspaceKey} AND id = ${id}::bigint AND expires_at > now()
+        WHERE id = ${id}::bigint AND expires_at > now()
       `
       return rows.length > 0 ? rows[0].payload : null
     },

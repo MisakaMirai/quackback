@@ -1,12 +1,9 @@
 /**
- * The Postgres job queue (SAAS-HOSTING-STACK.md §7).
+ * The Postgres job queue.
  *
- * One table per workspace database, which is what makes the queue per-workspace
- * without a routing layer: there is no shared queue to route out of. The
- * `workspaceKey` column restates the same fact so a claim can assert it rather than
- * assume it — §3's observation is that a wrong-workspace answer passes every other
- * check in the system, so the queue asserts its own boundary rather than
- * inheriting confidence from the connection.
+ * One table in the install's database, which is what makes the queue the
+ * install's without a routing layer: there is no shared queue to route out of.
+ * A job belongs to the process that claims it.
  *
  * The lease semantics live in `apps/web/src/lib/server/jobs/job-queue.ts`; the
  * SQL migration `0250_job_queue.sql` carries the reasoning for the columns that
@@ -37,7 +34,7 @@ export const TERMINAL_JOB_STATUSES: readonly JobStatus[] = ['succeeded', 'failed
 export const jobQueue = pgTable(
   'job_queue',
   {
-    /** Insertion order within a workspace — also the claim tiebreaker. */
+    /** Insertion order — also the claim tiebreaker. */
     id: bigint('id', { mode: 'bigint' }).generatedAlwaysAsIdentity().primaryKey(),
     /** App-facing branded id ('job_...'), stable across attempts. */
     jobId: text('job_id').notNull(),
@@ -45,8 +42,6 @@ export const jobQueue = pgTable(
     queue: text('queue').notNull(),
     /** Idempotency handle. Unique per queue across every status. */
     dedupeKey: text('dedupe_key'),
-    /** Workspace this row belongs to, or NULL on a single-workspace install. */
-    workspaceKey: text('workspace_key'),
     payload: jsonb('payload').notNull().default({}),
     status: text('status').$type<JobStatus>().notNull().default('pending'),
     /** Earliest instant the job may be claimed. */

@@ -75,7 +75,6 @@ import {
   workspaceSlugFromInboundAddress,
 } from '@/lib/server/domains/conversation/conversation.email-channel'
 import { currentMailSlug } from '@/lib/server/domains/conversation/conversation.mail-slug'
-import { getCurrentWorkspace } from '@/lib/server/workspaces/workspace-context'
 
 const log = logger.child({
   component: 'outbound-identity',
@@ -228,7 +227,7 @@ export async function sendingIdentityContext(
     .where(eq(emailSendingDomains.status, 'verified'))
   return {
     verifiedDomains: verified.map((r) => r.domain),
-    platformFrom: getCurrentWorkspace()?.email.from ?? env[EMAIL_FROM_ENV] ?? null,
+    platformFrom: env[EMAIL_FROM_ENV] ?? null,
     inboundDomain: inboundMintDomain(env),
     mailSlug: currentMailSlug(),
     strict: false,

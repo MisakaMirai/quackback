@@ -80,8 +80,7 @@ export function senderFrom(
  *    workspace's own platform inbox address. Last, because it is the address a
  *    workspace has rather than one it chose; derived rather than stored,
  *    because an install's mint domain can move under a row written months ago.
- * 5. null: the caller sends as the platform default (`getEmailFrom()`, the
- *    registry `email.from` when pooled).
+ * 5. null: the caller sends as the platform default (`getEmailFrom()`).
  *
  * Every candidate passes the send guard on its own (`outbound-identity.ts`), and
  * a refused one falls through to the next step rather than suppressing it. A

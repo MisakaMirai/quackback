@@ -45,7 +45,7 @@ import { db, type Database, type Transaction } from '@/lib/server/db'
 import { logger } from '@/lib/server/logger'
 import { kvGet, kvSet } from '@/lib/server/kv/pg-kv'
 import { enqueueJob, findJobByDedupeKey } from '@/lib/server/jobs/job-queue'
-import { WorkspaceKeyedCache } from '@/lib/server/workspaces/workspace-keyed'
+import { BoundedCache } from '@/lib/server/bounded-cache'
 import { findJobDefinition, maxAttemptsFor } from '@/lib/server/jobs/definitions'
 import { migrationAppliedIn } from '@/lib/server/db/migration-ledger'
 import { BATCHED_BACKFILLS } from './registry'
@@ -388,7 +388,7 @@ export async function backfillWorkDone(): Promise<boolean> {
  * last saw every backfill done for. Done markers do not come back unset, so
  * the gate stops reading kv once a workspace is done.
  */
-const backfillState = new WorkspaceKeyedCache<{ doneFor?: string }>(10_000)
+const backfillState = new BoundedCache<{ doneFor?: string }>(10_000)
 const STATE_KEY = 'state'
 
 function registryKey(): string {

@@ -8,7 +8,7 @@ import { describe, it, expect, beforeEach, afterEach, afterAll, vi } from 'vites
 import { type TeamId } from '@quackback/ids'
 
 import { createDbTestFixture, testDb } from '@/lib/server/__tests__/db-test-fixture'
-import { mailSlugFor, withWorkspace } from '@/lib/server/__tests__/workspace-scope'
+import { withWorkspace } from '@/lib/server/__tests__/workspace-scope'
 
 // The inbound channel's addressing half. Every reader of it reads at call time,
 // so setting it here is enough to fix the address the platform inbox derives.
@@ -39,6 +39,7 @@ import {
   updateInboundTrust,
   clearInboundForwarding,
 } from '../channel-account.service'
+import { SELF_HOSTED_MAIL_SLUG } from '@/lib/server/domains/conversation/conversation.mail-slug'
 import { getEmailSenders } from '../email-senders'
 
 const fixture = await createDbTestFixture({
@@ -54,7 +55,7 @@ const suffix = () => `${Date.now().toString(36)}_${Math.random().toString(36).sl
  *  being one. Derived from the slug rather than written out, so the two sides of
  *  every platform-inbox case here cannot drift apart. */
 const WORKSPACE = 'live-t1'
-const PLATFORM_ADDRESS = `${mailSlugFor(WORKSPACE)}@tenaevexeo.resend.app`
+const PLATFORM_ADDRESS = `${SELF_HOSTED_MAIL_SLUG}@tenaevexeo.resend.app`
 
 async function seedTeam(): Promise<TeamId> {
   const [team] = await testDb

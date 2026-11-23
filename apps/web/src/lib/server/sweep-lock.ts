@@ -28,7 +28,6 @@ import { sql } from 'drizzle-orm'
 import { db } from '@/lib/server/db'
 import { getExecuteRows } from '@/lib/server/utils/execute-rows'
 import { logger } from '@/lib/server/logger'
-import { WorkspaceKeyedCache } from '@/lib/server/workspaces/workspace-keyed'
 
 const log = logger.child({ component: 'sweep-lock' })
 
@@ -97,43 +96,4 @@ async function acquireAndRun(
     // else: leave the row in place — it doubles as a "ran recently" marker
     // until its TTL expires, per claim mode above.
   }
-}
-
-/**
- * The in-process half of the same guard, partitioned by workspace.
- *
- * `withSweepLock` stops two *replicas* sweeping one workspace. A sweeper also
- * needs to stop *itself* re-entering — the long AI sweeps overlap their own
- * schedule (`startup.ts` fires each at boot and again every 30 minutes, and a
- * fleet pass over N workspaces is serial), so a second tick can begin while the
- * first is still working.
- *
- * That guard used to be a module-scope `let _sweepInProgress`, which is
- * correct only while a process serves one workspace. Under pooling, `runFleetPass`
- * walks the fleet through the same function: with a shared boolean the first
- * workspace to start the sweep suppresses it for every other workspace for as
- * long as it runs, and the suppression is invisible — the sweep simply returns,
- * nothing is logged, and the only symptom is that some workspaces' summaries
- * silently stop refreshing.
- *
- * Keyed by sweep name, so two sweeps never share a latch.
- */
-const inFlightSweeps = new WorkspaceKeyedCache<true>(4_096)
-
-export async function withWorkspaceSweepReentrancyGuard(
-  name: string,
-  fn: () => Promise<void>
-): Promise<void> {
-  if (inFlightSweeps.has(name)) return
-  inFlightSweeps.set(name, true)
-  try {
-    await fn()
-  } finally {
-    inFlightSweeps.delete(name)
-  }
-}
-
-/** Test seam: forget the active workspace's in-flight latches. */
-export function __resetSweepReentrancyForWorkspace(): void {
-  inFlightSweeps.clearWorkspace()
 }

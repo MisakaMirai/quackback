@@ -44,7 +44,7 @@ afterAll(async () => {
 async function expire(key: string): Promise<void> {
   await testSql()`
     UPDATE kv_store SET expires_at = now() - interval '1 second'
-    WHERE workspace_key = ${T} AND key = ${key}
+    WHERE key = ${key}
   `
 }
 
@@ -63,7 +63,7 @@ describe('GET / SET / DEL', () => {
     // The row is still there — expiry is a predicate, not a deletion. If this
     // ever passes only because a sweeper ran, the TTL semantics have moved.
     const rows = await testSql()<{ n: string }[]>`
-      SELECT count(*)::text AS n FROM kv_store WHERE workspace_key = ${T} AND key = ${key}
+      SELECT count(*)::text AS n FROM kv_store WHERE key = ${key}
     `
     expect(rows[0].n).toBe('1')
   })
@@ -174,7 +174,7 @@ describe('rate buckets', () => {
       (
         await testSql()<{ w: string }[]>`
           SELECT window_expires_at::text AS w FROM rate_bucket
-          WHERE workspace_key = ${T} AND key = ${key}
+          WHERE key = ${key}
         `
       )[0].w
     const before = await windowText()
@@ -183,7 +183,7 @@ describe('rate buckets', () => {
 
     await testSql()`
       UPDATE rate_bucket SET window_expires_at = now() - interval '1 second'
-      WHERE workspace_key = ${T} AND key = ${key}
+      WHERE key = ${key}
     `
     expect(
       (await withRealWorkspace(T, () => incrementRateBucket({ key, windowSeconds: 60 }))).count

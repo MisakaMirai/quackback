@@ -202,18 +202,6 @@ describe('everything else still needs the token', () => {
     }
     expect(heads()).toHaveLength(0)
   })
-
-  it('never allows it inside a workspace scope', async () => {
-    const { withWorkspace } = await import('@/lib/server/__tests__/workspace-scope')
-    const { isPreNamespaceObject } = await import('@/lib/server/storage/s3')
-    const key = freshKey('chat-images')
-    seedLegacy(key)
-
-    const allowed = await withWorkspace('workspace-alpha', () => isPreNamespaceObject(key))
-
-    expect(allowed).toBe(false)
-    expect(heads()).toHaveLength(0)
-  })
 })
 
 describe('no spelling of a key borrows another object’s original', () => {

@@ -82,7 +82,8 @@ import { resolveConversationSender } from '@/lib/server/domains/channel-accounts
 /** The address a conversation's email leaves from. */
 const resolveConversationFrom = async (id: ConversationId) =>
   (await resolveConversationSender(id))?.from ?? null
-import { mailSlugFor, withWorkspace } from '@/lib/server/__tests__/workspace-scope'
+import { SELF_HOSTED_MAIL_SLUG } from '../conversation.mail-slug'
+import { withWorkspace } from '@/lib/server/__tests__/workspace-scope'
 
 const fixture = await createDbTestFixture({
   probe: async (db) => {
@@ -93,7 +94,7 @@ const fixture = await createDbTestFixture({
 
 /** The workspace this suite is, named as the live fleet names one. */
 const WORKSPACE = 'live-t1'
-const SLUG = mailSlugFor(WORKSPACE)
+const SLUG = SELF_HOSTED_MAIL_SLUG
 const PLATFORM_ADDRESS = `${SLUG}@tenaevexeo.resend.app`
 
 /** Run `fn` as the workspace, which is what gives `currentMailSlug()` a slug. */

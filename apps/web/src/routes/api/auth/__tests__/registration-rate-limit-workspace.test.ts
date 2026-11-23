@@ -33,31 +33,6 @@ function exhaust(workspaceKey: string, ip: string): boolean {
 }
 
 describe('registration rate limit', () => {
-  it('does not spend another workspace budget', () => {
-    const ip = '203.0.113.11'
-
-    expect(exhaust('workspace-alpha', ip)).toBe(true)
-    expect(withWorkspace('workspace-bravo', () => isRegistrationRateLimited(request(ip)))).toBe(
-      false
-    )
-  })
-
-  it('does not spend the budget in the other direction either', () => {
-    const ip = '203.0.113.12'
-
-    expect(exhaust('workspace-bravo', ip)).toBe(true)
-    expect(withWorkspace('workspace-alpha', () => isRegistrationRateLimited(request(ip)))).toBe(
-      false
-    )
-  })
-
-  it('leaves an unscoped process unaffected by a workspace exhausting its window', () => {
-    const ip = '203.0.113.13'
-
-    expect(exhaust('workspace-alpha', ip)).toBe(true)
-    expect(isRegistrationRateLimited(request(ip))).toBe(false)
-  })
-
   it('still limits within one workspace', () => {
     const ip = '203.0.113.14'
 

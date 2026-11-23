@@ -12,7 +12,6 @@
 
 import { z } from 'zod'
 import { logger } from '@/lib/server/logger'
-import { getCurrentWorkspace } from '@/lib/server/workspaces/workspace-context'
 import { MAIL_DOMAIN_RE } from '@/lib/server/utils/mail-domain'
 
 const log = logger.child({ component: 'config' })
@@ -193,8 +192,8 @@ const configSchema = z
     emailSesIdentityAccessKeyId: z.string().optional(),
     emailSesIdentitySecretAccessKey: z.string().optional(),
     /**
-     * Send each workspace's mail under a provider tenant of its own, so the
-     * provider tracks bounces and complaints per workspace and pauses only the
+     * Send each install's mail under a provider tenant of its own, so the
+     * provider tracks bounces and complaints per install and pauses only the
      * one at fault. Off by default. Needs the configuration set (a tenant sends
      * only with one associated) and the identity credential (which manages the
      * tenants); boot refuses it without either. Read by `sesTenantsEnabled` in
@@ -204,7 +203,7 @@ const configSchema = z
     /**
      * Domain the operator serves bounce records under (a wildcard MX to the
      * provider's feedback host and a wildcard SPF TXT). Set, a new sending
-     * domain's return path is one CNAME to `<workspace label>.<this domain>`
+     * domain's return path is one CNAME to `<install label>.<this domain>`
      * instead of an MX and a TXT. Read by `sesReturnPathDomain` in
      * @quackback/email; validated here so a malformed value stops boot rather
      * than quietly reading as unset.
@@ -235,7 +234,6 @@ const configSchema = z
      * A separate origin user files are served from, e.g. `https://files.example.com`
      * pointed at this app. Attachment links handed to browsers load from there,
      * so a file opened in a tab runs nowhere near the app's cookies and storage.
-     * Single-workspace installs only; see the getter.
      */
     userContentUrl: z.string().optional(),
   })
@@ -419,7 +417,7 @@ export const config = {
    * `trustedOrigins` and the cookie `secure` flag.
    */
   get baseUrl() {
-    return getCurrentWorkspace()?.routing.baseUrl ?? loadConfig().baseUrl
+    return loadConfig().baseUrl
   },
   get port() {
     return loadConfig().port

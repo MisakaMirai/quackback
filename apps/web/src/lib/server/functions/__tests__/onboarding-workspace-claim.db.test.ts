@@ -98,15 +98,15 @@ async function seedUser(email: string): Promise<UserId> {
   return id
 }
 
-/** The control plane's claim on this database — what makes it provisioned. */
-async function seedControlPlaneStamp(): Promise<void> {
+/** The install's settings row. */
+async function seedWorkspaceRow(setupState: string | null = null): Promise<void> {
   await testDb.insert(settings).values({
     id: createId('workspace'),
     name: 'Acme',
     slug: `acme-${Math.random().toString(36).slice(2, 8)}`,
     createdAt: new Date(),
+    setupState,
   })
-  await testDb.execute(sql`UPDATE settings SET cloud_workspace_key = 'ws_acme'`)
 }
 
 async function seedPrincipal(input: {
@@ -139,45 +139,9 @@ describe.skipIf(!fixture.available)('getWorkspaceClaimFn', () => {
   // the assertion is on the payload's whole surface, not on one field: the
   // owner's address, their local part, and their employer's domain all have to
   // be absent, and no key may be added later that carries them.
-  it('reads a provisioned workspace as claimed without publishing its owner', async () => {
-    await seedControlPlaneStamp()
-    const userId = await seedUser(OWNER_EMAIL)
-    await seedPrincipal({ userId, role: 'admin', type: 'user' })
-
-    const claim = await getWorkspaceClaimFn()
-
-    expect(claim).toEqual({
-      claimed: true,
-      setupComplete: false,
-      openToClaim: false,
-      closedReason: 'provisioned',
-    })
-    const wire = JSON.stringify(claim)
-    expect(wire).not.toContain(OWNER_EMAIL)
-    expect(wire).not.toContain('jane.doe')
-    expect(wire).not.toContain('acme.example')
-    expect(wire).not.toMatch(/\*{2,}\s*@/)
-  })
-
   // The shape the exposure lived in: provisioned, but the address could not be
   // resolved so no owner was recorded. It reads unclaimed, which is true and
   // which is exactly why the screen cannot decide on that field alone.
-  it('reads a provisioned workspace with no owner as unclaimed but not open', async () => {
-    await seedControlPlaneStamp()
-
-    const claim = await getWorkspaceClaimFn()
-
-    expect(claim).toEqual({
-      claimed: false,
-      setupComplete: false,
-      openToClaim: false,
-      closedReason: 'provisioned',
-    })
-    // Nothing about the customer it was created for, on a payload any visitor
-    // of a guessable hostname can fetch with no cookie.
-    expect(JSON.stringify(claim)).not.toContain('acme')
-  })
-
   it('reads a self-hosted install with nobody seeded as unclaimed and open', async () => {
     const claim = await getWorkspaceClaimFn()
 
@@ -189,23 +153,11 @@ describe.skipIf(!fixture.available)('getWorkspaceClaimFn', () => {
     })
   })
 
-  // The control for the two above: the same settings row without the stamp is
-  // an install, and its first arrival may still claim it.
-  it('reads a settings row with no stamp as open', async () => {
-    await seedControlPlaneStamp()
-    await testDb.execute(sql`UPDATE settings SET cloud_workspace_key = NULL`)
+  // A settings row is an install whose first arrival may claim it.
+  it('reads a settings row as open', async () => {
+    await seedWorkspaceRow()
 
     await expect(getWorkspaceClaimFn()).resolves.toMatchObject({ openToClaim: true })
-  })
-
-  // On a provisioned workspace an account is not a claim, so only an owner
-  // makes it claimed, and holding a team role is not being one.
-  it('does not read a non-admin member as the owner', async () => {
-    await seedControlPlaneStamp()
-    const userId = await seedUser('member@acme.example')
-    await seedPrincipal({ userId, role: 'member', type: 'user' })
-
-    await expect(getWorkspaceClaimFn()).resolves.toMatchObject({ claimed: false })
   })
 
   // On an install still being set up, the first account created claims it,
@@ -228,7 +180,7 @@ describe.skipIf(!fixture.available)('getWorkspaceClaimFn', () => {
 
   it('still says nothing about the owner once setup is finished', async () => {
     hoisted.getSettings.mockResolvedValue({ setupState: FINISHED_SETUP })
-    await seedControlPlaneStamp()
+    await seedWorkspaceRow(FINISHED_SETUP)
     const userId = await seedUser(OWNER_EMAIL)
     await seedPrincipal({ userId, role: 'admin', type: 'user' })
 
@@ -238,7 +190,7 @@ describe.skipIf(!fixture.available)('getWorkspaceClaimFn', () => {
       claimed: true,
       setupComplete: true,
       openToClaim: false,
-      closedReason: 'provisioned',
+      closedReason: 'setupComplete',
     })
   })
 

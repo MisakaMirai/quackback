@@ -1,10 +1,7 @@
 /**
- * Shared auth for fleet-internal HTTP (control plane → worker, and any other
- * replica that is not a tenant).
+ * Shared auth for internal HTTP between replicas (web → worker).
  *
- * Distinct from:
- *   - per-workspace `QUACKBACK_CP_INTERNAL_TOKEN` (app → CP `/api/v1/internal/*`)
- *   - job-wake calls from the web replica
+ * Distinct from the job-wake calls it protects.
  *
  * The token is a fleet-wide secret (`QUACKBACK_FLEET_INTERNAL_TOKEN`), the same
  * value already declared on every app service. There is one check and it is

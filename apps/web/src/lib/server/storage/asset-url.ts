@@ -2,16 +2,14 @@
  * Off-host leaves for stored asset refs.
  *
  * Persist stores host-independent `/api/storage/<key>` (private: `?read=`).
- * Email, widget, OG, and other callers that leave the workspace origin
- * absolutize here from the immutable system host. A friendly platform URL or
- * the request Host must never be baked into contentJson.
+ * Email, widget, OG, and other callers that leave the app origin absolutize
+ * here from the configured origin. A request Host must never be baked into
+ * contentJson.
  *
  * Legacy absolute srcs stay accepted: this rewrites `/api/storage/…` onto the
- * system host at send/render time and leaves CDN / foreign URLs untouched.
- * It does not rewrite the fleet.
+ * configured origin at send/render time and leaves CDN / foreign URLs untouched.
  */
 import { config } from '@/lib/server/config'
-import { getCurrentWorkspace } from '@/lib/server/workspaces/workspace-context'
 
 export function isStoredAssetPath(pathname: string): boolean {
   return pathname.startsWith('/api/storage/') && pathname.length > '/api/storage/'.length
@@ -54,26 +52,14 @@ export function systemHostOriginFromPublicUrl(publicUrl: string | undefined | nu
 
 /** Immutable origin used to absolutize stored refs at off-host leaves. */
 export function getSystemAssetOrigin(): string {
-  const workspace = getCurrentWorkspace()
-  if (workspace) {
-    const pinned = systemHostOriginFromPublicUrl(workspace.storage.publicUrl)
-    if (pinned) return pinned
-    return workspace.routing.baseUrl.replace(/\/$/, '')
-  }
   return config.baseUrl.replace(/\/$/, '')
 }
 
 /**
  * The separate origin user files are served from (`USER_CONTENT_URL`), or
  * null to serve them from the app's own origin.
- *
- * Null under a workspace scope whatever the setting says: the storage route
- * resolves the workspace from the Host header, so one shared host would name
- * no workspace. The config getter already drops it under pooled tenancy; this
- * holds the same line for any scope.
  */
 export function userContentOrigin(): string | null {
-  if (getCurrentWorkspace()) return null
   try {
     return config.userContentUrl ?? null
   } catch {
@@ -99,8 +85,8 @@ export function toUserContentUrl(src: string): string {
 
 /**
  * Hosts that may legally appear on a stored `/api/storage/…` URL for this
- * workspace: the system pin, every routing hostname, the process base, and
- * the user-content origin when one is configured.
+ * install: the configured origin and the user-content origin when one is
+ * configured.
  */
 export function trustedStorageHosts(): Set<string> {
   const hosts = new Set<string>()
@@ -112,18 +98,9 @@ export function trustedStorageHosts(): Set<string> {
       // ignore unparseable pins
     }
   }
-  const addHost = (value: string | undefined | null) => {
-    if (value) hosts.add(value.toLowerCase().replace(/\.$/, ''))
-  }
 
   addOrigin(config.baseUrl)
   addOrigin(userContentOrigin())
-  const workspace = getCurrentWorkspace()
-  if (workspace) {
-    addOrigin(workspace.routing.baseUrl)
-    addOrigin(systemHostOriginFromPublicUrl(workspace.storage.publicUrl) ?? undefined)
-    for (const hostname of workspace.routing.hostnames) addHost(hostname)
-  }
   return hosts
 }
 

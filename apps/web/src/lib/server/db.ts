@@ -10,7 +10,6 @@
 
 import { createDb, type Database as PostgresDatabase } from '@quackback/db/client'
 import { config } from '@/lib/server/config'
-import { getScopedDatabase } from '@/lib/server/workspaces/workspace-context'
 import { wrapDbTransaction } from '@/lib/server/jobs/after-commit'
 import { countingQueryLogger } from '@/lib/server/request-metrics'
 
@@ -80,16 +79,11 @@ declare global {
 }
 
 /**
- * Get the database instance for the caller's scope.
+ * The process's database, from `DATABASE_URL`.
  *
- * Production is single-workspace: one memoized connection from `DATABASE_URL`.
- * The test fixture may open a scope with its own handle, which is the only
- * reason this still resolves one; every production call gets the singleton.
+ * Memoized on `globalThis` so a development reload does not open a second pool.
  */
 function getDatabase(): Database {
-  const scoped = getScopedDatabase()
-  if (scoped) return scoped
-
   if (!globalThis.__db) {
     globalThis.__db = createDb(config.databaseUrl, {
       max: config.dbPoolMax,
@@ -103,22 +97,13 @@ function getDatabase(): Database {
 /**
  * Database instance.
  *
- * A Proxy, so 537 importing files never learn that the connection became
- * per-request. The trap resolves the handle on every property access; the call
- * sites are unchanged.
+ * A Proxy, so the 500-odd importing files never learn that the handle is
+ * resolved lazily. The trap resolves the memoized handle on every property
+ * access, so a module imported before `DATABASE_URL` is readable still works.
  *
- * **`this` matters here, and it did not used to.** The previous trap returned
- * the raw property, so `db.select(...)` ran with `this === proxy`. That was a
- * latent bug that only worked because `getDatabase()` returned one memoized
- * singleton, which made `this.session` re-derive the same object anyway. Once
- * the trap can resolve *different* handles, an unbound method called on the
- * proxy would re-enter the trap for its own internals and could pick up a
- * different workspace's session part-way through a statement. So functions are
- * bound to the handle they came from, and `Reflect.get` is given that same
- * handle as the receiver so getters resolve against the real object rather than
- * the proxy. The pattern is not new to the codebase —
- * `__tests__/db-test-fixture.ts` already binds function properties for exactly
- * this reason.
+ * Functions are bound to the handle they came from and `Reflect.get` is given
+ * that same handle as the receiver, so getters resolve against the real object
+ * rather than the proxy.
  */
 export const db: Database = new Proxy({} as Database, {
   get(_target, prop) {
@@ -126,8 +111,8 @@ export const db: Database = new Proxy({} as Database, {
     const value = Reflect.get(database as object, prop, database)
     if (typeof value !== 'function') return value
     const bound = value.bind(database)
-    // Every domain transaction participates in after-commit workspace
-    // signaling. Nested calls are savepoints; only the outer commit flushes.
+    // Every domain transaction participates in after-commit signalling. Nested
+    // calls are savepoints; only the outer commit flushes.
     if (prop === 'transaction') return wrapDbTransaction(bound)
     return bound
   },

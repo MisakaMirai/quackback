@@ -8,9 +8,9 @@
  *
  * The boot-time ensure that used to sit alongside the BullMQ queue construction
  * is now `ensurePageViewPartitionsAtBoot()`, called from the startup path with a
- * real workspace scope. It cannot live here as an import side effect: under pooled
- * tenancy `db` throws without a scope, and a module that queried on import would
- * be a boot-time landmine for every process that merely referenced the handler.
+ * real database handle. It cannot live here as an import side effect: a module
+ * that queried on import would be a boot-time landmine for every process that
+ * merely referenced the handler.
  */
 import { logger } from '@/lib/server/logger'
 import { db, ensurePageViewPartitions, dropExpiredPageViewPartitions } from '@/lib/server/db'

@@ -43,7 +43,6 @@ const job = {
   queue: 'event-dispatch',
   dedupeKey: 'event-dispatch:event_1',
   payload: { eventId: 'event_1' },
-  workspaceKey: null,
   attempts: 1,
   maxAttempts: 10,
   leaseToken: 'lease_1',

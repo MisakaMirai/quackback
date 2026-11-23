@@ -13,7 +13,6 @@ import { createId, type PrincipalId, type UserId } from '@quackback/ids'
 import { createDbTestFixture, testDb } from '@/lib/server/__tests__/db-test-fixture'
 import { apiKeys, principal, sql, user } from '@/lib/server/db'
 import { RateLimitError, UnauthorizedError } from '@/lib/shared/errors'
-import { currentWorkspaceNamespace } from '@/lib/server/workspaces/workspace-keyed'
 
 vi.mock('@/lib/server/db', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/server/db')>()),
@@ -99,14 +98,13 @@ async function fixedBaseCap(): Promise<number> {
  */
 async function primeBucket(count: number): Promise<void> {
   await testDb.execute(sql`
-    insert into rate_bucket (workspace_key, key, count, window_expires_at)
+    insert into rate_bucket (key, count, window_expires_at)
     values (
-      ${currentWorkspaceNamespace()},
       'api:rl:unknown',
       ${count},
       now() + interval '1 minute'
     )
-    on conflict (workspace_key, key) do update
+    on conflict (key) do update
       set count = ${count}, window_expires_at = now() + interval '1 minute'
   `)
 }

@@ -34,8 +34,7 @@
  * assignment, and silent: the role mapping runs normally, just against another
  * workspace's `groups`.
  */
-import { WorkspaceKeyedCache } from '@/lib/server/workspaces/workspace-keyed'
-import { getWorkspaceScope, runWithWorkspaceScope } from '@/lib/server/workspaces/workspace-context'
+import { BoundedCache } from '@/lib/server/bounded-cache'
 
 const TTL_MS = 30_000
 
@@ -57,7 +56,7 @@ export type ResolvedSignIn = {
 
 type Entry = ResolvedSignIn & { ts: number }
 
-const entries = new WorkspaceKeyedCache<Entry>(4_096)
+const entries = new BoundedCache<Entry>(4_096)
 
 function key(providerId: string, accountId: string): string {
   // NUL separator written as an escape, never as a raw byte: a literal NUL
@@ -76,17 +75,11 @@ export function stashResolvedClaims(
   entries.set(k, { ...resolved, ts: Date.now() })
   // Self-cleaning, so a sign-in that never reaches provisioning (blocked by
   // policy, say) cannot leave claims resident.
-  //
-  // The sweep re-enters the scope that armed it. A timer callback runs with no
-  // ambient scope, where every workspace-keyed read resolves to the single-workspace
-  // namespace, so an unscoped sweep would miss the entry it was armed for and
-  // delete an unrelated one. Same reasoning as the magic-link stash's sweep.
-  const scope = getWorkspaceScope()
   const sweep = () => {
     const held = entries.get(k)
     if (held && Date.now() - held.ts >= TTL_MS) entries.delete(k)
   }
-  setTimeout(() => (scope ? runWithWorkspaceScope(scope, sweep) : sweep()), TTL_MS).unref?.()
+  setTimeout(sweep, TTL_MS).unref?.()
 }
 
 /** Take the stashed sign-in, if this identity resolved in this request. */

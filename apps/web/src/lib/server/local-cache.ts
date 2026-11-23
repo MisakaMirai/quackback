@@ -9,9 +9,9 @@
  * expected to show on the next request.
  */
 import { forgetPerRequest } from '@/lib/server/request-memo'
-import { WorkspaceKeyedCache } from '@/lib/server/workspaces/workspace-keyed'
+import { BoundedCache } from '@/lib/server/bounded-cache'
 
-const localCopies = new WorkspaceKeyedCache<{ value: unknown; expiresAt: number }>(1_000)
+const localCopies = new BoundedCache<{ value: unknown; expiresAt: number }>(1_000)
 
 /**
  * How long this process reuses the settings it read, and the copies derived

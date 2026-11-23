@@ -6,13 +6,13 @@ Regenerate with `bunx vitest run apps/web/src/lib/server/policy/migration-contra
 
 ## Summary
 
-Migrations scanned: 298. Migrations with destructive DDL: 47.
+Migrations scanned: 299. Migrations with destructive DDL: 48.
 
 | Kind | Occurrences |
 | --- | --- |
-| DROP COLUMN | 56 |
+| DROP COLUMN | 62 |
 | DROP TABLE | 51 |
-| DROP CONSTRAINT | 23 |
+| DROP CONSTRAINT | 27 |
 | RENAME COLUMN | 17 |
 | RENAME TO (table) | 14 |
 | SET NOT NULL | 4 |
@@ -70,6 +70,7 @@ Migrations scanned: 298. Migrations with destructive DDL: 47.
 | 0321_drop_push_devices.sql | DROP TABLE push_devices | annotated (safe-after 0.15.0) |
 | 0322_drop_apps.sql | DROP TABLE apps | annotated (safe-after 0.15.0) |
 | 0323_drop_tier_limits.sql | DROP COLUMN settings.tier_limits | annotated (safe-after 0.15.0) |
+| 0324_drop_workspace_columns.sql | DROP CONSTRAINT kv_store.kv_store_pkey; DROP COLUMN kv_store.workspace_key; DROP CONSTRAINT rate_bucket.rate_bucket_pkey; DROP COLUMN rate_bucket.workspace_key; DROP CONSTRAINT kv_set_member.kv_set_member_pkey; DROP COLUMN kv_set_member.workspace_key; DROP CONSTRAINT presence_stream.presence_stream_pkey; DROP COLUMN presence_stream.workspace_key; DROP COLUMN realtime_overflow.workspace_key; DROP COLUMN job_queue.workspace_key | annotated (safe-after 0.15.0) |
 
 ## Grandfathered (29)
 

@@ -6,7 +6,6 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { PrincipalId, ConversationId } from '@quackback/ids'
-import { mailSlugFor, withWorkspace } from '@/lib/server/__tests__/workspace-scope'
 import type { Conversation } from '@/lib/server/db'
 import { conversationIdFromInboundAddress } from '../conversation.email-channel'
 import { SELF_HOSTED_MAIL_SLUG } from '../conversation.mail-slug'
@@ -559,19 +558,6 @@ describe('notifyAgentReply', () => {
     // An inbound address names the workspace it belongs to. A workspace scope
     // may carry a slug; production never creates one, so the self-hosted label
     // is the answer there. Both outcomes are pinned here.
-    it('advertises an address under the active workspace’s mail slug', async () => {
-      process.env.EMAIL_INBOUND_DOMAIN = 'tenaevexeo.resend.app'
-      process.env.EMAIL_INBOUND_SIGNING_SECRET = 'whsec_test'
-
-      const replyTo = await replyToOf((fn) => withWorkspace('ws-t2', fn))
-
-      expect(replyTo).toMatch(
-        new RegExp(`^${mailSlugFor('ws-t2')}\\+c1\\.[A-Za-z0-9_-]{22}@tenaevexeo\\.resend\\.app$`)
-      )
-      // The address is not merely slug-shaped: it verifies back to this
-      // conversation, which is the whole point of advertising it.
-      expect(conversationIdFromInboundAddress(String(replyTo))).toBe(conversationId)
-    })
 
     it('advertises the self-hosted label when there is no workspace scope', async () => {
       // A single-workspace install owns its whole inbound domain, and `reply` is
