@@ -62,7 +62,7 @@ const PAGES: { path: string | (() => Promise<string>); as: 'anon' | 'admin' }[] 
   { path: '/roadmap', as: 'anon' },
   { path: '/changelog', as: 'anon' },
   { path: latestChangelogPath, as: 'anon' },
-  { path: '/hc', as: 'anon' },
+  { path: '/hc/en', as: 'anon' },
   { path: '/?sort=trending', as: 'admin' },
   { path: '/admin/feedback', as: 'admin' },
   // A date filter is a calendar day, the same for every visitor. The day is
