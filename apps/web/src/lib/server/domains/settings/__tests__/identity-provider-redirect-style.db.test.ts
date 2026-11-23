@@ -150,7 +150,6 @@ async function sentRedirectUri(registrationId: string): Promise<string> {
   const configs = await buildGenericOAuthConfigs({
     providers,
     creds: async () => ({ clientSecret: 'secret' }),
-    tierAllowsOidc: true,
     baseUrl: BASE_URL,
   })
   const config = configs.find((c) => c.providerId === registrationId)

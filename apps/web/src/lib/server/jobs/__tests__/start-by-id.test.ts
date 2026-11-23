@@ -56,7 +56,6 @@ function fakeJob(jobId: string): ClaimedJob {
     queue: QUEUE,
     dedupeKey: null,
     payload: {},
-    workspaceKey: null,
     attempts: 1,
     maxAttempts: 1,
     leaseToken: 'lease',

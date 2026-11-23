@@ -21,9 +21,7 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit -p tsconfig.check.json",
-    "db:generate": "drizzle-kit generate",
     "db:migrate": "bun run src/migrate.ts",
-    "db:migrate:cli": "drizzle-kit migrate",
     "db:check-drift": "bun scripts/check-drift.ts",
     "db:permissions": "bun scripts/generate-permissions-mirror.ts",
     "db:studio": "drizzle-kit studio",

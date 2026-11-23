@@ -148,8 +148,7 @@ export async function findSettingsCached(): Promise<SettingsRecord | null> {
 
 /** @internal */
 export function wrapDbError(operation: string, error: unknown): never {
-  // Named refusals (402/403/404/…) must stay themselves. Wrapping a
-  // TierLimitError here turned branding custom-colour saves into 500s.
+  // Named refusals (403/404/…) must stay themselves rather than becoming 500s.
   if (error instanceof DomainException) throw error
   const message = error instanceof Error ? error.message : 'Unknown error'
   throw new InternalError('DATABASE_ERROR', `Failed to ${operation}: ${message}`, error)

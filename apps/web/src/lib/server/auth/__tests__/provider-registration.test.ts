@@ -29,7 +29,6 @@ async function buildConfigs(rows: Record<string, unknown>[], opts: BuildOpts = {
   return buildGenericOAuthConfigs({
     providers: rows as never,
     creds: opts.creds ?? (async () => ({ clientId: 'c', clientSecret: 's' })),
-    tierAllowsOidc: opts.tierAllowsOidc ?? true,
   })
 }
 
@@ -118,7 +117,6 @@ describe('buildGenericOAuthConfigs', () => {
         },
       ] as any,
       creds: async () => ({ clientId: 'c', clientSecret: 's' }),
-      tierAllowsOidc: true,
     })
     expect(cfgs[0].prompt).toBe('login')
   })
@@ -143,11 +141,6 @@ describe('buildGenericOAuthConfigs', () => {
         creds: async (rid) => (rid === 'oidc_idp_nc' ? null : { clientId: 'c', clientSecret: 's' }),
       }
     )
-    expect(cfgs).toHaveLength(0)
-  })
-
-  it('returns no configs when the tier disallows OIDC', async () => {
-    const cfgs = await buildConfigs([row({ registrationId: 'sso' })], { tierAllowsOidc: false })
     expect(cfgs).toHaveLength(0)
   })
 })
@@ -197,7 +190,6 @@ describe('buildGenericOAuthConfigs discovery + resolver wiring', () => {
     const cfgs = await buildGenericOAuthConfigs({
       providers: [row(), row({ id: 'idp_2', registrationId: 'oidc_2' })] as never,
       creds: async () => ({ clientId: 'c', clientSecret: 's' }),
-      tierAllowsOidc: true,
       discovery,
     })
     expect(discovery).toHaveBeenCalledTimes(2) // once per provider, at build
@@ -214,7 +206,6 @@ describe('buildGenericOAuthConfigs discovery + resolver wiring', () => {
     const cfgs = await buildGenericOAuthConfigs({
       providers: [row()] as never,
       creds: async () => ({ clientId: 'c', clientSecret: 's' }),
-      tierAllowsOidc: true,
       discovery: async () => discoveryDoc,
     })
     expect(cfgs[0].getUserInfo).toBeTypeOf('function')
@@ -225,7 +216,6 @@ describe('buildGenericOAuthConfigs discovery + resolver wiring', () => {
     const cfgs = await buildGenericOAuthConfigs({
       providers: [row({ discoveryUrl: null, userInfoUrl: 'https://manual/userinfo' })] as never,
       creds: async () => ({ clientId: 'c', clientSecret: 's' }),
-      tierAllowsOidc: true,
       discovery,
     })
     expect(cfgs[0].userInfoUrl).toBe('https://manual/userinfo')
@@ -247,7 +237,6 @@ describe('buildGenericOAuthConfigs discovery + resolver wiring', () => {
         }),
       ] as never,
       creds: async () => ({ clientId: 'c', clientSecret: 's' }),
-      tierAllowsOidc: true,
       fetchUserInfo,
     })
     const info = await cfgs[0].getUserInfo?.({
@@ -268,7 +257,6 @@ describe('buildGenericOAuthConfigs discovery + resolver wiring', () => {
     const cfgs = await buildGenericOAuthConfigs({
       providers: [row({ userInfoUrl: 'https://idp/userinfo' })] as never,
       creds: async () => ({ clientId: 'c', clientSecret: 's' }),
-      tierAllowsOidc: true,
       fetchUserInfo,
     })
     await cfgs[0].getUserInfo?.({
@@ -289,7 +277,6 @@ describe('buildGenericOAuthConfigs discovery + resolver wiring', () => {
     const cfgs = await buildGenericOAuthConfigs({
       providers: [row()] as never,
       creds: async () => ({ clientId: 'c', clientSecret: 's' }),
-      tierAllowsOidc: true,
       discovery: async () => null,
     })
     expect(cfgs).toHaveLength(1)
@@ -315,7 +302,6 @@ describe('gap-fill for providers that release no email or name', () => {
     const cfgs = await buildGenericOAuthConfigs({
       providers: [row(over)] as never,
       creds: async () => ({ clientId: 'c', clientSecret: 's' }),
-      tierAllowsOidc: true,
       ...(placeholderFor ? { placeholderEmailFor: placeholderFor } : {}),
     } as never)
     return cfgs[0]
@@ -454,7 +440,6 @@ describe('avatar from the OIDC `picture` claim', () => {
     const cfgs = await buildGenericOAuthConfigs({
       providers: [row({ discoveryUrl: null, userInfoUrl: 'https://idp/userinfo' })] as never,
       creds: async () => ({ clientId: 'c', clientSecret: 's' }),
-      tierAllowsOidc: true,
       fetchUserInfo,
     } as never)
     const info = await cfgs[0].getUserInfo?.({
@@ -495,7 +480,6 @@ describe('production profile mapping adapter', () => {
         }),
       ] as never,
       creds: async () => ({ clientId: 'c', clientSecret: 's' }),
-      tierAllowsOidc: true,
       fetchUserInfo,
       onIdentityFailure,
     })
@@ -524,7 +508,6 @@ describe('production profile mapping adapter', () => {
         }),
       ] as never,
       creds: async () => ({ clientId: 'c', clientSecret: 's' }),
-      tierAllowsOidc: true,
       onIdentityFailure,
     })
     const info = await cfgs[0].getUserInfo?.({
@@ -554,7 +537,6 @@ describe('production profile mapping adapter', () => {
         }),
       ] as never,
       creds: async () => ({ clientId: 'c', clientSecret: 's' }),
-      tierAllowsOidc: true,
       onIdentityFailure,
     })
     const info = await cfgs[0].getUserInfo?.({
@@ -581,7 +563,6 @@ describe('production profile mapping adapter', () => {
         }),
       ] as never,
       creds: async () => ({ clientId: 'c', clientSecret: 's' }),
-      tierAllowsOidc: true,
       placeholderEmailFor,
     })
     const info = await cfgs[0].getUserInfo?.({
@@ -609,7 +590,6 @@ describe('production profile mapping adapter', () => {
       buildGenericOAuthConfigs({
         providers: [row({ claimMapping })] as never,
         creds: async () => ({ clientId: 'c', clientSecret: 's' }),
-        tierAllowsOidc: true,
         placeholderEmailFor: async () => 'sso-oidc-abc-deadbeef@anon.quackback.io',
         onProviderEmail,
       })
@@ -637,7 +617,6 @@ describe('production profile mapping adapter', () => {
         }),
       ] as never,
       creds: async () => ({ clientId: 'c', clientSecret: 's' }),
-      tierAllowsOidc: true,
       placeholderEmailFor,
       onIdentityFailure,
     })
@@ -667,7 +646,6 @@ describe('production profile mapping adapter', () => {
         }),
       ] as never,
       creds: async () => ({ clientId: 'c', clientSecret: 's' }),
-      tierAllowsOidc: true,
       fetchUserInfo,
     })
     const info = await cfgs[0].getUserInfo?.({
@@ -694,7 +672,6 @@ describe('production profile mapping adapter', () => {
         }),
       ] as never,
       creds: async () => ({ clientId: 'c', clientSecret: 's' }),
-      tierAllowsOidc: true,
       onIdentityFailure,
     })
     const info = await cfgs[0].getUserInfo?.({

@@ -1,55 +1,25 @@
 /**
- * In-process concurrency caps for the SSE stream endpoint (Phase 6 R1).
+ * In-process concurrency caps for the SSE stream endpoint.
  *
- * Three bounds now, and the reason for the third is the whole point of this
- * module under pooling:
+ * Two bounds:
  *
  * - a **global** cap, a file-descriptor backstop for the single Bun process;
- * - a **per-workspace** cap, so one workspace cannot consume the process's whole
- *   stream budget and leave every other workspace unable to open one;
- * - a **per-IP** cap, counted *within* a workspace, so one client can't monopolize
- *   its own workspace's share.
+ * - a **per-IP** cap, so one client cannot monopolize the process's stream
+ *   budget.
  *
  * This is a concurrency gauge, not a rate limit — it counts connections open
  * RIGHT NOW, so it lives in-process where the socket lifecycle is authoritative
- * (a Redis gauge would leak a slot on every process crash). Presence, which is
- * genuine cross-replica state, stays in Redis; this backstop is deliberately
+ * (a shared gauge would leak a slot on every process crash). Presence, which is
+ * genuine cross-replica state, stays in Postgres; this backstop is deliberately
  * per-process, matching the FD limit it guards. The client's polling fallback
  * keeps low-priority surfaces working when a stream is refused here.
- *
- * ## Why the global cap stays global, and the per-IP cap does not
- *
- * SAAS-HOSTING-STACK.md §4.2 lists this as a site where "one workspace starves the
- * pod". Both halves of that are true and they want opposite fixes.
- *
- * The **global** number describes the *process* — file descriptors are not
- * partitioned by workspace, and a per-workspace global cap would be a promise the
- * kernel has not made. It is deliberately left shared, and the per-workspace cap
- * below is what stops one workspace reaching it alone.
- *
- * The **per-IP** number describes a *client of a workspace*, and sharing it
- * across workspaces is a real cross-workspace effect with no upside: a NAT'd office
- * whose staff use two Quackback workspaces would have the second workspace's
- * streams refused because of the first's, and a single abusive workspace could
- * deny service to every other workspace behind the same corporate egress IP. So it
- * is counted per (workspace, IP).
  */
-import { currentWorkspaceNamespace } from '@/lib/server/workspaces/workspace-keyed'
 
 /** How many streams the single process will hold open at once. */
 const MAX_CONCURRENT_STREAMS = 500
-/**
- * How many of those one workspace may hold. Deliberately well below the global
- * cap: a pooled replica serves many workspaces, and the property that matters
- * is that a workspace which has exhausted its own share cannot make anyone
- * else's stream fail. Single-workspace installs see one workspace, so the global
- * cap remains the binding one for them and nothing changes.
- */
-const MAX_STREAMS_PER_WORKSPACE = 100
-/** How many concurrent streams one identified client may hold within a
- *  workspace. Generous enough for a NAT'd office (many real visitors behind one
- *  public IP) while stopping a single client from opening hundreds of tabs'
- *  worth of sockets. */
+/** How many concurrent streams one identified client may hold. Generous enough
+ *  for a NAT'd office (many real visitors behind one public IP) while stopping
+ *  a single client from opening hundreds of tabs' worth of sockets. */
 const MAX_STREAMS_PER_IP = 20
 
 export interface StreamSlot {
@@ -63,24 +33,13 @@ const NOOP_SLOT: StreamSlot = { ok: false, release: () => {} }
 
 export interface StreamLimiterOptions {
   maxGlobal?: number
-  maxPerWorkspace?: number
   maxPerIp?: number
-  /**
-   * Which workspace a slot belongs to. Defaults to the ambient workspace scope, which
-   * resolves to the stable single-workspace namespace when there is none — so a
-   * self-hosted install has exactly one bucket and the per-workspace cap is inert
-   * against the global one.
-   */
-  workspaceOf?: () => string
 }
 
 export function createStreamLimiter(opts: StreamLimiterOptions = {}) {
   const maxGlobal = opts.maxGlobal ?? MAX_CONCURRENT_STREAMS
-  const maxPerWorkspace = opts.maxPerWorkspace ?? MAX_STREAMS_PER_WORKSPACE
   const maxPerIp = opts.maxPerIp ?? MAX_STREAMS_PER_IP
-  const workspaceOf = opts.workspaceOf ?? currentWorkspaceNamespace
   let open = 0
-  const perWorkspace = new Map<string, number>()
   const perIp = new Map<string, number>()
 
   const bump = (map: Map<string, number>, key: string, by: number): void => {
@@ -91,31 +50,17 @@ export function createStreamLimiter(opts: StreamLimiterOptions = {}) {
 
   return {
     /**
-     * Atomically check all three caps and reserve a slot. Pass the client IP to
+     * Atomically check both caps and reserve a slot. Pass the client IP to
      * enforce the per-IP dimension; pass `undefined` for an unidentifiable
-     * client (only the global and per-workspace caps apply then, so a shared
-     * "unknown" bucket can't false-positive real visitors).
-     *
-     * The workspace is read once here and captured by the returned `release`, so a
-     * slot is always returned to the bucket it was taken from even if the
-     * connection outlives the scope that opened it — which an SSE stream does
-     * by definition.
+     * client (only the global cap applies then, so a shared "unknown" bucket
+     * can't false-positive real visitors).
      */
     acquire(ip?: string): StreamSlot {
-      const workspace = workspaceOf()
-      // NUL separator, spelled as an escape so it survives a grep, a diff and
-      // a copy-paste. It also cannot appear in a workspace id or an IP, so
-      // `alpha` + `1.2 3.4` can never compose to the same key as `alpha 1.2` +
-      // `3.4`. Same convention as computeVisitorHash's component separator.
-      const ipKey = ip === undefined ? undefined : `${workspace}\u0000${ip}`
-      const workspaceCount = perWorkspace.get(workspace) ?? 0
-      const ipCount = ipKey ? (perIp.get(ipKey) ?? 0) : 0
+      const ipCount = ip === undefined ? 0 : (perIp.get(ip) ?? 0)
       if (open >= maxGlobal) return NOOP_SLOT
-      if (workspaceCount >= maxPerWorkspace) return NOOP_SLOT
-      if (ipKey !== undefined && ipCount >= maxPerIp) return NOOP_SLOT
+      if (ip !== undefined && ipCount >= maxPerIp) return NOOP_SLOT
       open++
-      bump(perWorkspace, workspace, 1)
-      if (ipKey !== undefined) bump(perIp, ipKey, 1)
+      if (ip !== undefined) bump(perIp, ip, 1)
       let released = false
       return {
         ok: true,
@@ -123,8 +68,7 @@ export function createStreamLimiter(opts: StreamLimiterOptions = {}) {
           if (released) return
           released = true
           open = Math.max(0, open - 1)
-          bump(perWorkspace, workspace, -1)
-          if (ipKey !== undefined) bump(perIp, ipKey, -1)
+          if (ip !== undefined) bump(perIp, ip, -1)
         },
       }
     },
@@ -132,20 +76,11 @@ export function createStreamLimiter(opts: StreamLimiterOptions = {}) {
     get openCount() {
       return open
     },
-    /** Open slots held by the ambient workspace (diagnostics/tests). */
-    workspaceOpenCount(workspace: string = workspaceOf()) {
-      return perWorkspace.get(workspace) ?? 0
-    },
-    /** Distinct (workspace, IP) pairs currently holding a slot (leak check). */
+    /** Distinct IPs currently holding a slot (leak check). */
     get ipCount() {
       return perIp.size
-    },
-    /** Distinct workspaces currently holding a slot (leak check). */
-    get workspaceCount() {
-      return perWorkspace.size
     },
   }
 }
 
-/** Process-wide singleton used by the stream route. */
 export const streamLimiter = createStreamLimiter()

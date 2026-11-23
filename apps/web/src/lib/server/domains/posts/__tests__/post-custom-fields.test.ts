@@ -133,12 +133,6 @@ vi.mock('@/lib/server/db', async (importOriginal) => {
   }
 })
 
-vi.mock('@/lib/server/domains/settings/tier-limits.service', () => ({
-  getTierLimits: vi.fn().mockResolvedValue({ maxPosts: null }),
-}))
-vi.mock('@/lib/server/domains/settings/tier-enforce', () => ({
-  enforceCountLimit: vi.fn().mockResolvedValue(undefined),
-}))
 vi.mock('@/lib/server/events/dispatch', () => ({
   dispatchPostStatusChanged: vi.fn(),
   dispatchPostUpdated: vi.fn(),

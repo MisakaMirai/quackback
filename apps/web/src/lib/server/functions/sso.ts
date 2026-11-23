@@ -107,12 +107,12 @@ export const clearSsoClientSecretFn = createServerFn({ method: 'POST' }).handler
 
 /**
  * Per-domain rate-limit (set-if-absent, 10s window). Throws when
- * throttled. Keyed on workspace+domain so admins can verify multiple
- * pending domains in parallel without throttling each other.
+ * throttled. Keyed on the domain so admins can verify multiple pending domains
+ * in parallel without throttling each other.
  */
-async function assertVerifyDomainRateLimit(workspaceKey: string, domainId: string): Promise<void> {
+async function assertVerifyDomainRateLimit(domainId: string): Promise<void> {
   const { kvSetNx } = await import('@/lib/server/kv/pg-kv')
-  const took = await kvSetNx(`verify-domain:${workspaceKey}:${domainId}`, 1, 10)
+  const took = await kvSetNx(`verify-domain:${domainId}`, 1, 10)
   if (!took) {
     throw new ConflictError(
       'VERIFY_RATE_LIMITED',
@@ -663,7 +663,7 @@ export const verifyProviderDomainFn = createServerFn({ method: 'POST' })
     if (!dom) {
       return { verified: false, reason: 'no-pending-domain' }
     }
-    await assertVerifyDomainRateLimit(workspace.settings.id, dom.id)
+    await assertVerifyDomainRateLimit(dom.id)
 
     const { checkSsoDomainOwnership } =
       await import('@/lib/server/domains/settings/sso-domain-verify')

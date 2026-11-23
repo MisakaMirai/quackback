@@ -37,7 +37,6 @@ const hoisted = vi.hoisted(() => ({
   mockSetSsoDomainSubtree: vi.fn(),
   mockDeletePlatformCredentials: vi.fn(),
   mockHasSsoClientSecret: vi.fn(),
-  mockGetTierLimits: vi.fn(),
   mockListIdentityProviders: vi.fn(),
   mockGetRegisteredOidcProviderIds: vi.fn(),
   mockGetConfiguredIntegrationTypes: vi.fn(),
@@ -71,21 +70,6 @@ vi.mock('@/lib/server/domains/settings/settings.service', () => ({
 vi.mock('@/lib/server/auth/sso-secret', () => ({
   hasSsoClientSecret: hoisted.mockHasSsoClientSecret,
   SSO_CREDENTIAL_TYPE: 'auth_sso',
-  // Stub mirrors the production logic so tests can drive drift cases
-  // through the same `mockHasSsoClientSecret` / `mockGetTierLimits`
-  // they already toggle for the underlying conditions.
-  isSsoActuallyRegistered: async (
-    sso: { enabled?: boolean } | undefined,
-    tierLimits: { features: { customOidcProvider?: boolean } }
-  ) => {
-    if (!sso?.enabled) return false
-    if (!tierLimits.features.customOidcProvider) return false
-    return hoisted.mockHasSsoClientSecret()
-  },
-}))
-
-vi.mock('@/lib/server/domains/settings/tier-limits.service', () => ({
-  getTierLimits: hoisted.mockGetTierLimits,
 }))
 
 vi.mock('@/lib/server/domains/platform-credentials/platform-credential.service', () => ({
@@ -97,8 +81,8 @@ vi.mock('@/lib/server/domains/platform-credentials/platform-credential.service',
 // (listIdentityProviders) and the canonical registration gate
 // (getRegisteredOidcProviderIds), instead of reading authConfig.ssoOidc +
 // verifiedDomains directly. The mocks below synthesize a single 'sso' provider
-// from the same getWorkspaceSettings / tier / secret knobs the tests already
-// toggle, so the migrated single-provider scenarios stay green.
+// from the same getWorkspaceSettings / secret knobs the tests already toggle,
+// so the migrated single-provider scenarios stay green.
 vi.mock('@/lib/server/domains/settings/identity-providers.service', () => ({
   listIdentityProviders: hoisted.mockListIdentityProviders,
 }))
@@ -189,12 +173,9 @@ beforeEach(() => {
   // Defaults: SSO is fully registered; recovery codes present. Drift-specific cases override.
   hoisted.mockHasSsoClientSecret.mockResolvedValue(true)
   hoisted.mockHasActiveRecoveryCodes.mockResolvedValue(true)
-  hoisted.mockGetTierLimits.mockResolvedValue({
-    features: { customOidcProvider: true },
-  })
 
   // Synthesize the 'sso' provider + its registration/creds snapshot from the
-  // workspace/tier/secret knobs each test sets, mirroring how the real registry
+  // workspace/secret knobs each test sets, mirroring how the real registry
   // would derive them for a single migrated 'sso' provider.
   hoisted.mockListIdentityProviders.mockImplementation(async () => {
     const workspace = await hoisted.mockGetWorkspaceSettings()
@@ -215,9 +196,7 @@ beforeEach(() => {
   hoisted.mockGetRegisteredOidcProviderIds.mockImplementation(async () => {
     const workspace = await hoisted.mockGetWorkspaceSettings()
     const sso = workspace?.authConfig?.ssoOidc
-    const tier = await hoisted.mockGetTierLimits()
     const ids = new Set<string>()
-    if (!tier?.features?.customOidcProvider) return ids
     if (sso?.enabled !== true) return ids
     if (!(await hoisted.mockHasSsoClientSecret())) return ids
     ids.add('sso')
@@ -353,29 +332,11 @@ describe('lookupAuthMethodsFn — no enumeration leak', () => {
 
 describe('lookupAuthMethodsFn — SSO registration drift', () => {
   // The owning provider's liveness gate (`enabled && registered &&
-  // credsPresent`) decides routing. When the tier flag is off or the secret
-  // is missing, the provider isn't registered, so routing falls THROUGH to
-  // the methods form rather than dead-redirecting (or showing
-  // "sso-unavailable"). This matches `isHardBound`, which fails open — scoped
-  // to the owner — so password/magic-link stay usable when the IdP is dead.
-  it('falls through to methods when tier flag is off (downgrade scenario)', async () => {
-    hoisted.mockGetTierLimits.mockResolvedValue({
-      features: { customOidcProvider: false },
-    })
-    hoisted.mockGetWorkspaceSettings.mockResolvedValue({
-      authConfig: { ssoOidc: ssoConfig },
-      verifiedDomains: [verifiedDomainRow],
-      publicAuthConfig: { oauth: { password: false } },
-    })
-
-    const result = await lookupAuthMethods({ data: { email: 'foo@acme.com' } })
-    expect(result).toEqual({
-      kind: 'methods',
-      authConfig: { password: false },
-      ssoEnabled: false,
-    })
-  })
-
+  // credsPresent`) decides routing. When the secret is missing, the provider
+  // isn't registered, so routing falls THROUGH to the methods form rather than
+  // dead-redirecting (or showing "sso-unavailable"). This matches
+  // `isHardBound`, which fails open — scoped to the owner — so
+  // password/magic-link stay usable when the IdP is dead.
   it('falls through to methods when client secret is missing', async () => {
     hoisted.mockHasSsoClientSecret.mockResolvedValue(false)
     hoisted.mockGetWorkspaceSettings.mockResolvedValue({

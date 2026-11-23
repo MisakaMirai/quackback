@@ -1,7 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { readBodyWithLimit } from '@/lib/server/utils/read-body'
 import { logger } from '@/lib/server/logger'
-import { currentWorkspaceNamespace } from '@/lib/server/workspaces/workspace-keyed'
 import {
   cleanDownloadName,
   downloadFileName,
@@ -86,15 +85,11 @@ const proxyCache = createProxyCache({
 /**
  * The proxy cache holds file BYTES keyed by storage key, in process memory.
  *
- * Storage keys are per-bucket and the bucket is the workspace boundary, so two
- * workspaces' keys share a namespace in this heap the moment one process serves
- * both — and a hit returns the other workspace's file with a 200 and no error.
- * That is worse than the edge-cache case below: it needs no CDN and no
- * misconfiguration, only a key that appears in two buckets, which is exactly
- * what an import or a migration produces.
+ * One install owns one bucket, so a key names one object and needs no further
+ * discriminator.
  */
 export function proxyCacheKey(key: string): string {
-  return `${currentWorkspaceNamespace()} ${key}`
+  return key
 }
 
 /**
@@ -323,7 +318,6 @@ async function serveStorageGet(request: Request): Promise<Response> {
     isPublicStorageKey,
     isPreNamespaceObject,
     hasExpiringReadToken,
-    StorageUnavailableError,
     verifyStorageReadToken,
   } = await import('@/lib/server/storage/s3')
   const { config } = await import('@/lib/server/config')
@@ -480,19 +474,10 @@ async function serveStorageGet(request: Request): Promise<Response> {
       },
     })
   } catch (error) {
-    // Second barrier behind the gate above. The gate is the one that fires in
-    // practice; this is here so that a credential that becomes unresolvable
-    // between the two still reports as a refusal rather than as a crash.
-    if (error instanceof StorageUnavailableError) {
-      log.error({ err: error }, 'storage credentials unresolvable')
-      return Response.json({ error: 'Storage not configured' }, { status: 503 })
-    }
-    // An object that is not there is not a server fault. It reached this branch
-    // as a 500 before, which under pooled workspaces is actively misleading: the
-    // three states a caller has to tell apart are "this workspace has no
-    // storage" (503), "this object does not exist" (404) and "something broke"
-    // (500), and collapsing the middle one into the last makes an ordinary
-    // missing asset look like an outage.
+    // An object that is not there is not a server fault: the three states a
+    // caller has to tell apart are "storage is off" (503), "this object does not
+    // exist" (404) and "something broke" (500), and collapsing the middle one
+    // into the last makes an ordinary missing asset look like an outage.
     if (isNotFound(error)) {
       return Response.json({ error: 'Not found' }, { status: 404 })
     }

@@ -18,12 +18,6 @@ const mockSubscribeInsert = vi.fn()
 const mockUpsertReturning = vi.fn()
 
 const mockStateLimit = vi.fn()
-const mockExecute = vi.fn(async (..._args: unknown[]) => [])
-
-vi.mock('@/lib/server/domains/settings/tier-limits.service', () => ({
-  // No cap: the slot lock still runs, the count does not.
-  getTierLimits: async () => ({ maxStatusSubscribers: null }),
-}))
 
 vi.mock('@/lib/server/db', async (importOriginal) => {
   const mockDb: Record<string, unknown> = {
@@ -48,7 +42,6 @@ vi.mock('@/lib/server/db', async (importOriginal) => {
         }
       },
     }),
-    execute: (...args: unknown[]) => mockExecute(...args),
   }
   mockDb.transaction = (fn: (tx: unknown) => unknown) => fn(mockDb)
   return {
@@ -66,12 +59,6 @@ beforeEach(() => {
 })
 
 describe('importStatusSubscribersFromEmails', () => {
-  it('takes no subscriber lock when the plan has no subscriber cap', async () => {
-    mockSelectLimit.mockResolvedValueOnce([{ principalId: 'pr_1' }])
-    await importStatusSubscribersFromEmails(['a@example.com'])
-    expect(mockExecute).not.toHaveBeenCalled()
-  })
-
   it('subscribes known emails with the csv_import source', async () => {
     mockSelectLimit
       .mockResolvedValueOnce([{ principalId: 'pr_1' }])

@@ -1,51 +1,36 @@
 /**
- * Real-time fan-out bus for conversations, on Postgres `LISTEN`/`NOTIFY`
- * (SAAS-HOSTING-STACK.md §7.4).
+ * Realtime fan-out over Postgres `LISTEN`/`NOTIFY`.
  *
- * Postgres is the durable source of truth; this layer is fire-and-forget
- * delivery only. A message written on one app replica must reach an SSE
- * connection pinned to another replica. Redis pub/sub did that; `pg_notify`
- * does it now, from the workspace's own database.
+ * One process serves one install and one database, so there is one NOTIFY
+ * channel and one dedicated session-mode connection. The connection opens when
+ * the first subscriber arrives and closes when the last one leaves, so a process
+ * with no live SSE streams holds none.
  *
- * ## Three differences from the Redis version, all deliberate
+ * ## One channel, not one per topic
  *
- * **One wire channel per database, logical channels inside the payload.**
- * A NOTIFY channel is an identifier capped at 63 bytes, and
- * `conversation:<uuid>` under a workspace prefix does not fit. So every message
- * travels on `quackback_realtime` and names its logical channel in the
- * envelope. Every subscriber on a replica sees its own workspace's whole realtime
- * stream and filters in process — which is what the previous in-process
- * listener registry already did, one level down.
+ * `pg_notify`'s channel is an identifier capped at 63 bytes, and a logical
+ * channel like `conversation:<uuid>` does not fit. So every message travels on
+ * {@link REALTIME_CHANNEL} and the envelope names the logical channel. That also
+ * means one LISTEN rather than one per stream.
  *
- * **Oversized payloads spill to a row.** `pg_notify` caps a payload at 8000
- * bytes; Redis PUBLISH had no such limit, and a conversation event carrying a
- * long message body can exceed it. Dropping the event would be a message the
- * agent never sees, so it is written to `realtime_overflow` and the NOTIFY
- * carries the row id. Steady state on a normal install is zero rows.
+ * ## Oversized payloads
  *
- * **The subscriber connection is direct, and per workspace.** `LISTEN` through a
- * transaction-mode pooler registers and never delivers (§7.3, measured). See
- * `pg-listener.ts` for the connection, and for why it is verified by a real
- * notify round trip rather than by reading `pg_listening_channels()`.
+ * `pg_notify` rejects a payload over 8000 bytes, and a message carrying a whole
+ * conversation event can reach that. Those are written to `realtime_overflow`
+ * and the envelope carries the row id; the listener reads the body back on its
+ * own connection. The reader never deletes the row — several replicas may each
+ * need it — and the sweeper reclaims it.
  *
- * ## Workspace isolation
+ * ## Delivery is verified, not assumed
  *
- * Stated three times, on purpose. The in-process registry is keyed by
- * `(workspace namespace, logical channel)`; each workspace's messages arrive on that
- * workspace's own connection to that workspace's own database; and every envelope
- * names its publishing workspace, which `dispatch` refuses if it disagrees with the
- * connection.
- *
- * The third one is not decoration. Without it the whole property rested on the
- * database boundary, and `pubsub.db.test.ts` proved that is not enough: two
- * scopes on one database delivered one workspace's inbox events to the other's
- * subscriber. That configuration is not supposed to exist, which is exactly why
- * nothing else would have caught it.
+ * Through a transaction-mode pooler `LISTEN` is accepted and nothing is ever
+ * delivered, so the first subscriber triggers a round-trip probe (see
+ * `pg-listener.ts`). A failure is logged with the remedy rather than silently
+ * leaving realtime quiet.
  */
 import { sql } from 'drizzle-orm'
 import { db } from '@/lib/server/db'
 import { getExecuteRows } from '@/lib/server/utils/execute-rows'
-import { currentWorkspaceNamespace } from '../workspaces/workspace-keyed'
 import { config } from '@/lib/server/config'
 import { openRealtimeListener, type RealtimeListener } from './pg-listener'
 import { logger } from '@/lib/server/logger'
@@ -61,20 +46,8 @@ const NOTIFY_PAYLOAD_LIMIT = 7_800
 /** How long an overflow row is readable before the sweeper reclaims it. */
 const OVERFLOW_TTL_SECONDS = 60
 
-/**
- * Wire envelope. `t` is the publishing workspace, `c` the logical channel, `p` the
- * payload inline, `o` the id of an overflow row when the payload was too large.
- *
- * `t` is the second, independent statement of the workspace — the same redundancy
- * `kv_store.workspace_key` carries next to the database boundary, and it is here
- * because the first version of this file did NOT have it. With isolation resting
- * on the database boundary alone, two scopes sharing one database (a
- * single-workspace install, a misconfigured registry record, a test) delivered one
- * workspace's inbox events to the other's subscriber. Measured, not imagined:
- * `pubsub.db.test.ts`'s cross-workspace case failed before this field existed.
- */
+/** Wire envelope: `c` the logical channel, `p` the payload inline, `o` an overflow row id. */
 interface Envelope {
-  t: string
   c: string
   p?: unknown
   o?: string
@@ -83,39 +56,31 @@ interface Envelope {
 type Handler = (message: string) => void
 
 /**
- * `(workspaceNamespace, logical channel)` -> in-process handlers.
+ * Logical channel -> in-process handlers.
  *
- * A plain Map rather than a `WorkspaceKeyedCache`: that class is a bounded LRU, and
- * evicting a live SSE stream's handler because 5,000 other entries arrived would
- * silently stop delivering to a connection that is still open. Bounded by the
- * number of live SSE streams on this replica, which is bounded by the
- * connection limiter in `realtime/stream-connection-limit.ts`.
+ * A plain Map rather than a `BoundedCache`: an LRU would evict a live SSE
+ * stream's handler once enough other entries arrived, silently stopping
+ * delivery to a connection that is still open. Bounded by the number of live
+ * SSE streams on this process, which the connection limiter caps.
  */
 const listeners = new Map<string, Set<Handler>>()
 
-interface WorkspaceConnection {
+interface RealtimeConnection {
   listener: RealtimeListener
-  /** Number of registered handlers across all of this workspace's channels. */
+  /** Number of registered handlers across all channels. */
   refs: number
 }
 
 /**
- * Workspace namespace -> its dedicated LISTEN connection. Same reasoning as
- * `listeners`: an LRU here would close a connection out from under live
- * streams. Entries are removed when the last handler for that workspace leaves.
+ * The process's dedicated LISTEN connection, opened on demand. Same reasoning
+ * as `listeners`: it must not be evicted out from under live streams.
  */
-const connections = new Map<string, WorkspaceConnection>()
+let connection: RealtimeConnection | null = null
 
-/** In-flight opens, so N concurrent subscribes share one connection. */
-const opening = new Map<string, Promise<WorkspaceConnection>>()
+/** In-flight open, so N concurrent subscribes share one connection. */
+let opening: Promise<RealtimeConnection> | null = null
 
-function registryKey(namespace: string, channel: string): string {
-  // NUL cannot occur in a workspace id or a channel name, so no two pairs can
-  // compose to the same string. Same reasoning as `WorkspaceKeyedCache.SEPARATOR`.
-  return `${namespace}\u0000${channel}`
-}
-
-function dispatch(namespace: string, listener: RealtimeListener, raw: string): void {
+function dispatch(listener: RealtimeListener, raw: string): void {
   // Delivery-check probes share the channel and are not envelopes.
   if (raw.startsWith('__verify__')) return
   let envelope: Envelope
@@ -127,19 +92,7 @@ function dispatch(namespace: string, listener: RealtimeListener, raw: string): v
   }
   if (typeof envelope.c !== 'string') return
 
-  // The connection's own workspace is the authority. A message that names a
-  // different one arrived on a database this workspace should not be sharing, and
-  // delivering it would put another workspace's conversation on this agent's
-  // inbox stream. Refuse loudly rather than filter quietly.
-  if (envelope.t !== namespace) {
-    log.error(
-      { expected: namespace, received: envelope.t, channel: envelope.c },
-      'refusing a realtime message published under a different workspace'
-    )
-    return
-  }
-
-  const handlers = listeners.get(registryKey(namespace, envelope.c))
+  const handlers = listeners.get(envelope.c)
   if (!handlers || handlers.size === 0) return
 
   if (typeof envelope.o === 'string') {
@@ -147,7 +100,7 @@ function dispatch(namespace: string, listener: RealtimeListener, raw: string): v
     // connection. Several replicas may each need it, so the reader must not
     // delete it — the sweeper reclaims it.
     void listener
-      .fetchOverflow(namespace, envelope.o)
+      .fetchOverflow(envelope.o)
       .then((body) => {
         if (body === null) return
         emit(handlers, JSON.stringify(body))
@@ -170,39 +123,37 @@ function emit(handlers: Set<Handler>, message: string): void {
 }
 
 /**
- * One notify round trip after a listener first connects. Behind a
+ * One notify round trip after the listener first connects. Behind a
  * transaction-mode pooler `LISTEN` is accepted and nothing is delivered, so
  * without this check realtime goes quiet with no signal. Never throws: a
  * failed check must not take down the subscribe that triggered it.
  */
-async function checkDelivery(namespace: string, listener: RealtimeListener): Promise<void> {
+async function checkDelivery(listener: RealtimeListener): Promise<void> {
   let ok: boolean
   try {
     ok = await listener.verify()
   } catch (err) {
     // The probe itself failed (outage, connection limit), so nothing is known
     // about delivery and the pooler diagnosis would be a guess.
-    log.warn({ err, workspace: namespace }, 'realtime delivery check could not run')
+    log.warn({ err }, 'realtime delivery check could not run')
     return
   }
   if (ok) return
   const remedy = 'DATABASE_URL must be a direct or session-mode connection'
   log.error(
-    { workspace: namespace },
-    'realtime notifications are not being delivered. Realtime uses Postgres LISTEN/NOTIFY, ' +
+    { remedy },
+    `realtime notifications are not being delivered. Realtime uses Postgres LISTEN/NOTIFY, ` +
       `so ${remedy}, not a transaction-mode pooler (for example PgBouncer in transaction mode).`
   )
 }
 
-async function acquireConnection(namespace: string): Promise<WorkspaceConnection> {
-  const existing = connections.get(namespace)
-  if (existing) {
-    existing.refs += 1
-    return existing
+async function acquireConnection(): Promise<RealtimeConnection> {
+  if (connection) {
+    connection.refs += 1
+    return connection
   }
-  const inFlight = opening.get(namespace)
-  if (inFlight) {
-    const conn = await inFlight
+  if (opening) {
+    const conn = await opening
     conn.refs += 1
     return conn
   }
@@ -217,34 +168,34 @@ async function acquireConnection(namespace: string): Promise<WorkspaceConnection
     const box: { listener: RealtimeListener | null } = { listener: null }
     const listener = await openRealtimeListener({
       directUrl: url,
-      label: namespace,
+      label: 'single',
       onPayload: (raw) => {
-        if (box.listener) dispatch(namespace, box.listener, raw)
+        if (box.listener) dispatch(box.listener, raw)
       },
     })
     box.listener = listener
-    const conn: WorkspaceConnection = { listener, refs: 0 }
-    connections.set(namespace, conn)
-    void checkDelivery(namespace, listener)
+    const conn: RealtimeConnection = { listener, refs: 0 }
+    connection = conn
+    void checkDelivery(listener)
     return conn
   })()
 
-  opening.set(namespace, promise)
+  opening = promise
   try {
     const conn = await promise
     conn.refs += 1
     return conn
   } finally {
-    opening.delete(namespace)
+    opening = null
   }
 }
 
-async function releaseConnection(namespace: string): Promise<void> {
-  const conn = connections.get(namespace)
+async function releaseConnection(): Promise<void> {
+  const conn = connection
   if (!conn) return
   conn.refs -= 1
   if (conn.refs > 0) return
-  connections.delete(namespace)
+  connection = null
   await conn.listener.close().catch((err) => log.warn({ err }, 'listener close failed'))
 }
 
@@ -252,35 +203,29 @@ async function releaseConnection(namespace: string): Promise<void> {
  * Subscribe to one or more channels. The handler is invoked with the raw
  * string payload for every published message on any of those channels.
  * Returns an async unsubscribe function that removes this handler and drops
- * the underlying connection once no listeners remain for the workspace.
- *
- * The workspace namespace is captured HERE, while the request scope that named it
- * is still open — an SSE stream outlives that scope by minutes, so a namespace
- * read at delivery time would read whatever request happened to be in flight.
+ * the underlying connection once no listeners remain.
  */
 export async function subscribe(
   channels: string[],
   onMessage: (channel: string, message: string) => void
 ): Promise<() => Promise<void>> {
-  const namespace = currentWorkspaceNamespace()
   // A presence-only stream subscribes to no logical channels. Opening a
-  // session-mode LISTEN for it would pin the tenant compute for the life of
-  // a heartbeat. The connection is acquired only when there is something to hear.
+  // session-mode LISTEN for it would pin a connection for the life of a
+  // heartbeat. The connection is acquired only when there is something to hear.
   const needsListener = channels.length > 0
-  if (needsListener) await acquireConnection(namespace)
+  if (needsListener) await acquireConnection()
 
   const registered: Array<{ key: string; fn: Handler }> = []
   for (const channel of channels) {
-    const key = registryKey(namespace, channel)
     // The handler is told the logical name it asked for.
     const fn: Handler = (message: string) => onMessage(channel, message)
-    let set = listeners.get(key)
+    let set = listeners.get(channel)
     if (!set) {
       set = new Set()
-      listeners.set(key, set)
+      listeners.set(channel, set)
     }
     set.add(fn)
-    registered.push({ key, fn })
+    registered.push({ key: channel, fn })
   }
 
   // One connection reference per subscribe() call, released once on unsubscribe,
@@ -296,7 +241,7 @@ export async function subscribe(
     }
     if (released) return
     released = true
-    if (needsListener) await releaseConnection(namespace)
+    if (needsListener) await releaseConnection()
   }
 }
 
@@ -314,17 +259,15 @@ export function publish(channel: string, payload: unknown): void {
 
 /** The awaitable form, for tests and for callers that want back-pressure. */
 export async function publishAsync(channel: string, payload: unknown): Promise<void> {
-  const namespace = currentWorkspaceNamespace()
-  const inline = JSON.stringify({ t: namespace, c: channel, p: payload } satisfies Envelope)
+  const inline = JSON.stringify({ c: channel, p: payload } satisfies Envelope)
   if (Buffer.byteLength(inline, 'utf8') <= NOTIFY_PAYLOAD_LIMIT) {
     await db.execute(sql`SELECT pg_notify(${'quackback_realtime'}, ${inline})`)
     return
   }
 
   const result = await db.execute(sql`
-    INSERT INTO realtime_overflow (workspace_key, channel, payload, expires_at)
+    INSERT INTO realtime_overflow (channel, payload, expires_at)
     VALUES (
-      ${namespace},
       ${channel},
       ${JSON.stringify(payload ?? null)}::jsonb,
       now() + make_interval(secs => ${OVERFLOW_TTL_SECONDS})
@@ -334,23 +277,23 @@ export async function publishAsync(channel: string, payload: unknown): Promise<v
   const rows = getExecuteRows<{ id: string | number | bigint }>(result)
   const id = rows[0]?.id
   if (id === undefined) throw new Error('realtime overflow insert returned no id')
-  const envelope = JSON.stringify({ t: namespace, c: channel, o: String(id) } satisfies Envelope)
+  const envelope = JSON.stringify({ c: channel, o: String(id) } satisfies Envelope)
   await db.execute(sql`SELECT pg_notify(${'quackback_realtime'}, ${envelope})`)
 }
 
-/** Drain every listener connection on graceful shutdown. */
+/** Drain the listener connection on graceful shutdown. */
 export async function closeSubscriber(): Promise<void> {
-  const open = [...connections.values()]
-  connections.clear()
+  const open = connection
+  connection = null
   listeners.clear()
-  await Promise.all(open.map((c) => c.listener.close().catch(() => {})))
+  if (open) await open.listener.close().catch(() => {})
 }
 
 /**
- * Test seam: how many dedicated LISTEN connections this process currently
- * holds. Exported so the connection-lifecycle test observes the real registry
- * rather than reconstructing it.
+ * Test seam: whether this process currently holds a dedicated LISTEN
+ * connection. Exported so the connection-lifecycle test observes the real
+ * registry rather than reconstructing it.
  */
 export function openListenerCount(): number {
-  return connections.size
+  return connection ? 1 : 0
 }

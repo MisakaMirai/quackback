@@ -101,21 +101,6 @@ describe('PATCH /api/v1/principals/:principalId', () => {
     const body = (await res.json()) as { data: { id: string; role: string } }
     expect(body.data).toMatchObject({ id: TARGET, role: 'member' })
   })
-
-  it('maps a seat shortfall to 402 with the needed and free counts', async () => {
-    const { SeatLimitError } = await import('@/lib/server/domains/principals/seat-limit')
-    mockUpdateMemberRole.mockRejectedValue(
-      new SeatLimitError({ needed: 1, free: 0, used: 3, max: 3 })
-    )
-
-    const res = await PATCH({
-      request: request('PATCH', { role: 'member' }),
-      params: { principalId: TARGET },
-    })
-
-    expect(res.status).toBe(402)
-    expect(await res.json()).toMatchObject({ needed: 1, free: 0, limit: 'maxTeamSeats' })
-  })
 })
 
 describe('DELETE /api/v1/principals/:principalId', () => {

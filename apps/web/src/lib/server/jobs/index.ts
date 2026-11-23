@@ -88,7 +88,7 @@ export {
   isJobWorkerRunning,
   startJobWorker,
   stopJobWorker,
-  wakeWorkspace,
+  wakeWorker,
   type JobWakeRequest,
   type JobWorkerStatus,
 } from './worker'

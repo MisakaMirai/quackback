@@ -47,8 +47,6 @@ import { ALL_PERMISSIONS, SYSTEM_ROLES, type PermissionKey } from '@/lib/shared/
 const CATALOGUE_KEYS: ReadonlySet<string> = new Set(ALL_PERMISSIONS)
 import { assertKnownPermissions, assertWithinCeiling } from './role.ceiling'
 import { ForbiddenError, NotFoundError, ValidationError } from '@/lib/shared/errors'
-import { getTierLimits } from '@/lib/server/domains/settings/tier-limits.service'
-import { enforceCountLimit } from '@/lib/server/domains/settings/tier-enforce'
 import { recordAuditEvent, type AuditActor } from '@/lib/server/audit/log'
 import { logger } from '@/lib/server/logger'
 
@@ -247,21 +245,6 @@ export async function createRole(
 
   const id = generateId('role') as RoleId
   await db.transaction(async (tx) => {
-    // Serialize concurrent creates so the tier-cap count can't be raced past.
-    await tx.execute(sql`SELECT pg_advisory_xact_lock(7061637)`)
-    const limits = await getTierLimits()
-    await enforceCountLimit({
-      limit: limits.maxCustomRoles,
-      currentCount: async () => {
-        const [row] = await tx
-          .select({ count: sql<number>`count(*)`.as('count') })
-          .from(roles)
-          .where(eq(roles.isSystem, false))
-        return Number(row?.count ?? 0)
-      },
-      name: 'custom_roles',
-      friendly: 'custom roles',
-    })
     await tx.insert(roles).values({
       id,
       // Customs have no semantic key; the id keeps it unique and stable.

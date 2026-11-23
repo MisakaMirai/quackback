@@ -24,8 +24,8 @@ const DB = `qb_lock_timeout_${randomUUID().replace(/-/g, '').slice(0, 10)}`
 const dsn = ADMIN_URL.replace(/\/[^/]+$/, `/${DB}`)
 const PACKAGE_DIR = path.resolve(__dirname, '../..')
 
-/** The destructive migration this branch adds; it locks `conversation_messages` first. */
-const AI_DROP_WHEN = BUNDLED_MIGRATIONS.find((m) => m.tag === '0316_drop_quackback_ai')!.when
+/** The newest destructive migration this branch adds; it alters `settings`. */
+const TIER_DROP_WHEN = BUNDLED_MIGRATIONS.find((m) => m.tag === '0323_drop_tier_limits')!.when
 
 let admin: postgres.Sql
 
@@ -85,21 +85,21 @@ describe('the self-hosted boot migration', () => {
     try {
       // The newest migration is pending, as after a ledger gap, while another
       // session holds the table it alters.
-      await truncateAppliedLedger(sql, AI_DROP_WHEN)
+      await truncateAppliedLedger(sql, TIER_DROP_WHEN)
       await holder.unsafe('BEGIN')
-      await holder.unsafe('LOCK TABLE conversation_messages IN ACCESS EXCLUSIVE MODE')
+      await holder.unsafe('LOCK TABLE settings IN ACCESS EXCLUSIVE MODE')
 
       const blocked = await boot(DEFAULT_MIGRATE_LOCK_TIMEOUT_MS + 30_000)
       expect(blocked.killed, blocked.output).toBe(false)
       expect(blocked.code).toBe(1)
       expect(blocked.ms).toBeGreaterThanOrEqual(DEFAULT_MIGRATE_LOCK_TIMEOUT_MS - 1_000)
       expect(blocked.output).toMatch(/lock timeout/i)
-      expect((await readAppliedLedger(sql)).versions.has(AI_DROP_WHEN)).toBe(false)
+      expect((await readAppliedLedger(sql)).versions.has(TIER_DROP_WHEN)).toBe(false)
 
       await holder.unsafe('ROLLBACK')
       const next = await boot(120_000)
       expect(next.code, next.output).toBe(0)
-      expect((await readAppliedLedger(sql)).versions.has(AI_DROP_WHEN)).toBe(true)
+      expect((await readAppliedLedger(sql)).versions.has(TIER_DROP_WHEN)).toBe(true)
     } finally {
       await holder.unsafe('ROLLBACK').catch(() => {})
       await holder.end({ timeout: 5 }).catch(() => {})

@@ -11,7 +11,6 @@ export const MANAGED_PATHS = {
   WORKSPACE_NAME: 'workspace.name',
   WORKSPACE_SLUG: 'workspace.slug',
   WORKSPACE_USE_CASE: 'workspace.useCase',
-  TIER_LIMITS: 'tierLimits',
 } as const
 
 export type ManagedPath = (typeof MANAGED_PATHS)[keyof typeof MANAGED_PATHS] | (string & {})

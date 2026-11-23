@@ -139,12 +139,6 @@ async function checkedSender(cfg: {
   return { from, fromDisplayName: from ? (cfg.fromDisplayName ?? cfg.workspaceName) : undefined }
 }
 
-const BROADCAST_EMAIL_EVENTS = new Set([
-  'changelog.published',
-  'status.incident_created',
-  'status.maintenance_scheduled',
-])
-
 export const emailHook: HookHandler = {
   async run(
     event: EventData,
@@ -172,14 +166,6 @@ async function deliverEmail(
   log.debug({ event_type: event.type }, 'sending email notification')
 
   try {
-    if (BROADCAST_EMAIL_EVENTS.has(event.type)) {
-      const { emailBudgetAvailable } = await import('@/lib/server/domains/settings/tier-enforce')
-      if (!(await emailBudgetAvailable())) {
-        log.warn({ event_type: event.type }, 'email budget exhausted; broadcast skipped')
-        return { success: true }
-      }
-    }
-
     // The From the config asks for, once the send guard permits it; nothing
     // when it asks for none.
     const sender = await checkedSender(cfg)

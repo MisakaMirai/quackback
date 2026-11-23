@@ -100,17 +100,6 @@ vi.mock('@quackback/email', async (importOriginal) => ({
   },
 }))
 
-const maxSendingDomains = vi.fn<() => number | null>(() => null)
-vi.mock('@/lib/server/domains/settings/tier-limits.service', async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import('@/lib/server/domains/settings/tier-limits.service')>()
-  const { OSS_TIER_LIMITS } = await import('@/lib/server/domains/settings/tier-limits.types')
-  return {
-    ...actual,
-    getTierLimits: async () => ({ ...OSS_TIER_LIMITS, maxSendingDomains: maxSendingDomains() }),
-  }
-})
-
 import { getSendingDomain } from '../channel-account.service'
 import {
   provisionSendingDomain,
@@ -207,7 +196,6 @@ describe.skipIf(!fixture.available)('sending-domain watch (real DB, rolled back)
     zoneLookups.length = 0
     getIdentity.mockClear()
     sentAttention.mockReset()
-    maxSendingDomains.mockReturnValue(null)
     teamId = await seedTeam()
   })
   afterEach(async () => {

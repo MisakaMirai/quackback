@@ -33,7 +33,6 @@ function job(eventId: string, attempts = 1): ClaimedJob {
     queue: 'event-dispatch',
     dedupeKey: `event-dispatch:${eventId}`,
     payload: { eventId },
-    workspaceKey: null,
     attempts,
     maxAttempts: 10,
     leaseToken: 'test',

@@ -53,7 +53,6 @@ async function productionProfile(world: MappingWorld, idToken: string) {
   const configs = await buildGenericOAuthConfigs({
     providers: [row({ claimMapping: world.mapping })] as never,
     creds: async () => ({ clientId: 'c', clientSecret: 's' }),
-    tierAllowsOidc: true,
     fetchUserInfo: async () => world.userinfo,
   })
   return configs[0].getUserInfo?.({ idToken, accessToken: 'at' })

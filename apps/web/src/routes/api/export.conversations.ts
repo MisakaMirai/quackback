@@ -31,10 +31,6 @@ export async function handleExportConversations(request: Request): Promise<Respo
       return Response.json({ error: 'Only admins can export conversations' }, { status: 403 })
     }
 
-    // Tier gate: data exports are a Pro+ feature (same gate as posts/users).
-    const { assertTierFeature } = await import('@/lib/server/domains/settings/tier-enforce')
-    await assertTierFeature('analyticsExports', 'Data export')
-
     const rows = await listConversationsForExport()
     const ndjson = rows.map((row) => JSON.stringify(row)).join('\n')
     const filename = `conversations-export-${validation.settings.slug}-${Date.now()}.jsonl`
@@ -60,10 +56,6 @@ export async function handleExportConversations(request: Request): Promise<Respo
       },
     })
   } catch (error) {
-    const { TierLimitError } = await import('@/lib/server/errors/tier-limit-error')
-    if (error instanceof TierLimitError) {
-      return Response.json(error.toResponseBody(), { status: error.statusCode })
-    }
     log.error({ err: error }, 'conversations export failed')
     return internalRouteErrorResponse()
   }

@@ -36,10 +36,6 @@ export async function handleDownloadExportRun(runId: string, request: Request): 
       return Response.json({ error: 'Only admins can download exports' }, { status: 403 })
     }
 
-    // Tier gate: data exports are a Pro+ feature (same gate as starting one).
-    const { assertTierFeature } = await import('@/lib/server/domains/settings/tier-enforce')
-    await assertTierFeature('analyticsExports', 'Data export')
-
     if (!isValidTypeId(runId, 'export_run')) {
       return Response.json({ error: 'Invalid export run ID format' }, { status: 400 })
     }
@@ -86,10 +82,6 @@ export async function handleDownloadExportRun(runId: string, request: Request): 
   } catch (error) {
     if (error instanceof NotFoundError) {
       return Response.json({ error: error.message }, { status: 404 })
-    }
-    const { TierLimitError } = await import('@/lib/server/errors/tier-limit-error')
-    if (error instanceof TierLimitError) {
-      return Response.json(error.toResponseBody(), { status: error.statusCode })
     }
     log.error({ err: error }, 'export download failed')
     return internalRouteErrorResponse()

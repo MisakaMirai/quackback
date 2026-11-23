@@ -6,7 +6,6 @@ import {
   newWorkspaceFlagsForGoals,
 } from '@/lib/server/domains/settings/settings.types'
 import { getSetupState } from '@/lib/shared/db-types'
-import { invalidateTierLimitsCache } from '@/lib/server/domains/settings/tier-limits.service'
 import { bumpAuthConfigVersionInTx } from '@/lib/server/auth/config-version'
 import { generateId } from '@quackback/ids'
 import type { ReconcileDeps, SettingsInsert, SettingsRow, SettingsUpdate } from './reconciler'
@@ -34,7 +33,6 @@ export function makeReconcileDeps(): ReconcileDeps {
         name: row.name,
         slug: row.slug,
         setupState: row.setupState,
-        tierLimits: row.tierLimits,
         managedFieldPaths: (row.managedFieldPaths as string[] | null) ?? [],
       } satisfies SettingsRow
     },
@@ -84,7 +82,6 @@ export function makeReconcileDeps(): ReconcileDeps {
           slug: insert.slug,
           createdAt: new Date(),
           setupState: insert.setupState,
-          tierLimits: insert.tierLimits,
           managedFieldPaths: insert.managedFieldPaths,
           authConfigVersion: 1,
           portalConfig: JSON.stringify(DEFAULT_PORTAL_CONFIG),
@@ -93,16 +90,8 @@ export function makeReconcileDeps(): ReconcileDeps {
         })
         .onConflictDoNothing({ target: settings.slug })
     },
-    applyTierLimits: async (limits) => {
-      const { writeTierLimits } = await import('@/lib/server/domains/settings/tier-limits.write')
-      const result = await writeTierLimits(limits as never, { writer: 'config' })
-      return result.changed
-    },
     invalidateSettingsCache: async () => {
       await invalidateSettingsCache()
-    },
-    invalidateTierLimitsCache: async () => {
-      invalidateTierLimitsCache()
     },
     reportStatus: makeReportStatus(),
   }

@@ -1,17 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { wrapDbError } from '../settings.helpers'
 import { InternalError, ValidationError } from '@/lib/shared/errors'
-import { TierLimitError } from '@/lib/server/errors/tier-limit-error'
 
 describe('wrapDbError', () => {
-  it('rethrows a TierLimitError instead of wrapping it as a 500', () => {
-    const err = new TierLimitError({
-      limit: 'features.customColors',
-      message: 'Custom colours is not available on your plan. Upgrade to enable it.',
-    })
-    expect(() => wrapDbError('update branding config', err)).toThrow(err)
-  })
-
   it('rethrows a validation error', () => {
     const err = new ValidationError(
       'INVALID_CUSTOM_CSS',

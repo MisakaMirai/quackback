@@ -40,7 +40,7 @@ import {
   retirePendingInvitesFor,
   revokeRetiredInviteTokens,
 } from './team-promotion'
-import { assertSeatsAvailable, lockSeatLedger } from './seat-limit'
+import { lockSeatLedger } from './seat-limit'
 import { assertCanChangeTeamRole } from '@/lib/server/domains/roles/role.grants'
 import { cacheDel } from '@/lib/server/cache'
 
@@ -266,14 +266,13 @@ export async function countMembers(): Promise<number> {
  * grant. Owner is excluded: that tier rides the legacy 'admin' role, which
  * only an admin may grant (`opts.granterRole`, fail closed).
  *
- * Adding a portal user takes a seat, checked on the write transaction.
- * Eligibility (a real person who has signed in) lives in team-promotion.ts.
+ * Adding a portal user promotes them to a teammate. Eligibility (a real person
+ * who has signed in) lives in team-promotion.ts.
  *
  * @throws ForbiddenError if trying to modify own role
  * @throws ForbiddenError GRANT_CEILING if a non-admin grants Admin, or a role above the granter
  * @throws ForbiddenError if this would leave no admins
  * @throws ValidationError NOT_ELIGIBLE if the portal user has never signed in
- * @throws TierLimitError SEAT_LIMIT if adding a portal user needs a seat that is not free
  * @throws NotFoundError if the principal is not a teammate or a portal user
  */
 export async function updateMemberRole(
@@ -366,7 +365,6 @@ export async function updateMemberRole(
       const { cacheKeys, retiredTokens } = await db.transaction(async (tx) => {
         await lockSeatLedger(tx)
         const retiredTokens = await retirePendingInvitesFor(tx, [targetMember.userId as UserId])
-        await assertSeatsAvailable(1, { executor: tx })
         const cacheKeys = await promotePortalUsers(
           tx,
           [{ id: principalId, userId: targetMember.userId }],

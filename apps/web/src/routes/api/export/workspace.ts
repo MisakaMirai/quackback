@@ -47,10 +47,6 @@ export async function handleStartWorkspaceExport(request: Request): Promise<Resp
       return Response.json({ error: 'Only admins can export data' }, { status: 403 })
     }
 
-    // Tier gate: data exports are a Pro+ feature (same gate as the CSV exports).
-    const { assertTierFeature } = await import('@/lib/server/domains/settings/tier-enforce')
-    await assertTierFeature('analyticsExports', 'Data export')
-
     const active = await findActiveExportRun()
     if (active) {
       return Response.json(
@@ -100,10 +96,6 @@ export async function handleStartWorkspaceExport(request: Request): Promise<Resp
     log.info({ run_id: run.id }, 'workspace export queued')
     return Response.json({ runId: run.id }, { status: 202 })
   } catch (error) {
-    const { TierLimitError } = await import('@/lib/server/errors/tier-limit-error')
-    if (error instanceof TierLimitError) {
-      return Response.json(error.toResponseBody(), { status: error.statusCode })
-    }
     log.error({ err: error }, 'workspace export request failed')
     return internalRouteErrorResponse()
   }

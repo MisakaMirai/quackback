@@ -116,10 +116,6 @@ export async function createStatusComponentHandler({ request }: { request: Reque
     )
     const segmentIds = parseTypeIdArray<SegmentId>(parsed.data.segmentIds, 'segment', 'segmentIds')
 
-    const { enforceStatusComponentLimit } =
-      await import('@/lib/server/domains/settings/tier-enforce')
-    await enforceStatusComponentLimit()
-
     const { createStatusComponent } = await import('@/lib/server/domains/status')
 
     const component = await createStatusComponent({

@@ -35,7 +35,7 @@ vi.mock('@tanstack/react-start', async (importOriginal) => {
 })
 vi.mock('@/lib/server/functions/roles', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/server/functions/roles')>()),
-  listRolesFn: gated('member.view', 'roles', { roles: [], maxCustomRoles: null }),
+  listRolesFn: gated('member.view', 'roles', { roles: [] }),
 }))
 vi.mock('@/lib/server/functions/teams', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/server/functions/teams')>()),
@@ -184,11 +184,7 @@ describe('readTogetherFn', () => {
         ],
       },
     })
-    expect(results).toEqual([
-      { ok: true, data: { roles: [], maxCustomRoles: null } },
-      { ok: false },
-      { ok: false },
-    ])
+    expect(results).toEqual([{ ok: true, data: { roles: [] } }, { ok: false }, { ok: false }])
   })
 
   it('keeps nothing between requests', async () => {

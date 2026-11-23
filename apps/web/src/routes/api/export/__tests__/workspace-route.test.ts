@@ -1,6 +1,6 @@
 /**
  * Unit tests for POST /api/export/workspace: starts the async workspace
- * export. Admin-only, tier-gated, one active run per deployment.
+ * export. Admin-only, one active run per deployment.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
@@ -10,7 +10,6 @@ const hoisted = vi.hoisted(() => ({
   mockCreateExportRun: vi.fn(),
   mockFailExportRun: vi.fn(),
   mockEnqueue: vi.fn(),
-  mockGetTierLimits: vi.fn(),
   mockRecordAuditEvent: vi.fn(),
 }))
 
@@ -44,10 +43,6 @@ vi.mock('@/lib/server/domains/export/export-queue', () => ({
   enqueueWorkspaceExportJob: hoisted.mockEnqueue,
 }))
 
-vi.mock('@/lib/server/domains/settings/tier-limits.service', () => ({
-  getTierLimits: hoisted.mockGetTierLimits,
-}))
-
 vi.mock('@/lib/server/audit/log', () => ({
   recordAuditEvent: hoisted.mockRecordAuditEvent,
 }))
@@ -68,7 +63,6 @@ beforeEach(() => {
     user: { id: 'user_admin', email: 'admin@example.com' },
     settings: { slug: 'acme' },
   })
-  hoisted.mockGetTierLimits.mockResolvedValue({ features: { analyticsExports: true } })
   hoisted.mockFindActiveExportRun.mockResolvedValue(null)
   hoisted.mockCreateExportRun.mockResolvedValue(RUN)
   hoisted.mockEnqueue.mockResolvedValue(undefined)
@@ -85,13 +79,6 @@ describe('POST /api/export/workspace', () => {
     })
     const res = await handleStartWorkspaceExport(makeRequest())
     expect(res.status).toBe(403)
-    expect(hoisted.mockCreateExportRun).not.toHaveBeenCalled()
-  })
-
-  it('rejects when the tier gate is off', async () => {
-    hoisted.mockGetTierLimits.mockResolvedValue({ features: { analyticsExports: false } })
-    const res = await handleStartWorkspaceExport(makeRequest())
-    expect(res.status).toBe(402)
     expect(hoisted.mockCreateExportRun).not.toHaveBeenCalled()
   })
 

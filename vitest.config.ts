@@ -21,8 +21,10 @@ export default defineConfig({
     // the module graph for later tests. 60s gives headroom; genuine hangs
     // still fail well before the suite stalls.
     testTimeout: 60000,
-    // Real-Postgres suites share one test database; a single retry absorbs the
-    // occasional deadlock/aborted-transaction under parallel load.
+    // Temporary: one real-DB test (ticket-convergence-1b) can swallow a deadlock
+    // inside its transaction under full-suite parallel load and then fail the
+    // next read with 25P02. Retry masks that isolation bug; remove it once the
+    // test owns/rolls back its transaction cleanly.
     retry: 1,
     include: ['**/*.test.ts', '**/*.test.tsx'],
     setupFiles: [path.resolve(__dirname, './vitest.setup.ts')],

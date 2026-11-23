@@ -11,7 +11,7 @@ describe('isPathManagedFromBootstrap', () => {
   })
 
   it('matches a child of a whole-block managed path', () => {
-    expect(isPathManagedFromBootstrap('tierLimits.maxBoards', ['tierLimits'])).toBe(true)
+    expect(isPathManagedFromBootstrap('workspace.name', ['workspace'])).toBe(true)
   })
 })
 
@@ -20,6 +20,5 @@ describe('MANAGED_PATHS', () => {
     expect(MANAGED_PATHS.WORKSPACE_NAME).toBe('workspace.name')
     expect(MANAGED_PATHS.WORKSPACE_SLUG).toBe('workspace.slug')
     expect(MANAGED_PATHS.WORKSPACE_USE_CASE).toBe('workspace.useCase')
-    expect(MANAGED_PATHS.TIER_LIMITS).toBe('tierLimits')
   })
 })

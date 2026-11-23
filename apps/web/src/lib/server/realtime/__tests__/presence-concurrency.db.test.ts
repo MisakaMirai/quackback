@@ -49,7 +49,7 @@ afterAll(async () => {
 })
 
 async function reset(): Promise<void> {
-  await testSql()`DELETE FROM presence_stream WHERE workspace_key = ${T}`
+  await testSql()`DELETE FROM presence_stream WHERE principal_id = ${AGENT}`
 }
 
 describe('clearPresence is indivisible', () => {
@@ -108,7 +108,7 @@ describe('clearPresence is indivisible', () => {
     )
     const rows = await testSql()<{ n: string }[]>`
       SELECT count(*)::text AS n FROM presence_stream
-      WHERE workspace_key = ${T} AND principal_id = ${AGENT}
+      WHERE principal_id = ${AGENT}
     `
     expect(rows[0].n).toBe('1')
     expect(await withRealWorkspace(T, () => isPrincipalOnline(AGENT))).toBe(true)
@@ -132,7 +132,7 @@ describe('clearPresence is indivisible', () => {
     expect(results.slice(0, doomed.length).filter(Boolean)).toEqual([])
     const rows = await testSql()<{ stream_id: string }[]>`
       SELECT stream_id FROM presence_stream
-      WHERE workspace_key = ${T} AND principal_id = ${AGENT} ORDER BY stream_id
+      WHERE principal_id = ${AGENT} ORDER BY stream_id
     `
     expect(rows.map((r) => r.stream_id)).toEqual(live)
   })
@@ -145,7 +145,7 @@ describe('staleness', () => {
     await testSql()`
       UPDATE presence_stream
       SET heartbeat_at = now() - make_interval(secs => ${PRESENCE_TTL_SECONDS + 5})
-      WHERE workspace_key = ${T} AND principal_id = ${AGENT}
+      WHERE principal_id = ${AGENT}
     `
     expect(await withRealWorkspace(T, () => isPrincipalOnline(AGENT))).toBe(false)
     expect(await withRealWorkspace(T, () => listOnlineAgentIds())).toEqual([])
@@ -158,12 +158,12 @@ describe('staleness', () => {
     await testSql()`
       UPDATE presence_stream
       SET heartbeat_at = now() - make_interval(secs => ${PRESENCE_TTL_SECONDS + 5})
-      WHERE workspace_key = ${T} AND stream_id = 'ghost'
+      WHERE stream_id = 'ghost'
     `
     // The ghost must not count as "someone is still here".
     expect(await withRealWorkspace(T, () => clearPresence(AGENT, 'live', true))).toBe(true)
     const rows = await testSql()<{ n: string }[]>`
-      SELECT count(*)::text AS n FROM presence_stream WHERE workspace_key = ${T}
+      SELECT count(*)::text AS n FROM presence_stream
     `
     // Both rows gone: the one asked for, and the ghost pruned alongside it.
     expect(rows[0].n).toBe('0')
@@ -175,11 +175,11 @@ describe('staleness', () => {
     await testSql()`
       UPDATE presence_stream
       SET heartbeat_at = now() - make_interval(secs => ${PRESENCE_TTL_SECONDS + 5})
-      WHERE workspace_key = ${T} AND stream_id = 'abandoned'
+      WHERE principal_id = ${AGENT} AND stream_id = 'abandoned'
     `
     await withRealWorkspace(T, () => markPresent(AGENT, 'fresh', true))
     const rows = await testSql()<{ stream_id: string }[]>`
-      SELECT stream_id FROM presence_stream WHERE workspace_key = ${T}
+      SELECT stream_id FROM presence_stream WHERE principal_id = ${AGENT}
     `
     expect(rows.map((r) => r.stream_id)).toEqual(['fresh'])
   })

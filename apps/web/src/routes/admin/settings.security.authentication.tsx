@@ -73,7 +73,6 @@ function AuthenticationPage() {
         teamAuthConfig={authConfigQuery.data}
         portalConfig={portalConfigQuery.data}
         credentialStatus={credentialStatusQuery.data}
-        customOidcProviderTier
       />
     </SettingsPage>
   )

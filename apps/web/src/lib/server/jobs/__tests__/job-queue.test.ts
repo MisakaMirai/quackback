@@ -38,15 +38,6 @@ vi.mock('@/lib/server/db', () => ({
   ),
 }))
 
-// The workspace assertion reads the ambient scope. A settable stub lets a test
-// stand a row's stamp and the scope's identity against each other, which is the
-// only way to exercise the refusal.
-let currentWorkspaceKey: string | null = null
-vi.mock('@/lib/server/workspaces/workspace-context', () => ({
-  getCurrentWorkspace: () =>
-    currentWorkspaceKey === null ? null : { workspaceKey: currentWorkspaceKey },
-}))
-
 import { __resetAfterCommitForTests, onDurableWorkCommitted } from '@/lib/server/jobs/after-commit'
 
 import {
@@ -82,11 +73,10 @@ beforeAll(async () => {
 
 beforeEach(() => {
   signaled.length = 0
-  unsubCommit = onDurableWorkCommitted((work) => signaled.push(work.workspaceKey))
+  unsubCommit = onDurableWorkCommitted((work) => signaled.push(...work.jobIds))
 })
 
 afterEach(() => {
-  currentWorkspaceKey = null
   unsubCommit?.()
   __resetAfterCommitForTests()
 })
@@ -101,11 +91,10 @@ const LEASE = 30_000
 describe('enqueue', () => {
   it('writes a runnable row', async () => {
     const q = queue('enqueue')
-    currentWorkspaceKey = 'ws_enqueue'
     const { jobId, inserted } = await enqueueJob({ queue: q, payload: { hello: 'world' } })
     expect(inserted).toBe(true)
     expect(jobId).toMatch(/^job_/)
-    expect(signaled).toEqual(['ws_enqueue'])
+    expect(signaled).toEqual([jobId])
 
     const rows = await rowsFor(q)
     expect(rows).toHaveLength(1)
@@ -169,7 +158,6 @@ describe('claim', () => {
 
   it('claimById takes a due row and misses future or already-claimed ones', async () => {
     const q = queue('by-id')
-    currentWorkspaceKey = 'ws_by_id'
     const due = await enqueueJob({ queue: q, maxAttempts: 3 })
     const later = await enqueueJob({
       queue: q,
@@ -402,49 +390,6 @@ describe('the fencing token', () => {
     // The heir's own write is accepted.
     expect(await completeJob(heir)).toBe(true)
     expect((await rowsFor(q))[0].status).toBe('succeeded')
-  })
-})
-
-describe('the workspace assertion', () => {
-  it('stamps the enqueueing workspace and accepts a matching claim', async () => {
-    const q = queue('workspace-match')
-    currentWorkspaceKey = 'inst_alpha'
-    await enqueueJob({ queue: q })
-    expect((await rowsFor(q))[0].workspace_key).toBe('inst_alpha')
-
-    const claimed = await claimJobs({ specs: [{ queue: q, limit: 1, leaseMs: LEASE }] })
-    expect(claimed).toHaveLength(1)
-    expect(claimed[0].workspaceKey).toBe('inst_alpha')
-  })
-
-  it('refuses a row stamped for another workspace, terminally, without returning it', async () => {
-    const q = queue('workspace-mismatch')
-    currentWorkspaceKey = 'inst_alpha'
-    await enqueueJob({ queue: q })
-
-    // The row is now in THIS database claiming to belong to somebody else — the
-    // shape a mis-routed write or a restored dump produces. Running it would be
-    // a cross-workspace execution.
-    await testSql()`UPDATE job_queue SET workspace_key = 'inst_bravo' WHERE queue = ${q}`
-
-    const claimed = await claimJobs({ specs: [{ queue: q, limit: 5, leaseMs: LEASE }] })
-    expect(claimed).toHaveLength(0)
-
-    const [row] = await rowsFor(q)
-    expect(row.status).toBe('failed')
-    expect(row.last_error).toMatch(/workspace mismatch/)
-    // It stays refused rather than becoming claimable on the next pass.
-    expect(await claimJobs({ specs: [{ queue: q, limit: 5, leaseMs: LEASE }] })).toHaveLength(0)
-  })
-
-  it('refuses a workspace-stamped row when no workspace scope is open', async () => {
-    const q = queue('workspace-unscoped')
-    currentWorkspaceKey = 'inst_alpha'
-    await enqueueJob({ queue: q })
-
-    currentWorkspaceKey = null
-    expect(await claimJobs({ specs: [{ queue: q, limit: 5, leaseMs: LEASE }] })).toHaveLength(0)
-    expect((await rowsFor(q))[0].status).toBe('failed')
   })
 })
 
@@ -760,7 +705,6 @@ describe('per-queue retention', () => {
 describe('transactional enqueue', () => {
   it('commits the job with the caller transaction and signals only after commit', async () => {
     const q = queue('tx-commit')
-    currentWorkspaceKey = 'ws-tx'
     const { wrapDbTransaction } = await import('@/lib/server/jobs/after-commit')
     const transaction = wrapDbTransaction(testDb().transaction.bind(testDb()))
     await transaction(async (tx) => {
@@ -769,7 +713,7 @@ describe('transactional enqueue', () => {
       expect(signaled).toEqual([])
     })
     expect((await rowsFor(q)).length).toBe(1)
-    expect(signaled).toEqual(['ws-tx'])
+    expect(signaled).toHaveLength(1)
   })
 
   it('leaves no row when the caller transaction rolls back', async () => {

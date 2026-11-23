@@ -16,7 +16,6 @@ import { getClientIp } from '@/lib/server/domains/api/rate-limit'
 import { incrementBucket } from '@/lib/server/utils/rate-bucket'
 import { captureCountryFromHeaders } from '@/lib/server/auth/country-capture'
 import { getDailySalt, computeVisitorHash } from './visitor-hash'
-import { isVisitorAnalyticsEntitled } from './visitor-tracking'
 
 const log = logger.child({ component: 'visitor-track' })
 
@@ -103,9 +102,6 @@ function deriveSource(url: URL, referrer: string): string | null {
 export async function recordPageView(request: Request): Promise<void> {
   // Opt-out signals win before anything else is read.
   if (request.headers.get('dnt') === '1' || request.headers.get('sec-gpc') === '1') return
-  // A workspace whose plan excludes visitor analytics stores nothing, whatever
-  // the embed sends.
-  if (!(await isVisitorAnalyticsEntitled())) return
 
   const userAgent = request.headers.get('user-agent') ?? ''
   if (!userAgent || isbot(userAgent)) return

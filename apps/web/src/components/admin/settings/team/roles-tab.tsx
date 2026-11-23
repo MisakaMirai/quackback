@@ -8,8 +8,6 @@ import { SettingsCard } from '@/components/admin/settings/settings-card'
 import { SettingsList, SettingsListRow } from '@/components/admin/settings/settings-list'
 import { NewButton } from '@/components/shared/new-button'
 import { useOptionalIntl } from '@/components/ui/use-optional-intl'
-import { cn } from '@/lib/shared/utils'
-import { CUSTOM_ROLE_NOTICE } from './role-ui'
 
 type RolesPayload = Awaited<ReturnType<typeof listRolesFn>>
 type RoleWithMeta = RolesPayload['roles'][number]
@@ -24,12 +22,9 @@ type RoleWithMeta = RolesPayload['roles'][number]
 export function RolesTab() {
   const intl = useOptionalIntl()
   const { data } = useSuspenseQuery(settingsQueries.roles())
-  const { roles, maxCustomRoles } = data
+  const { roles } = data
   const canManage = useHasPermission(PERMISSIONS.ROLE_MANAGE)
   const navigate = useNavigate()
-
-  const customCount = roles.filter((r) => !r.isSystem).length
-  const capReached = maxCustomRoles != null && customCount >= maxCustomRoles
 
   return (
     <SettingsCard
@@ -45,7 +40,6 @@ export function RolesTab() {
         canManage ? (
           <NewButton
             noun="role"
-            disabled={capReached}
             onClick={() => navigate({ to: '/admin/settings/members/roles/new' })}
           >
             {intl.formatMessage({
@@ -57,33 +51,6 @@ export function RolesTab() {
       }
       flush
     >
-      {maxCustomRoles != null && (
-        <div className="px-4 pt-4 sm:px-6">
-          <div className={cn('rounded-lg border px-3.5 py-2.5 text-[13px]', CUSTOM_ROLE_NOTICE)}>
-            {intl.formatMessage(
-              {
-                id: 'admin.settings.roles.customUsage',
-                defaultMessage: '<strong>{used} of {limit}</strong> custom roles used.',
-              },
-              {
-                used: customCount,
-                limit: maxCustomRoles,
-                strong: (chunks) => <strong>{chunks}</strong>,
-              }
-            )}
-            {capReached && (
-              <>
-                {' '}
-                {intl.formatMessage({
-                  id: 'admin.settings.roles.capReached',
-                  defaultMessage: 'Your plan is at its custom-role limit.',
-                })}
-              </>
-            )}
-          </div>
-        </div>
-      )}
-
       <SettingsList>
         {roles.map((role) => (
           <RoleRow key={role.id} role={role} />

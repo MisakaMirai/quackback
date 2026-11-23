@@ -1,37 +1,33 @@
 /**
- * After-commit workspace signaling.
+ * After-commit job signaling.
  *
  * A job inserted on the caller's transaction is not visible to another
- * connection until that transaction commits. Signaling the scheduler
- * before commit can inspect an empty queue and go back to sleep — or
- * fire for a row that then rolls back.
+ * connection until that transaction commits. Signaling the scheduler before
+ * commit can inspect an empty queue and go back to sleep — or fire for a row
+ * that then rolls back.
  *
- * `db.transaction` is wrapped so every outer commit flushes the workspace
- * keys recorded during that transaction. Rollback discards them. Nested
- * `db.transaction` calls are savepoints: an inner throw restores the
- * pending set to the snapshot taken on entry.
+ * `db.transaction` is wrapped so every outer commit flushes the job ids
+ * recorded during that transaction. Rollback discards them. Nested
+ * `db.transaction` calls are savepoints: an inner throw restores the pending
+ * set to the snapshot taken on entry.
  *
- * Enqueue outside a wrapped transaction is already committed, so it
- * delivers immediately.
+ * Enqueue outside a wrapped transaction is already committed, so it delivers
+ * immediately.
  */
 import { AsyncLocalStorage } from 'node:async_hooks'
 import { logger } from '@/lib/server/logger'
 
 const log = logger.child({ component: 'after-commit' })
 
-/** Sentinel used when a single-workspace install has no ambient scope. */
-export const SINGLE_WORKSPACE_KEY = '__single__'
-
 export interface DurableWork {
-  workspaceKey: string
   /** Job ids inserted in this commit. Empty when the note was a wake-only signal. */
   jobIds: string[]
 }
 
 interface AfterCommitFrame {
   depth: number
-  /** workspaceKey → job ids (empty set = nudge only). */
-  pending: Map<string, Set<string>>
+  /** Job ids noted in this frame. */
+  pending: Set<string>
 }
 
 const frames = new AsyncLocalStorage<AfterCommitFrame>()
@@ -49,8 +45,8 @@ export function __resetAfterCommitForTests(): void {
  * Called after a durable job (or equivalent) is visible.
  *
  * The job worker registers here so an after-commit flush rings the in-process
- * scheduler (`claimById` + nudge). Cloud `ROLE=web` registers an HTTP publisher
- * instead. There is no LISTEN doorbell on the pooled worker.
+ * scheduler (`claimById` + nudge). A split web/worker deployment registers an
+ * HTTP publisher instead (`wake.ts`).
  */
 export function onDurableWorkCommitted(sink: DurableWorkSink): () => void {
   sinks.push(sink)
@@ -60,29 +56,14 @@ export function onDurableWorkCommitted(sink: DurableWorkSink): () => void {
   }
 }
 
-export function noteDurableWork(
-  workspaceKey: string | null | undefined,
-  opts?: { committed?: boolean; jobId?: string }
-): void {
-  if (!workspaceKey) return
+export function noteDurableWork(opts?: { committed?: boolean; jobId?: string }): void {
   const frame = frames.getStore()
   if (frame && frame.depth > 0) {
-    let ids = frame.pending.get(workspaceKey)
-    if (!ids) {
-      ids = new Set()
-      frame.pending.set(workspaceKey, ids)
-    }
-    if (opts?.jobId) ids.add(opts.jobId)
+    if (opts?.jobId) frame.pending.add(opts.jobId)
     return
   }
   if (opts?.committed === false) return
-  deliver({ workspaceKey, jobIds: opts?.jobId ? [opts.jobId] : [] })
-}
-
-function clonePending(pending: Map<string, Set<string>>): Map<string, Set<string>> {
-  const copy = new Map<string, Set<string>>()
-  for (const [key, ids] of pending) copy.set(key, new Set(ids))
-  return copy
+  deliver({ jobIds: opts?.jobId ? [opts.jobId] : [] })
 }
 
 function deliver(work: DurableWork): void {
@@ -90,17 +71,15 @@ function deliver(work: DurableWork): void {
     try {
       sink(work)
     } catch (err) {
-      log.error({ err, workspaceKey: work.workspaceKey }, 'after-commit sink threw')
+      log.error({ err }, 'after-commit sink threw')
     }
   }
 }
 
-function flushPending(pending: Map<string, Set<string>>): void {
-  const entries = [...pending.entries()]
+function flushPending(pending: Set<string>): void {
+  const jobIds = [...pending]
   pending.clear()
-  for (const [workspaceKey, ids] of entries) {
-    deliver({ workspaceKey, jobIds: [...ids] })
-  }
+  deliver({ jobIds })
 }
 
 /**
@@ -110,20 +89,20 @@ function flushPending(pending: Map<string, Set<string>>): void {
 export async function runInAfterCommitFrame<T>(fn: () => Promise<T>): Promise<T> {
   const parent = frames.getStore()
   if (parent) {
-    const snapshot = clonePending(parent.pending)
+    const snapshot = new Set(parent.pending)
     parent.depth += 1
     try {
       return await fn()
     } catch (err) {
       parent.pending.clear()
-      for (const [key, ids] of snapshot) parent.pending.set(key, ids)
+      for (const id of snapshot) parent.pending.add(id)
       throw err
     } finally {
       parent.depth -= 1
     }
   }
 
-  const frame: AfterCommitFrame = { depth: 1, pending: new Map() }
+  const frame: AfterCommitFrame = { depth: 1, pending: new Set() }
   return frames.run(frame, async () => {
     try {
       const result = await fn()

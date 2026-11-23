@@ -82,7 +82,8 @@ import { notifyConversationClosed } from '../conversation.notify-closed'
 import { createSendingAddress } from '@/lib/server/domains/channel-accounts/channel-account.service'
 import { setEmailSender } from '@/lib/server/domains/channel-accounts/email-senders'
 import { resolveSender } from '@/lib/server/domains/channel-accounts/sender-resolver'
-import { mailSlugFor, withWorkspace } from '@/lib/server/__tests__/workspace-scope'
+import { SELF_HOSTED_MAIL_SLUG } from '../conversation.mail-slug'
+import { withWorkspace } from '@/lib/server/__tests__/workspace-scope'
 
 const fixture = await createDbTestFixture({
   probe: async (db) => {
@@ -93,7 +94,7 @@ const fixture = await createDbTestFixture({
 
 const WORKSPACE = 'thread-sender'
 const INBOUND_DOMAIN = 'mail.platform.test'
-const PLATFORM_ADDRESS = `${mailSlugFor(WORKSPACE)}@${INBOUND_DOMAIN}`
+const PLATFORM_ADDRESS = `${SELF_HOSTED_MAIL_SLUG}@${INBOUND_DOMAIN}`
 const CUSTOMER = 'customer@example.org'
 const CUSTOMER_MESSAGE_ID = 'first-message@example.org'
 

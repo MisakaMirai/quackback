@@ -43,10 +43,7 @@ export async function handleJobWakeRequest(request: Request): Promise<Response> 
     return new Response(null, { status: 400 })
   }
   if (!raw || typeof raw !== 'object') return new Response(null, { status: 400 })
-  const body = raw as { workspaceKey?: unknown; jobIds?: unknown; abort?: unknown }
-  if (typeof body.workspaceKey !== 'string' || body.workspaceKey.length < 4) {
-    return new Response(null, { status: 400 })
-  }
+  const body = raw as { jobIds?: unknown; abort?: unknown }
   const jobIds = Array.isArray(body.jobIds)
     ? body.jobIds
         .map(asJobId)
@@ -54,7 +51,6 @@ export async function handleJobWakeRequest(request: Request): Promise<Response> 
         .slice(0, MAX_JOB_IDS)
     : []
   const payload: JobWakeRequest = {
-    workspaceKey: body.workspaceKey,
     jobIds,
     abort: asAbort(body.abort),
   }

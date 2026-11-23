@@ -67,7 +67,6 @@ async function providerFor(row: Record<string, unknown>): Promise<LibraryProvide
       },
     ] as never,
     creds: async () => ({ clientSecret: 'secret' }),
-    tierAllowsOidc: true,
   })
   const plugin = genericOAuth({ config: [config] as never })
   const logger = { error: vi.fn(), warn: vi.fn(), info: vi.fn(), debug: vi.fn() }

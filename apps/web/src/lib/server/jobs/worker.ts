@@ -1,9 +1,7 @@
 /**
  * The job worker — one always-on poll loop for the install's single database.
  *
- * This used to run one loop per pooled workspace. Quackback no longer supports
- * pooled tenancy: one process serves one database, so the worker owns one loop
- * and no workspace scopes.
+ * One process serves one database, so the worker owns one loop.
  *
  * Happy-path dispatch is start-by-id: after-commit (in-process) or
  * `POST /api/internal/job-wake` (web → worker) calls `claimById`. The poll loop
@@ -35,9 +33,6 @@ import {
 import { convertRelayOwnedEvents } from '@/lib/server/events/event-dispatch-queue'
 
 const log = logger.child({ component: 'job-worker' })
-
-/** Sentinel key for the install's one loop. Never a real workspace id. */
-const SINGLE = '__single__'
 
 const LOOKAHEAD_MIN_SLEEP_MS = 5_000
 
@@ -126,7 +121,7 @@ function startLoop(cfg: RunnerConfig): WorkerLoop {
   let nextScheduleAt = 0
   let nextMaintenanceAt = 0
   let nextPruneAt = 0
-  const schedule = createScheduleState({ spreadKey: null })
+  const schedule = createScheduleState()
   const pool = createJobPool()
 
   const handle: WorkerLoop = {
@@ -293,7 +288,7 @@ export async function startJobWorker(): Promise<void> {
   storedConfig = cfg
   unsubscribeCommit = onDurableWorkCommitted((work) => {
     void acceptDurableWork(work).catch((err) =>
-      log.error({ err, workspace_key: work.workspaceKey }, 'after-commit start-by-id failed')
+      log.error({ err }, 'after-commit start-by-id failed')
     )
   })
 
@@ -331,24 +326,18 @@ export interface JobWakeAbort {
 }
 
 export interface JobWakeRequest {
-  workspaceKey: string
   jobIds?: string[]
   abort?: JobWakeAbort
 }
 
 async function acceptDurableWork(work: DurableWork): Promise<void> {
-  await wakeWorkspace(work.workspaceKey, work.jobIds)
+  await wakeWorker(work.jobIds)
 }
 
 /**
  * Start-by-id for the install's loop. No-op when this process is not the worker.
- * The `workspaceKey` argument is kept for the wake route's shape; one process
- * serves one database, so it is only logged.
  */
-export async function wakeWorkspace(
-  workspaceKey: string,
-  jobIds: readonly string[]
-): Promise<void> {
+export async function wakeWorker(jobIds: readonly string[]): Promise<void> {
   if (!running || !shouldRunWorkers()) return
   const cfg = storedConfig
   if (!cfg) return
@@ -380,32 +369,26 @@ export async function handleJobWake(request: JobWakeRequest): Promise<void> {
   log.info(
     {
       event: 'job.wake_received',
-      workspace_key: request.workspaceKey,
       job_ids: request.jobIds?.length ?? 0,
       abort: Boolean(request.abort),
     },
     'job wake received'
   )
   if (request.abort) {
-    log.info(
-      { event: 'job.wake_abort_ignored', workspace_key: request.workspaceKey },
-      'job-wake abort is unused'
-    )
+    log.info({ event: 'job.wake_abort_ignored' }, 'job-wake abort is unused')
   }
-  await wakeWorkspace(request.workspaceKey, request.jobIds ?? [])
+  await wakeWorker(request.jobIds ?? [])
 }
 
 export interface JobWorkerStatus {
   running: boolean
-  workspaces: Array<{ workspaceKey: string } & LoopStats>
-  /** Always 0; kept for the readiness probe's response shape. */
-  dormant: number
+  /** The install's one loop, or null when this process is not running it. */
+  loop: LoopStats | null
 }
 
 export function getJobWorkerStatus(): JobWorkerStatus {
   return {
     running,
-    workspaces: stats ? [{ workspaceKey: SINGLE, ...stats }] : [],
-    dormant: 0,
+    loop: stats,
   }
 }

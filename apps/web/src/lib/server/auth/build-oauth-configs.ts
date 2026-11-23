@@ -137,8 +137,6 @@ export interface BuildGenericOAuthConfigsArgs {
   providers: IdentityProvider[]
   /** Fetches the decrypted credential blob for a provider's registrationId. */
   creds: (registrationId: string) => Promise<ProviderCredentials>
-  /** `tierLimits.features.customOidcProvider` — gates ALL OIDC registration. */
-  tierAllowsOidc: boolean
   /**
    * The server's base URL, which the library also builds its callback URLs
    * from. Needed to send a `legacy` provider's redirect URI; without it every
@@ -200,7 +198,6 @@ export interface BuildGenericOAuthConfigsArgs {
 export async function buildGenericOAuthConfigs({
   providers,
   creds,
-  tierAllowsOidc,
   baseUrl,
   discovery,
   fetchUserInfo,
@@ -211,11 +208,6 @@ export async function buildGenericOAuthConfigs({
   onProviderEmail,
   mapProfileToUser,
 }: BuildGenericOAuthConfigsArgs): Promise<GenericOAuthConfig[]> {
-  // Defense-in-depth: a workspace downgraded off the OIDC tier keeps its
-  // provider rows in the DB. Skip registration so no login button renders
-  // and the /sign-in/oauth2 callback path 404s on those providerIds.
-  if (!tierAllowsOidc) return []
-
   const configs: GenericOAuthConfig[] = []
 
   for (const provider of providers) {

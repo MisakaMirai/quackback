@@ -8,7 +8,6 @@ export function syncTestJob(operationId: string): ClaimedJob {
     queue: 'integration-sync',
     dedupeKey: null,
     payload: { operationId },
-    workspaceKey: null,
     attempts: 1,
     maxAttempts: 6,
     leaseToken: randomUUID(),

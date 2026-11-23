@@ -49,6 +49,9 @@ jobs:
   unit:
     name: test (${{ matrix.shard }}/4)
     runs-on: ubuntu-latest
+    # Budget, not a target: a shard that doubles in wall clock fails here rather
+    # than quietly slowing every PR. The suite is ~3-5 min per shard today.
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:

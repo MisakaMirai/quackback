@@ -311,8 +311,8 @@ export function verifyInboundSignature(opts: {
  * Five rules, and they are one predicate because a rule applied in pieces is a
  * rule with a way of being applied to only some of them:
  *
- * - A signed label naming another workspace is a rejection, which is the case
- *   the pooled fleet exists to be wrong about.
+ * - A signed label that is not this install's is a rejection, which is the case
+ *   a shared front door exists to be wrong about.
  * - An absent envelope is a rejection. Mail with no envelope names no address,
  *   and the envelope is what routes it once it is accepted.
  * - An envelope on a domain this install does not receive on is a rejection.

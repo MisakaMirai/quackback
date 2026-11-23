@@ -70,13 +70,13 @@ describe('a job wake', () => {
 
     // Enqueueing outside a transaction already rings the in-process wake.
     const { jobId } = await enqueueJob({ queue: q })
-    await handleJobWake({ workspaceKey: '_', jobIds: [jobId] })
+    await handleJobWake({ jobIds: [jobId] })
     await new Promise((resolve) => setTimeout(resolve, 300))
     expect(ran).toEqual([])
     expect((await rowsFor(q))[0]).toMatchObject({ status: 'pending', attempts: 0 })
 
     delete process.env[ENV]
-    await handleJobWake({ workspaceKey: '_', jobIds: [jobId] })
+    await handleJobWake({ jobIds: [jobId] })
     await vi.waitFor(() => expect(ran).toEqual([jobId]), { timeout: 5_000 })
   })
 })

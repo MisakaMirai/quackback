@@ -23,7 +23,6 @@ interface SignInProvidersTabProps {
   /** Team-side auth config from settings.authConfig. */
   initialTeamAuthConfig: AuthConfig
   credentialStatus: Record<string, boolean> & { _emailConfigured?: boolean }
-  customOidcProviderTier: boolean
 }
 
 /**
@@ -43,7 +42,6 @@ interface SignInProvidersTabProps {
 export function SignInProvidersTab({
   initialTeamAuthConfig,
   credentialStatus,
-  customOidcProviderTier,
 }: SignInProvidersTabProps) {
   const router = useRouter()
   const queryClient = useQueryClient()
@@ -78,8 +76,7 @@ export function SignInProvidersTab({
     oauthState,
     emailConfigured,
     credentialStatus,
-    // IdPs only register (and so only count as a method) when the tier is on.
-    identityProviders: customOidcProviderTier ? identityProviders : [],
+    identityProviders,
   })
   const isLastMethod = (id: string) => {
     if (!isSignInMethodEnabled(oauthState, id)) return false
@@ -322,10 +319,7 @@ export function SignInProvidersTab({
           editor (connection + verified domains + visibility + role
           provisioning). Recovery codes — the break-glass for SSO — are
           nested inside this card. */}
-      <IdentityProvidersSection
-        tierEnabled={customOidcProviderTier}
-        enabledMethodCount={enabledMethodCount}
-      />
+      <IdentityProvidersSection enabledMethodCount={enabledMethodCount} />
 
       {configDialog && (
         <AuthProviderCredentialsDialog

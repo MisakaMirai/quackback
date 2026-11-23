@@ -55,12 +55,6 @@ vi.mock('@/lib/server/logger', () => ({
   logger: stubLogger,
 }))
 
-let currentWorkspaceKey: string | null = null
-vi.mock('@/lib/server/workspaces/workspace-context', () => ({
-  getCurrentWorkspace: () =>
-    currentWorkspaceKey === null ? null : { workspaceKey: currentWorkspaceKey },
-}))
-
 import { TerminalJobError, RetryAfterError, __setJobDefinitionsForTests } from '../definitions'
 import { slotKey } from '../cron'
 import { claimJobs, enqueueJob, reapExpiredLeases } from '../job-queue'
@@ -77,7 +71,6 @@ import {
   runMaintenanceTick,
   runScheduleTick,
   runnerConfig,
-  scheduleOffsetMs,
   startJobsById,
   totalDeclaredConcurrency,
 } from '../runner'
@@ -96,7 +89,6 @@ beforeAll(async () => {
 })
 
 afterEach(() => {
-  currentWorkspaceKey = null
   __setJobDefinitionsForTests(null)
   resetJobHandlers()
   jobLogLines.length = 0
@@ -260,12 +252,10 @@ describe('the schedule tick', () => {
       // boolean leaves the whole guard hanging on a counter nothing pins: an
       // `attempted` hardcoded to 1 passed this file, and passed it even with the
       // shared-state defect restored underneath.
-      currentWorkspaceKey = 'workspace-alpha'
       const a = await runScheduleTick(alpha, minute(m))
       expect(a.attempted, `alpha attempted at minute ${m}`).toBe(1)
       alphaKeys.push(slotKey(q, new Date(2026, 7, 9, 14, m)))
 
-      currentWorkspaceKey = 'workspace-bravo'
       const b = await runScheduleTick(bravo, minute(m))
       expect(b.attempted, `bravo attempted at minute ${m}`).toBe(1)
       bravoKeys.push(slotKey(q, new Date(2026, 7, 9, 14, m)))
@@ -274,11 +264,8 @@ describe('the schedule tick', () => {
     // The other pole, and the reason the count is asserted at all: a tick with
     // no new slot due must attempt NOTHING. Without this, `attempted` could be
     // any always-truthy value and the guard above would still pass.
-    currentWorkspaceKey = 'workspace-alpha'
     expect((await runScheduleTick(alpha, minute(3))).attempted).toBe(0)
-    currentWorkspaceKey = 'workspace-bravo'
     expect((await runScheduleTick(bravo, minute(3))).attempted).toBe(0)
-    currentWorkspaceKey = null
 
     // Each scheduler saw all three slots. With shared state the second caller of
     // each minute finds the counter already advanced and never attempts.
@@ -303,128 +290,45 @@ describe('the schedule tick', () => {
   })
 })
 
-describe('spreading a fleet across each slot', () => {
-  // One process runs a loop per workspace, and every loop evaluates the same
-  // cron. Without an offset, an hourly sweep starts in every workspace in the
-  // same second, and the shared database takes the whole fleet's work at once.
-  const HOUR = 3_600_000
-
-  it("runs a pooled workspace's slot at its own offset, keyed by the slot", async () => {
-    const q = queue('spread-hourly')
+describe('starting a slot on the cron minute', () => {
+  it('adopts the slot in progress at boot and runs the next one when it is due', async () => {
+    const q = queue('schedule-boot')
     __setJobDefinitionsForTests([
       { name: q, cron: '0 * * * *', handler: async () => async () => {} },
     ])
-    const offset = scheduleOffsetMs('workspace-alpha', '0 * * * *')
-    expect(offset).toBeGreaterThan(1_000)
-    expect(offset).toBeLessThan(HOUR)
-
     const slot = new Date(2026, 7, 9, 15, 0, 0)
-    const at = (ms: number) => new Date(slot.getTime() + ms)
-    const state = createScheduleState({ spreadKey: 'workspace-alpha' })
+    const state = createScheduleState()
 
-    // Boot two minutes before this workspace's 15:00 is due: the 14:00 slot is
-    // the one in progress, so it is adopted, and the next one is 15:00 plus
-    // the offset rather than 15:00.
-    const boot = await runScheduleTick(state, at(offset - 120_000))
+    // Boot two minutes before 15:00: the 14:00 slot is adopted, 15:00 is next.
+    const boot = await runScheduleTick(state, new Date(slot.getTime() - 120_000))
     expect(boot.attempted).toBe(0)
-    expect(boot.nextSlotAt).toEqual(at(offset))
+    expect(boot.nextSlotAt).toEqual(slot)
 
-    // At 15:00 itself, and up to a second before the offset, nothing is due.
-    expect((await runScheduleTick(state, at(0))).attempted).toBe(0)
-    expect((await runScheduleTick(state, at(offset - 1_000))).attempted).toBe(0)
+    // Nothing is due until the slot itself.
+    expect((await runScheduleTick(state, new Date(slot.getTime() - 1_000))).attempted).toBe(0)
     expect(await rowsFor(q)).toHaveLength(0)
 
-    // Past the offset the 15:00 slot runs, keyed and stamped as 15:00, so a
-    // replica without the offset still dedupes against it.
-    expect((await runScheduleTick(state, at(offset + 1_000))).attempted).toBe(1)
+    // Past the slot it runs, keyed and stamped as the slot.
+    expect((await runScheduleTick(state, new Date(slot.getTime() + 1_000))).attempted).toBe(1)
     const rows = await rowsFor(q)
     expect(rows).toHaveLength(1)
     expect(rows[0].dedupe_key).toBe(slotKey(q, slot))
     expect(rows[0].payload.scheduledFor).toBe(slot.toISOString())
   })
 
-  it("keeps an unpooled scheduler on the cron's own minute", async () => {
-    expect(scheduleOffsetMs(null, '0 * * * *')).toBe(0)
-    const q = queue('spread-single')
-    __setJobDefinitionsForTests([
-      { name: q, cron: '0 * * * *', handler: async () => async () => {} },
-    ])
-    const state = createScheduleState()
-    await runScheduleTick(state, new Date(2026, 7, 9, 14, 30, 0))
-    expect((await runScheduleTick(state, new Date(2026, 7, 9, 15, 0, 1))).attempted).toBe(1)
-  })
-
-  it('spreads a fleet across the interval rather than stacking it on one minute', () => {
-    const keys = Array.from({ length: 200 }, (_, i) => `inst_${i.toString(36).padStart(8, '0')}`)
-    const perMinute = new Map<number, number>()
-    for (const key of keys) {
-      const offset = scheduleOffsetMs(key, '0 * * * *')
-      expect(offset).toBeGreaterThanOrEqual(0)
-      expect(offset).toBeLessThan(HOUR)
-      const minute = Math.floor(offset / 60_000)
-      perMinute.set(minute, (perMinute.get(minute) ?? 0) + 1)
-    }
-    // 200 workspaces over 60 minutes is about 3 a minute. Measured against
-    // Math.random over 500 fleets, a uniform spread's busiest minute holds 8
-    // (11 at p99, 14 at worst); the unspread fleet put all 200 in minute 0.
-    expect(Math.max(...perMinute.values())).toBeLessThanOrEqual(14)
-    expect(perMinute.size).toBeGreaterThanOrEqual(45)
-  })
-
-  it("keeps one workspace's schedules of a cadence on one tick", async () => {
-    // Each tick asks every schedule's gate, and some gates query the database.
-    // Per-schedule offsets would wake a loop once per per-minute sweep instead
-    // of once a minute, multiplying those queries across the fleet.
-    const a = queue('spread-same-tick-a')
-    const b = queue('spread-same-tick-b')
+  it('keeps two schedules of the same cadence on one tick', async () => {
+    const a = queue('schedule-same-tick-a')
+    const b = queue('schedule-same-tick-b')
     __setJobDefinitionsForTests([
       { name: a, cron: '* * * * *', handler: async () => async () => {} },
       { name: b, cron: '* * * * *', handler: async () => async () => {} },
     ])
-    const state = createScheduleState({ spreadKey: 'workspace-alpha' })
-    const offset = scheduleOffsetMs('workspace-alpha', '* * * * *')
+    const state = createScheduleState()
     const minute = new Date(2026, 7, 9, 14, 0, 0).getTime()
-    await runScheduleTick(state, new Date(minute + offset + 1_000))
-    const both = await runScheduleTick(state, new Date(minute + 60_000 + offset + 1_000))
+    await runScheduleTick(state, new Date(minute + 1_000))
+    const both = await runScheduleTick(state, new Date(minute + 60_000 + 1_000))
     expect(both.attempted).toBe(2)
-    expect(both.nextSlotAt).toEqual(new Date(minute + 120_000 + offset))
-  })
-
-  it('runs a gated slot whose gate opens between the slot and its offset', async () => {
-    // A shut gate adopts the slot it is in. Adopting by the cron's own clock
-    // rather than this scheduler's would mark 15:00 spent before it was due,
-    // and the open gate at 15:00 plus the offset would find nothing to run.
-    const q = queue('spread-gated')
-    let open = true
-    __setJobDefinitionsForTests([
-      {
-        name: q,
-        cron: '0 * * * *',
-        cronEnabled: async () => open,
-        handler: async () => async () => {},
-      },
-    ])
-    const offset = scheduleOffsetMs('workspace-alpha', '0 * * * *')
-    expect(offset).toBeGreaterThan(2_000)
-    const slot = new Date(2026, 7, 9, 15, 0, 0).getTime()
-    const state = createScheduleState({ spreadKey: 'workspace-alpha' })
-
-    await runScheduleTick(state, new Date(slot + offset - 120_000))
-    open = false
-    expect((await runScheduleTick(state, new Date(slot + offset / 2))).attempted).toBe(0)
-    open = true
-    expect((await runScheduleTick(state, new Date(slot + offset + 1_000))).attempted).toBe(1)
-    expect((await rowsFor(q))[0].dedupe_key).toBe(slotKey(q, new Date(slot)))
-  })
-
-  it('bounds the offset by the interval, so a slot runs before the next one is due', () => {
-    for (let i = 0; i < 50; i++) {
-      const key = `workspace-${i}`
-      expect(scheduleOffsetMs(key, '* * * * *')).toBeLessThan(60_000)
-      expect(scheduleOffsetMs(key, '*/5 * * * *')).toBeLessThan(5 * 60_000)
-      // A daily sweep spreads across an hour, not across its whole day.
-      expect(scheduleOffsetMs(key, '0 3 * * *')).toBeLessThan(HOUR)
-    }
+    expect(both.nextSlotAt).toEqual(new Date(minute + 120_000))
   })
 })
 
@@ -543,7 +447,6 @@ describe('job execution logs', () => {
 
   it('emits started then finished on success, with ids and no payload', async () => {
     const q = queue('log-ok')
-    currentWorkspaceKey = 'ws_log_ok'
     __setJobDefinitionsForTests([{ name: q, handler: async () => async () => {} }])
     await enqueueJob({ queue: q, payload: { secret: 'must-not-appear' } })
 
@@ -556,7 +459,6 @@ describe('job execution logs', () => {
     expect(started[0].level).toBe('info')
     expect(started[0].msg).toBe('job started')
     expect(started[0].fields).toMatchObject({
-      workspace_key: 'ws_log_ok',
       queue: q,
       attempt: 1,
       max_attempts: 1,
@@ -565,7 +467,6 @@ describe('job execution logs', () => {
     expect(finished[0].fields).toMatchObject({
       event: 'job.finished',
       outcome: 'succeeded',
-      workspace_key: 'ws_log_ok',
       queue: q,
     })
     expect(finished[0].fields.duration_ms).toBeGreaterThanOrEqual(0)
@@ -574,7 +475,6 @@ describe('job execution logs', () => {
 
   it('emits retrying at warn while attempts remain, then failed at error', async () => {
     const q = queue('log-retry')
-    currentWorkspaceKey = 'ws_log_retry'
     __setJobDefinitionsForTests([
       {
         name: q,
@@ -594,7 +494,6 @@ describe('job execution logs', () => {
     expect(retrying[0].msg).toBe('job retrying')
     expect(retrying[0].fields).toMatchObject({
       outcome: 'retrying',
-      workspace_key: 'ws_log_retry',
       queue: q,
     })
     expect(linesFor('job.failed')).toHaveLength(0)
@@ -606,7 +505,6 @@ describe('job execution logs', () => {
     expect(failed[0].msg).toBe('job failed')
     expect(failed[0].fields).toMatchObject({
       outcome: 'failed',
-      workspace_key: 'ws_log_retry',
       queue: q,
     })
   })

@@ -143,16 +143,14 @@ describe('redactSettingsForClient — server-only settings columns', () => {
   const RAW_ROW = {
     name: 'Acme',
     metadata: JSON.stringify({ officeHours: {} }),
-    tierLimits: JSON.stringify({ maxBoards: 3 }),
     setupState: JSON.stringify({ step: 'done' }),
     portalConfig: JSON.stringify(FULL_PORTAL_CONFIG),
   }
 
-  it('strips metadata, tierLimits, and setupState from a raw row', () => {
+  it('strips metadata and setupState from a raw row', () => {
     const result = redactSettingsForClient(RAW_ROW)
 
     expect(result).not.toHaveProperty('metadata')
-    expect(result).not.toHaveProperty('tierLimits')
     expect(result).not.toHaveProperty('setupState')
     expect(result.name).toBe('Acme')
   })

@@ -7,13 +7,7 @@
  * Forwarding headers are ignored unless TRUSTED_CLIENT_IP_HEADER or
  * TRUSTED_PROXY_HOPS is configured; see getClientIp() below for the rules.
  */
-import {
-  bucketRetryAfter,
-  getBucketCount,
-  incrementBucket,
-  incrementBuckets,
-} from '@/lib/server/utils/rate-bucket'
-import { API_MONTH_BUCKET_KEY, secondsUntilNextUtcMonth } from './monthly-usage'
+import { bucketRetryAfter, getBucketCount, incrementBucket } from '@/lib/server/utils/rate-bucket'
 import { isIP } from 'node:net'
 import { config } from '@/lib/server/config'
 import { getRequestIP } from '@tanstack/react-start/server'
@@ -72,8 +66,8 @@ function trustedHeaderIp(headers: Headers, header: string): string | null {
 
 // Configuration
 const WINDOW_SECONDS = 60 // 1 minute
-const MAX_REQUESTS = 100 // 100 requests per minute per IP — used when tier limit is null (OSS)
-const IMPORT_MIN = 2000 // Floor for import-mode caps so a tight per-minute tier doesn't choke bulk imports
+const MAX_REQUESTS = 100 // 100 requests per minute per IP
+const IMPORT_MIN = 2000 // Floor for import-mode caps so bulk imports are not choked
 
 const rateLimitKey = (ip: string): string => `api:rl:${ip}`
 const keyFailureKey = (ip: string): string => `api:rl:key-fail:${ip}`
@@ -85,11 +79,9 @@ const keyFailureKey = (ip: string): string => `api:rl:key-fail:${ip}`
  * @param importMode - Whether the request asks for import mode (higher limit)
  * @returns Object with allowed flag and remaining requests
  *
- * Tier-aware: when settings.tier_limits has a non-null apiRequestsPerMinute,
- * that value overrides the default cap. Import mode multiplies the per-minute
- * cap by 20 (matching the historical 100 -> 2000 ratio).
- *
- * Self-hosters with no tier_limits row get null and fall back to MAX_REQUESTS.
+ * Tier-free: every install gets the same fixed per-minute cap. Import mode
+ * multiplies the per-minute cap by 20 (matching the historical 100 -> 2000
+ * ratio).
  *
  * The counter is keyed by IP only (not mode), so import-mode and
  * normal-mode calls for the same IP share one count — only the cap
@@ -110,16 +102,11 @@ export async function checkRateLimit(
   /** Admitted on the import cap alone: past the base cap this window. */
   overBaseLimit?: true
 }> {
-  const { getTierLimits } = await import('@/lib/server/domains/settings/tier-limits.service')
-  const limits = await getTierLimits()
-  const baseLimit = limits.apiRequestsPerMinute ?? MAX_REQUESTS
+  const baseLimit = MAX_REQUESTS
   const maxRequests = importMode ? Math.max(baseLimit * 20, IMPORT_MIN) : baseLimit
 
   const minute = { key: rateLimitKey(ip), windowSeconds: WINDOW_SECONDS }
-  const [count] = await incrementBuckets([
-    minute,
-    { key: API_MONTH_BUCKET_KEY, windowSeconds: secondsUntilNextUtcMonth() },
-  ])
+  const { count } = await incrementBucket(minute)
 
   // Redis error → fail open.
   if (count === null) return { allowed: true, remaining: maxRequests }

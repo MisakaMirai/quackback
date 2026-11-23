@@ -9,7 +9,7 @@ import {
 } from '@/lib/server/db'
 import type { PrincipalId } from '@quackback/ids'
 import { isTeamMember } from '@/lib/shared/roles'
-import { WorkspaceKeyedCache } from '@/lib/server/workspaces/workspace-keyed'
+import { BoundedCache } from '@/lib/server/bounded-cache'
 // From the package itself, so suites that stub `@/lib/server/db` keep the real
 // predicates. Pure SQL builders: no client or connection comes with them.
 // oxlint-disable-next-line no-restricted-imports
@@ -24,10 +24,9 @@ export {
  * A principal's test owner is written once, when the server creates the test
  * customer, and never changes, so each answer can be kept for the life of the
  * process: a principal that exists is either a test customer for good or never
- * one. Partitioned by workspace, so a pooled process never answers one
- * workspace's principal from another's. A missing principal is not remembered, because it may not be inserted yet.
+ * one. A missing principal is not remembered, because it may not be inserted yet.
  */
-const testOwners = new WorkspaceKeyedCache<PrincipalId | null>(10_000)
+const testOwners = new BoundedCache<PrincipalId | null>(10_000)
 
 function remember(id: string, owner: PrincipalId | null): void {
   testOwners.set(id, owner)

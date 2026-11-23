@@ -159,7 +159,6 @@ vi.mock('@/lib/server/db', async (importOriginal) => {
 
 const { saveWorkspaceAndGoalFn } = await import('../onboarding')
 const { DEFAULT_FEATURE_FLAGS } = await import('@/lib/server/domains/settings/settings.types')
-const { bootstrapAdminLock } = await import('@/lib/server/domains/principals/bootstrap-admin')
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -300,57 +299,8 @@ describe('saveWorkspaceAndGoalFn bootstrap authorization', () => {
   // The KEY matters as much as the ordering: the SSO callback can also hand out
   // the first admin, and two promoters holding two different keys exclude each
   // other exactly as much as no lock at all. Both take the key this asserts.
-  it('takes the shared bootstrap advisory lock before reading the admin set', async () => {
-    hoisted.getSettings.mockResolvedValue(undefined)
-    hoisted.principalFindFirst.mockResolvedValue(undefined)
-    hoisted.ensurePrincipalForUser.mockResolvedValue({
-      created: true,
-      principal: { id: 'principal_1', role: 'admin' },
-    })
-
-    await saveWorkspaceAndGoalFn({
-      data: { workspaceName: 'Acme Inc', useCase: 'customer_support' },
-    })
-
-    const locked = hoisted.txExecute.mock.calls[0]![0] as { queryChunks?: unknown[] }
-    expect(JSON.stringify(locked.queryChunks)).toContain('pg_advisory_xact_lock')
-    expect(JSON.stringify(locked.queryChunks)).toBe(
-      JSON.stringify(bootstrapAdminLock().queryChunks)
-    )
-    // Every read the transaction makes happens after the lock. Compared against
-    // the transaction's own reads, so an entry-gate read that ran before the
-    // transaction opened cannot make this pass.
-    expect(hoisted.txPrincipalFindFirst).toHaveBeenCalled()
-    expect(hoisted.txExecute.mock.invocationCallOrder[0]).toBeLessThan(
-      hoisted.txPrincipalFindFirst.mock.invocationCallOrder[0]!
-    )
-    // The provenance read is a read like any other, and it decides whether this
-    // caller may be promoted — so it composes with the lock rather than racing
-    // it. Asserted on the transaction's OWN executor, which is what makes it a
-    // statement about the lock window rather than about a query somewhere.
-    const provenance = hoisted.txExecute.mock.calls.findIndex(([statement]) =>
-      JSON.stringify((statement as { queryChunks?: unknown[] })?.queryChunks).includes(
-        'cloud_workspace_key'
-      )
-    )
-    expect(provenance).toBeGreaterThan(0)
-  })
-
   // The workspace this guard exists for. Every fact is identical to the
   // promotion case above except the one the control plane wrote.
-  it('refuses to promote an arrival on a workspace a control plane created', async () => {
-    hoisted.stamp.value = 'ws_acme'
-    hoisted.getSettings.mockResolvedValue(undefined)
-    hoisted.principalFindFirst.mockResolvedValue(undefined)
-
-    await expect(
-      saveWorkspaceAndGoalFn({ data: { workspaceName: 'Acme Inc', useCase: 'customer_support' } })
-    ).resolves.toEqual({ ok: false, refusal: 'not_owner' })
-    expect(hoisted.ensurePrincipalForUser).not.toHaveBeenCalled()
-    expect(hoisted.setPrincipalRole).not.toHaveBeenCalled()
-    expect(hoisted.settingsInsert).not.toHaveBeenCalled()
-  })
-
   it('keeps a managed slug fixed while allowing the workspace name to change', async () => {
     hoisted.getSettings.mockResolvedValue({
       id: 'workspace_1',

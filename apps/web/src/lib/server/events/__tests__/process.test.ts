@@ -127,7 +127,6 @@ function makeJob(overrides: Partial<ClaimedJob> = {}): ClaimedJob {
       target: { url: 'https://example.com/hook' },
       config: { secret: 'secret', webhookId: 'wh_1' },
     },
-    workspaceKey: null,
     attempts: 1,
     maxAttempts: 6,
     leaseToken: '00000000-0000-0000-0000-000000000000',

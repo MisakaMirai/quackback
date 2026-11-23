@@ -5,15 +5,14 @@
  * must belong to a verified admin key, never to the header alone: a caller
  * with no key, a bad key or a non-admin key stays at the base cap, and failed
  * key attempts never get more than the base cap. The real limiter runs against
- * the rate_bucket table inside a rolled-back transaction, with the tier's base
- * cap lowered to 2 so a few requests cross it.
+ * the rate_bucket table inside a rolled-back transaction, with the bucket primed
+ * to the fixed base cap so a couple of requests cross it.
  */
 import { describe, it, expect, vi, beforeEach, afterEach, afterAll } from 'vitest'
 import { createId, type PrincipalId, type UserId } from '@quackback/ids'
 import { createDbTestFixture, testDb } from '@/lib/server/__tests__/db-test-fixture'
 import { apiKeys, principal, sql, user } from '@/lib/server/db'
 import { RateLimitError, UnauthorizedError } from '@/lib/shared/errors'
-import { OSS_TIER_LIMITS } from '@/lib/server/domains/settings/tier-limits.types'
 
 vi.mock('@/lib/server/db', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/server/db')>()),
@@ -33,12 +32,8 @@ vi.mock('@/lib/server/domains/principals/membership-sync', () => ({
   enqueueMembershipSync: vi.fn(async () => {}),
 }))
 
-const BASE_CAP = 2
-vi.mock('@/lib/server/domains/settings/tier-limits.service', () => ({
-  getTierLimits: vi.fn(async () => ({ ...OSS_TIER_LIMITS, apiRequestsPerMinute: BASE_CAP })),
-}))
-
 import { withApiKeyAuth } from '../auth'
+import { checkRateLimit } from '../rate-limit'
 import { createApiKey } from '@/lib/server/domains/api-keys/api-key.service'
 import { updateMemberRole } from '@/lib/server/domains/principals/principal.service'
 
@@ -81,6 +76,39 @@ function call(token: string, importMode = true): Request {
 
 const UNKNOWN_KEY = `qb_${'0'.repeat(48)}`
 
+/**
+ * The limiter's per-minute cap is fixed in `rate-limit.ts` now that tier limits
+ * are gone. Read it from the limiter's own answers once per file so the seed
+ * counts below cannot drift from the real cap.
+ */
+let baseCap: number | null = null
+async function fixedBaseCap(): Promise<number> {
+  if (baseCap !== null) return baseCap
+  let allowed = 0
+  while ((await checkRateLimit('fixed-cap-probe', false)).allowed) allowed += 1
+  await testDb.execute(sql`delete from rate_bucket where key = 'api:rl:fixed-cap-probe'`)
+  baseCap = allowed
+  return allowed
+}
+
+/**
+ * Put the client bucket at `count` without spending a request per increment.
+ * `getClientIp` is 'unknown' outside a request context, and the limiter keys
+ * the counter by that address alone.
+ */
+async function primeBucket(count: number): Promise<void> {
+  await testDb.execute(sql`
+    insert into rate_bucket (key, count, window_expires_at)
+    values (
+      'api:rl:unknown',
+      ${count},
+      now() + interval '1 minute'
+    )
+    on conflict (key) do update
+      set count = ${count}, window_expires_at = now() + interval '1 minute'
+  `)
+}
+
 if (fixture.available) {
   beforeEach(() => fixture.begin())
   afterEach(() => fixture.rollback())
@@ -96,8 +124,10 @@ describe.skipIf(!fixture.available)('import-mode rate limit (real Postgres)', ()
 
   it('gives an admin key asking for import mode the elevated cap', async () => {
     const token = await keyFor('admin')
+    // Already at the base cap: only import mode's elevated cap admits these.
+    await primeBucket(await fixedBaseCap())
 
-    for (let i = 0; i < BASE_CAP + 3; i++) {
+    for (let i = 0; i < 3; i++) {
       const auth = await withApiKeyAuth(call(token))
       expect(auth.importMode).toBe(true)
     }
@@ -105,26 +135,24 @@ describe.skipIf(!fixture.available)('import-mode rate limit (real Postgres)', ()
 
   it('keeps a non-admin key asking for import mode at the base cap', async () => {
     const token = await keyFor('member')
+    await primeBucket((await fixedBaseCap()) - 1)
 
-    for (let i = 0; i < BASE_CAP; i++) {
-      const auth = await withApiKeyAuth(call(token))
-      expect(auth.importMode).toBe(false)
-    }
+    expect((await withApiKeyAuth(call(token))).importMode).toBe(false)
     await expect(withApiKeyAuth(call(token))).rejects.toThrow(RateLimitError)
   })
 
   it('keeps an unauthenticated request asking for import mode at the base cap', async () => {
-    for (let i = 0; i < BASE_CAP; i++) {
-      await expect(withApiKeyAuth(call(UNKNOWN_KEY))).rejects.toThrow(UnauthorizedError)
-    }
+    await primeBucket((await fixedBaseCap()) - 1)
+
+    await expect(withApiKeyAuth(call(UNKNOWN_KEY))).rejects.toThrow(UnauthorizedError)
     await expect(withApiKeyAuth(call(UNKNOWN_KEY))).rejects.toThrow(RateLimitError)
   })
 
   it('gives no import allowance to an address that presented a bad key this window', async () => {
     const token = await keyFor('admin')
+    await primeBucket((await fixedBaseCap()) - 1)
 
     await expect(withApiKeyAuth(call(UNKNOWN_KEY))).rejects.toThrow(UnauthorizedError)
-    await withApiKeyAuth(call(token))
     await expect(withApiKeyAuth(call(token))).rejects.toThrow(RateLimitError)
   })
 
@@ -133,17 +161,15 @@ describe.skipIf(!fixture.available)('import-mode rate limit (real Postgres)', ()
     const manager = await seedTeammate('admin')
     const { plainTextKey } = await createApiKey({ name: 'Importer' }, creator)
     await updateMemberRole(creator, 'member', manager, null, undefined, { granterRole: 'admin' })
+    await primeBucket(await fixedBaseCap())
 
-    for (let i = 0; i < BASE_CAP; i++) await withApiKeyAuth(call(plainTextKey))
     await expect(withApiKeyAuth(call(plainTextKey))).rejects.toThrow(RateLimitError)
   })
 
   it('keeps an admin key at the base cap when it does not ask for import mode', async () => {
     const token = await keyFor('admin')
+    await primeBucket(await fixedBaseCap())
 
-    for (let i = 0; i < BASE_CAP; i++) {
-      expect((await withApiKeyAuth(call(token, false))).importMode).toBe(false)
-    }
     await expect(withApiKeyAuth(call(token, false))).rejects.toThrow(RateLimitError)
   })
 })

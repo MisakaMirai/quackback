@@ -20,11 +20,6 @@ vi.mock('@/lib/server/db', async (importOriginal) => {
   }
 })
 
-vi.mock('@/lib/server/workspaces/workspace-context', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/lib/server/workspaces/workspace-context')>()),
-  getCurrentWorkspace: () => ({ workspaceKey: 'ws_emit' }),
-}))
-
 import { db, events, auditLog, eq, and, sql } from '@/lib/server/db'
 import { getExecuteRows } from '@/lib/server/utils/execute-rows'
 import { createId } from '@quackback/ids'

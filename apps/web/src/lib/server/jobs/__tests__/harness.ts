@@ -20,6 +20,10 @@ import postgres from 'postgres'
 // db-test-fixture.ts.
 // oxlint-disable-next-line no-restricted-imports
 import { createDbFromSql, type Database } from '@quackback/db/client'
+import { seedTestConfigEnv } from '@/lib/server/__tests__/test-env'
+
+// The worker's `db` reaches Postgres through the app config.
+seedTestConfigEnv()
 
 const URL =
   process.env.DATABASE_URL ?? 'postgresql://postgres:password@localhost:5432/quackback_test'
@@ -102,7 +106,6 @@ export interface RowSnapshot {
   locked_until: Date | null
   locked_by: string | null
   last_error: string | null
-  workspace_key: string | null
   run_at: Date
   finished_at: Date | null
 }
@@ -110,7 +113,7 @@ export interface RowSnapshot {
 export async function rowsFor(queue: string): Promise<RowSnapshot[]> {
   const rows = (await testSql()`
     SELECT id::text, dedupe_key, payload, status, attempts, max_attempts,
-           lease_token::text, locked_until, locked_by, last_error, workspace_key,
+           lease_token::text, locked_until, locked_by, last_error,
            run_at, finished_at
     FROM job_queue WHERE queue = ${queue} ORDER BY id
   `) as unknown as Array<Record<string, unknown>>

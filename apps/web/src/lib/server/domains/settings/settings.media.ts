@@ -1,7 +1,6 @@
 import { db, eq, settings } from '@/lib/server/db'
 import { deleteObject } from '@/lib/server/storage/s3'
 import { ValidationError } from '@/lib/shared/errors'
-import { advancedCssRemainder } from '@/lib/shared/theme/generator'
 import { assertNotManaged } from '@/lib/server/config-file/managed-guard'
 import { logger } from '@/lib/server/logger'
 import type { BrandingConfig } from './settings.types'
@@ -37,15 +36,6 @@ export async function updateBrandingConfig(
 ): Promise<BrandingConfig> {
   log.info('update branding config')
   try {
-    // Setting custom theme colors (light/dark overrides) is gated.
-    // Preset and themeMode swaps don't count as colour customisation —
-    // they pick from the curated set the workspace already has access to.
-    const isCustomisingColors = config.light !== undefined || config.dark !== undefined
-    if (isCustomisingColors) {
-      const { assertTierFeature } = await import('./tier-enforce')
-      await assertTierFeature('customColors', 'Custom colours')
-    }
-
     const org = await requireSettings(options.executor)
     await (options.executor ?? db)
       .update(settings)
@@ -81,15 +71,6 @@ export async function updateCustomCss(css: string): Promise<string> {
       throw new ValidationError('INVALID_CUSTOM_CSS', 'Custom CSS cannot contain the "<" character')
     }
     const org = await requireSettings()
-    const trimmed = css.trim()
-    // Empty is always allowed so a workspace whose tier just stopped including
-    // custom CSS can wipe it. Stripping generated theme declarations from CSS
-    // already stored is also ungated — that rewrite cannot introduce extra
-    // rules. Any other non-empty write hits the feature gate.
-    if (trimmed.length > 0 && trimmed !== advancedCssRemainder(org.customCss ?? '')) {
-      const { assertTierFeature } = await import('./tier-enforce')
-      await assertTierFeature('customCss', 'Custom CSS')
-    }
 
     await db.update(settings).set({ customCss: css }).where(eq(settings.id, org.id))
     await invalidateSettingsCache()

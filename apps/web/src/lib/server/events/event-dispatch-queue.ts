@@ -13,8 +13,6 @@ import { db, events, eq, sql } from '@/lib/server/db'
 import { enqueueJob, type ClaimedJob } from '@/lib/server/jobs/job-queue'
 import { logger } from '@/lib/server/logger'
 import { getExecuteRows } from '@/lib/server/utils/execute-rows'
-import { SINGLE_WORKSPACE_KEY } from '@/lib/server/jobs/after-commit'
-import { getCurrentWorkspace } from '@/lib/server/workspaces/workspace-context'
 import { enqueueHookJobsWithIds } from './process'
 import { hydrateEvent, MAX_DEPTH, MAX_STRICT_RESOLVE_ATTEMPTS } from './outbox'
 import { registerAllResolvers, resolveTargets } from './resolvers'
@@ -31,22 +29,22 @@ const RELAY_CONVERT_BATCH = 200
 /** Ceiling so a huge leftover set cannot block a drain pass. */
 const RELAY_CONVERT_MAX_BATCHES = 50
 
-const convertedWorkspaces = new Set<string>()
+/** Whether this process has completed the one-shot conversion. */
+let convertedRelayOwned = false
 
 export function __resetRelayOwnedConvertForTests(): void {
-  convertedWorkspaces.clear()
+  convertedRelayOwned = false
 }
 
 /**
  * One-shot: leftover unpublished `dispatch_owner=relay` rows become job-owned
- * and get an `event-dispatch` job. Bounded, once per workspace per process
- * (a capped batch leaves the workspace unmarked so a later pass continues).
+ * and get an `event-dispatch` job. Bounded, once per process (a capped batch
+ * leaves the flag unset so a later pass continues).
  */
 export async function convertRelayOwnedEvents(opts?: {
   force?: boolean
 }): Promise<{ converted: number; enqueued: number }> {
-  const workspaceKey = getCurrentWorkspace()?.workspaceKey ?? SINGLE_WORKSPACE_KEY
-  if (!opts?.force && convertedWorkspaces.has(workspaceKey)) {
+  if (!opts?.force && convertedRelayOwned) {
     return { converted: 0, enqueued: 0 }
   }
 
@@ -72,10 +70,10 @@ export async function convertRelayOwnedEvents(opts?: {
     throw err
   }
 
-  if (!hitCap) convertedWorkspaces.add(workspaceKey)
+  if (!hitCap) convertedRelayOwned = true
   if (converted > 0) {
     log.info(
-      { converted, enqueued, workspace: workspaceKey, capped: hitCap },
+      { converted, enqueued, capped: hitCap },
       'converted leftover relay-owned events onto the job path'
     )
   }

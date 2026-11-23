@@ -19,11 +19,11 @@ import type { ClaimedJob } from './job-queue'
 export type JobHandler = (job: ClaimedJob) => Promise<void>
 
 /**
- * A schedule this queue derives from the workspace's own database at tick time.
+ * A schedule this queue derives from the database at tick time.
  *
- * `segment-evaluation` is the case that needs it: a workspace's dynamic
- * segments each carry their own cron pattern in a `segments` row, so the set of
- * schedules is per workspace and changes while the process runs. Under BullMQ that
+ * `segment-evaluation` is the case that needs it: dynamic segments each carry
+ * their own cron pattern in a `segments` row, so the set of schedules changes
+ * while the process runs. Under BullMQ that
  * was a repeatable job registered into Redis, which then had to be *restored*
  * at boot because Redis could have been cleared. Deriving it per tick removes
  * the restore step and the class of bug it existed for: there is no scheduler
@@ -79,13 +79,12 @@ export interface JobDefinition {
    */
   concurrency?: number
   /**
-   * How many jobs from this queue may run at once across every workspace loop
-   * in this process. Unset means no cap beyond `concurrency` per loop.
+   * How many jobs from this queue may run at once in this process. Unset means
+   * no cap beyond `concurrency`.
    *
-   * `concurrency` binds per workspace, so a pooled process can run
-   * `concurrency` times the fleet. A queue whose work is heavy on the shared
-   * database sets this so the fleet's runs cannot all land at once. Jobs over
-   * the cap stay `pending`, unclaimed, until a slot frees.
+   * A queue whose work is heavy on the database sets this so a process start or
+   * a database restart cannot land all of its runs at once. Jobs over the cap
+   * stay `pending`, unclaimed, until a slot frees.
    */
   fleetConcurrency?: number
   /** How long succeeded rows are kept. Defaults to the process-wide setting. */
@@ -106,8 +105,7 @@ export interface JobDefinition {
    * handler returning early, which would fill the table with no-ops.
    *
    * Resolve it through the same module the handler comes from: priming has
-   * already imported that module outside any workspace scope, so the `import()`
-   * here is a registry hit rather than a module executing under one workspace.
+   * already imported that module, so the `import()` here is a registry hit.
    */
   cronEnabled?: () => Promise<boolean>
   /** Schedules read from the workspace's database at tick time. */
@@ -313,12 +311,12 @@ export const JOB_DEFINITIONS: readonly JobDefinition[] = [
       ),
   },
   {
-    // The workspace's mail provider tenant, when the operator isolates sending
-    // reputation per workspace. Hourly, but each tick returns after one row
-    // read unless the workspace has never been reconciled, is not ready, or
-    // was last reconciled a day ago; adding, verifying or removing a sending
-    // domain enqueues one on demand. Capped across the fleet because each run
-    // makes several provider management calls.
+    // The install's mail provider tenant, when the operator isolates sending
+    // reputation per install. Hourly, but each tick returns after one row read
+    // unless the tenant has never been reconciled, is not ready, or was last
+    // reconciled a day ago; adding, verifying or removing a sending domain
+    // enqueues one on demand. Capped in the process because each run makes
+    // several provider management calls.
     name: 'ses-tenant-reconcile',
     cron: '41 * * * *',
     cronEnabled: () =>

@@ -19,7 +19,6 @@ import {
   user,
 } from '@/lib/server/db'
 import { ALL_PERMISSIONS, PERMISSIONS } from '@/lib/shared/permissions'
-import { countSeatUsage } from '../seat-usage'
 
 const hoisted = vi.hoisted(() => ({
   mint: vi.fn(),
@@ -64,8 +63,6 @@ vi.mock('@/lib/server/auth/magic-link-mint', () => ({
 
 const { addTeamMembers } = await import('../team-additions')
 const { findPeopleToAdd } = await import('../people-to-add')
-const { invalidateTierLimitsCache } =
-  await import('@/lib/server/domains/settings/tier-limits.service')
 
 // Statements sent on the fixture connection, recorded while `recording` is on.
 let recording = false
@@ -83,7 +80,6 @@ const fixture = await createDbTestFixture({
     await db.select({ id: session.id, scope: session.scope }).from(session).limit(0)
     await db.select({ id: identityProvider.id }).from(identityProvider).limit(0)
     await db.select({ id: invitation.id, kind: invitation.kind }).from(invitation).limit(0)
-    await db.select({ id: settings.id, tierLimits: settings.tierLimits }).from(settings).limit(0)
   },
 })
 
@@ -129,22 +125,16 @@ async function seedPerson(opts: {
 
 const signedIn = { session: { scope: 'portal' as const } }
 
-async function setFreeSeats(free: number) {
-  const { used } = await countSeatUsage(testDb)
-  const tierLimits = JSON.stringify({ maxTeamSeats: used + free })
+/** The seat-ledger lock needs a settings row to exist, even with no cap. */
+async function seedSettings() {
   const existing = await testDb.select({ id: settings.id }).from(settings)
-  if (existing.length === 0) {
-    await testDb.insert(settings).values({
-      id: createId('workspace'),
-      name: 'Acme',
-      slug: `acme-${tag()}`,
-      createdAt: new Date(),
-      tierLimits,
-    })
-  } else {
-    await testDb.update(settings).set({ tierLimits }).where(eq(settings.id, existing[0].id))
-  }
-  invalidateTierLimitsCache()
+  if (existing.length > 0) return
+  await testDb.insert(settings).values({
+    id: createId('workspace'),
+    name: 'Acme',
+    slug: `acme-${tag()}`,
+    createdAt: new Date(),
+  })
 }
 
 async function roleOf(principalId: PrincipalId) {
@@ -181,12 +171,9 @@ if (fixture.available) {
     }))
     hoisted.sendInvitationEmail.mockResolvedValue({ sent: true })
     await fixture.begin()
-    await setFreeSeats(100)
+    await seedSettings()
   })
-  afterEach(() => {
-    invalidateTierLimitsCache()
-    return fixture.rollback()
-  })
+  afterEach(() => fixture.rollback())
   afterAll(() => fixture.close())
 }
 
@@ -394,7 +381,6 @@ describe.skipIf(!fixture.available)('addTeamMembers', () => {
     const admin = await seedPerson({ role: 'admin', ...signedIn })
     const a = await seedPerson({ account: { providerId: 'github', accountId: '1' } })
     const b = await seedPerson({ ...signedIn })
-    await setFreeSeats(3)
 
     const result = await addTeamMembers(
       {
@@ -436,30 +422,6 @@ describe.skipIf(!fixture.available)('addTeamMembers', () => {
       .where(eq(auditLog.eventType, 'user.role.changed'))
     expect(audits.map((r) => r.targetId).sort()).toEqual([a.principalId, b.principalId].sort())
     expect(audits[0].afterValue).toEqual({ role: 'member' })
-  })
-
-  it('refuses a batch that needs more seats than are free, writing nothing', async () => {
-    const admin = await seedPerson({ role: 'admin', ...signedIn })
-    const a = await seedPerson({ ...signedIn })
-    const b = await seedPerson({ ...signedIn })
-    await setFreeSeats(2)
-
-    await expect(
-      addTeamMembers(
-        { principalIds: [a.principalId, b.principalId], emails: ['x@example.com'], role: 'member' },
-        granterFor(admin, 'admin'),
-        ctx
-      )
-    ).rejects.toMatchObject({
-      code: 'SEAT_LIMIT',
-      needed: 3,
-      free: 2,
-      message: expect.stringMatching(/needs 3 and 2 are free/),
-    })
-    expect(await roleOf(a.principalId)).toBe('user')
-    expect(await roleOf(b.principalId)).toBe('user')
-    expect(await pendingInvites()).toEqual([])
-    expect(hoisted.mint).not.toHaveBeenCalled()
   })
 
   it('validates every item before writing any: one bad email stops the whole batch', async () => {
@@ -609,7 +571,7 @@ describe.skipIf(!fixture.available)('addTeamMembers: invites, races and volume',
     expect(result.added).toHaveLength(1)
   })
 
-  it("retires a person's pending team invite when adding them directly, reusing its seat", async () => {
+  it("retires a person's pending team invite when adding them directly", async () => {
     const admin = await seedPerson({ role: 'admin', ...signedIn })
     const a = await seedPerson({ ...signedIn })
     const inviteId = createId('invite')
@@ -623,7 +585,6 @@ describe.skipIf(!fixture.available)('addTeamMembers: invites, races and volume',
       createdAt: new Date(),
       magicLinkTokens: ['old-invite-token'],
     })
-    await setFreeSeats(1) // a's invite holds one seat; the new email needs the free one
 
     await addTeamMembers(
       { principalIds: [a.principalId], emails: ['new@example.com'], role: 'member' },

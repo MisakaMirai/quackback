@@ -33,7 +33,6 @@ describe('AuthSettings tabs', () => {
         teamAuthConfig={TEAM_AUTH}
         portalConfig={PORTAL}
         credentialStatus={{}}
-        customOidcProviderTier={false}
       />
     )
     expect(screen.getByText('portal-access-body')).toBeDefined()
@@ -47,7 +46,6 @@ describe('AuthSettings tabs', () => {
         teamAuthConfig={TEAM_AUTH}
         portalConfig={PORTAL}
         credentialStatus={{}}
-        customOidcProviderTier
       />
     )
     expect(screen.getByText('audit-feed')).toBeDefined()
@@ -61,7 +59,6 @@ describe('AuthSettings tabs', () => {
           teamAuthConfig={TEAM_AUTH}
           portalConfig={PORTAL}
           credentialStatus={{}}
-          customOidcProviderTier
         />
       )
       expect(screen.getByRole('tablist').className).toContain(FORM_WIDTH_CLASS)

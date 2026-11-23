@@ -39,7 +39,7 @@ describe('withEmailProxyHint', () => {
     )
 
     expect(rewritten.content?.[0]?.attrs?.src).toBe(
-      'https://ws-abc123.quackback.co.uk/api/storage/changelog-images/a.png?email=1'
+      'https://env-app.example.net/api/storage/changelog-images/a.png?email=1'
     )
   })
 
@@ -62,9 +62,9 @@ describe('withEmailProxyHint', () => {
     )
 
     const src = rewritten.content?.[0]?.attrs?.src as string
-    expect(
-      src.startsWith('https://ws-abc123.quackback.co.uk/api/storage/chat-images/a.png?read=')
-    ).toBe(true)
+    expect(src.startsWith('https://env-app.example.net/api/storage/chat-images/a.png?read=')).toBe(
+      true
+    )
     expect(src).toContain('email=1')
   })
 
@@ -89,7 +89,7 @@ describe('withEmailProxyHint', () => {
 
     const src = rewritten.content?.[0]?.attrs?.src as string
     expect(
-      src.startsWith('https://ws-abc123.quackback.co.uk/api/storage/uploads/2026/07/logo.png?read=')
+      src.startsWith('https://env-app.example.net/api/storage/uploads/2026/07/logo.png?read=')
     ).toBe(true)
     expect(src).toContain('email=1')
   })

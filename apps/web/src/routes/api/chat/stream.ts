@@ -42,7 +42,6 @@ import { createSseStream, SSE_RESPONSE_HEADERS } from '@/lib/server/utils/sse'
 import { streamLimiter } from '@/lib/server/realtime/stream-connection-limit'
 import { startStreamHeartbeat } from '@/lib/server/realtime/stream-heartbeat'
 import { getClientIp } from '@/lib/server/domains/api/rate-limit'
-import { getWorkspaceScope, runWithWorkspaceScope } from '@/lib/server/workspaces/workspace-context'
 import { logger } from '@/lib/server/logger'
 
 const log = logger.child({ component: 'chat-stream' })
@@ -258,10 +257,8 @@ export const Route = createFileRoute('/api/chat/stream')({
         let unsubscribe: (() => Promise<void>) | null = null
 
         // The abort listener and the stream's cancel hook are invoked by the
-        // runtime, outside the request's AsyncLocalStorage context, so teardown
-        // re-enters the scope captured at request time.
-        const workspaceScope = getWorkspaceScope()
-
+        // runtime, outside the request's AsyncLocalStorage context. Teardown is
+        // written to need no ambient context.
         const withLivePool = async (body: () => Promise<void>): Promise<void> => {
           try {
             await body()
@@ -299,8 +296,7 @@ export const Route = createFileRoute('/api/chat/stream')({
           }
           slot.release()
         }
-        cleanup = () =>
-          workspaceScope ? runWithWorkspaceScope(workspaceScope, teardown) : teardown()
+        cleanup = () => teardown()
 
         const run = async () => {
           try {

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { getDeprecatedConfigKeys, parseQuackbackConfig, quackbackConfigSchema } from '../schema'
+import { getDeprecatedConfigKeys, parseQuackbackConfig } from '../schema'
 
 describe('parseQuackbackConfig', () => {
   it('accepts a fully-populated valid config', () => {
@@ -9,21 +9,11 @@ describe('parseQuackbackConfig', () => {
       metadata: { source: 'test' },
       spec: {
         workspace: { name: 'Acme', slug: 'acme', useCase: 'saas' },
-        tierLimits: {
-          maxBoards: 10,
-          maxPosts: null,
-          aiTokensPerMonth: 100000,
-          features: { customDomain: true, integrations: false },
-        },
       },
     })
     expect(result.success).toBe(true)
     if (result.success) {
       expect(result.data.spec.workspace?.name).toBe('Acme')
-      expect(result.data.spec.tierLimits?.maxBoards).toBe(10)
-      expect(result.data.spec.tierLimits?.features?.customDomain).toBe(true)
-      // Retired with Quackback AI: accepted from older files, never reconciled.
-      expect(result.data.spec.tierLimits).not.toHaveProperty('aiTokensPerMonth')
     }
   })
 
@@ -105,111 +95,5 @@ describe('parseQuackbackConfig', () => {
     if (result.success) {
       expect(getDeprecatedConfigKeys(result.data.spec)).toEqual([])
     }
-  })
-})
-
-const baseConfig = {
-  apiVersion: 'quackback.io/v1' as const,
-  kind: 'QuackbackConfig' as const,
-  spec: {},
-}
-
-describe('tierLimits.notice', () => {
-  it('accepts a full notice', () => {
-    const r = quackbackConfigSchema.safeParse({
-      ...baseConfig,
-      spec: {
-        tierLimits: {
-          maxBoards: null,
-          notice: {
-            label: 'Free trial',
-            expiresAt: '2026-06-24T00:00:00.000Z',
-            actionUrl: 'https://billing.example.com/plan',
-            actionLabel: 'Choose your plan',
-          },
-        },
-      },
-    })
-    expect(r.success).toBe(true)
-  })
-
-  it('accepts a label-only notice', () => {
-    const r = quackbackConfigSchema.safeParse({
-      ...baseConfig,
-      spec: { tierLimits: { notice: { label: 'Maintenance window' } } },
-    })
-    expect(r.success).toBe(true)
-  })
-
-  it('still rejects unknown keys inside tierLimits and notice', () => {
-    expect(
-      quackbackConfigSchema.safeParse({
-        ...baseConfig,
-        spec: { tierLimits: { notice: { label: 'x', bogus: true } } },
-      }).success
-    ).toBe(false)
-    expect(
-      quackbackConfigSchema.safeParse({
-        ...baseConfig,
-        spec: { tierLimits: { bogus: true } },
-      }).success
-    ).toBe(false)
-  })
-})
-
-function issuePaths(result: ReturnType<typeof quackbackConfigSchema.safeParse>): string[] {
-  return result.success ? [] : result.error.issues.map((issue) => issue.path.join('.'))
-}
-
-describe('tierLimits inbound, locale and subscriber caps', () => {
-  const CAP_KEYS = ['maxInboundEmailAddresses', 'maxHelpCenterLocales', 'maxStatusSubscribers']
-
-  it('accepts integers and null for each cap, null meaning unlimited', () => {
-    const r = quackbackConfigSchema.safeParse({
-      ...baseConfig,
-      spec: {
-        tierLimits: {
-          maxInboundEmailAddresses: 2,
-          maxHelpCenterLocales: null,
-          maxStatusSubscribers: 1000,
-        },
-      },
-    })
-    expect(r.success).toBe(true)
-    if (r.success) {
-      expect(r.data.spec.tierLimits).toEqual({
-        maxInboundEmailAddresses: 2,
-        maxHelpCenterLocales: null,
-        maxStatusSubscribers: 1000,
-      })
-    }
-  })
-
-  it('leaves each cap absent when the file does not declare it', () => {
-    const r = quackbackConfigSchema.safeParse({
-      ...baseConfig,
-      spec: { tierLimits: { maxBoards: 3 } },
-    })
-    expect(r.success).toBe(true)
-    if (r.success) {
-      for (const key of CAP_KEYS) {
-        expect(r.data.spec.tierLimits).not.toHaveProperty(key)
-      }
-    }
-  })
-
-  it.each(
-    CAP_KEYS.flatMap((key) => [
-      [key, -1],
-      [key, 1.5],
-      [key, '3'],
-    ])
-  )('rejects %s given %j on the value, not as an unknown key', (key, value) => {
-    const r = quackbackConfigSchema.safeParse({
-      ...baseConfig,
-      spec: { tierLimits: { [key]: value } },
-    })
-    expect(r.success).toBe(false)
-    expect(issuePaths(r)).toEqual([`spec.tierLimits.${key}`])
   })
 })

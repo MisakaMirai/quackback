@@ -184,7 +184,6 @@ function cronRow(): ClaimedJob {
     queue: QUEUE,
     dedupeKey: null,
     payload: { scheduledFor: new Date().toISOString() },
-    workspaceKey: null,
     attempts: 1,
     maxAttempts: 5,
     leaseToken: 'x',

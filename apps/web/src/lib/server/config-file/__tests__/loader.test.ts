@@ -31,15 +31,12 @@ spec:
   workspace:
     name: Acme
     slug: acme
-  tierLimits:
-    maxBoards: 5
 `
     )
     const result = await loadConfigFile(path)
     expect(result.kind).toBe('ok')
     if (result.kind === 'ok') {
       expect(result.config.spec.workspace?.name).toBe('Acme')
-      expect(result.config.spec.tierLimits?.maxBoards).toBe(5)
     }
   })
 

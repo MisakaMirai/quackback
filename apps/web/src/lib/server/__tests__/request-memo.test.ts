@@ -1,13 +1,8 @@
 /**
- * The request memo: one computation per key per request, partitioned by
- * workspace, and able to let go of an entry after a write.
+ * The request memo: one computation per key per request, and able to let go of
+ * an entry after a write.
  */
-import { describe, expect, it, vi } from 'vitest'
-
-let namespace = '_'
-vi.mock('@/lib/server/workspaces/workspace-keyed', () => ({
-  currentWorkspaceNamespace: () => namespace,
-}))
+import { describe, expect, it } from 'vitest'
 
 const { runWithLogContext } = await import('@/lib/server/log-context')
 const { forgetPerRequest, forgetPerRequestPrefix, memoizePerRequest, rememberPerRequest } =
@@ -39,22 +34,7 @@ describe('memoizePerRequest', () => {
     expect(second).toBe(2)
   })
 
-  it('keeps each workspace apart under one request', async () => {
-    const c = counter()
-    const values = await inRequest(async () => {
-      namespace = 'ws_a'
-      const a = await memoizePerRequest('settings', c.next)
-      namespace = 'ws_b'
-      const b = await memoizePerRequest('settings', c.next)
-      namespace = 'ws_a'
-      const aAgain = await memoizePerRequest('settings', c.next)
-      return [a, b, aAgain]
-    })
-    namespace = '_'
-    expect(values).toEqual([1, 2, 1])
-  })
-
-  it('forgets a key, a prefix, or only its own workspace', async () => {
+  it('forgets a key or a prefix', async () => {
     const c = counter()
     const values = await inRequest(async () => {
       await memoizePerRequest('identity:session', c.next) // 1
@@ -64,13 +44,9 @@ describe('memoizePerRequest', () => {
       const other = await memoizePerRequest('other', c.next) // 4
       forgetPerRequestPrefix('identity:')
       const session = await memoizePerRequest('identity:session', c.next) // 5
-      namespace = 'ws_b'
-      forgetPerRequest('other')
-      namespace = '_'
-      const otherAgain = await memoizePerRequest('other', c.next) // still 4
-      return [other, session, otherAgain]
+      return [other, session]
     })
-    expect(values).toEqual([4, 5, 4])
+    expect(values).toEqual([4, 5])
   })
 
   it('serves a remembered value without computing', async () => {

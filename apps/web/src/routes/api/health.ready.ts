@@ -99,11 +99,10 @@ async function checkMigrations(): Promise<void> {
  *
  * What remains, and what each one fails on:
  *
- *   db          the control store (pooled) or the single database — the thing
- *               every request needs. Down or slow ⇒ 503.
- *   migrations  single-workspace only: the applied ledger is behind the bundled
- *               one, so this build's queries can hit columns that do not exist
- *               yet ⇒ 503 `behind`. Pooled skips it deliberately (§10.5).
+ *   db          the install's database — the thing every request needs. Down
+ *               or slow ⇒ 503.
+ *   migrations  the applied ledger is behind the bundled one, so this build's
+ *               queries can hit columns that do not exist yet ⇒ 503 `behind`.
  *   workers     a process that should run workers (`worker` or `all`) but
  *               is not running the job worker ⇒ 503. `web` does not expect it.
  *
@@ -115,32 +114,29 @@ export async function handleReadinessProbe(): Promise<Response> {
     runCheck('db', checkDb),
     runCheck('migrations', checkMigrations),
   ])
-  // Background work is now the job worker rather than a registry of BullMQ
-  // workers, so readiness reports those loops.
+  // Background work is the job worker rather than a registry of BullMQ
+  // workers, so readiness reports that one loop.
   //
   // **`ok` asserts something now.** The old check computed
   // `ok = bootStatus.failed === 0` over eagerly-initialised workers, and a
-  // worker that was never *constructed* is not failed — so a pooled replica
-  // that started no consumer at all reported `workers ok:true total:0` while
-  // every queue silently accumulated. Here a worker-role process that is not
-  // running the job worker is NOT ready, and `loops` says how many workspaces it is
-  // actually serving, which zero would have made obvious.
+  // worker that was never *constructed* is not failed — so a replica that
+  // started no consumer at all reported `workers ok:true total:0` while every
+  // queue silently accumulated. Here a worker-role process that is not running
+  // the job worker is NOT ready, and `loops` says whether it is actually
+  // serving, which zero would have made obvious.
   const jobWorker = getJobWorkerStatus()
   const expected = shouldRunWorkers()
   const workersCheck = {
     ok: expected ? jobWorker.running : true,
     expected,
     running: jobWorker.running,
-    loops: jobWorker.workspaces.length,
-    inFlight: jobWorker.workspaces.reduce((n, t) => n + t.inFlight, 0),
-    schemaMissing: jobWorker.workspaces.filter((t) => t.schemaMissing).length,
-    // Workspaces being refused. Deliberately reported here and NOT allowed to fail
-    // the probe: a bad registry record is not this replica's fault, and taking
-    // the pod out of rotation for it would turn one workspace's misconfiguration
-    // into a fleet-wide outage. The detail — which workspace, which code, how long
-    // — is on the quarantine heartbeat in the logs; this is the number that says
-    // to go and read it.
-    refused: jobWorker.workspaces.filter((t) => Boolean(t.refusedCode)).length,
+    loops: jobWorker.loop ? 1 : 0,
+    inFlight: jobWorker.loop?.inFlight ?? 0,
+    schemaMissing: jobWorker.loop?.schemaMissing ? 1 : 0,
+    // A loop refused by the schema gate. Deliberately reported here and NOT
+    // allowed to fail the probe: taking the pod out of rotation would not fix
+    // it, and the detail is in the logs.
+    refused: jobWorker.loop?.refusedCode ? 1 : 0,
   }
 
   const ready = dbCheck.ok && migrationsCheck.ok && workersCheck.ok

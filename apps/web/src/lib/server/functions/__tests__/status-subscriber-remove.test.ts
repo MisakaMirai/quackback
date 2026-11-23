@@ -27,10 +27,6 @@ vi.mock('@/lib/server/domains/settings/settings.status', () => ({
   getStatusSettings: vi.fn(),
   updateStatusSettings: vi.fn(),
 }))
-vi.mock('@/lib/server/domains/settings/tier-enforce', () => ({
-  enforceStatusComponentLimit: vi.fn(),
-}))
-
 const mockRemove = vi.fn()
 vi.mock('@/lib/server/domains/status', () => ({
   removeStatusSubscriberByAdmin: (...args: unknown[]) => mockRemove(...args),

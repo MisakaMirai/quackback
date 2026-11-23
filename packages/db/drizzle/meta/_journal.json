@@ -2080,6 +2080,27 @@
       "when": 1791002700000,
       "tag": "0322_drop_apps",
       "breakpoints": true
+    },
+    {
+      "idx": 300,
+      "version": "7",
+      "when": 1791002800000,
+      "tag": "0323_drop_tier_limits",
+      "breakpoints": true
+    },
+    {
+      "idx": 301,
+      "version": "7",
+      "when": 1791002900000,
+      "tag": "0324_drop_workspace_columns",
+      "breakpoints": true
+    },
+    {
+      "idx": 302,
+      "version": "7",
+      "when": 1791003000000,
+      "tag": "0325_presence_agents_index",
+      "breakpoints": true
     }
   ]
 }

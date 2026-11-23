@@ -120,10 +120,9 @@ const INBOUND_DOMAIN_ENV = 'EMAIL_INBOUND_DOMAIN'
  *    their own sending domain. The list only grows in practice, so the set of
  *    zones no customer may use grows with it — and the customer who is refused
  *    never sees why. See `platformSendingDomains`.
- * 2. On an install that serves ONE workspace, inbound mail whose `Message-ID`
- *    sits on it is suppressed as that workspace's own mail looping back, with
- *    nothing retained. A pooled fleet reads no host that way, since a shared
- *    host names no workspace. See {@link ownMessageIdDomains}.
+ * 2. Inbound mail whose `Message-ID` sits on this install is suppressed as its
+ *    own mail looping back, with nothing retained. See
+ *    {@link ownMessageIdDomains}.
  * 3. Nothing else. In particular it grants no workspace the right to SEND from
  *    the domain: that is a claim about a verified provider identity, which only
  *    the minting domain has, and the send guard asks for the minting domain

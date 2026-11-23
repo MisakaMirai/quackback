@@ -222,13 +222,6 @@ export const acceptInvitationFn = createServerFn({ method: 'POST' })
       )
     }
 
-    const existingBeforeClaim = await db.query.principal.findFirst({
-      where: eq(principal.userId, userId),
-    })
-    const alreadySeated =
-      existingBeforeClaim != null &&
-      (existingBeforeClaim.role === 'admin' || existingBeforeClaim.role === 'member')
-
     const role = (inv.role || 'member') as Role
     const displayName = name?.trim() || undefined
 
@@ -239,11 +232,6 @@ export const acceptInvitationFn = createServerFn({ method: 'POST' })
     // racing accepts cannot both create a seat.
     const cacheKeysToBust: string[] = []
     const claimed = await db.transaction(async (tx) => {
-      if (!alreadySeated) {
-        const { enforceSeatLimit } = await import('@/lib/server/domains/principals/seat-limit')
-        await enforceSeatLimit({ convertingInvite: true, executor: tx })
-      }
-
       // Conditional update prevents double-accept races (double-click,
       // network retry): zero rows means someone else changed it first.
       const [row] = await tx

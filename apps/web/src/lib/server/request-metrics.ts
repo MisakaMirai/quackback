@@ -8,9 +8,9 @@
  * them in the browser's network panel.
  *
  * The counters hang off the request's log context under a symbol key, like the
- * auth memo in `request-memo.ts`. Symbol keys survive the
- * `{ ...parent }` copy a workspace scope makes, so a child scope keeps counting
- * into the same object, and the logger's JSON output never includes them.
+ * auth memo in `request-memo.ts`. Symbol keys survive a `{ ...parent }` copy, so
+ * a child context keeps counting into the same object, and the logger's JSON
+ * output never includes them.
  */
 import type { Logger } from 'drizzle-orm'
 import { getLogContext } from '@/lib/server/log-context'

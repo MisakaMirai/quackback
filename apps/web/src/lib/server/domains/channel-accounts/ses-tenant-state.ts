@@ -2,9 +2,8 @@
  * This workspace's mail provider tenant, as stored: the name, whether it is
  * ready to send under, and its last known sending status.
  *
- * The tenant name is the workspace's own label (`ws-` and 24 hex characters,
- * see `return-path.ts`), never anything a customer chose. A process with no
- * workspace scope has no label and so sends untenanted.
+ * The tenant name is the install's label (`ws-` and 24 hex characters, see
+ * `return-path.ts`), never anything a customer chose.
  *
  * The send-path rule lives here ({@link tenantForSend}): a message goes under
  * the tenant only when tenants are on, the tenant is ready, the configuration
@@ -17,14 +16,14 @@
 import { addressDomain } from '@quackback/email/ses'
 import { sesTenantsEnabled, type SesSendingStatus } from '@quackback/email/ses-tenant'
 import { db, eq, emailSesTenants, type EmailSesTenant } from '@/lib/server/db'
-import { currentWorkspaceLabel } from './return-path'
+import { currentInstallLabel } from './return-path'
 
 type EnvLike = Record<string, string | undefined>
 
 /** This workspace's tenant name, or null when tenants are off or no workspace is in scope. */
 export function sesTenantName(env: EnvLike = process.env): string | null {
   if (!sesTenantsEnabled(env)) return null
-  return currentWorkspaceLabel(env)
+  return currentInstallLabel(env)
 }
 
 export async function getSesTenantState(tenantName: string): Promise<EmailSesTenant | null> {

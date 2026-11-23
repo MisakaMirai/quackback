@@ -206,10 +206,6 @@ vi.mock('@/lib/server/content/rehost-images', () => ({
   rehostExternalImages: vi.fn(async (json: unknown) => json),
 }))
 
-vi.mock('@/lib/server/domains/settings/tier-limits.service', () => ({
-  getTierLimits: vi.fn(async () => ({ maxPosts: null, features: {} })),
-}))
-
 vi.mock('@/lib/server/domains/settings/settings.service', () => ({
   getPortalConfig: vi.fn(async () => ({ moderationDefault: { requireApproval: 'none' } })),
 }))
