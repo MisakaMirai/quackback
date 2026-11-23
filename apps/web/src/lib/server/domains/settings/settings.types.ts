@@ -8,7 +8,7 @@
 import type { TiptapContent } from '@/lib/shared/db-types'
 import type { Role } from '@/lib/shared/roles'
 import type { OfficeHoursConfig } from '@/lib/shared/conversation/types'
-import type { WidgetTranslations } from '@/lib/shared/widget/translations'
+import type { MessengerTranslations } from '@/lib/shared/messenger/translations'
 import type { StatusSettings } from '@/lib/shared/status-settings'
 import type { OidcSignInButton } from '@/lib/shared/oidc-sign-in-button'
 import type { OidcRedirectStyle } from '@/lib/shared/oidc-redirect'
@@ -277,17 +277,15 @@ export const EMPTY_WELCOME_BODY: TiptapContent = {
 /**
  * Portal-level access control settings.
  *
- * `allowedDomains`, `widgetSignIn`, and `allowedSegmentIds` are server-only
- * policy. They are read by `evaluateMyPortalAccessFn` server-side and never
- * serialized into the router context or any client payload. The router context
- * carries only `visibility` from this shape (redacted in `__root.tsx`).
+ * `allowedDomains` and `allowedSegmentIds` are server-only policy. They are
+ * read by `evaluateMyPortalAccessFn` server-side and never serialized into the
+ * router context or any client payload. The router context carries only
+ * `visibility` from this shape (redacted in `__root.tsx`).
  */
 export interface PortalAccessConfig {
   visibility: 'public' | 'private'
   /** Email domains whose verified users are automatically granted access. */
   allowedDomains: string[]
-  /** Whether widget-authenticated users may access a private portal. */
-  widgetSignIn: boolean
   /** Server-only policy. Segments whose members can access a private portal. */
   allowedSegmentIds: string[]
 }
@@ -308,8 +306,7 @@ export interface PortalNavItemConfig {
   /** Hidden without being removed (defaults to shown). */
   enabled?: boolean
   /** Label override. Built-ins without an override keep their i18n label.
-   *  Overrides are single-language plain text (same policy as widget Home
-   *  card title overrides). */
+   *  Overrides are single-language plain text. */
   label?: string
   /** 'link' only. Absolute http(s) URL. */
   url?: string
@@ -373,8 +370,7 @@ export interface PortalConfig {
 
 /**
  * Portal Support tab configuration. Gated by `isPortalSupportSurfaceEnabled`
- * (`supportTickets` OR `supportInbox` plus this toggle); independent of the
- * widget Messages tab.
+ * (`supportTickets` OR `supportInbox` plus this toggle).
  */
 export interface PortalSupportConfig {
   enabled: boolean
@@ -394,8 +390,18 @@ export const DEFAULT_PORTAL_CONFIG: PortalConfig = {
     body: EMPTY_WELCOME_BODY,
   },
   moderationDefault: { requireApproval: 'none', holdImages: false, holdLinks: false },
-  access: { visibility: 'public', allowedDomains: [], widgetSignIn: false, allowedSegmentIds: [] },
+  access: { visibility: 'public', allowedDomains: [], allowedSegmentIds: [] },
   support: { enabled: true },
+}
+
+/**
+ * Defaults that were live before portal chats flipped on. Stored JSON is
+ * merged over this object so a workspace that predates the toggle keeps
+ * portal chats off.
+ */
+export const LEGACY_PORTAL_CONFIG: PortalConfig = {
+  ...DEFAULT_PORTAL_CONFIG,
+  support: { enabled: false },
 }
 
 /**
@@ -555,42 +561,27 @@ export interface UpdateDeveloperConfigInput {
 }
 
 // =============================================================================
-// Widget Configuration (Embeddable feedback widget)
+// Messenger Configuration (portal live chat)
 // =============================================================================
 
 /**
- * Widget configuration
- * Controls the embeddable feedback widget behavior
- * Note: widgetSecret is stored in its own DB column, NOT here
+ * Messenger settings, stored as `{ messenger, translations }` in
+ * `settings.messenger_config`. Most fields are client-safe and projected into
+ * PublicMessengerConfig; agent-only fields (routing) are stripped from the
+ * public projection.
  */
-/**
- * Messenger settings (sub-section of WidgetConfig). Most fields are client-safe
- * and projected into PublicMessengerConfig; agent-only fields (routing) are
- * stripped from the public projection (see getPublicWidgetConfig).
- */
-/** Web-widget deployment flags. Shared identity lives in settings.assistant_config. */
-export interface AssistantDeploymentConfig {
-  enabled?: boolean
-  respond?: boolean
-}
-
-export interface PublicAssistantConfig extends AssistantDeploymentConfig {
-  name: string
-  avatarUrl: string | null
-}
-
 export interface MessengerConfig {
   /**
-   * @deprecated Ignored at read time. Messenger is on when the `supportInbox`
-   * flag is on; widget visibility is `tabs.messenger`. Still written by the
-   * widget-activation path so stored JSON stays consistent with older readers.
+   * @deprecated Ignored at read time. The Messenger is on when the
+   * `supportInbox` flag is on. Kept only so stored JSON keeps its historical
+   * shape.
    */
   enabled: boolean
   /** Greeting shown when a visitor opens the messenger with no history. */
   welcomeMessage?: string
   /** Shown when no agents are currently available to reply. */
   offlineMessage?: string
-  /** Heading shown for the messenger tab/view (falls back to the workspace name). */
+  /** Heading shown for the messenger view (falls back to the workspace name). */
   teamName?: string
   /**
    * When true, a visitor cannot reply to a CLOSED conversation from the
@@ -600,13 +591,11 @@ export interface MessengerConfig {
    * (`reopenOnReply === 'configurable'` on the channel descriptor).
    */
   preventRepliesWhenClosed?: boolean
-  /** AI-assistant display identity (client-safe). */
-  assistant?: AssistantDeploymentConfig
   /**
    * @deprecated Migration-only. The canonical office-hours schedule now lives in
    * the `settings.metadata` bag (see settings.office-hours.ts). This field only
    * types the released stored config that the read-time fallback converts; no
-   * code writes it and it is not projected into the public widget config.
+   * code writes it and it is not projected into the public messenger config.
    */
   officeHours?: OfficeHoursConfig
   /**
@@ -622,149 +611,15 @@ export interface MessengerConfig {
 }
 
 /** Client-safe subset of MessengerConfig (drops agent-only + deprecated fields). */
-export type PublicMessengerConfig = Omit<
-  MessengerConfig,
-  'routing' | 'officeHours' | 'assistant'
-> & {
-  assistant?: PublicAssistantConfig
-}
+export type PublicMessengerConfig = Omit<MessengerConfig, 'routing' | 'officeHours'>
 
 /**
- * Types of card the widget Home surface can show. Built-in types route to a
- * widget surface and carry sensible default copy; 'link' opens an external URL.
- * Future types (e.g. recent tickets) extend this union.
+ * The Messenger settings parsed from `settings.messenger_config`: the base
+ * config plus the admin-provided per-locale overrides.
  */
-export type WidgetHomeCardType =
-  'feedback' | 'new_conversation' | 'article_search' | 'latest_updates' | 'link'
-
-/** Which visitors a Home card is shown to (visitor-vs-user content). */
-export type WidgetCardAudience = 'everyone' | 'anonymous' | 'identified'
-
-/** An ordered, admin-configurable card on the widget Home surface. */
-export interface WidgetHomeCard {
-  id: string
-  type: WidgetHomeCardType
-  /** Hidden without being removed (defaults to shown). */
-  enabled?: boolean
-  /** Show only to a segment of visitors — everyone (default), signed-out
-   *  visitors, or identified users. Lets a "Sign in" card target anonymous
-   *  visitors and account content target identified ones. */
-  audience?: WidgetCardAudience
-  /** Override the card's default title (built-in types have default copy). */
-  title?: string
-  /** Override the card's default subtitle. */
-  subtitle?: string
-  /** External URL opened in a new tab — 'link' cards only. */
-  url?: string
-}
-
-/**
- * The Home cards shown when the admin hasn't customised the list: one card per
- * built-in surface, each auto-hidden when its surface is disabled. Shared by
- * the widget renderer and the admin editor (as the seed for customisation).
- */
-export const DEFAULT_WIDGET_HOME_CARDS: WidgetHomeCard[] = [
-  { id: 'feedback', type: 'feedback' },
-  { id: 'new-conversation', type: 'new_conversation' },
-  { id: 'article-search', type: 'article_search' },
-  { id: 'latest-updates', type: 'latest_updates' },
-]
-
-/** Abstract pattern presets for the widget Home hero backdrop. */
-export type WidgetHeroPatternId = 'dots' | 'grid' | 'mesh' | 'waves'
-
-/** Customisation for the aggregated Home surface (greeting, hero, quick links). */
-export interface WidgetHomeConfig {
-  /** Greeting heading; supports a `{name}` placeholder (e.g. "Hi {name} 👋"). */
-  greeting?: string
-  /** Subtitle under the greeting (e.g. "How can we help?"). */
-  subtitle?: string
-  /** Home hero treatment: plain background, a color gradient (brand-tinted
-   *  unless `gradient` sets custom colors), an abstract pattern preset, or an
-   *  uploaded image. Fills the whole Home panel behind the header and cards,
-   *  dissolving into the background toward the bottom. */
-  headerStyle?: 'plain' | 'gradient' | 'image' | 'pattern'
-  /** Custom hero colors (hex, e.g. "#7c3aed"). Applies to 'gradient' and
-   *  'pattern' styles; absent/empty = tinted from the theme's primary. */
-  gradient?: { from?: string; to?: string }
-  /** Which abstract pattern the 'pattern' style shows. Default 'mesh'. */
-  pattern?: WidgetHeroPatternId
-  /** S3 key of the uploaded hero image. Written ONLY via saveWidgetHeroImageKey
-   *  (single writer owns the S3 object lifecycle) — never through the generic
-   *  config update; resolved to `heroImageUrl` in the public projection. */
-  heroImageKey?: string
-  /** Public URL of the hero image — derived from heroImageKey at projection
-   *  time; present only on the public/client side. */
-  heroImageUrl?: string | null
-  /** Show the workspace logo in the Home header (default on when a logo is set). */
-  showLogo?: boolean
-  /** Show a small teammate-avatar cluster in the Home header (default on). */
-  showTeamAvatars?: boolean
-  /** Admin-defined quick-link cards shown below the surface cards. */
-  cards?: WidgetHomeCard[]
-}
-
-export interface WidgetConfig {
-  enabled: boolean
-  /** Board slug to filter/default to */
-  defaultBoard?: string
-  /** Trigger button position */
-  position?: 'bottom-right' | 'bottom-left'
-  /** Proactive one-line greeting shown in a bubble beside the closed launcher
-   *  (e.g. "Need a hand?"). Empty/unset shows no bubble. Dismissible per browser
-   *  session; clicking it opens the widget. */
-  launcherGreeting?: string
-  /** Text label on the launcher button (e.g. "Chat with us"). Empty/unset
-   *  keeps the icon-only circular button. */
-  launcherLabel?: string
-  /** Which tabs to show in the widget bottom bar */
-  tabs?: {
-    feedback?: boolean
-    changelog?: boolean
-    help?: boolean
-    /** Messenger (the "Messages" tab). */
-    messenger?: boolean
-    /** Requester's own-tickets list (the "Tickets" tab). Defaults on. */
-    tickets?: boolean
-    /** Show the aggregated Home tab (defaults to on; only appears with 2+ sections) */
-    home?: boolean
-  }
-  /** Messenger settings, stored under `messenger`. */
-  messenger?: MessengerConfig
-  /** Home surface customisation (greeting, hero style, quick-link cards). */
-  home?: WidgetHomeConfig
-  /** Per-locale overrides of the messenger welcome/offline message. The base
-   *  fields are the fallback. */
-  translations?: WidgetTranslations
-  /** Count pageviews from the host page the widget is embedded on. Absent
-   *  resolves to on where the plan includes visitor analytics; the embed
-   *  receives false wherever the plan does not include it. */
-  visitorAnalytics?: boolean
-  /** Store a durable device id in the visitor's browser so returning visitors
-   *  are recognised. Absent resolves to on where the plan includes visitor
-   *  analytics. Only has effect while `visitorAnalytics` resolves to on. */
-  visitorDeviceTracking?: boolean
-}
-
-/**
- * Public subset of widget config — safe to include in WorkspaceSettings / bootstrap data
- * Does NOT include identifyVerification (admin-only concern)
- */
-export type PublicWidgetConfig = Pick<
-  WidgetConfig,
-  | 'enabled'
-  | 'defaultBoard'
-  | 'position'
-  | 'tabs'
-  | 'home'
-  | 'launcherGreeting'
-  | 'launcherLabel'
-  | 'translations'
-> & {
-  /** Always true: identify requires a backend-signed ssoToken (GH issue #300). */
-  hmacRequired?: boolean
-  /** Client-safe messenger config (no agent-only fields like routing). */
-  messenger?: PublicMessengerConfig
+export interface MessengerSettings {
+  messenger: MessengerConfig
+  translations?: MessengerTranslations
 }
 
 export const DEFAULT_MESSENGER_CONFIG: MessengerConfig = {
@@ -772,72 +627,21 @@ export const DEFAULT_MESSENGER_CONFIG: MessengerConfig = {
   welcomeMessage: DEFAULT_WELCOME_MESSAGE,
   offlineMessage: "We're away right now. Leave a message and we'll get back to you by email.",
   // AI-first: identity on, and Quinn answers when a model is configured.
-  // Admins pause replies under Automation → Agent. The widget master stays
-  // off until Support is turned on (or Show on your website) so a pasted
-  // snippet does not go live by itself.
-  assistant: { enabled: true, respond: true },
+  // Admins pause replies under Automation → Agent.
 }
 
-export const DEFAULT_WIDGET_CONFIG: WidgetConfig = {
-  enabled: false,
-  tabs: {
-    feedback: true,
-    changelog: true,
-    messenger: true,
-    tickets: true,
-    home: true,
-  },
+/** Stored default for `settings.messenger_config`. */
+export const DEFAULT_MESSENGER_SETTINGS: MessengerSettings = {
   messenger: DEFAULT_MESSENGER_CONFIG,
 }
 
 /**
- * Defaults that were live before Messenger / Quinn replies / changelog tab
- * flipped on. Stored JSON is merged over this object so missing nested keys
- * stay off. Null/empty blobs pick up {@link DEFAULT_WIDGET_CONFIG} instead.
+ * Input for updating messenger config (partial update). `translations` is
+ * replaced wholesale so a removed locale or cleared field can disappear.
  */
-export const LEGACY_WIDGET_CONFIG: WidgetConfig = {
-  enabled: false,
-  tabs: {
-    feedback: true,
-    changelog: false,
-    messenger: false,
-    home: true,
-  },
-  messenger: {
-    ...DEFAULT_MESSENGER_CONFIG,
-    enabled: false,
-    assistant: { enabled: true, respond: false },
-  },
-}
-
-/** Same split as {@link LEGACY_WIDGET_CONFIG} for portal chats. */
-export const LEGACY_PORTAL_CONFIG: PortalConfig = {
-  ...DEFAULT_PORTAL_CONFIG,
-  support: { enabled: false },
-}
-
-/**
- * Input for updating widget config (partial update)
- */
-export interface UpdateWidgetConfigInput {
-  enabled?: boolean
-  defaultBoard?: string
-  position?: 'bottom-right' | 'bottom-left'
-  launcherGreeting?: string
-  launcherLabel?: string
-  tabs?: {
-    feedback?: boolean
-    changelog?: boolean
-    help?: boolean
-    messenger?: boolean
-    tickets?: boolean
-    home?: boolean
-  }
+export interface UpdateMessengerConfigInput {
   messenger?: Partial<MessengerConfig>
-  home?: WidgetHomeConfig
-  translations?: WidgetTranslations
-  visitorAnalytics?: boolean
-  visitorDeviceTracking?: boolean
+  translations?: MessengerTranslations
 }
 
 // =============================================================================
@@ -910,13 +714,12 @@ export const DEFAULT_HELP_CENTER_LOCALE_CHROME: HelpCenterLocaleChromeStrings = 
 }
 
 /**
- * Help center locales (domains/languages §2). The default locale is
- * unprefixed (`/hc/...`) and keeps using the top-level `homepageTitle`/
- * `homepageDescription` above -- it needs no chrome entry of its own.
- * Additional locales are URL-prefixed (`/hc/{locale}/...`) and require a
- * `chrome` entry with a non-empty `homepageTitle` before they can be
- * enabled: a locale with no title strings has
- * nothing to show on its own homepage.
+ * Help center locales (domains/languages §2). Every locale's pages are
+ * URL-prefixed (`/hc/{locale}/...`), including the default. The default locale
+ * keeps using the top-level `homepageTitle`/`homepageDescription` above — it
+ * needs no chrome entry of its own. Additional locales require a `chrome` entry
+ * with a non-empty `homepageTitle` before they can be enabled: a locale with no
+ * title strings has nothing to show on its own homepage.
  */
 export interface HelpCenterLocalesConfig {
   /** Always the app's DEFAULT_LOCALE; not independently configurable in v1. */
@@ -931,24 +734,6 @@ export const DEFAULT_HELP_CENTER_LOCALES_CONFIG: HelpCenterLocalesConfig = {
   default: 'en',
   additional: [],
   chrome: {},
-}
-
-/**
- * Auto-translate (domains/languages §H3, fast-follow). Off by default. When
- * on, publishing a base-locale article queues a per-additional-locale
- * translation job through the BYOK AI client; results are written as DRAFT
- * translations only (an editor must publish them). `protectedTerms` are
- * glossary entries (product name, technical terms) the translation prompt
- * is instructed never to translate.
- */
-export interface HelpCenterAutoTranslateConfig {
-  enabled: boolean
-  protectedTerms: string[]
-}
-
-export const DEFAULT_HELP_CENTER_AUTO_TRANSLATE_CONFIG: HelpCenterAutoTranslateConfig = {
-  enabled: false,
-  protectedTerms: [],
 }
 
 /** An admin-configured link rendered in the portal header on help center pages. */
@@ -972,7 +757,6 @@ export interface HelpCenterConfig {
   headerLinks: HelpCenterHeaderLink[]
   domain: HelpCenterDomainConfig
   locales: HelpCenterLocalesConfig
-  autoTranslate: HelpCenterAutoTranslateConfig
   seo: HelpCenterSeoConfig
 }
 
@@ -983,7 +767,6 @@ export const DEFAULT_HELP_CENTER_CONFIG: HelpCenterConfig = {
   headerLinks: [],
   domain: DEFAULT_HELP_CENTER_DOMAIN_CONFIG,
   locales: DEFAULT_HELP_CENTER_LOCALES_CONFIG,
-  autoTranslate: DEFAULT_HELP_CENTER_AUTO_TRANSLATE_CONFIG,
   seo: DEFAULT_HELP_CENTER_SEO_CONFIG,
 }
 
@@ -1058,11 +841,11 @@ export interface PublicPortalConfig {
   /** Welcome message on the portal index. Absent / empty body = nothing rendered. */
   welcomeCard?: PortalWelcomeCard
   /**
-   * Client-safe access control indicator. `isPrivate` and `widgetSignIn`
-   * are exposed so the widget can decide whether to show the "Go to portal"
-   * CTA. `allowedDomains` remains server-only.
+   * Client-safe access control indicator. `isPrivate` is exposed so portal
+   * surfaces can show the right sign-in affordance. `allowedDomains` remains
+   * server-only.
    */
-  portalAccess?: { isPrivate: boolean; widgetSignIn: boolean }
+  portalAccess?: { isPrivate: boolean }
 }
 
 // =============================================================================
@@ -1112,8 +895,8 @@ export interface WorkspaceSettings {
   helpCenterConfig: HelpCenterConfig
   /** Status page enablement/visibility/email settings */
   statusConfig: StatusSettings
-  /** Public widget config (no secret, safe for client) */
-  publicWidgetConfig: PublicWidgetConfig
+  /** Public messenger config (no agent-only fields, safe for client) */
+  publicMessengerConfig: PublicMessengerConfig
   /** Product availability flags */
   featureFlags: FeatureFlags
   brandingData: SettingsBrandingData
@@ -1126,10 +909,6 @@ export interface WorkspaceSettings {
    *  have been added. The auth runtime reads this to decide routing
    *  (sso-default vs methods) and hard-binding (per-row `enforced`). */
   verifiedDomains: VerifiedDomain[]
-  /** Workspace state. INERT — app-level suspension enforcement was removed
-   *  (dormant workspaces are scaled to 0 by the control plane; the gateway
-   *  serves their hostnames). Nothing reads this anymore. */
-  state: 'active' | 'suspended' | 'deleting'
 }
 
 // =============================================================================

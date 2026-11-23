@@ -29,12 +29,6 @@ vi.mock('@/lib/server/db', () => ({
   ),
 }))
 
-let currentWorkspaceKey: string | null = null
-vi.mock('@/lib/server/workspaces/workspace-context', () => ({
-  getCurrentWorkspace: () =>
-    currentWorkspaceKey === null ? null : { workspaceKey: currentWorkspaceKey },
-}))
-
 // The in-scope warning is a diagnostic, and a diagnostic nothing reads is a
 // diagnostic that can be deleted. Capture it.
 const warnings: unknown[][] = []
@@ -84,7 +78,6 @@ beforeAll(async () => {
 })
 
 afterEach(() => {
-  currentWorkspaceKey = null
   __setJobDefinitionsForTests(null)
   resetJobHandlers()
   warnings.length = 0
@@ -115,19 +108,6 @@ describe('primeJobHandlers', () => {
     await primeJobHandlers()
     expect(loads).toEqual([a])
   })
-
-  it('refuses to prime inside a workspace scope, and says so', async () => {
-    // Priming under a scope would defeat its own purpose silently — the modules
-    // would load under that workspace, which is the thing being prevented.
-    const a = queue('prime-scoped')
-    const { loads } = countingDefs([a])
-    currentWorkspaceKey = 'inst_alpha'
-
-    await primeJobHandlers()
-
-    expect(loads).toEqual([])
-    expect(errors.flat().join(' ')).toMatch(/inside a workspace scope/)
-  })
 })
 
 describe('running a job does not import anything', () => {
@@ -146,35 +126,8 @@ describe('running a job does not import anything', () => {
     expect(loads).toEqual([q])
   })
 
-  it('warns when it has to load a handler under a workspace scope', async () => {
-    // The fallback path. It must work — a direct `runJob` in a test has never
-    // primed — but in a running tier it means a module is being imported under
-    // a workspace's connection, so it must not be silent.
-    const q = queue('prime-miss')
-    const { loads } = countingDefs([q])
-
-    // Stamp and claim under the same workspace, or the claim's own workspace
-    // assertion refuses the row and the handler is never reached — a fixture
-    // that never arrives at the branch it asserts about. The guard below is for
-    // DIAGNOSIS, not detection: `runJob(undefined)` throws either way, so the
-    // broken fixture fails regardless. What the guard buys is that it fails as
-    // a named fixture fault rather than as a TypeError a future reader would
-    // plausibly "fix" with an optional chain.
-    currentWorkspaceKey = 'inst_alpha'
-    await enqueueJob({ queue: q, maxAttempts: 1 })
-    const [job] = await claimJobs({ specs: [{ queue: q, limit: 1, leaseMs: 30_000 }] })
-    expect(
-      job,
-      'the claim must reach the handler for this assertion to mean anything'
-    ).toBeDefined()
-    expect(await runJob(job)).toBe('succeeded')
-
-    expect(loads).toEqual([q])
-    expect(warnings.flat().join(' ')).toMatch(/imported inside a workspace scope/)
-  })
-
-  it('does not warn when there is no scope to capture', async () => {
-    const q = queue('prime-miss-unscoped')
+  it('does not warn when the handler was primed', async () => {
+    const q = queue('prime-miss-primed')
     countingDefs([q])
     await enqueueJob({ queue: q, maxAttempts: 1 })
     const [job] = await claimJobs({ specs: [{ queue: q, limit: 1, leaseMs: 30_000 }] })

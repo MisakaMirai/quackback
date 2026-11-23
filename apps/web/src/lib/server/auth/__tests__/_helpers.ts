@@ -82,13 +82,12 @@ export function makeWorkspace(overrides: Partial<WorkspaceSettings> = {}): Works
     customCss: '',
     publicAuthConfig: { oauth: {}, openSignup: false },
     publicPortalConfig: { features: PORTAL_FEATURES_DEFAULTS, openSignup: true },
-    publicWidgetConfig: {} as WorkspaceSettings['publicWidgetConfig'],
+    publicMessengerConfig: {} as WorkspaceSettings['publicMessengerConfig'],
     featureFlags: {} as WorkspaceSettings['featureFlags'],
     brandingData: {} as WorkspaceSettings['brandingData'],
     faviconData: null,
     managedFieldPaths: [],
     verifiedDomains: [],
-    state: 'active',
     ...overrides,
   }
 }

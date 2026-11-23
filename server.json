@@ -138,18 +138,6 @@
       "description": "Get full details for any entity by TypeID"
     },
     {
-      "name": "accept_suggestion",
-      "description": "Accept a post-to-post merge suggestion, merging the source post into the target"
-    },
-    {
-      "name": "dismiss_suggestion",
-      "description": "Dismiss a merge suggestion"
-    },
-    {
-      "name": "restore_suggestion",
-      "description": "Restore a dismissed merge suggestion back to pending status"
-    },
-    {
       "name": "list_tickets",
       "description": "List support tickets"
     },
@@ -176,10 +164,6 @@
     {
       "name": "unlink_ticket",
       "description": "Remove a customer ticket from a tracker"
-    },
-    {
-      "name": "widget_install_status",
-      "description": "Read whether the Quackback widget is connected on the customer site"
     },
     {
       "name": "get_settings",

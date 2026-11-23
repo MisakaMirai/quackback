@@ -29,6 +29,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { EmptyState } from '@/components/shared/empty-state'
 import { SettingsList, SettingsListRow } from '@/components/admin/settings/settings-list'
@@ -55,28 +56,52 @@ interface MacroRow {
   actions: MacroAction[]
 }
 
-const SCOPE_LABELS: Record<MacroScope, string> = {
-  support: 'Support',
-  feedback: 'Feedback',
-  both: 'Both',
+const SCOPE_LABELS: Record<MacroScope, { id: string; defaultMessage: string }> = {
+  support: { id: 'inbox.macros.scope.support', defaultMessage: 'Support' },
+  feedback: { id: 'inbox.macros.scope.feedback', defaultMessage: 'Feedback' },
+  both: { id: 'inbox.macros.scope.both', defaultMessage: 'Both' },
 }
 
 const PRIORITIES = ['none', 'low', 'medium', 'high', 'urgent'] as const
 const SNOOZE_PRESETS = [
-  { value: 'until_reply', label: 'Until they reply' },
-  { value: 'tomorrow', label: 'Until tomorrow' },
-  { value: 'next_week', label: 'Until next week' },
+  {
+    value: 'until_reply',
+    id: 'inbox.macros.snoozeUntilReply',
+    defaultMessage: 'Until they reply',
+  },
+  {
+    value: 'tomorrow',
+    id: 'inbox.macros.snoozeUntilTomorrow',
+    defaultMessage: 'Until tomorrow',
+  },
+  {
+    value: 'next_week',
+    id: 'inbox.macros.snoozeUntilNextWeek',
+    defaultMessage: 'Until next week',
+  },
 ] as const
 
 /** Action shapes offered in the builder (the ones a service actually applies). */
 const ACTION_TYPES = [
-  { value: 'assign_agent', label: 'Assign to agent' },
-  { value: 'assign_team', label: 'Assign to team' },
-  { value: 'add_tag', label: 'Add tag' },
-  { value: 'set_priority', label: 'Set priority' },
-  { value: 'snooze', label: 'Snooze' },
-  { value: 'close', label: 'Close conversation' },
-  { value: 'set_attribute', label: 'Set attribute' },
+  {
+    value: 'assign_agent',
+    id: 'inbox.macros.action.assignAgent',
+    defaultMessage: 'Assign to agent',
+  },
+  {
+    value: 'assign_team',
+    id: 'inbox.macros.action.assignTeam',
+    defaultMessage: 'Assign to team',
+  },
+  { value: 'add_tag', id: 'inbox.macros.action.addTag', defaultMessage: 'Add tag' },
+  { value: 'set_priority', id: 'inbox.macros.action.setPriority', defaultMessage: 'Set priority' },
+  { value: 'snooze', id: 'inbox.macros.action.snooze', defaultMessage: 'Snooze' },
+  { value: 'close', id: 'inbox.macros.action.close', defaultMessage: 'Close conversation' },
+  {
+    value: 'set_attribute',
+    id: 'inbox.macros.action.setAttribute',
+    defaultMessage: 'Set attribute',
+  },
 ] as const
 
 type OfferedActionType = (typeof ACTION_TYPES)[number]['value']
@@ -114,6 +139,7 @@ export function MacrosManager({
   const [editing, setEditing] = useState<MacroRow | null>(null)
   const [deleting, setDeleting] = useState<MacroRow | null>(null)
   const deleteMacro = useDeleteMacro()
+  const intl = useOptionalIntl()
 
   return (
     <>
@@ -121,8 +147,14 @@ export function MacrosManager({
         <EmptyState
           size="compact"
           icon={DocumentDuplicateIcon}
-          title="No macros yet"
-          description="Save a reply you send often, with variables and actions."
+          title={intl.formatMessage({
+            id: 'inbox.macros.emptyTitle',
+            defaultMessage: 'No macros yet',
+          })}
+          description={intl.formatMessage({
+            id: 'inbox.macros.emptyDescription',
+            defaultMessage: 'Save a reply you send often, with variables and actions.',
+          })}
         />
       ) : (
         <SettingsList>
@@ -134,18 +166,31 @@ export function MacrosManager({
               badges={
                 macro.scope !== 'support' && (
                   <Badge variant="secondary" className="shrink-0 text-[11px]">
-                    {SCOPE_LABELS[macro.scope]}
+                    {intl.formatMessage(SCOPE_LABELS[macro.scope])}
                   </Badge>
                 )
               }
               trailing={
                 macro.actions.length > 0
-                  ? `${macro.actions.length} action${macro.actions.length === 1 ? '' : 's'}`
+                  ? intl.formatMessage(
+                      {
+                        id: 'inbox.macros.actionCount',
+                        defaultMessage: '{count, plural, one {# action} other {# actions}}',
+                      },
+                      { count: macro.actions.length }
+                    )
                   : undefined
               }
               actions={[
-                { label: 'Edit', onSelect: () => setEditing(macro) },
-                { label: 'Delete', destructive: true, onSelect: () => setDeleting(macro) },
+                {
+                  label: intl.formatMessage({ id: 'inbox.action.edit', defaultMessage: 'Edit' }),
+                  onSelect: () => setEditing(macro),
+                },
+                {
+                  label: intl.formatMessage({ id: 'common.delete', defaultMessage: 'Delete' }),
+                  destructive: true,
+                  onSelect: () => setDeleting(macro),
+                },
               ]}
             />
           ))}
@@ -164,23 +209,46 @@ export function MacrosManager({
         open={deleting !== null}
         onOpenChange={(open) => !open && setDeleting(null)}
         variant="destructive"
-        title="Delete macro?"
+        title={intl.formatMessage({
+          id: 'inbox.macros.deleteTitle',
+          defaultMessage: 'Delete macro?',
+        })}
         description={
           deleting
-            ? `"${deleting.name}" will be removed from the composer for everyone.`
+            ? intl.formatMessage(
+                {
+                  id: 'inbox.macros.deleteBody',
+                  defaultMessage: '"{name}" will be removed from the composer for everyone.',
+                },
+                { name: deleting.name }
+              )
             : undefined
         }
-        confirmLabel="Delete macro"
+        confirmLabel={intl.formatMessage({
+          id: 'inbox.macros.deleteConfirm',
+          defaultMessage: 'Delete macro',
+        })}
         isPending={deleteMacro.isPending}
         onConfirm={() => {
           const target = deleting
           if (!target) return
           deleteMacro.mutate(target.id, {
             onSuccess: () => {
-              toast.success('Macro deleted')
+              toast.success(
+                intl.formatMessage({
+                  id: 'inbox.macros.deleted',
+                  defaultMessage: 'Macro deleted',
+                })
+              )
               setDeleting(null)
             },
-            onError: () => toast.error('Failed to delete macro'),
+            onError: () =>
+              toast.error(
+                intl.formatMessage({
+                  id: 'inbox.macros.deleteFailed',
+                  defaultMessage: 'Failed to delete macro',
+                })
+              ),
           })
         }}
       />
@@ -189,6 +257,7 @@ export function MacrosManager({
 }
 
 function MacroEditorDialog({ macro, onClose }: { macro: MacroRow | null; onClose: () => void }) {
+  const intl = useOptionalIntl()
   const create = useCreateMacro()
   const update = useUpdateMacro()
   const bodyRef = useRef<HTMLTextAreaElement>(null)
@@ -232,7 +301,12 @@ function MacroEditorDialog({ macro, onClose }: { macro: MacroRow | null; onClose
   function save() {
     const trimmedName = name.trim()
     if (!trimmedName || !body.trim()) {
-      toast.error('Name and body are required')
+      toast.error(
+        intl.formatMessage({
+          id: 'inbox.macros.requiredError',
+          defaultMessage: 'Name and body are required',
+        })
+      )
       return
     }
     // Drop rows the admin left unfilled (no agent/tag/attribute chosen).
@@ -246,10 +320,26 @@ function MacroEditorDialog({ macro, onClose }: { macro: MacroRow | null; onClose
     const input = { name: trimmedName, body, scope, actions: cleanedActions }
     const opts = {
       onSuccess: () => {
-        toast.success(macro ? 'Macro updated' : 'Macro created')
+        toast.success(
+          macro
+            ? intl.formatMessage({
+                id: 'inbox.macros.updated',
+                defaultMessage: 'Macro updated',
+              })
+            : intl.formatMessage({
+                id: 'inbox.macros.created',
+                defaultMessage: 'Macro created',
+              })
+        )
         onClose()
       },
-      onError: () => toast.error('Failed to save macro'),
+      onError: () =>
+        toast.error(
+          intl.formatMessage({
+            id: 'inbox.macros.saveFailed',
+            defaultMessage: 'Failed to save macro',
+          })
+        ),
     }
     if (macro) update.mutate({ id: macro.id, ...input }, opts)
     else create.mutate(input, opts)
@@ -259,47 +349,73 @@ function MacroEditorDialog({ macro, onClose }: { macro: MacroRow | null; onClose
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>{macro ? 'Edit macro' : 'New macro'}</DialogTitle>
+          <DialogTitle>
+            {macro
+              ? intl.formatMessage({
+                  id: 'inbox.macros.editTitle',
+                  defaultMessage: 'Edit macro',
+                })
+              : intl.formatMessage({
+                  id: 'inbox.macros.newTitle',
+                  defaultMessage: 'New macro',
+                })}
+          </DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-1.5">
-            <Label htmlFor="macro-name">Name</Label>
+            <Label htmlFor="macro-name">
+              {intl.formatMessage({ id: 'inbox.macros.nameLabel', defaultMessage: 'Name' })}
+            </Label>
             <Input
               id="macro-name"
               value={name}
               maxLength={80}
-              placeholder="e.g. Password reset"
+              placeholder={intl.formatMessage({
+                id: 'inbox.macros.namePlaceholder',
+                defaultMessage: 'e.g. Password reset',
+              })}
               onChange={(e) => setName(e.target.value)}
             />
           </div>
 
           <div className="space-y-1.5">
-            <Label>Scope</Label>
+            <Label>
+              {intl.formatMessage({ id: 'inbox.macros.scopeLabel', defaultMessage: 'Scope' })}
+            </Label>
             <Select value={scope} onValueChange={(v) => setScope(v as MacroScope)}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="support">Support</SelectItem>
-                <SelectItem value="feedback">Feedback</SelectItem>
-                <SelectItem value="both">Both</SelectItem>
+                <SelectItem value="support">{intl.formatMessage(SCOPE_LABELS.support)}</SelectItem>
+                <SelectItem value="feedback">
+                  {intl.formatMessage(SCOPE_LABELS.feedback)}
+                </SelectItem>
+                <SelectItem value="both">{intl.formatMessage(SCOPE_LABELS.both)}</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="macro-body">Body</Label>
+            <Label htmlFor="macro-body">
+              {intl.formatMessage({ id: 'inbox.macros.bodyLabel', defaultMessage: 'Body' })}
+            </Label>
             <Textarea
               id="macro-body"
               ref={bodyRef}
               value={body}
               maxLength={4000}
               rows={4}
-              placeholder="Hi {firstName}, thanks for reaching out…"
+              placeholder={intl.formatMessage({
+                id: 'inbox.macros.bodyPlaceholder',
+                defaultMessage: "Hi '{firstName}', thanks for reaching out…",
+              })}
               onChange={(e) => setBody(e.target.value)}
             />
             <div className="flex flex-wrap gap-1">
-              <span className="text-[11px] text-muted-foreground">Insert:</span>
+              <span className="text-[11px] text-muted-foreground">
+                {intl.formatMessage({ id: 'inbox.macros.insertLabel', defaultMessage: 'Insert:' })}
+              </span>
               {MACRO_VARIABLES.map((v) => (
                 <button
                   key={v}
@@ -314,10 +430,18 @@ function MacroEditorDialog({ macro, onClose }: { macro: MacroRow | null; onClose
           </div>
 
           <div className="space-y-2">
-            <Label>Actions</Label>
+            <Label>
+              {intl.formatMessage({
+                id: 'inbox.macros.actionsLabel',
+                defaultMessage: 'Actions',
+              })}
+            </Label>
             {actions.length === 0 && (
               <p className="text-xs text-muted-foreground">
-                No actions. The macro just inserts its text.
+                {intl.formatMessage({
+                  id: 'inbox.macros.noActions',
+                  defaultMessage: 'No actions. The macro just inserts its text.',
+                })}
               </p>
             )}
             {actions.map((action, i) => (
@@ -332,7 +456,7 @@ function MacroEditorDialog({ macro, onClose }: { macro: MacroRow | null; onClose
                   <SelectContent>
                     {ACTION_TYPES.map((t) => (
                       <SelectItem key={t.value} value={t.value}>
-                        {t.label}
+                        {intl.formatMessage(t)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -341,7 +465,10 @@ function MacroEditorDialog({ macro, onClose }: { macro: MacroRow | null; onClose
                 {action.type === 'assign_agent' && (
                   <EntitySelect
                     value={action.principalId}
-                    placeholder="Choose agent"
+                    placeholder={intl.formatMessage({
+                      id: 'inbox.macros.chooseAgent',
+                      defaultMessage: 'Choose agent',
+                    })}
                     items={(members ?? []).map((m) => ({ id: m.id, name: m.name }))}
                     onChange={(v) => updateAction(i, { type: 'assign_agent', principalId: v })}
                   />
@@ -350,7 +477,10 @@ function MacroEditorDialog({ macro, onClose }: { macro: MacroRow | null; onClose
                 {action.type === 'assign_team' && (
                   <EntitySelect
                     value={action.teamId}
-                    placeholder="Choose team"
+                    placeholder={intl.formatMessage({
+                      id: 'inbox.macros.chooseTeam',
+                      defaultMessage: 'Choose team',
+                    })}
                     items={(teams ?? []).map((t) => ({ id: t.id, name: t.name }))}
                     onChange={(v) => updateAction(i, { type: 'assign_team', teamId: v })}
                   />
@@ -359,7 +489,10 @@ function MacroEditorDialog({ macro, onClose }: { macro: MacroRow | null; onClose
                 {action.type === 'add_tag' && (
                   <EntitySelect
                     value={action.tagId}
-                    placeholder="Choose tag"
+                    placeholder={intl.formatMessage({
+                      id: 'inbox.macros.chooseTag',
+                      defaultMessage: 'Choose tag',
+                    })}
                     items={(tags ?? []).map((t) => ({ id: t.id, name: t.name }))}
                     onChange={(v) => updateAction(i, { type: 'add_tag', tagId: v })}
                   />
@@ -404,7 +537,7 @@ function MacroEditorDialog({ macro, onClose }: { macro: MacroRow | null; onClose
                     <SelectContent>
                       {SNOOZE_PRESETS.map((p) => (
                         <SelectItem key={p.value} value={p.value}>
-                          {p.label}
+                          {intl.formatMessage(p)}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -417,7 +550,10 @@ function MacroEditorDialog({ macro, onClose }: { macro: MacroRow | null; onClose
                   <div className="flex min-w-0 flex-1 items-center gap-2">
                     <EntitySelect
                       value={action.key}
-                      placeholder="Choose attribute"
+                      placeholder={intl.formatMessage({
+                        id: 'inbox.macros.chooseAttribute',
+                        defaultMessage: 'Choose attribute',
+                      })}
                       items={(attributeDefs ?? []).map((d) => ({ id: d.key, name: d.label }))}
                       onChange={(key) =>
                         // Reset the value on a definition switch: types differ.
@@ -444,7 +580,10 @@ function MacroEditorDialog({ macro, onClose }: { macro: MacroRow | null; onClose
                   type="button"
                   onClick={() => setActions((prev) => prev.filter((_, idx) => idx !== i))}
                   className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-destructive"
-                  aria-label="Remove action"
+                  aria-label={intl.formatMessage({
+                    id: 'inbox.macros.removeAction',
+                    defaultMessage: 'Remove action',
+                  })}
                 >
                   <TrashIcon className="h-4 w-4" />
                 </button>
@@ -456,16 +595,19 @@ function MacroEditorDialog({ macro, onClose }: { macro: MacroRow | null; onClose
               size="sm"
               onClick={() => setActions((prev) => [...prev, defaultAction('assign_agent')])}
             >
-              <PlusIcon className="h-4 w-4" /> Add action
+              <PlusIcon className="h-4 w-4" />{' '}
+              {intl.formatMessage({ id: 'inbox.macros.addAction', defaultMessage: 'Add action' })}
             </Button>
           </div>
         </div>
         <DialogFooter>
           <Button type="button" variant="ghost" onClick={onClose} disabled={saving}>
-            Cancel
+            {intl.formatMessage({ id: 'common.cancel', defaultMessage: 'Cancel' })}
           </Button>
           <Button type="button" onClick={save} disabled={saving}>
-            {macro ? 'Save' : 'Create'}
+            {macro
+              ? intl.formatMessage({ id: 'inbox.macros.save', defaultMessage: 'Save' })
+              : intl.formatMessage({ id: 'inbox.macros.create', defaultMessage: 'Create' })}
           </Button>
         </DialogFooter>
       </DialogContent>

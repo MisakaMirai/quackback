@@ -3,7 +3,6 @@ import { IntlContext, useIntl, type MessageDescriptor } from 'react-intl'
 import { DocumentLocaleContext } from '@/components/shared/document-locale-context'
 import { CheckIcon, ClipboardDocumentIcon } from '@heroicons/react/24/outline'
 import { Button } from '@/components/ui/button'
-import { describePlanRefusal } from '@/lib/shared/describe-upgrade'
 import { errorReferenceOf } from '@/lib/shared/error-reference'
 import { DEFAULT_LOCALE, messageArea, normalizeLocale } from '@/lib/shared/i18n'
 import { cn } from '@/lib/shared/utils'
@@ -113,15 +112,6 @@ export function isAuthorizationError(error: unknown): boolean {
   return /access denied/i.test(errorMessage(error))
 }
 
-/**
- * True for a plan entitlement refusal that leaked into a route error
- * boundary. Those sentences are commercial outcomes, not crashes.
- */
-export function isEntitlementError(error: unknown): boolean {
-  const message = errorMessage(error)
-  return /upgrade to \w+ to enable it/i.test(message) || /not included in your plan/i.test(message)
-}
-
 export function PermissionDeniedPage({ fullPage = true }: { fullPage?: boolean }) {
   // Teammates who bounce off an admin-only page get a path back to their work
   // surfaces; portal visitors get the public exit (for them "Back to Feedback"
@@ -131,66 +121,54 @@ export function PermissionDeniedPage({ fullPage = true }: { fullPage?: boolean }
 
   return (
     <FriendlyShell fullPage={fullPage}>
-      <h1 className="text-2xl font-semibold tracking-tight">You don&apos;t have access</h1>
-      <p className="mt-2 text-sm text-muted-foreground">
-        Only people with the right permissions can open this page. Ask a workspace admin if you need
-        access.
-      </p>
-
-      <div className="mt-6 flex items-center justify-center gap-3">
-        {isAdminArea ? (
+      <ErrorPageCopy>
+        {(copy) => (
           <>
-            <Button asChild>
-              <a href="/admin/feedback">Back to Feedback</a>
-            </Button>
-            <Button variant="outline" asChild>
-              <a href="/">View public board</a>
-            </Button>
+            <h1 className="text-2xl font-semibold tracking-tight">
+              {copy({
+                id: 'common.errorPage.permissionDenied.title',
+                defaultMessage: "You don't have access",
+              })}
+            </h1>
+            <p className="mt-2 text-sm text-muted-foreground">
+              {copy({
+                id: 'common.errorPage.permissionDenied.description',
+                defaultMessage:
+                  'Only people with the right permissions can open this page. Ask a workspace admin if you need access.',
+              })}
+            </p>
+
+            <div className="mt-6 flex items-center justify-center gap-3">
+              {isAdminArea ? (
+                <>
+                  <Button asChild>
+                    <a href="/admin/feedback">
+                      {copy({
+                        id: 'common.errorPage.backToFeedback',
+                        defaultMessage: 'Back to Feedback',
+                      })}
+                    </a>
+                  </Button>
+                  <Button variant="outline" asChild>
+                    <a href="/">
+                      {copy({
+                        id: 'common.errorPage.viewPublicBoard',
+                        defaultMessage: 'View public board',
+                      })}
+                    </a>
+                  </Button>
+                </>
+              ) : (
+                <Button variant="outline" asChild>
+                  <a href="/">
+                    {copy({ id: 'common.errorPage.goHome', defaultMessage: 'Go home' })}
+                  </a>
+                </Button>
+              )}
+            </div>
           </>
-        ) : (
-          <Button variant="outline" asChild>
-            <a href="/">Go home</a>
-          </Button>
         )}
-      </div>
-    </FriendlyShell>
-  )
-}
-
-export function EntitlementRequiredPage({
-  error,
-  fullPage = true,
-}: {
-  error: unknown
-  fullPage?: boolean
-}) {
-  const normalized = toError(error)
-  const isAdminArea = typeof window !== 'undefined' && window.location.pathname.startsWith('/admin')
-  const refusal = describePlanRefusal(error, {
-    entitlement: null,
-    feature: 'This feature',
-    requiredPlan: null,
-    requiredPlanName: null,
-    headline: 'This is a plan feature',
-    body: normalized.message,
-  })
-
-  return (
-    <FriendlyShell fullPage={fullPage}>
-      <h1 className="text-2xl font-semibold tracking-tight">{refusal.headline}</h1>
-      <p className="mt-2 text-sm text-muted-foreground">{normalized.message}</p>
-      <div className="mt-6 flex items-center justify-center gap-3">
-        {isAdminArea ? (
-          <Button asChild>
-            <a href="/admin/settings/billing">
-              {refusal.requiredPlanName ? `Upgrade to ${refusal.requiredPlanName}` : 'See plans'}
-            </a>
-          </Button>
-        ) : null}
-        <Button variant="outline" asChild>
-          <a href={isAdminArea ? '/admin/settings' : '/'}>Go back</a>
-        </Button>
-      </div>
+      </ErrorPageCopy>
     </FriendlyShell>
   )
 }
@@ -198,9 +176,6 @@ export function EntitlementRequiredPage({
 export function DefaultErrorPage({ error, reset, fullPage = true }: ErrorPageProps) {
   if (isAuthorizationError(error)) {
     return <PermissionDeniedPage fullPage={fullPage} />
-  }
-  if (isEntitlementError(error)) {
-    return <EntitlementRequiredPage error={error} fullPage={fullPage} />
   }
 
   // A failure the server hid behind a plain sentence carries a reference code

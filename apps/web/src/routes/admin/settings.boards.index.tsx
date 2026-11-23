@@ -22,7 +22,7 @@ const searchSchema = z.object({
 })
 
 export const Route = createFileRoute('/admin/settings/boards/')({
-  head: adminPageHead('Boards settings'),
+  head: adminPageHead('Boards settings', 'admin.pageTitle.boardsSettings'),
   validateSearch: searchSchema,
   beforeLoad: ({ context, search }) => {
     if (!isProductEnabled(context.settings?.featureFlags, 'feedback')) {

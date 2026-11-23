@@ -92,13 +92,6 @@ vi.mock('@quackback/email', async (importOriginal) => ({
   },
 }))
 
-vi.mock('@/lib/server/domains/settings/tier-limits.service', async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import('@/lib/server/domains/settings/tier-limits.service')>()
-  const { OSS_TIER_LIMITS } = await import('@/lib/server/domains/settings/tier-limits.types')
-  return { ...actual, getTierLimits: async () => ({ ...OSS_TIER_LIMITS, maxSendingDomains: null }) }
-})
-
 import { getSendingDomain } from '../channel-account.service'
 import {
   provisionSendingDomain,

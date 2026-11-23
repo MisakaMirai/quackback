@@ -30,7 +30,6 @@ const mocks = vi.hoisted(() => ({
   listTicketMessages: vi.fn(),
   getActivityForPost: vi.fn(),
   addReaction: vi.fn(),
-  getWidgetInstallStatus: vi.fn(),
   getArticleById: vi.fn(),
   principalIdsOnTeam: vi.fn(),
 }))
@@ -94,9 +93,6 @@ vi.mock('@/lib/server/domains/settings/settings.service', () => ({
 }))
 vi.mock('@/lib/server/domains/segments/segment-membership.service', () => ({
   segmentIdsForPrincipal: async () => new Set(),
-}))
-vi.mock('@/lib/server/domains/settings/widget-install-pairing', () => ({
-  getWidgetInstallStatus: mocks.getWidgetInstallStatus,
 }))
 
 import { createMcpServer } from '../server'
@@ -279,7 +275,7 @@ describe('search', () => {
             authorName: 'Ada Customer',
             ownerPrincipalId: null,
             tags: [{ id: 'post_tag_1', name: 'Billing' }],
-            summary: 'Wants webhooks',
+            summary: null,
             canonicalPostId: null,
             isCommentsLocked: false,
             createdAt: ISO1,
@@ -309,12 +305,7 @@ describe('search', () => {
         hasMore: false,
       })
     )
-    expect(descriptor?.fields).toEqual([
-      'posts[].title',
-      'posts[].excerpt',
-      'posts[].authorName',
-      'posts[].summary',
-    ])
+    expect(descriptor?.fields).toEqual(['posts[].title', 'posts[].excerpt', 'posts[].authorName'])
     expectNote(descriptor)
   })
 
@@ -508,8 +499,6 @@ describe('get_details', () => {
           authorName: 'Jane Teammate',
           createdAt: ISO2,
         },
-        summaryJson: { summary: 'Wants webhooks', keyQuotes: ['add webhooks'] },
-        summaryUpdatedAt: ISO2,
         canonicalPostId: null,
         mergedAt: null,
         isCommentsLocked: false,
@@ -532,7 +521,6 @@ describe('get_details', () => {
       'title',
       'content',
       'authorName',
-      'summaryJson',
       'mergedPosts[].title',
       'mergedPosts[].authorName',
       'comments[0].content',
@@ -618,8 +606,6 @@ describe('get_details', () => {
           authorName: formerName,
           createdAt: ISO2,
         },
-        summaryJson: null,
-        summaryUpdatedAt: null,
         canonicalPostId: null,
         mergedAt: null,
         isCommentsLocked: false,
@@ -791,7 +777,6 @@ describe('author names of teammates who have left the team', () => {
       priority: 'none',
       requester: null,
       assignee: { principalId: null, teamId: null },
-      company: null,
       firstResponseAt: null,
       dueAt: null,
       resolvedAt: null,
@@ -822,7 +807,6 @@ describe('author names of teammates who have left the team', () => {
           requesterPrincipalId: null,
           assigneePrincipalId: null,
           assigneeTeamId: null,
-          companyId: null,
           firstResponseAt: null,
           dueAt: null,
           resolvedAt: null,
@@ -1151,7 +1135,6 @@ describe('tickets', () => {
       priority: 'high',
       requester: { principalId: 'principal_ada' },
       assignee: { principalId: 'principal_jane', teamId: null },
-      company: null,
       firstResponseAt: null,
       dueAt: null,
       resolvedAt: null,
@@ -1203,7 +1186,6 @@ describe('tickets', () => {
           requesterPrincipalId: 'principal_ada',
           assigneePrincipalId: 'principal_jane',
           assigneeTeamId: null,
-          companyId: null,
           firstResponseAt: null,
           dueAt: null,
           resolvedAt: null,
@@ -1527,25 +1509,6 @@ describe('team-authored results', () => {
         createdAt: ISO1,
       })
     )
-  })
-})
-
-describe('widget_install_status', () => {
-  it('marks only the host the widget reported from', async () => {
-    const status = {
-      connected: true,
-      enabled: true,
-      lastDetectedAt: ISO2,
-      originHost: 'www.acme.com',
-      sdkVersion: '0.2.0',
-      currentSdkVersion: '0.2.0',
-      sdkNeedsUpdate: false,
-    }
-    mocks.getWidgetInstallStatus.mockResolvedValue(status)
-
-    const text = await callText('widget_install_status', {})
-
-    expect(descriptorAppendedTo(text, pretty(status))?.fields).toEqual(['originHost'])
   })
 })
 

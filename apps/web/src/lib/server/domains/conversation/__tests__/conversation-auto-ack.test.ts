@@ -1,12 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ConversationId } from '@quackback/ids'
 import type { ParsedInboundEmail } from '../conversation.email-inbound'
-import { TierLimitError } from '@/lib/server/errors/tier-limit-error'
 
 const hoisted = vi.hoisted(() => ({
   getEmailAutoAck: vi.fn(async () => ({ enabled: true })),
   incrementBucket: vi.fn(async (..._args: unknown[]) => ({ count: 1 })),
-  enforceEmailBudget: vi.fn(async () => undefined),
   sendConversationAutoAckEmail: vi.fn(async (_opts?: unknown) => ({
     sent: true,
     messageId: 'ack@x',
@@ -36,18 +34,6 @@ vi.mock('@/lib/server/domains/settings/settings.email-auto-ack', () => ({
 
 vi.mock('@/lib/server/utils/rate-bucket', () => ({
   incrementBucket: (...args: unknown[]) => hoisted.incrementBucket(...args),
-}))
-
-vi.mock('@/lib/server/domains/settings/tier-enforce', () => ({
-  enforceEmailBudget: () => hoisted.enforceEmailBudget(),
-  emailBudgetAvailable: async () => {
-    try {
-      await hoisted.enforceEmailBudget()
-      return true
-    } catch {
-      return false
-    }
-  },
 }))
 
 vi.mock('@quackback/email', () => ({
@@ -118,7 +104,6 @@ describe('maybeSendColdInboundAck', () => {
     vi.clearAllMocks()
     hoisted.getEmailAutoAck.mockResolvedValue({ enabled: true })
     hoisted.incrementBucket.mockResolvedValue({ count: 1 })
-    hoisted.enforceEmailBudget.mockResolvedValue(undefined)
     hoisted.sendConversationAutoAckEmail.mockResolvedValue({ sent: true, messageId: 'ack@x' })
   })
 
@@ -155,20 +140,6 @@ describe('maybeSendColdInboundAck', () => {
       })
     ).resolves.toBe('rate_capped')
     expect(hoisted.sendConversationAutoAckEmail).not.toHaveBeenCalled()
-  })
-
-  it('still sends when the monthly broadcast budget is exhausted', async () => {
-    hoisted.enforceEmailBudget.mockRejectedValueOnce(
-      new TierLimitError({ limit: 'emailsPerMonth', message: 'Email budget exhausted' })
-    )
-    await expect(
-      maybeSendColdInboundAck({
-        parsed: parsed(),
-        conversationId,
-        conversationSubject: 'Help',
-      })
-    ).resolves.toBe('sent')
-    expect(hoisted.sendConversationAutoAckEmail).toHaveBeenCalled()
   })
 
   it('sends with conversationId and records the outbound id', async () => {

@@ -59,10 +59,6 @@ export async function handleExportUsers(request: Request): Promise<Response> {
       return Response.json({ error: 'Access denied' }, { status: 403 })
     }
 
-    // Tier gate: data exports are a Pro+ feature (same gate as posts/companies).
-    const { assertTierFeature } = await import('@/lib/server/domains/settings/tier-enforce')
-    await assertTierFeature('analyticsExports', 'Data export')
-
     const filter = parseFilter(new URL(request.url))
     const { items } = await listPortalUsers({
       ...filter,
@@ -107,10 +103,6 @@ export async function handleExportUsers(request: Request): Promise<Response> {
       },
     })
   } catch (error) {
-    const { TierLimitError } = await import('@/lib/server/errors/tier-limit-error')
-    if (error instanceof TierLimitError) {
-      return Response.json(error.toResponseBody(), { status: error.statusCode })
-    }
     log.error({ err: error }, 'users csv export failed')
     return internalRouteErrorResponse()
   }

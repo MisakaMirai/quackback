@@ -30,7 +30,6 @@ const mocks = vi.hoisted(() => ({
   getIntegration: vi.fn(),
   getPlatformCredentials: vi.fn(),
   decryptSecrets: vi.fn(),
-  unregister: vi.fn(),
   cacheDel: vi.fn(),
 }))
 
@@ -51,9 +50,6 @@ vi.mock('@/lib/server/integrations', () => ({ getIntegration: mocks.getIntegrati
 vi.mock('@/lib/server/integrations/encryption', () => ({ decryptSecrets: mocks.decryptSecrets }))
 vi.mock('@/lib/server/domains/platform-credentials/platform-credential.service', () => ({
   getPlatformCredentials: mocks.getPlatformCredentials,
-}))
-vi.mock('@/lib/server/integrations/install-registry', () => ({
-  unregisterInstall: mocks.unregister,
 }))
 vi.mock('@/lib/server/cache', () => ({
   cacheDel: mocks.cacheDel,
@@ -88,13 +84,15 @@ it('locks and re-reads before unregistering a disconnect', async () => {
   expect(mocks.lock.mock.invocationCallOrder[0]).toBeLessThan(
     mocks.lockedRead.mock.invocationCallOrder[0]
   )
-  expect(mocks.unregister).toHaveBeenCalledWith('slack', row.config)
   expect(mocks.del).toHaveBeenCalled()
 })
 
 it('refuses to disconnect a reconnect that won the advisory lock', async () => {
-  mocks.lockedRead.mockResolvedValue({ ...row, secrets: 'new-token', connectedAt: new Date(300_000) })
+  mocks.lockedRead.mockResolvedValue({
+    ...row,
+    secrets: 'new-token',
+    connectedAt: new Date(300_000),
+  })
   await expect(deleteIntegrationFn({ data: { id: 'int_1' } })).rejects.toThrow('reconnected')
-  expect(mocks.unregister).not.toHaveBeenCalled()
   expect(mocks.del).not.toHaveBeenCalled()
 })

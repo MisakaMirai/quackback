@@ -1,4 +1,4 @@
-import { useState, useEffect, useTransition } from 'react'
+import { useId, useState, useEffect, useTransition } from 'react'
 import { useRouter } from '@tanstack/react-router'
 import { useMutation } from '@tanstack/react-query'
 import {
@@ -23,6 +23,7 @@ import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { Input } from '@/components/ui/input'
 import { NewButton } from '@/components/shared/new-button'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { SettingsCard } from '@/components/admin/settings/settings-card'
 import { SettingsPage } from '@/components/admin/settings/settings-page'
 import { RowDot, SettingsList, SettingsListRow } from '@/components/admin/settings/settings-list'
@@ -60,16 +61,41 @@ interface StatusListProps {
   initialStatuses: PostStatusEntity[]
 }
 
-const CATEGORY_INFO: Record<StatusCategory, { label: string; description: string }> = {
-  active: { label: 'Active', description: 'In progress' },
-  complete: { label: 'Complete', description: 'Done, shown as completed' },
-  closed: { label: 'Closed', description: "Won't be done" },
+const CATEGORY_INFO: Record<
+  StatusCategory,
+  {
+    label: { id: string; defaultMessage: string }
+    description: { id: string; defaultMessage: string }
+  }
+> = {
+  active: {
+    label: { id: 'admin.settings.statuses.category.active', defaultMessage: 'Active' },
+    description: {
+      id: 'admin.settings.statuses.category.activeDescription',
+      defaultMessage: 'In progress',
+    },
+  },
+  complete: {
+    label: { id: 'admin.settings.statuses.category.complete', defaultMessage: 'Complete' },
+    description: {
+      id: 'admin.settings.statuses.category.completeDescription',
+      defaultMessage: 'Done, shown as completed',
+    },
+  },
+  closed: {
+    label: { id: 'admin.settings.statuses.category.closed', defaultMessage: 'Closed' },
+    description: {
+      id: 'admin.settings.statuses.category.closedDescription',
+      defaultMessage: "Won't be done",
+    },
+  },
 }
 
 const CATEGORY_ORDER: StatusCategory[] = ['active', 'complete', 'closed']
 
 export function StatusesSettingsPage({ initialStatuses }: StatusListProps) {
   const router = useRouter()
+  const intl = useOptionalIntl()
   const [, startTransition] = useTransition()
   const [statuses, setStatuses] = useState(initialStatuses)
   const [editingStatus, setEditingStatus] = useState<PostStatusEntity | null>(null)
@@ -77,6 +103,7 @@ export function StatusesSettingsPage({ initialStatuses }: StatusListProps) {
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
 
   // Configure DnD sensors
+  const dndId = useId()
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
@@ -167,7 +194,13 @@ export function StatusesSettingsPage({ initialStatuses }: StatusListProps) {
       setStatuses((prev) => prev.filter((s) => s.id !== deleteStatus.id))
       startTransition(() => router.invalidate())
     } catch (error) {
-      toastError(error, 'Failed to delete status')
+      toastError(
+        error,
+        intl.formatMessage({
+          id: 'admin.settings.statuses.deleteFailed',
+          defaultMessage: 'Failed to delete status',
+        })
+      )
     } finally {
       setDeleteStatus(null)
     }
@@ -191,17 +224,35 @@ export function StatusesSettingsPage({ initialStatuses }: StatusListProps) {
       setCreateDialogOpen(false)
       startTransition(() => router.invalidate())
     } catch (error) {
-      toastError(error, 'Failed to create status')
+      toastError(
+        error,
+        intl.formatMessage({
+          id: 'admin.settings.statuses.createFailed',
+          defaultMessage: 'Failed to create status',
+        })
+      )
     }
   }
 
   return (
     <SettingsPage
       page="/admin/settings/statuses"
-      actions={<NewButton noun="status" onClick={() => setCreateDialogOpen(true)} />}
+      actions={
+        <NewButton noun="status" onClick={() => setCreateDialogOpen(true)}>
+          {intl.formatMessage({
+            id: 'admin.settings.statuses.create.title',
+            defaultMessage: 'New status',
+          })}
+        </NewButton>
+      }
     >
       {/* Status categories with drag and drop */}
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+      <DndContext
+        id={dndId}
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+      >
         {CATEGORY_ORDER.map((category) => {
           const categoryStatuses = statusesByCategory[category]
           const canDeleteInCategory = categoryStatuses.length > 1
@@ -209,13 +260,18 @@ export function StatusesSettingsPage({ initialStatuses }: StatusListProps) {
           return (
             <SettingsCard
               key={category}
-              title={CATEGORY_INFO[category].label}
-              description={CATEGORY_INFO[category].description}
+              title={intl.formatMessage(CATEGORY_INFO[category].label)}
+              description={intl.formatMessage(CATEGORY_INFO[category].description)}
               flush
             >
               <div className="flex items-center gap-3 px-4 py-2 text-[13px] text-muted-foreground sm:px-6">
                 <span className="flex-1" />
-                <span className="w-14 text-center">Roadmap</span>
+                <span className="w-14 text-center">
+                  {intl.formatMessage({
+                    id: 'admin.settings.statuses.roadmapColumn',
+                    defaultMessage: 'Roadmap',
+                  })}
+                </span>
                 <span className="w-7" />
               </div>
               <SettingsList className="border-t border-border/50">
@@ -245,9 +301,21 @@ export function StatusesSettingsPage({ initialStatuses }: StatusListProps) {
       <ConfirmDialog
         open={!!deleteStatus}
         onOpenChange={() => setDeleteStatus(null)}
-        title="Delete status?"
-        description={`"${deleteStatus?.name}" will be removed. This cannot be undone.`}
-        confirmLabel="Delete status"
+        title={intl.formatMessage({
+          id: 'admin.settings.statuses.deleteTitle',
+          defaultMessage: 'Delete status?',
+        })}
+        description={intl.formatMessage(
+          {
+            id: 'admin.settings.statuses.deleteDescription',
+            defaultMessage: '"{name}" will be removed. This cannot be undone.',
+          },
+          { name: deleteStatus?.name ?? '' }
+        )}
+        confirmLabel={intl.formatMessage({
+          id: 'admin.settings.statuses.deleteStatus',
+          defaultMessage: 'Delete status',
+        })}
         variant="destructive"
         onConfirm={handleDelete}
       />
@@ -274,7 +342,13 @@ export function StatusesSettingsPage({ initialStatuses }: StatusListProps) {
             setEditingStatus(null)
             startTransition(() => router.invalidate())
           } catch (error) {
-            toastError(error, 'Failed to update status')
+            toastError(
+              error,
+              intl.formatMessage({
+                id: 'admin.settings.statuses.updateFailed',
+                defaultMessage: 'Failed to update status',
+              })
+            )
           }
         }}
       />
@@ -299,6 +373,7 @@ function SortableStatusItem({
   onColorChange,
   onDelete,
 }: SortableStatusItemProps) {
+  const intl = useOptionalIntl()
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: status.id,
   })
@@ -312,10 +387,20 @@ function SortableStatusItem({
   // The default status and the last status in a category cannot be deleted; both show a lock.
   const locked = status.isDefault || !canDelete
   const actions = [
-    { label: 'Edit', onSelect: onEdit },
+    {
+      label: intl.formatMessage({ id: 'admin.settings.statuses.edit', defaultMessage: 'Edit' }),
+      onSelect: onEdit,
+    },
     ...(status.isDefault
       ? []
-      : [{ label: 'Delete', onSelect: onDelete, destructive: true, disabled: !canDelete }]),
+      : [
+          {
+            label: intl.formatMessage({ id: 'common.delete', defaultMessage: 'Delete' }),
+            onSelect: onDelete,
+            destructive: true,
+            disabled: !canDelete,
+          },
+        ]),
   ]
 
   return (
@@ -325,7 +410,13 @@ function SortableStatusItem({
           <button
             {...attributes}
             {...listeners}
-            aria-label={`Reorder ${status.name}`}
+            aria-label={intl.formatMessage(
+              {
+                id: 'admin.settings.statuses.reorderAria',
+                defaultMessage: 'Reorder {name}',
+              },
+              { name: status.name }
+            )}
             className="touch-none cursor-grab active:cursor-grabbing"
           >
             <Bars3Icon className="size-4 text-muted-foreground/70" />
@@ -335,7 +426,13 @@ function SortableStatusItem({
           <Popover>
             <PopoverTrigger asChild>
               <button
-                aria-label={`Change colour of ${status.name}`}
+                aria-label={intl.formatMessage(
+                  {
+                    id: 'admin.settings.statuses.changeColorAria',
+                    defaultMessage: 'Change colour of {name}',
+                  },
+                  { name: status.name }
+                )}
                 className="flex cursor-pointer rounded-full hover:ring-2 hover:ring-muted-foreground/40 hover:ring-offset-1"
               >
                 <RowDot color={status.color} />
@@ -354,13 +451,25 @@ function SortableStatusItem({
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <LockClosedIcon aria-label="Locked" className="size-3 text-muted-foreground" />
+                    <LockClosedIcon
+                      aria-label={intl.formatMessage({
+                        id: 'admin.settings.statuses.lockedAria',
+                        defaultMessage: 'Locked',
+                      })}
+                      className="size-3 text-muted-foreground"
+                    />
                   </TooltipTrigger>
                   <TooltipContent>
                     <p>
                       {status.isDefault
-                        ? 'Default status for new posts. It cannot be removed.'
-                        : 'The last status in a category cannot be removed.'}
+                        ? intl.formatMessage({
+                            id: 'admin.settings.statuses.defaultLockedTooltip',
+                            defaultMessage: 'Default status for new posts. It cannot be removed.',
+                          })
+                        : intl.formatMessage({
+                            id: 'admin.settings.statuses.lastInCategoryTooltip',
+                            defaultMessage: 'The last status in a category cannot be removed.',
+                          })}
                     </p>
                   </TooltipContent>
                 </Tooltip>
@@ -374,7 +483,13 @@ function SortableStatusItem({
             <Switch
               checked={status.showOnRoadmap}
               onCheckedChange={onToggleRoadmap}
-              aria-label={`Show ${status.name} on the roadmap`}
+              aria-label={intl.formatMessage(
+                {
+                  id: 'admin.settings.statuses.showOnRoadmapAria',
+                  defaultMessage: 'Show {name} on the roadmap',
+                },
+                { name: status.name }
+              )}
             />
           </span>
         }
@@ -396,6 +511,7 @@ interface CreateStatusDialogProps {
 }
 
 function CreateStatusDialog({ open, onOpenChange, onSubmit }: CreateStatusDialogProps) {
+  const intl = useOptionalIntl()
   const [category, setCategory] = useState<StatusCategory>('active')
   const [name, setName] = useState('')
   const [slug, setSlug] = useState('')
@@ -439,24 +555,47 @@ function CreateStatusDialog({ open, onOpenChange, onSubmit }: CreateStatusDialog
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>New status</DialogTitle>
-          <DialogDescription>Statuses group posts by where they stand.</DialogDescription>
+          <DialogTitle>
+            {intl.formatMessage({
+              id: 'admin.settings.statuses.create.title',
+              defaultMessage: 'New status',
+            })}
+          </DialogTitle>
+          <DialogDescription>
+            {intl.formatMessage({
+              id: 'admin.settings.statuses.create.description',
+              defaultMessage: 'Statuses group posts by where they stand.',
+            })}
+          </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="name">Name</Label>
+            <Label htmlFor="name">
+              {intl.formatMessage({
+                id: 'admin.settings.statuses.nameLabel',
+                defaultMessage: 'Name',
+              })}
+            </Label>
             <Input
               id="name"
               value={name}
               onChange={(e) => handleNameChange(e.target.value)}
-              placeholder="e.g., In Review"
+              placeholder={intl.formatMessage({
+                id: 'admin.settings.statuses.namePlaceholder',
+                defaultMessage: 'e.g., In Review',
+              })}
               required
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="status-category">Category</Label>
+            <Label htmlFor="status-category">
+              {intl.formatMessage({
+                id: 'admin.settings.statuses.categoryLabel',
+                defaultMessage: 'Category',
+              })}
+            </Label>
             <Select value={category} onValueChange={(v) => setCategory(v as StatusCategory)}>
               <SelectTrigger id="status-category" className="w-full">
                 <SelectValue />
@@ -464,7 +603,7 @@ function CreateStatusDialog({ open, onOpenChange, onSubmit }: CreateStatusDialog
               <SelectContent>
                 {CATEGORY_ORDER.map((c) => (
                   <SelectItem key={c} value={c}>
-                    {CATEGORY_INFO[c].label}
+                    {intl.formatMessage(CATEGORY_INFO[c].label)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -472,32 +611,56 @@ function CreateStatusDialog({ open, onOpenChange, onSubmit }: CreateStatusDialog
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="slug">Slug (for API)</Label>
+            <Label htmlFor="slug">
+              {intl.formatMessage({
+                id: 'admin.settings.statuses.slugLabel',
+                defaultMessage: 'Slug (for API)',
+              })}
+            </Label>
             <Input
               id="slug"
               value={slug}
               onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
-              placeholder="e.g., in_review"
+              placeholder={intl.formatMessage({
+                id: 'admin.settings.statuses.slugPlaceholder',
+                defaultMessage: 'e.g., in_review',
+              })}
               pattern="^[a-z0-9_]+$"
               required
             />
             <p className="text-xs text-muted-foreground">
-              Lowercase letters, numbers, and underscores only
+              {intl.formatMessage({
+                id: 'admin.settings.statuses.slugHint',
+                defaultMessage: 'Lowercase letters, numbers, and underscores only',
+              })}
             </p>
           </div>
 
           <div className="space-y-2">
-            <Label>Color</Label>
+            <Label>
+              {intl.formatMessage({
+                id: 'admin.settings.statuses.colorLabel',
+                defaultMessage: 'Color',
+              })}
+            </Label>
             <ColorPickerGrid selectedColor={color} onColorChange={setColor} />
             <ColorHexInput color={color} onColorChange={setColor} />
           </div>
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
+              {intl.formatMessage({ id: 'common.cancel', defaultMessage: 'Cancel' })}
             </Button>
             <Button type="submit" disabled={isSubmitting || !name || !slug}>
-              {isSubmitting ? 'Creating...' : 'Create status'}
+              {isSubmitting
+                ? intl.formatMessage({
+                    id: 'admin.settings.statuses.create.creating',
+                    defaultMessage: 'Creating...',
+                  })
+                : intl.formatMessage({
+                    id: 'admin.settings.statuses.create.submit',
+                    defaultMessage: 'Create status',
+                  })}
             </Button>
           </DialogFooter>
         </form>
@@ -514,6 +677,7 @@ interface EditStatusDialogProps {
 }
 
 function EditStatusDialog({ open, onOpenChange, status, onSubmit }: EditStatusDialogProps) {
+  const intl = useOptionalIntl()
   const [name, setName] = useState('')
   const [color, setColor] = useState('#6b7280')
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -541,33 +705,59 @@ function EditStatusDialog({ open, onOpenChange, status, onSubmit }: EditStatusDi
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Edit status</DialogTitle>
+          <DialogTitle>
+            {intl.formatMessage({
+              id: 'admin.settings.statuses.editTitle',
+              defaultMessage: 'Edit status',
+            })}
+          </DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="edit-name">Name</Label>
+            <Label htmlFor="edit-name">
+              {intl.formatMessage({
+                id: 'admin.settings.statuses.nameLabel',
+                defaultMessage: 'Name',
+              })}
+            </Label>
             <Input
               id="edit-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g., In Review"
+              placeholder={intl.formatMessage({
+                id: 'admin.settings.statuses.namePlaceholder',
+                defaultMessage: 'e.g., In Review',
+              })}
               required
             />
           </div>
 
           <div className="space-y-2">
-            <Label>Color</Label>
+            <Label>
+              {intl.formatMessage({
+                id: 'admin.settings.statuses.colorLabel',
+                defaultMessage: 'Color',
+              })}
+            </Label>
             <ColorPickerGrid selectedColor={color} onColorChange={setColor} />
             <ColorHexInput color={color} onColorChange={setColor} />
           </div>
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
+              {intl.formatMessage({ id: 'common.cancel', defaultMessage: 'Cancel' })}
             </Button>
             <Button type="submit" disabled={isSubmitting || !name.trim()}>
-              {isSubmitting ? 'Saving...' : 'Save changes'}
+              {isSubmitting
+                ? intl.formatMessage({
+                    id: 'admin.settings.statuses.edit.saving',
+                    defaultMessage: 'Saving...',
+                  })
+                : intl.formatMessage({
+                    id: 'admin.settings.statuses.edit.submit',
+                    defaultMessage: 'Save changes',
+                  })}
             </Button>
           </DialogFooter>
         </form>

@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { useDeleteIntegration } from '@/lib/client/mutations'
 import { errorText } from '@/lib/client/error-text'
 
@@ -36,6 +37,7 @@ export function WebhookConnectionActions({
   urlPlaceholder,
   helpText,
 }: WebhookConnectionActionsProps) {
+  const intl = useOptionalIntl()
   const deleteMutation = useDeleteIntegration()
   const [url, setUrl] = useState(webhookUrl || '')
   const [saving, setSaving] = useState(false)
@@ -55,7 +57,15 @@ export function WebhookConnectionActions({
       const timer = setTimeout(() => setShowSuccess(false), 3000)
       return () => clearTimeout(timer)
     } catch (err) {
-      setError(errorText(err, 'Failed to save webhook URL'))
+      setError(
+        errorText(
+          err,
+          intl.formatMessage({
+            id: 'admin.integrations.connection.webhookSaveFailed',
+            defaultMessage: 'Failed to save webhook URL',
+          })
+        )
+      )
     } finally {
       setSaving(false)
     }
@@ -80,18 +90,33 @@ export function WebhookConnectionActions({
           {disconnecting ? (
             <>
               <ArrowPathIcon className="mr-2 h-4 w-4 animate-spin" />
-              Disconnecting...
+              {intl.formatMessage({
+                id: 'admin.integrations.connection.disconnecting',
+                defaultMessage: 'Disconnecting...',
+              })}
             </>
           ) : (
-            'Disconnect'
+            intl.formatMessage({
+              id: 'admin.integrations.connection.disconnect',
+              defaultMessage: 'Disconnect',
+            })
           )}
         </Button>
         <ConfirmDialog
           open={disconnectDialogOpen}
           onOpenChange={setDisconnectDialogOpen}
-          title={`Disconnect ${displayName}?`}
+          title={intl.formatMessage(
+            {
+              id: 'admin.integrations.connection.disconnectTitle',
+              defaultMessage: 'Disconnect {name}?',
+            },
+            { name: displayName }
+          )}
           description={disconnectDescription}
-          confirmLabel="Disconnect"
+          confirmLabel={intl.formatMessage({
+            id: 'admin.integrations.connection.disconnect',
+            defaultMessage: 'Disconnect',
+          })}
           isPending={disconnecting}
           onConfirm={handleDisconnect}
         />
@@ -104,7 +129,12 @@ export function WebhookConnectionActions({
       {showSuccess && (
         <div className="flex items-center gap-2 rounded-lg border border-success/30 bg-success/10 px-3 py-2 text-sm text-success">
           <CheckCircleIcon className="h-4 w-4" />
-          <span>Webhook saved and verified!</span>
+          <span>
+            {intl.formatMessage({
+              id: 'admin.integrations.connection.webhookSaved',
+              defaultMessage: 'Webhook saved and verified!',
+            })}
+          </span>
         </div>
       )}
 
@@ -133,10 +163,16 @@ export function WebhookConnectionActions({
             {saving ? (
               <>
                 <ArrowPathIcon className="mr-2 h-4 w-4 animate-spin" />
-                Saving...
+                {intl.formatMessage({
+                  id: 'admin.integrations.config.saving',
+                  defaultMessage: 'Saving...',
+                })}
               </>
             ) : (
-              'Save'
+              intl.formatMessage({
+                id: 'admin.integrations.connection.save',
+                defaultMessage: 'Save',
+              })
             )}
           </Button>
         </div>

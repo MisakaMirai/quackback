@@ -25,6 +25,8 @@ import {
   type HcRedirectRuleId,
 } from '@quackback/ids'
 import { NotFoundError, ValidationError, ConflictError, InternalError } from '@/lib/shared/errors'
+import { hcArticlePath, hcCollectionPath } from '@/lib/shared/help-center-url'
+import { DEFAULT_LOCALE } from '@/lib/shared/i18n'
 import { isUniqueViolation } from '@/lib/server/utils'
 import { logger } from '@/lib/server/logger'
 
@@ -225,12 +227,21 @@ export async function resolveRedirectRule(path: string): Promise<string | null> 
       with: { category: true },
     })
     if (!article || article.deletedAt || !article.publishedAt) return null
-    return `/hc/articles/${article.category.slug}/${article.slug}`
+    const locale = await defaultHelpCenterLocale()
+    return hcArticlePath({ locale, urlId: article.urlId, slug: article.slug })
   }
 
   const category = await db.query.helpCenterCategories.findFirst({
     where: eq(helpCenterCategories.id, rule.targetId as KbCategoryId),
   })
   if (!category || category.deletedAt || !category.isPublic) return null
-  return `/hc/categories/${category.slug}`
+  const locale = await defaultHelpCenterLocale()
+  return hcCollectionPath({ locale, urlId: category.urlId, slug: category.slug })
+}
+
+/** The canonical locale prefix for a redirect target: the configured default. */
+async function defaultHelpCenterLocale(): Promise<string> {
+  const { getHelpCenterConfig } = await import('@/lib/server/domains/settings/settings.service')
+  const config = await getHelpCenterConfig()
+  return config.locales?.default ?? DEFAULT_LOCALE
 }

@@ -6,7 +6,6 @@ import {
   PERMISSION_CATEGORIES,
   WORKSPACE_ADMIN_PERMISSIONS,
   SUPPORT_LEAD_EXTRA_PERMISSIONS,
-  RETIRED_PERMISSION_KEYS,
   SYSTEM_ROLES,
   SYSTEM_ROLE_DEFS,
   SYSTEM_ROLE_PERMISSIONS,
@@ -54,11 +53,10 @@ describe('RBAC permission catalogue', () => {
     expect(asSet(SYSTEM_ROLE_PERMISSIONS.owner)).toEqual(asSet(ALL_PERMISSIONS))
   })
 
-  it('Admin is everything except billing', () => {
-    expect(asSet(SYSTEM_ROLE_PERMISSIONS.admin)).toEqual(
-      asSet(ALL_PERMISSIONS.filter((p) => p !== PERMISSIONS.BILLING_MANAGE))
-    )
-    expect(SYSTEM_ROLE_PERMISSIONS.admin).not.toContain(PERMISSIONS.BILLING_MANAGE)
+  it('Admin holds the whole catalogue, like Owner', () => {
+    // The only key that separated them was billing.manage, retired with the
+    // cloud subscription layer. The roles stay distinct as titles.
+    expect(asSet(SYSTEM_ROLE_PERMISSIONS.admin)).toEqual(asSet(ALL_PERMISSIONS))
   })
 
   it('Manager is everything except the workspace-admin set (non-regressing reads kept)', () => {
@@ -99,12 +97,10 @@ describe('RBAC permission catalogue', () => {
     expect([...lead].filter((p) => !manager.has(p)).sort()).toEqual(
       [
         PERMISSIONS.ROUTING_MANAGE,
-        PERMISSIONS.WORKFLOW_MANAGE,
         PERMISSIONS.SLA_MANAGE,
         PERMISSIONS.OFFICE_HOURS_MANAGE,
         PERMISSIONS.CHANNEL_ACCOUNT_MANAGE,
         PERMISSIONS.CUSTOM_FIELD_MANAGE,
-        PERMISSIONS.AI_CUSTOMER_MANAGE,
       ].sort()
     )
     expect(new Set(SUPPORT_LEAD_EXTRA_PERMISSIONS).size).toBe(SUPPORT_LEAD_EXTRA_PERMISSIONS.length)
@@ -113,25 +109,14 @@ describe('RBAC permission catalogue', () => {
       PERMISSIONS.MEMBER_MANAGE,
       PERMISSIONS.INTEGRATION_MANAGE,
       PERMISSIONS.TEAM_MANAGE,
-      PERMISSIONS.AI_TEAMMATE_MANAGE,
       PERMISSIONS.ROLE_MANAGE,
-      PERMISSIONS.BILLING_MANAGE,
     ]) {
       expect(lead.has(key)).toBe(false)
     }
   })
 
   it('Manager is unchanged by the Support lead preset', () => {
-    expect(SYSTEM_ROLE_PERMISSIONS.manager).not.toContain(PERMISSIONS.AI_CUSTOMER_MANAGE)
-    expect(SYSTEM_ROLE_PERMISSIONS.manager).not.toContain(PERMISSIONS.AI_TEAMMATE_MANAGE)
     expect(SYSTEM_ROLE_PERMISSIONS.manager).not.toContain(PERMISSIONS.ROUTING_MANAGE)
-  })
-
-  it('the AI permission is split in two and the old key is retired', () => {
-    expect(ALL_PERMISSIONS).not.toContain('assistant.manage')
-    expect(RETIRED_PERMISSION_KEYS).toContain('assistant.manage')
-    expect(WORKSPACE_ADMIN_PERMISSIONS).toContain(PERMISSIONS.AI_CUSTOMER_MANAGE)
-    expect(WORKSPACE_ADMIN_PERMISSIONS).toContain(PERMISSIONS.AI_TEAMMATE_MANAGE)
   })
 
   it('there are exactly five system roles with matching defs and bundles', () => {
@@ -178,7 +163,6 @@ describe('RBAC permission catalogue', () => {
       PERMISSIONS.SETTINGS_BRANDING,
       PERMISSIONS.SETTINGS_MODERATION,
       PERMISSIONS.SETTINGS_NOTIFICATIONS,
-      PERMISSIONS.SETTINGS_CUSTOM_DOMAIN,
     ]) {
       expect(WORKSPACE_ADMIN_PERMISSIONS).toContain(key)
       expect(SYSTEM_ROLE_PERMISSIONS.manager).not.toContain(key)
@@ -214,7 +198,7 @@ describe('RBAC permission catalogue', () => {
       PERMISSIONS.OFFICE_HOURS_MANAGE,
       PERMISSIONS.ROUTING_MANAGE,
       PERMISSIONS.TEAM_MANAGE,
-      PERMISSIONS.WORKFLOW_MANAGE,
+      PERMISSIONS.SLA_MANAGE,
       PERMISSIONS.CHANNEL_ACCOUNT_MANAGE,
     ]) {
       expect(WORKSPACE_ADMIN_PERMISSIONS).toContain(key)
@@ -223,19 +207,6 @@ describe('RBAC permission catalogue', () => {
     // Ticket operator verbs + manage-types are NOT admin-only — Manager holds them.
     expect(SYSTEM_ROLE_PERMISSIONS.manager).toContain(PERMISSIONS.TICKET_REPLY)
     expect(SYSTEM_ROLE_PERMISSIONS.manager).toContain(PERMISSIONS.TICKET_MANAGE_TYPES)
-  })
-
-  it('copilot.use is a user capability, not workspace-admin config', () => {
-    // Using the Copilot is a front-line inbox capability (like conversation.reply),
-    // not an admin-manage key, so it must NOT sit in the workspace-admin boundary.
-    expect(WORKSPACE_ADMIN_PERMISSIONS).not.toContain(PERMISSIONS.COPILOT_USE)
-    expect(PERMISSION_CATALOGUE.find((p) => p.key === PERMISSIONS.COPILOT_USE)?.category).toBe('ai')
-    // Manager = ALL_PERMISSIONS minus the workspace-admin boundary, so leaving
-    // copilot.use out of that boundary means Manager holds it automatically.
-    expect(SYSTEM_ROLE_PERMISSIONS.manager).toContain(PERMISSIONS.COPILOT_USE)
-    // The limited inbox-agent (Contributor) preset gets it explicitly alongside
-    // the other conversation.* operate keys.
-    expect(SYSTEM_ROLE_PERMISSIONS.contributor).toContain(PERMISSIONS.COPILOT_USE)
   })
 
   it('does not expose the removed data-connector permission', () => {

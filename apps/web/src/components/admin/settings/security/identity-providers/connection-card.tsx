@@ -13,12 +13,14 @@
  * reason.
  */
 import { useState } from 'react'
+import type { IntlShape } from 'react-intl'
 import { useQueryClient } from '@tanstack/react-query'
 import { useServerFn } from '@tanstack/react-start'
 import { toast } from 'sonner'
 import { CheckCircleIcon, ClockIcon, ExclamationTriangleIcon } from '@heroicons/react/24/solid'
 import { Button } from '@/components/ui/button'
 import { TimeAgo } from '@/components/ui/time-ago'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { SettingsCard } from '@/components/admin/settings/settings-card'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import {
@@ -50,13 +52,20 @@ import { useBaseUrl } from '@/lib/client/hooks/use-root-context'
 import { toastError } from '@/lib/client/error-notice'
 
 export function ConnectionCard({ provider }: { provider: IdentityProvider }) {
+  const intl = useOptionalIntl()
   // A provider with no saved secret cannot be tested, so there is nothing to
   // summarise: open straight on the form.
   const [editing, setEditing] = useState(!provider.configured)
 
   return (
     <div id="connection" className="scroll-mt-6">
-      <SettingsCard title="Connection" contentClassName="space-y-5">
+      <SettingsCard
+        title={intl.formatMessage({
+          id: 'admin.settings.security.idp.connection.title',
+          defaultMessage: 'Connection',
+        })}
+        contentClassName="space-y-5"
+      >
         {editing ? (
           <ConnectionEditor provider={provider} onDone={() => setEditing(false)} />
         ) : (
@@ -75,6 +84,7 @@ function ConnectionSummary({
   onEdit: () => void
 }) {
   const { openTest } = useConnectionTest(provider)
+  const intl = useOptionalIntl()
   const capture = useProviderCapture(provider)
   const state = getConnectionTestState(provider)
   const preview = capture
@@ -103,15 +113,30 @@ function ConnectionSummary({
           {failure !== undefined ? (
             <p className="flex items-start gap-1.5 font-medium text-warning">
               <ExclamationTriangleIcon className="mt-0.5 size-4 shrink-0" />
-              {failureSummary(failure)}
+              {failureSummary(intl, failure)}
             </p>
           ) : state.kind === 'verified' && who ? (
             <>
               <p className="flex flex-wrap items-center gap-x-1.5 font-medium">
                 <CheckCircleIcon className="size-4 shrink-0 text-success" />
-                <span>Connected as {who}</span>
+                <span>
+                  {intl.formatMessage(
+                    {
+                      id: 'admin.settings.security.idp.connection.connectedAs',
+                      defaultMessage: 'Connected as {who}',
+                    },
+                    { who }
+                  )}
+                </span>
                 <span className="font-normal text-muted-foreground">
-                  · Tested <TimeAgo date={state.testedAt} locale="en" />
+                  ·{' '}
+                  {intl.formatMessage(
+                    {
+                      id: 'admin.settings.security.idp.connection.testedAt',
+                      defaultMessage: 'Tested {time}',
+                    },
+                    { time: <TimeAgo date={state.testedAt} locale="en" /> }
+                  )}
                 </span>
               </p>
               {capture?.identity?.email && who !== capture.identity.email && (
@@ -121,25 +146,50 @@ function ConnectionSummary({
           ) : state.kind === 'verified' ? (
             <p className="flex items-center gap-1.5 font-medium">
               <CheckCircleIcon className="size-4 shrink-0 text-success" />
-              Connected · Tested <TimeAgo date={state.testedAt} locale="en" />
+              {intl.formatMessage(
+                {
+                  id: 'admin.settings.security.idp.connection.connectedTested',
+                  defaultMessage: 'Connected · Tested {time}',
+                },
+                { time: <TimeAgo date={state.testedAt} locale="en" /> }
+              )}
             </p>
           ) : state.kind === 'stale' ? (
             <p className="flex items-center gap-1.5 font-medium text-warning">
               <ClockIcon className="size-4 shrink-0" />
-              Connection changed since the last test. Test again before requiring SSO.
+              {intl.formatMessage({
+                id: 'admin.settings.security.idp.connection.changed',
+                defaultMessage:
+                  'Connection changed since the last test. Test again before requiring SSO.',
+              })}
             </p>
           ) : (
             <p className="text-muted-foreground">
-              Not tested yet. Sign in through this provider to confirm the connection.
+              {intl.formatMessage({
+                id: 'admin.settings.security.idp.connection.notTested',
+                defaultMessage:
+                  'Not tested yet. Sign in through this provider to confirm the connection.',
+              })}
             </p>
           )}
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <Button type="button" variant="outline" size="sm" onClick={openTest}>
-            {capture ? 'Test again' : 'Test sign-in'}
+            {capture
+              ? intl.formatMessage({
+                  id: 'admin.settings.security.idp.testAgain',
+                  defaultMessage: 'Test again',
+                })
+              : intl.formatMessage({
+                  id: 'admin.settings.security.idp.testSignIn',
+                  defaultMessage: 'Test sign-in',
+                })}
           </Button>
           <Button type="button" variant="outline" size="sm" onClick={onEdit}>
-            Edit
+            {intl.formatMessage({
+              id: 'admin.settings.security.idp.edit',
+              defaultMessage: 'Edit',
+            })}
           </Button>
         </div>
       </div>
@@ -154,14 +204,25 @@ function ConnectionSummary({
 /** One line on why the newest test failed, replayed against the saved
  *  settings: the same account would now resolve (settings were fixed since),
  *  has no email, or cannot be identified at all. */
-function failureSummary(identity: ProfileOutcome | null): string {
+function failureSummary(intl: IntlShape, identity: ProfileOutcome | null): string {
   if (identity?.kind === 'missing_email') {
-    return 'The test account has no email address, so it could not sign in.'
+    return intl.formatMessage({
+      id: 'admin.settings.security.idp.connection.failureNoEmail',
+      defaultMessage: 'The test account has no email address, so it could not sign in.',
+    })
   }
   if (identity?.kind === 'identity' || identity?.kind === 'placeholder_required') {
-    return 'The last test failed with the previous settings. Test again to confirm the fix.'
+    return intl.formatMessage({
+      id: 'admin.settings.security.idp.connection.failurePrevious',
+      defaultMessage:
+        'The last test failed with the previous settings. Test again to confirm the fix.',
+    })
   }
-  return 'The last test could not identify the account. Check the fields under Profile, then test again.'
+  return intl.formatMessage({
+    id: 'admin.settings.security.idp.connection.failureUnidentified',
+    defaultMessage:
+      'The last test could not identify the account. Check the fields under Profile, then test again.',
+  })
 }
 
 /**
@@ -170,6 +231,7 @@ function failureSummary(identity: ProfileOutcome | null): string {
  * missing identifier) is a Profile problem and is explained there.
  */
 function AllowMissingEmailOffer({ provider }: { provider: IdentityProvider }) {
+  const intl = useOptionalIntl()
   const { saving, saveClaimMapping } = useProviderSave(provider)
 
   const allow = async () => {
@@ -183,18 +245,27 @@ function AllowMissingEmailOffer({ provider }: { provider: IdentityProvider }) {
         operations: diffClaimMappingOperations(provider.claimMapping, proposed),
         acknowledgeAdminRules: mappingSaveRisks(provider.claimMapping, proposed).hasAdminRules,
       },
-      'Users can now sign in without an email address.'
+      intl.formatMessage({
+        id: 'admin.settings.security.idp.connection.allowMissingEmailSaved',
+        defaultMessage: 'Users can now sign in without an email address.',
+      })
     )
   }
 
   return (
     <div className="space-y-2 rounded-md border border-warning/30 bg-warning/5 px-3 py-2.5 text-sm">
       <p>
-        If your provider does not release email addresses, you can let users sign in without one.
-        They get a permanent placeholder address and are asked for a real one afterwards.
+        {intl.formatMessage({
+          id: 'admin.settings.security.idp.connection.allowMissingEmailBody',
+          defaultMessage:
+            'If your provider does not release email addresses, you can let users sign in without one. They get a permanent placeholder address and are asked for a real one afterwards.',
+        })}
       </p>
       <Button type="button" size="sm" variant="outline" disabled={saving} onClick={allow}>
-        Let users sign in without an email address
+        {intl.formatMessage({
+          id: 'admin.settings.security.idp.allowMissingEmail',
+          defaultMessage: 'Let users sign in without an email address',
+        })}
       </Button>
     </div>
   )
@@ -208,6 +279,7 @@ function ConnectionEditor({
   onDone: () => void
 }) {
   const baseUrl = useBaseUrl()
+  const intl = useOptionalIntl()
   const setCreds = useServerFn(setProviderCredentialsFn)
   const { saving, save } = useProviderSave(provider)
   const { openTest } = useConnectionTest(provider)
@@ -217,7 +289,13 @@ function ConnectionEditor({
 
   const persist = async (): Promise<boolean> => {
     if (reportMissingIdpFields({ clientId: draft.clientId })) return false
-    const ok = await save(connectionPatchFrom(draft), 'Connection saved.')
+    const ok = await save(
+      connectionPatchFrom(draft),
+      intl.formatMessage({
+        id: 'admin.settings.security.idp.connectionSaved',
+        defaultMessage: 'Connection saved.',
+      })
+    )
     if (!ok) return false
     const secret = draft.secret.trim()
     if (!secret) return true
@@ -226,7 +304,13 @@ function ConnectionEditor({
       await setCreds({ data: { id: provider.id, clientSecret: secret } })
       return true
     } catch (err) {
-      toastError(err, 'Could not save the client secret.')
+      toastError(
+        err,
+        intl.formatMessage({
+          id: 'admin.settings.security.idp.secretSaveFailed',
+          defaultMessage: 'Could not save the client secret.',
+        })
+      )
       return false
     } finally {
       setSavingSecret(false)
@@ -262,14 +346,25 @@ function ConnectionEditor({
       <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border/40 pt-5">
         {provider.configured && (
           <Button type="button" variant="outline" size="sm" onClick={onDone} disabled={busy}>
-            Cancel
+            {intl.formatMessage({ id: 'common.cancel', defaultMessage: 'Cancel' })}
           </Button>
         )}
         <Button type="button" variant="outline" size="sm" onClick={handleSave} disabled={busy}>
-          {busy ? 'Saving…' : 'Save'}
+          {busy
+            ? intl.formatMessage({
+                id: 'admin.settings.security.idp.saving',
+                defaultMessage: 'Saving…',
+              })
+            : intl.formatMessage({
+                id: 'admin.settings.security.idp.save',
+                defaultMessage: 'Save',
+              })}
         </Button>
         <Button type="button" size="sm" onClick={handleSaveAndTest} disabled={busy}>
-          Save and test
+          {intl.formatMessage({
+            id: 'admin.settings.security.idp.saveAndTest',
+            defaultMessage: 'Save and test',
+          })}
         </Button>
       </div>
     </div>
@@ -291,6 +386,7 @@ function SwitchRedirectUri({
   disabled: boolean
 }) {
   const queryClient = useQueryClient()
+  const intl = useOptionalIntl()
   const setStyle = useServerFn(setIdentityProviderRedirectStyleFn)
   const [confirming, setConfirming] = useState(false)
   const [switching, setSwitching] = useState(false)
@@ -302,9 +398,20 @@ function SwitchRedirectUri({
       await setStyle({ data: { id: provider.id, style: 'current' } })
       await queryClient.invalidateQueries({ queryKey: IDENTITY_PROVIDERS_KEY })
       setConfirming(false)
-      toast.success('Redirect URI switched. Test the connection again.')
+      toast.success(
+        intl.formatMessage({
+          id: 'admin.settings.security.idp.connection.redirectSwitched',
+          defaultMessage: 'Redirect URI switched. Test the connection again.',
+        })
+      )
     } catch (err) {
-      toastError(err, 'Could not switch the redirect URI.')
+      toastError(
+        err,
+        intl.formatMessage({
+          id: 'admin.settings.security.idp.connection.redirectSwitchFailed',
+          defaultMessage: 'Could not switch the redirect URI.',
+        })
+      )
     } finally {
       setSwitching(false)
     }
@@ -312,7 +419,13 @@ function SwitchRedirectUri({
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
-      <p>This is the older redirect URI. Switch once the new one is added at your provider.</p>
+      <p>
+        {intl.formatMessage({
+          id: 'admin.settings.security.idp.connection.legacyRedirect',
+          defaultMessage:
+            'This is the older redirect URI. Switch once the new one is added at your provider.',
+        })}
+      </p>
       <Button
         type="button"
         variant="outline"
@@ -320,22 +433,41 @@ function SwitchRedirectUri({
         disabled={disabled || switching}
         onClick={() => setConfirming(true)}
       >
-        Switch to new URI
+        {intl.formatMessage({
+          id: 'admin.settings.security.idp.connection.switchToNew',
+          defaultMessage: 'Switch to new URI',
+        })}
       </Button>
       <ConfirmDialog
         open={confirming}
         onOpenChange={setConfirming}
-        title="Switch redirect URI?"
+        title={intl.formatMessage({
+          id: 'admin.settings.security.idp.connection.switchTitle',
+          defaultMessage: 'Switch redirect URI?',
+        })}
         description={
           <>
-            <p>Sign-in will send this redirect URI:</p>
+            <p>
+              {intl.formatMessage({
+                id: 'admin.settings.security.idp.connection.switchBodyPrefix',
+                defaultMessage: 'Sign-in will send this redirect URI:',
+              })}
+            </p>
             <code className="mt-2 block rounded-md border border-border/50 bg-muted/30 px-3 py-2 font-mono text-xs break-all">
               {nextUri}
             </code>
-            <p className="mt-2">Add it at your provider first, or sign-in will fail.</p>
+            <p className="mt-2">
+              {intl.formatMessage({
+                id: 'admin.settings.security.idp.connection.switchBodySuffix',
+                defaultMessage: 'Add it at your provider first, or sign-in will fail.',
+              })}
+            </p>
           </>
         }
-        confirmLabel="Switch"
+        confirmLabel={intl.formatMessage({
+          id: 'admin.settings.security.idp.connection.switch',
+          defaultMessage: 'Switch',
+        })}
         isPending={switching}
         onConfirm={handleSwitch}
       />

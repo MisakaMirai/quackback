@@ -15,7 +15,6 @@ import { oauthCorsMiddleware } from '@/lib/server/middleware/oauth-cors'
 import { requestContextMiddleware } from '@/lib/server/middleware/request-context'
 import { userContentHostMiddleware } from '@/lib/server/middleware/user-content-host'
 import { serverFnLogMiddleware } from '@/lib/server/middleware/server-fn-log'
-import { workspaceContextMiddleware } from '@/lib/server/middleware/workspace-context'
 import { auditAttributionMiddleware } from '@/lib/server/middleware/audit-attribution'
 import { expireRouteContextOnWrite } from '@/lib/client/route-context-middleware'
 import { serverFnFetch } from '@/lib/client/server-fn-fetch'
@@ -26,9 +25,9 @@ import { liftErrorReferenceOnFailure } from '@/lib/client/error-reference-middle
  *
  * It guards `handlerType === 'serverFn'` only — the cookie-authed RPC surface
  * (admin/portal UI). API routes are `handlerType === 'router'` and are left
- * alone, which is correct: the embeddable widget's cross-origin calls go to
- * `/api/widget/*` with `Authorization: Bearer` + `credentials: 'omit'` (no
- * cookies), so they are not CSRF-vulnerable and must not be blocked.
+ * alone, which is correct: public API routes that accept cross-origin beacon
+ * requests carry no cookies, so they are not CSRF-vulnerable and must not be
+ * blocked.
  */
 const csrfMiddleware = createCsrfMiddleware({
   filter: (ctx) => ctx.handlerType === 'serverFn',
@@ -37,10 +36,9 @@ const csrfMiddleware = createCsrfMiddleware({
 export const startInstance = createStart(() => {
   return {
     // Request-context/logging first so even CSRF-rejected requests get a
-    // request_id and an access log. Workspace resolution second — before CSRF and
-    // before auth, because auth is full of `db` queries and cannot run until the
-    // database has been chosen (SAAS-HOSTING-STACK.md §6). Under
-    // QUACKBACK_TENANCY=single it is a pass-through.
+    // request_id and an access log. Workspace resolution is a pass-through on a
+    // single-workspace install, but stays before CSRF and auth because auth is
+    // full of `db` queries and cannot run until the database has been chosen.
     // OAuth/MCP CORS answers preflights before workspace resolution: a
     // preflight carries no credentials and needs no database.
     // The user-content host (USER_CONTENT_URL) is narrowed to stored-file
@@ -51,7 +49,6 @@ export const startInstance = createStart(() => {
       requestContextMiddleware,
       userContentHostMiddleware,
       oauthCorsMiddleware,
-      workspaceContextMiddleware,
       csrfMiddleware,
       auditAttributionMiddleware,
     ],

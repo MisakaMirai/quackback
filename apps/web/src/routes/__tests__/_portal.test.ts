@@ -41,7 +41,7 @@ vi.mock('@/lib/shared/i18n', () => ({
   loadMessages: vi.fn(async () => ({})),
   loadPortalMessages: vi.fn(async () => ({})),
   DEFAULT_LOCALE: 'en',
-  SUPPORTED_LOCALES: ['en', 'de', 'fr', 'es', 'ar', 'ru', 'pt-br', 'zh-cn', 'zh-tw', 'nl', 'pl'],
+  SUPPORTED_LOCALES: ['en', 'zh-cn', 'zh-tw'],
 }))
 vi.mock('@/lib/shared/types/settings', () => ({
   DEFAULT_PORTAL_CONFIG: { oauth: {}, access: {} },
@@ -115,7 +115,6 @@ function makeContext(sessionUser?: {
     baseUrl: 'http://localhost:3000',
     themeCookie: 'system' as const,
     managedFieldPaths: [],
-    state: 'active' as const,
     registeredAuthProviders: [],
   }
 }

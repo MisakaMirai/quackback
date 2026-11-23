@@ -123,14 +123,13 @@ function makeSettingsRow(overrides: Record<string, unknown> = {}) {
     portalConfig: null,
     brandingConfig: null,
     developerConfig: null,
-    widgetConfig: null,
+    messengerConfig: null,
     customCss: null,
     logoKey: null,
     faviconKey: null,
     headerLogoKey: null,
     headerDisplayMode: 'logo_and_name',
     headerDisplayName: null,
-    widgetSecret: null,
     createdAt: new Date('2025-01-01'),
     updatedAt: new Date('2025-01-01'),
     ...overrides,
@@ -159,8 +158,7 @@ const {
   saveHeaderLogoKey,
   deleteHeaderLogoKey,
 } = await import('../settings.media')
-const { updateWidgetConfig, regenerateWidgetSecret, ensureWidgetSecret } =
-  await import('../settings.widget')
+const { updateMessengerConfig } = await import('../settings.messenger')
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -357,8 +355,8 @@ describe('settings write functions invalidate cache', () => {
     expect(mockCacheDel).toHaveBeenCalledWith('settings:workspace', 'auth:registered-providers')
   })
 
-  it('updateWidgetConfig invalidates cache', async () => {
-    await updateWidgetConfig({ enabled: true })
+  it('updateMessengerConfig invalidates cache', async () => {
+    await updateMessengerConfig({ messenger: { welcomeMessage: 'hi' } })
     expect(mockCacheDel).toHaveBeenCalledWith('settings:workspace', 'auth:registered-providers')
   })
 
@@ -414,46 +412,6 @@ describe('settings write functions invalidate cache', () => {
     await deleteHeaderLogoKey()
     expect(mockCacheDel).toHaveBeenCalledWith('settings:workspace', 'auth:registered-providers')
   })
-
-  it('regenerateWidgetSecret invalidates cache', async () => {
-    await regenerateWidgetSecret()
-    expect(mockCacheDel).toHaveBeenCalledWith('settings:workspace', 'auth:registered-providers')
-  })
-})
-
-describe('ensureWidgetSecret', () => {
-  it('returns an existing secret without writing or invalidating', async () => {
-    mockFindFirst.mockResolvedValue(makeSettingsRow({ widgetSecret: 'wgt_existing' }))
-    await expect(ensureWidgetSecret()).resolves.toBe('wgt_existing')
-    expect(mockUpdate).not.toHaveBeenCalled()
-    expect(mockCacheDel).not.toHaveBeenCalled()
-  })
-
-  it('mints when missing and invalidates cache', async () => {
-    mockFindFirst.mockResolvedValue(makeSettingsRow({ widgetSecret: null }))
-    let stored: string | undefined
-    mockSet.mockImplementation((payload: { widgetSecret?: string }) => {
-      stored = payload.widgetSecret
-      return { where: mockWhere }
-    })
-    mockReturning.mockImplementation(() => Promise.resolve([{ widgetSecret: stored }]))
-
-    const secret = await ensureWidgetSecret()
-    expect(secret).toMatch(/^wgt_[a-f0-9]{64}$/)
-    expect(secret).toBe(stored)
-    expect(mockCacheDel).toHaveBeenCalledWith('settings:workspace', 'auth:registered-providers')
-  })
-
-  it('returns the winner when the insert loses the race', async () => {
-    const existing = `wgt_${'b'.repeat(64)}`
-    mockFindFirst
-      .mockResolvedValueOnce(makeSettingsRow({ widgetSecret: null }))
-      .mockResolvedValueOnce(makeSettingsRow({ widgetSecret: existing }))
-    mockReturning.mockResolvedValue([])
-
-    await expect(ensureWidgetSecret()).resolves.toBe(existing)
-    expect(mockCacheDel).not.toHaveBeenCalled()
-  })
 })
 
 describe('updateFeatureFlags', () => {
@@ -501,34 +459,21 @@ describe('updateFeatureFlags', () => {
     expect(meta.statusSettings?.enabled).toBe(true)
   })
 
-  it('lights Messenger surfaces when turning Support on', async () => {
+  it('opens the portal Support surface when turning Support on', async () => {
     await updateFeatureFlags({ supportInbox: true, supportTickets: true })
-    const call = mockSet.mock.calls.find((entry) => entry[0] && 'widgetConfig' in entry[0]) as
-      [{ widgetConfig: string; portalConfig: string }] | undefined
+    const call = mockSet.mock.calls.find((entry) => entry[0] && 'portalConfig' in entry[0]) as
+      [{ portalConfig: string }] | undefined
     expect(call).toBeTruthy()
-    const widget = JSON.parse(call![0].widgetConfig) as {
-      enabled?: boolean
-      tabs?: { messenger?: boolean }
-    }
     const portal = JSON.parse(call![0].portalConfig) as { support?: { enabled?: boolean } }
-    expect(widget.enabled).toBe(true)
-    expect(widget.tabs?.messenger).toBe(true)
     expect(portal.support?.enabled).toBe(true)
   })
 
-  it('does not rewrite Messenger surfaces when Support stays off', async () => {
+  it('does not rewrite Messenger config when Support stays off', async () => {
     await updateFeatureFlags({ helpCenter: false })
-    const widgetCall = mockSet.mock.calls.find((entry) => entry[0] && 'widgetConfig' in entry[0])
-    expect(widgetCall).toBeUndefined()
-  })
-
-  it('turns the widget Help tab on when turning Help Center on', async () => {
-    await updateFeatureFlags({ helpCenter: true })
-    const call = mockSet.mock.calls.find((entry) => entry[0] && 'widgetConfig' in entry[0]) as
-      [{ widgetConfig: string }] | undefined
-    expect(call).toBeTruthy()
-    const widget = JSON.parse(call![0].widgetConfig) as { tabs?: { help?: boolean } }
-    expect(widget.tabs?.help).toBe(true)
+    const messengerCall = mockSet.mock.calls.find(
+      (entry) => entry[0] && 'messengerConfig' in entry[0]
+    )
+    expect(messengerCall).toBeUndefined()
   })
 
   it('does not write statusSettings.enabled when turning Status off', async () => {

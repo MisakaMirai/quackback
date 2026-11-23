@@ -1,6 +1,6 @@
 /**
- * A widget bearer credential arrives in one of two shapes: the raw session
- * token (the widget identify endpoint mints and returns these), or the signed
+ * A bearer credential arrives in one of two shapes: the raw session
+ * token (an identify endpoint mints and returns these), or the signed
  * form the auth library emits in its set-auth-token header,
  * `<token>.<signature>`. The session table stores the raw token, so every
  * direct lookup must normalize to the prefix first.

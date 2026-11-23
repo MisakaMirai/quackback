@@ -7,6 +7,7 @@
  * carries that domain's setup panel under it.
  */
 import { useRef, useState } from 'react'
+import { type IntlShape } from 'react-intl'
 import { Link } from '@tanstack/react-router'
 import { EnvelopeIcon, GlobeAltIcon } from '@heroicons/react/24/outline'
 import { toast } from 'sonner'
@@ -57,21 +58,14 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/shared/utils'
 import { toastError } from '@/lib/client/error-notice'
-
-/**
- * Show what the server actually refused, falling back to the generic line.
- *
- * The refusals on this card name a specific fix — publish a record, verify a
- * domain first — and swallowing them for a fixed string turns an answerable
- * problem into a mystery.
- */
-const reason = (fallback: string) => (error: unknown) => toastError(error, fallback)
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 
 /**
  * Settings → Email: the addresses this workspace sends from, and which of them
  * the default and each product that is on uses.
  */
 export function WorkspaceEmailSettings({ surfaces }: { surfaces: readonly SenderSurfaceKey[] }) {
+  const intl = useOptionalIntl()
   const view = useEmailConfigView()
   const { data } = view
   return (
@@ -101,7 +95,15 @@ export function WorkspaceEmailSettings({ surfaces }: { surfaces: readonly Sender
           // surface-sender-row.tsx, repeated here because importing that row
           // would load it with this page. A test holds the two together.
           id="send-from"
-          onError={reason("Couldn't change where email is sent from.")}
+          onError={(error) =>
+            toastError(
+              error,
+              intl.formatMessage({
+                id: 'admin.channels.email.sendFromChangeFailed',
+                defaultMessage: "Couldn't change where email is sent from.",
+              })
+            )
+          }
         />
       )}
     </div>
@@ -114,6 +116,7 @@ export function WorkspaceEmailSettings({ surfaces }: { surfaces: readonly Sender
  * are managed on Settings → Email.
  */
 export function SupportInboxSettings({ canManageSending }: { canManageSending: boolean }) {
+  const intl = useOptionalIntl()
   const view = useEmailConfigView()
   const { data } = view
   return (
@@ -130,20 +133,43 @@ export function SupportInboxSettings({ canManageSending }: { canManageSending: b
       <SendFromCard
         {...view.sendFrom}
         rows={['support']}
-        title="Replies"
+        title={intl.formatMessage({
+          id: 'admin.channels.email.repliesTitle',
+          defaultMessage: 'Replies',
+        })}
         description={
           canManageSending
-            ? 'The address support replies come from.'
-            : 'The address support replies come from. An admin adds sending addresses in Settings > Email.'
+            ? intl.formatMessage({
+                id: 'admin.channels.email.repliesDescription',
+                defaultMessage: 'The address support replies come from.',
+              })
+            : intl.formatMessage({
+                id: 'admin.channels.email.repliesDescriptionAdmin',
+                defaultMessage:
+                  'The address support replies come from. An admin adds sending addresses in Settings > Email.',
+              })
         }
         action={
           canManageSending ? (
             <Button variant="outline" size="sm" asChild>
-              <Link to="/admin/settings/email">Manage sending addresses</Link>
+              <Link to="/admin/settings/email">
+                {intl.formatMessage({
+                  id: 'admin.channels.email.manageAddresses',
+                  defaultMessage: 'Manage sending addresses',
+                })}
+              </Link>
             </Button>
           ) : undefined
         }
-        onError={reason("Couldn't change where support replies come from.")}
+        onError={(error) =>
+          toastError(
+            error,
+            intl.formatMessage({
+              id: 'admin.channels.email.supportReplyChangeFailed',
+              defaultMessage: "Couldn't change where support replies come from.",
+            })
+          )
+        }
       />
     </div>
   )
@@ -151,8 +177,16 @@ export function SupportInboxSettings({ canManageSending }: { canManageSending: b
 
 /** How the two inbound trust settings are offered. */
 const TRUST_OPTIONS = [
-  { value: 'strict', label: 'Quarantine' },
-  { value: 'lenient', label: 'Accept' },
+  {
+    value: 'strict',
+    id: 'admin.channels.email.trustQuarantine',
+    defaultMessage: 'Quarantine',
+  },
+  {
+    value: 'lenient',
+    id: 'admin.channels.email.trustAccept',
+    defaultMessage: 'Accept',
+  },
 ] as const
 
 function InboundRouteSection({
@@ -164,6 +198,7 @@ function InboundRouteSection({
   platformAddress: string | null
   inboundTrust: 'strict' | 'lenient'
 }) {
+  const intl = useOptionalIntl()
   const [value, setValue] = useState('')
   const [editing, setEditing] = useState(false)
   const [confirmClear, setConfirmClear] = useState(false)
@@ -179,13 +214,24 @@ function InboundRouteSection({
 
   return (
     <SettingsCard
-      title="Support inbox"
-      description="Forward your support address here so its email becomes conversations."
+      title={intl.formatMessage({
+        id: 'admin.channels.email.supportInboxTitle',
+        defaultMessage: 'Support inbox',
+      })}
+      description={intl.formatMessage({
+        id: 'admin.channels.email.supportInboxDescription',
+        defaultMessage: 'Forward your support address here so its email becomes conversations.',
+      })}
     >
       {platformAddress && (
         <p className="mb-4 text-[13px] text-muted-foreground">
-          Email to <span className="font-medium text-foreground">{platformAddress}</span> becomes a
-          conversation.
+          {intl.formatMessage(
+            {
+              id: 'admin.channels.email.platformAddressNote',
+              defaultMessage: 'Email to {address} becomes a conversation.',
+            },
+            { address: platformAddress }
+          )}
         </p>
       )}
       {forwardingTarget && !editing ? (
@@ -194,7 +240,13 @@ function InboundRouteSection({
             <p className="font-mono text-sm font-medium truncate">{forwardingTarget}</p>
             {platformAddress && (
               <p className="mt-0.5 text-xs text-muted-foreground">
-                Forwarding to {platformAddress}
+                {intl.formatMessage(
+                  {
+                    id: 'admin.channels.email.forwardingTo',
+                    defaultMessage: 'Forwarding to {address}',
+                  },
+                  { address: platformAddress }
+                )}
               </p>
             )}
           </div>
@@ -207,7 +259,7 @@ function InboundRouteSection({
                 setEditing(true)
               }}
             >
-              Edit
+              {intl.formatMessage({ id: 'inbox.action.edit', defaultMessage: 'Edit' })}
             </Button>
             <Button
               size="sm"
@@ -215,20 +267,28 @@ function InboundRouteSection({
               disabled={clear.isPending}
               onClick={() => setConfirmClear(true)}
             >
-              Remove
+              {intl.formatMessage({ id: 'common.remove', defaultMessage: 'Remove' })}
             </Button>
           </div>
         </div>
       ) : showEditor ? (
         <div className="flex items-end gap-2">
           <div className="flex-1 space-y-1.5">
-            <Label htmlFor="fwd">Forwarding address</Label>
+            <Label htmlFor="fwd">
+              {intl.formatMessage({
+                id: 'admin.channels.email.forwardingAddress',
+                defaultMessage: 'Forwarding address',
+              })}
+            </Label>
             <Input
               id="fwd"
               type="email"
               value={value}
               onChange={(e) => setValue(e.target.value)}
-              placeholder="support@yourcompany.com"
+              placeholder={intl.formatMessage({
+                id: 'admin.channels.email.forwardingPlaceholder',
+                defaultMessage: 'support@yourcompany.com',
+              })}
             />
           </div>
           <Button
@@ -241,15 +301,20 @@ function InboundRouteSection({
                   setValue('')
                   setEditing(false)
                 },
-                onError: showError("Couldn't save the forwarding address."),
+                onError: showError(
+                  intl.formatMessage({
+                    id: 'admin.channels.email.forwardingSaveFailed',
+                    defaultMessage: "Couldn't save the forwarding address.",
+                  })
+                ),
               })
             }}
           >
-            Save
+            {intl.formatMessage({ id: 'admin.channels.email.save', defaultMessage: 'Save' })}
           </Button>
           {editing && (
             <Button size="sm" variant="ghost" onClick={() => setEditing(false)}>
-              Cancel
+              {intl.formatMessage({ id: 'common.cancel', defaultMessage: 'Cancel' })}
             </Button>
           )}
         </div>
@@ -257,15 +322,26 @@ function InboundRouteSection({
 
       <div className="mt-4 flex items-center justify-between border-t border-border/40 pt-4">
         <div className="pr-4">
-          <p className="text-sm font-medium">Unverified senders</p>
+          <p className="text-sm font-medium">
+            {intl.formatMessage({
+              id: 'admin.channels.email.unverifiedSenders',
+              defaultMessage: 'Unverified senders',
+            })}
+          </p>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            Quarantine moves email that fails authentication to Spam. Accept lets it in, marked
-            unverified.
+            {intl.formatMessage({
+              id: 'admin.channels.email.unverifiedDescription',
+              defaultMessage:
+                'Quarantine moves email that fails authentication to Spam. Accept lets it in, marked unverified.',
+            })}
           </p>
         </div>
         <div
           role="radiogroup"
-          aria-label="Unverified senders"
+          aria-label={intl.formatMessage({
+            id: 'admin.channels.email.unverifiedSenders',
+            defaultMessage: 'Unverified senders',
+          })}
           className="inline-flex shrink-0 rounded-lg border border-border p-0.5"
         >
           {TRUST_OPTIONS.map((option) => (
@@ -278,7 +354,12 @@ function InboundRouteSection({
               onClick={() => {
                 setActionError(null)
                 trust.mutate(option.value, {
-                  onError: showError("Couldn't change unverified senders."),
+                  onError: showError(
+                    intl.formatMessage({
+                      id: 'admin.channels.email.unverifiedChangeFailed',
+                      defaultMessage: "Couldn't change unverified senders.",
+                    })
+                  ),
                 })
               }}
               className={cn(
@@ -288,7 +369,7 @@ function InboundRouteSection({
                   : 'text-muted-foreground hover:text-foreground'
               )}
             >
-              {option.label}
+              {intl.formatMessage(option)}
             </button>
           ))}
         </div>
@@ -301,15 +382,27 @@ function InboundRouteSection({
       <ConfirmDialog
         open={confirmClear}
         onOpenChange={setConfirmClear}
-        title="Remove the forwarding address?"
-        description="Forwarded email stops becoming conversations until you set an address again."
-        confirmLabel="Remove"
+        title={intl.formatMessage({
+          id: 'admin.channels.email.forwardingRemoveTitle',
+          defaultMessage: 'Remove the forwarding address?',
+        })}
+        description={intl.formatMessage({
+          id: 'admin.channels.email.forwardingRemoveDescription',
+          defaultMessage:
+            'Forwarded email stops becoming conversations until you set an address again.',
+        })}
+        confirmLabel={intl.formatMessage({ id: 'common.remove', defaultMessage: 'Remove' })}
         variant="destructive"
         isPending={clear.isPending}
         onConfirm={() => {
           setActionError(null)
           clear.mutate(undefined, {
-            onError: showError("Couldn't remove the forwarding address."),
+            onError: showError(
+              intl.formatMessage({
+                id: 'admin.channels.email.forwardingRemoveFailed',
+                defaultMessage: "Couldn't remove the forwarding address.",
+              })
+            ),
           })
           setConfirmClear(false)
         }}
@@ -332,31 +425,77 @@ function PhoneHiddenIcon({ icon }: { icon: typeof EnvelopeIcon }) {
 
 /** The meta line of a row whose domain is not live yet, or is live with its ownership record missing. */
 function pendingMeta(
+  intl: IntlShape,
   domain: SendingDomainDTO,
   phase: DomainPhase,
   first: boolean,
-  fallback: string
+  detail: string
 ): string | null {
   if (phase === 'live') {
     const warning = first ? ownershipWarning(domain) : null
-    return warning ? `The verification record is missing. ${warning}` : null
+    return warning
+      ? intl.formatMessage(
+          {
+            id: 'admin.channels.email.verificationRecordMissing',
+            defaultMessage: 'The verification record is missing. {warning}',
+          },
+          { warning }
+        )
+      : null
   }
-  if (!first) return `Waiting for ${domain.domain} to be verified`
-  if (signingKeyFailing(domain, phase)) return `${signingKeyProblem(domain.domain)}${fallback}`
-  if (phase === 'not-found') return `Records not found after 72 hours.${fallback}`
+  if (!first) {
+    return intl.formatMessage(
+      {
+        id: 'admin.channels.email.waitingForDomain',
+        defaultMessage: 'Waiting for {domain} to be verified',
+      },
+      { domain: domain.domain }
+    )
+  }
+  if (signingKeyFailing(domain, phase)) return `${signingKeyProblem(domain.domain)} ${detail}`
+  if (phase === 'not-found') {
+    return intl.formatMessage(
+      {
+        id: 'admin.channels.email.recordsNotFound',
+        defaultMessage: 'Records not found after 72 hours. {detail}',
+      },
+      { detail }
+    )
+  }
   if (phase === 'attention') {
     const failing = domain.dnsRecords.find((r) => r.check && r.check.state !== 'found')
     const name = failingRecordName(domain)
     if (failing && name) {
       const what =
         failing.check?.state === 'missing'
-          ? 'is missing'
+          ? intl.formatMessage({
+              id: 'admin.channels.email.recordIsMissing',
+              defaultMessage: 'is missing',
+            })
           : failing.check?.state === 'proxied'
-            ? 'is proxied'
-            : 'has the wrong value'
-      return `The ${name} ${what}.${fallback}`
+            ? intl.formatMessage({
+                id: 'admin.channels.email.recordIsProxied',
+                defaultMessage: 'is proxied',
+              })
+            : intl.formatMessage({
+                id: 'admin.channels.email.recordWrongValue',
+                defaultMessage: 'has the wrong value',
+              })
+      return intl.formatMessage(
+        {
+          id: 'admin.channels.email.recordProblem',
+          defaultMessage: 'The {name} {problem}. {detail}',
+        },
+        { name, problem: what, detail }
+      )
     }
-    return `${domain.domain} needs attention.${fallback}`
+    return intl.formatMessage(
+      {
+        id: 'admin.channels.email.domainNeedsAttention',
+        defaultMessage: '{domain} needs attention. {detail}',
+      },
+      { domain: domain.domain, detail }
+    )
   }
   return null
 }
@@ -389,6 +528,7 @@ function SendingAddressesSection({
   /** Whether the config has arrived, so an empty list really is empty. */
   loaded: boolean
 }) {
+  const intl = useOptionalIntl()
   const available = addressMode !== 'unavailable'
   const guardPermitsAny = addressMode === 'any'
   const [dialog, setDialog] = useState<SendingAddressDialogTarget | null>(null)
@@ -416,8 +556,15 @@ function SendingAddressesSection({
   // What email does meanwhile: one workspace still sends as the address; a
   // shared server falls back to the default.
   const fallbackNote = guardPermitsAny
-    ? ' Email is still sent from this address, but it may land in spam until this is fixed.'
-    : " Email comes from your default address until it's fixed."
+    ? intl.formatMessage({
+        id: 'admin.channels.email.fallbackStillSends',
+        defaultMessage:
+          'Email is still sent from this address, but it may land in spam until this is fixed.',
+      })
+    : intl.formatMessage({
+        id: 'admin.channels.email.fallbackDefault',
+        defaultMessage: "Email comes from your default address until it's fixed.",
+      })
 
   // Listed oldest first: the panel and the domain's status line sit under the
   // address that has been on the domain longest, so adding another one does
@@ -446,7 +593,14 @@ function SendingAddressesSection({
       checking={restart.isPending}
       onCheckAgain={() => {
         setActionError(null)
-        restart.mutate(domain.id, { onError: showError("Couldn't check the records.") })
+        restart.mutate(domain.id, {
+          onError: showError(
+            intl.formatMessage({
+              id: 'admin.channels.email.checkFailed',
+              defaultMessage: "Couldn't check the records.",
+            })
+          ),
+        })
       }}
     />
   )
@@ -457,7 +611,10 @@ function SendingAddressesSection({
 
   return (
     <SettingsCard
-      title="Sending addresses"
+      title={intl.formatMessage({
+        id: 'admin.channels.email.addressesTitle',
+        defaultMessage: 'Sending addresses',
+      })}
       flush
       // The empty state carries its own, as the one thing to do there.
       action={
@@ -469,7 +626,10 @@ function SendingAddressesSection({
             disabled={!available}
             onClick={openAdd}
           >
-            Add address
+            {intl.formatMessage({
+              id: 'admin.channels.email.addAddress',
+              defaultMessage: 'Add address',
+            })}
           </Button>
         )
       }
@@ -488,7 +648,10 @@ function SendingAddressesSection({
           const testable = guardPermitsAny || (!!domain && phase === 'live')
           const items = [
             {
-              label: 'Edit name',
+              label: intl.formatMessage({
+                id: 'admin.channels.email.editName',
+                defaultMessage: 'Edit name',
+              }),
               onSelect: () => {
                 openedByAdd.current = false
                 setDialog({ kind: 'rename', id: a.id, address, senderName: a.senderName ?? null })
@@ -497,13 +660,21 @@ function SendingAddressesSection({
             ...(domain && first && phase === 'live'
               ? [
                   {
-                    label: open ? 'Hide DNS records' : 'DNS records',
+                    label: open
+                      ? intl.formatMessage({
+                          id: 'admin.channels.email.hideDnsRecords',
+                          defaultMessage: 'Hide DNS records',
+                        })
+                      : intl.formatMessage({
+                          id: 'admin.channels.email.dnsRecords',
+                          defaultMessage: 'DNS records',
+                        }),
                     onSelect: () => setExpanded((e) => ({ ...e, [domain.id]: !open })),
                   },
                 ]
               : []),
             {
-              label: 'Remove',
+              label: intl.formatMessage({ id: 'common.remove', defaultMessage: 'Remove' }),
               destructive: true,
               onSelect: () =>
                 setRemoveTarget({
@@ -514,7 +685,7 @@ function SendingAddressesSection({
                     domain && rows.filter((r) => r.domain?.id === domain.id).length === 1
                       ? domain.domain
                       : null,
-                  note: removalNote(a.id, senders, platformFrom, platformName),
+                  note: removalNote(intl, a.id, senders, platformFrom, platformName),
                 }),
             },
           ]
@@ -523,7 +694,9 @@ function SendingAddressesSection({
               <SettingsListRow
                 leading={<PhoneHiddenIcon icon={EnvelopeIcon} />}
                 title={title}
-                meta={(domain && pendingMeta(domain, phase, first, fallbackNote)) || undefined}
+                meta={
+                  (domain && pendingMeta(intl, domain, phase, first, fallbackNote)) || undefined
+                }
                 wrapMeta={phase !== 'live' || warned}
                 badges={<PhaseBadge phase={phase} />}
                 trailing={
@@ -535,12 +708,29 @@ function SendingAddressesSection({
                       onClick={() => {
                         setActionError(null)
                         sendTest.mutate(a.id, {
-                          onSuccess: (r) => toast.success(`Test email sent to ${r.to}`),
-                          onError: showError("Couldn't send the test email."),
+                          onSuccess: (r) =>
+                            toast.success(
+                              intl.formatMessage(
+                                {
+                                  id: 'admin.channels.email.testSent',
+                                  defaultMessage: 'Test email sent to {address}',
+                                },
+                                { address: r.to }
+                              )
+                            ),
+                          onError: showError(
+                            intl.formatMessage({
+                              id: 'admin.channels.email.testFailed',
+                              defaultMessage: "Couldn't send the test email.",
+                            })
+                          ),
                         })
                       }}
                     >
-                      Send test
+                      {intl.formatMessage({
+                        id: 'admin.channels.email.sendTest',
+                        defaultMessage: 'Send test',
+                      })}
                     </Button>
                   ) : undefined
                 }
@@ -557,19 +747,30 @@ function SendingAddressesSection({
               <SettingsListRow
                 leading={<PhoneHiddenIcon icon={GlobeAltIcon} />}
                 title={domain.domain}
-                meta="No address uses this domain"
+                meta={intl.formatMessage({
+                  id: 'admin.channels.email.unusedDomain',
+                  defaultMessage: 'No address uses this domain',
+                })}
                 badges={<PhaseBadge phase={phase} />}
                 actions={[
                   ...(phase === 'live'
                     ? [
                         {
-                          label: open ? 'Hide DNS records' : 'DNS records',
+                          label: open
+                            ? intl.formatMessage({
+                                id: 'admin.channels.email.hideDnsRecords',
+                                defaultMessage: 'Hide DNS records',
+                              })
+                            : intl.formatMessage({
+                                id: 'admin.channels.email.dnsRecords',
+                                defaultMessage: 'DNS records',
+                              }),
                           onSelect: () => setExpanded((e) => ({ ...e, [domain.id]: !open })),
                         },
                       ]
                     : []),
                   {
-                    label: 'Remove',
+                    label: intl.formatMessage({ id: 'common.remove', defaultMessage: 'Remove' }),
                     destructive: true,
                     onSelect: () => setDomainRemoveTarget({ id: domain.id, domain: domain.domain }),
                   },
@@ -584,18 +785,37 @@ function SendingAddressesSection({
         <EmptyState
           size="compact"
           icon={EnvelopeIcon}
-          title="No sending addresses yet"
+          title={intl.formatMessage({
+            id: 'admin.channels.email.emptyTitle',
+            defaultMessage: 'No sending addresses yet',
+          })}
           description={
             !available
-              ? "Custom sending addresses aren't available on this server."
+              ? intl.formatMessage({
+                  id: 'admin.channels.email.emptyUnavailable',
+                  defaultMessage: "Custom sending addresses aren't available on this server.",
+                })
               : platformFrom
-                ? `Email comes from ${platformFrom}. Add an address to send from your own domain.`
-                : 'Add an address to send email from your own domain.'
+                ? intl.formatMessage(
+                    {
+                      id: 'admin.channels.email.emptyPlatform',
+                      defaultMessage:
+                        'Email comes from {address}. Add an address to send from your own domain.',
+                    },
+                    { address: platformFrom }
+                  )
+                : intl.formatMessage({
+                    id: 'admin.channels.email.emptyAdd',
+                    defaultMessage: 'Add an address to send email from your own domain.',
+                  })
           }
           action={
             available ? (
               <Button ref={addButton} variant="outline" onClick={openAdd}>
-                Add address
+                {intl.formatMessage({
+                  id: 'admin.channels.email.addAddress',
+                  defaultMessage: 'Add address',
+                })}
               </Button>
             ) : undefined
           }
@@ -604,7 +824,10 @@ function SendingAddressesSection({
         <div className="space-y-2 border-t border-border/50 px-4 py-3 sm:px-6">
           {!available && (
             <p className="text-[13px] text-muted-foreground">
-              Custom sending addresses aren&apos;t available on this server.
+              {intl.formatMessage({
+                id: 'admin.channels.email.emptyUnavailable',
+                defaultMessage: "Custom sending addresses aren't available on this server.",
+              })}
             </p>
           )}
           {actionError && (

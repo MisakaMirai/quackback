@@ -1,121 +1,53 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { createWorkspaceScope } from '@/lib/server/workspaces/workspace-context'
-import { originsForWorkspaceHostnames } from '../trusted-origins'
+import { originsForHostnames } from '../trusted-origins'
 
-function scopeFor(workspaceKey: string, primary: string, hostnames: string[]) {
-  return createWorkspaceScope({
-    workspace: {
-      workspaceKey,
-      revision: 1,
-      routing: { primaryHostname: primary, hostnames, baseUrl: `https://${primary}` },
-    },
-    db: {},
-    sql: {},
-    origin: 'test',
-    secrets: { secretKey: 'b'.repeat(64), storage: null, storageProblem: 'not read here' },
-  } as never)
-}
-
-describe('originsForWorkspaceHostnames', () => {
-  it('includes the pinned origin and every registered hostname', () => {
+describe('originsForHostnames', () => {
+  it('includes the configured origin and every listed hostname', () => {
     expect(
-      originsForWorkspaceHostnames('https://ws-abc.saas.example', [
-        'ws-abc.saas.example',
-        'hello.saas.example',
-        'shop.customer.test',
+      originsForHostnames('https://app.customer.test', [
+        'app.customer.test',
+        'portal.customer.test',
+        'help.customer.test',
       ])
     ).toEqual([
-      'https://ws-abc.saas.example',
-      'https://hello.saas.example',
-      'https://shop.customer.test',
+      'https://app.customer.test',
+      'https://portal.customer.test',
+      'https://help.customer.test',
     ])
   })
 
   it('skips empty and wildcard hostnames', () => {
     expect(
-      originsForWorkspaceHostnames('https://ws-abc.saas.example', [
-        '',
-        '*.saas.example',
-        'ok.saas.example',
-      ])
-    ).toEqual(['https://ws-abc.saas.example', 'https://ok.saas.example'])
+      originsForHostnames('https://app.customer.test', ['', '*.customer.test', 'ok.customer.test'])
+    ).toEqual(['https://app.customer.test', 'https://ok.customer.test'])
   })
 })
 
-describe('workspaceAuthTrustedOrigins', () => {
+describe('trustedAuthOrigins', () => {
   beforeEach(() => {
     vi.resetModules()
-    vi.stubEnv('BASE_URL', 'https://fleet.example.com')
+    vi.stubEnv('BASE_URL', 'https://app.customer.test')
     vi.stubEnv('SECRET_KEY', 'a'.repeat(64))
-    vi.stubEnv('QUACKBACK_TENANCY', 'pooled')
-    vi.stubEnv('DATABASE_URL', '')
-    vi.stubEnv('QUACKBACK_CONTROL_DATABASE_URL', 'postgresql://u@localhost:5432/control')
-    vi.stubEnv('TRUSTED_ORIGINS', 'https://attacker.example')
+    vi.stubEnv('DATABASE_URL', 'postgresql://u@localhost:5432/x')
+    vi.stubEnv('TRUSTED_ORIGINS', ' https://portal.customer.test , https://help.customer.test ')
   })
 
   afterEach(() => {
     vi.unstubAllEnvs()
   })
 
-  it('lists every hostname on the live workspace and ignores fleet TRUSTED_ORIGINS', async () => {
-    const { runWithWorkspaceScope } = await import('@/lib/server/workspaces/workspace-context')
-    const { workspaceAuthTrustedOrigins } = await import('../trusted-origins')
-    const origins = runWithWorkspaceScope(
-      scopeFor('inst_t1', 'ws-abc.saas.example', [
-        'ws-abc.saas.example',
-        'hello.saas.example',
-        'shop.customer.test',
-      ]),
-      () => workspaceAuthTrustedOrigins()
-    )
-    expect(origins).toEqual([
-      'https://ws-abc.saas.example',
-      'https://hello.saas.example',
-      'https://shop.customer.test',
+  it('trusts BASE_URL and every origin the operator listed', async () => {
+    const { trustedAuthOrigins } = await import('../trusted-origins')
+    expect(trustedAuthOrigins()).toEqual([
+      'https://app.customer.test',
+      'https://portal.customer.test',
+      'https://help.customer.test',
     ])
-    expect(origins).not.toContain('https://attacker.example')
   })
 
-  it('sees a custom host added after the first read without rebuilding modules', async () => {
-    const { runWithWorkspaceScope } = await import('@/lib/server/workspaces/workspace-context')
-    const { workspaceAuthTrustedOrigins } = await import('../trusted-origins')
-    const first = runWithWorkspaceScope(
-      scopeFor('inst_t1', 'ws-abc.saas.example', ['ws-abc.saas.example']),
-      () => workspaceAuthTrustedOrigins()
-    )
-    const second = runWithWorkspaceScope(
-      scopeFor('inst_t1', 'shop.customer.test', ['ws-abc.saas.example', 'shop.customer.test']),
-      () => workspaceAuthTrustedOrigins()
-    )
-    expect(first).toEqual(['https://ws-abc.saas.example'])
-    expect(second).toContain('https://shop.customer.test')
-  })
-
-  it('uses process TRUSTED_ORIGINS only outside a workspace scope', async () => {
-    const { workspaceAuthTrustedOrigins } = await import('../trusted-origins')
-    expect(workspaceAuthTrustedOrigins()).toContain('https://attacker.example')
-  })
-
-  it('adds the request Origin when its host is already on the workspace', async () => {
-    const { runWithWorkspaceScope } = await import('@/lib/server/workspaces/workspace-context')
-    const { workspaceAuthTrustedOrigins } = await import('../trusted-origins')
-    const request = new Request('https://shop.customer.test/api/auth/sign-in/email-otp', {
-      headers: { origin: 'https://shop.customer.test' },
-    })
-    const origins = runWithWorkspaceScope(
-      scopeFor('inst_t1', 'ws-abc.saas.example', ['ws-abc.saas.example', 'shop.customer.test']),
-      () => workspaceAuthTrustedOrigins(request)
-    )
-    expect(origins).toContain('https://shop.customer.test')
-    const foreign = runWithWorkspaceScope(
-      scopeFor('inst_t1', 'ws-abc.saas.example', ['ws-abc.saas.example']),
-      () =>
-        workspaceAuthTrustedOrigins(
-          new Request('https://ws-abc.saas.example/api/auth/sign-in/email-otp', {
-            headers: { origin: 'https://evil.example' },
-          })
-        )
-    )
-    expect(foreign).not.toContain('https://evil.example')
+  it('trusts nothing extra when TRUSTED_ORIGINS is unset', async () => {
+    vi.stubEnv('TRUSTED_ORIGINS', '')
+    const { trustedAuthOrigins } = await import('../trusted-origins')
+    expect(trustedAuthOrigins()).toEqual(['https://app.customer.test'])
   })
 })

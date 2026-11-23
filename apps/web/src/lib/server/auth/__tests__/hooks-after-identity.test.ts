@@ -35,7 +35,7 @@ vi.mock('@/lib/server/auth/signin-rate-limit', () => ({
   checkMagicLinkSendRateLimit: vi.fn(),
 }))
 
-vi.mock('@/lib/server/auth/widget-rate-limit', () => ({
+vi.mock('@/lib/server/auth/signin-rate-limit', () => ({
   checkAnonMintRateLimit: vi.fn(),
 }))
 

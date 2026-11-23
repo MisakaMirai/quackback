@@ -42,7 +42,6 @@ vi.mock('@/lib/server/logger', () => ({
   logger: { child: () => ({ debug: vi.fn(), error: vi.fn(), warn: vi.fn(), info: vi.fn() }) },
 }))
 
-const WIDGET_SECRET = 'wsec_must_not_leave_the_server'
 const BILLING_REF = 'cus_must_not_leave_the_server'
 
 function setupState(overrides: Record<string, unknown> = {}) {
@@ -67,7 +66,7 @@ function setupState(overrides: Record<string, unknown> = {}) {
 
 function workspaceSettings(rawSetupState: string) {
   const portalConfig = {
-    access: { visibility: 'private', allowedDomains: ['corp.example'], widgetSignIn: true },
+    access: { visibility: 'private', allowedDomains: ['corp.example'] },
   }
   return {
     // The raw settings row, as getWorkspaceSettings() carries it.
@@ -75,10 +74,8 @@ function workspaceSettings(rawSetupState: string) {
       id: 'workspace_1',
       name: 'Acme',
       slug: 'acme',
-      widgetSecret: WIDGET_SECRET,
       setupState: rawSetupState,
       cloud: { billing: { customerRef: BILLING_REF } },
-      tierLimits: { seats: 3 },
       metadata: '{"status":{"allowedSegmentIds":["seg_hidden"]}}',
       portalConfig: JSON.stringify(portalConfig),
     },
@@ -116,7 +113,6 @@ describe('getBootstrapData response', () => {
     const data = await getBootstrapData()
     const wire = JSON.stringify(data)
 
-    expect(wire).not.toContain(WIDGET_SECRET)
     expect(wire).not.toContain(BILLING_REF)
     expect(wire).not.toContain('corp.example')
     expect(wire).not.toContain('seg_hidden')

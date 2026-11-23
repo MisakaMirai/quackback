@@ -7,7 +7,7 @@ import { warmQuery } from '@/lib/client/queries/warm-query'
 import { adminPageHead } from '@/lib/client/admin-head'
 
 export const Route = createFileRoute('/admin/settings/channels_/github')({
-  head: adminPageHead('GitHub channel settings'),
+  head: adminPageHead('GitHub channel settings', 'admin.pageTitle.githubChannelSettings'),
   beforeLoad: ({ context }) => {
     if (!isProductEnabled(context.settings?.featureFlags, 'support')) {
       throw redirect({ to: '/admin/settings/general' })

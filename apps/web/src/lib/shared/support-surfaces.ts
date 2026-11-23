@@ -3,7 +3,6 @@
  * Support routes, admin preview, and the async settings.support resolvers so
  * the formula cannot drift.
  */
-
 /** Signed-in visitors can start a new portal conversation. */
 export function isPortalChatStartEnabled(
   flags: { supportInbox?: boolean } | null | undefined,
@@ -22,15 +21,4 @@ export function isPortalSupportSurfaceEnabled(
   portal: { support?: { enabled?: boolean } } | null | undefined
 ): boolean {
   return Boolean(flags?.supportTickets || isPortalChatStartEnabled(flags, portal))
-}
-
-/**
- * Whether the widget Messages tab is live. Mirrors `isMessengerEnabled`
- * (`supportInbox` + widget master + Messages tab).
- */
-export function isWidgetMessengerEnabled(
-  flags: { supportInbox?: boolean } | null | undefined,
-  widget: { enabled?: boolean; tabs?: { messenger?: boolean } } | null | undefined
-): boolean {
-  return Boolean(flags?.supportInbox && widget?.enabled && widget?.tabs?.messenger)
 }

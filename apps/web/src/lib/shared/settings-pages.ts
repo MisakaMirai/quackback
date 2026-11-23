@@ -1,5 +1,3 @@
-import { defineMessages } from 'react-intl'
-
 interface SettingsPageEntry {
   label: string
 }
@@ -36,52 +34,33 @@ export const SETTINGS_PAGES = {
   '/admin/settings/status': { label: 'Status' },
   // Workspace
   '/admin/settings/general': { label: 'General' },
-  '/admin/settings/domains': { label: 'Domains' },
   '/admin/settings/email': { label: 'Email' },
   '/admin/settings/notifications': { label: 'Notifications' },
   '/admin/settings/portal': { label: 'Portal' },
-  '/admin/settings/widget': { label: 'Widget' },
-  '/admin/settings/widget/install': { label: 'Install' },
   '/admin/settings/members': { label: 'Members & Teams' },
   '/admin/settings/security/authentication': { label: 'Access & Security' },
   '/admin/settings/developers': { label: 'Developers' },
-  '/admin/settings/labs': { label: 'Labs' },
   '/admin/settings/integrations': { label: 'Integrations' },
-  '/admin/settings/billing': { label: 'Plan & billing' },
   // Data
   '/admin/settings/people': { label: 'Users' },
-  '/admin/settings/companies': { label: 'Companies' },
   '/admin/settings/conversation-data': { label: 'Conversations' },
   '/admin/settings/imports': { label: 'Imports & exports' },
 } as const satisfies Record<string, SettingsPageEntry>
 
 export type SettingsPagePath = keyof typeof SETTINGS_PAGES
 
-const automationMessages = defineMessages({
-  agent: { id: 'automation.nav.agent', defaultMessage: 'Agent' },
-  copilot: { id: 'automation.nav.copilot', defaultMessage: 'Copilot' },
-  connectors: { id: 'automation.nav.connectors', defaultMessage: 'Connectors' },
-  skills: { id: 'automation.nav.skills', defaultMessage: 'Skills' },
-  workflows: { id: 'automation.nav.workflows', defaultMessage: 'Workflows' },
-})
-
-/**
- * The AI & Automation pages, which are settings pages too. Their labels are
- * messages, so the page title is translated; the settings nav shows each
- * message's default text.
- */
-export const AUTOMATION_PAGES = {
-  '/admin/settings/agent': automationMessages.agent,
-  '/admin/settings/copilot': automationMessages.copilot,
-  '/admin/settings/connectors': automationMessages.connectors,
-  '/admin/settings/skills': automationMessages.skills,
-  '/admin/settings/workflows': automationMessages.workflows,
-} as const
-
-export type AutomationPagePath = keyof typeof AUTOMATION_PAGES
-
 export function settingsPageLabel(path: SettingsPagePath): string {
   const page = SETTINGS_PAGES[path]
   if (!page) throw new Error(`No settings page registered for ${path}`)
   return page.label
+}
+
+/** The catalog id for a settings page's label, derived from its path. */
+export function settingsPageLabelId(path: string): string {
+  return `admin.settings.nav.page.${path.replace('/admin/settings/', '').replace(/\//g, '-')}`
+}
+
+/** The catalog id for a settings nav section heading. */
+export function settingsSectionLabelId(label: string): string {
+  return `admin.settings.nav.section.${label.toLowerCase()}`
 }

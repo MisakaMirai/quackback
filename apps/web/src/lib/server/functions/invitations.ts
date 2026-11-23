@@ -10,7 +10,7 @@ import { getRequestHeaders } from '@tanstack/react-start/server'
 import { z } from 'zod'
 import type { InviteId, PrincipalId, RoleId, UserId } from '@quackback/ids'
 import { db, invitation, principal, user, and, eq } from '@/lib/server/db'
-import { ROLE_RANK, assertNotWidgetScope, toSessionScope, type Role } from '@/lib/shared/roles'
+import { ROLE_RANK, type Role } from '@/lib/shared/roles'
 import {
   createPrincipal,
   setPrincipalRole,
@@ -222,13 +222,6 @@ export const acceptInvitationFn = createServerFn({ method: 'POST' })
       )
     }
 
-    const existingBeforeClaim = await db.query.principal.findFirst({
-      where: eq(principal.userId, userId),
-    })
-    const alreadySeated =
-      existingBeforeClaim != null &&
-      (existingBeforeClaim.role === 'admin' || existingBeforeClaim.role === 'member')
-
     const role = (inv.role || 'member') as Role
     const displayName = name?.trim() || undefined
 
@@ -239,11 +232,6 @@ export const acceptInvitationFn = createServerFn({ method: 'POST' })
     // racing accepts cannot both create a seat.
     const cacheKeysToBust: string[] = []
     const claimed = await db.transaction(async (tx) => {
-      if (!alreadySeated) {
-        const { enforceSeatLimit } = await import('@/lib/server/domains/principals/seat-limit')
-        await enforceSeatLimit({ convertingInvite: true, executor: tx })
-      }
-
       // Conditional update prevents double-accept races (double-click,
       // network retry): zero rows means someone else changed it first.
       const [row] = await tx
@@ -377,7 +365,6 @@ export const setPasswordFn = createServerFn({ method: 'POST' })
     if (!session?.user) {
       throw new UnauthorizedError('Not authenticated')
     }
-    assertNotWidgetScope(toSessionScope(session.session.scope))
     const headers = getRequestHeaders()
     const { auth } = await import('@/lib/server/auth')
     await auth.api.setPassword({

@@ -8,7 +8,7 @@ import {
   useComposerDraftValue,
   useDebouncedDraftText,
 } from '../composer-drafts'
-import type { ComposerMode } from '../composer-ai-actions'
+import type { ComposerMode } from '../composer-drafts'
 
 afterEach(() => {
   cleanup()

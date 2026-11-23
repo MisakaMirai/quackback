@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react'
+import { type IntlShape, type MessageDescriptor } from 'react-intl'
 import { useQuery, useInfiniteQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import {
@@ -33,6 +34,7 @@ import { StatusBadge } from '@/components/ui/status-badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { contentPreview } from '@/lib/shared/utils/string'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { cn } from '@/lib/shared/utils'
 import { countryName } from '@/lib/shared/country'
 import {
@@ -52,7 +54,6 @@ import type { ConversationDTO, ConversationStatus } from '@/lib/shared/conversat
 import type { FeatureFlags } from '@/lib/shared/types/settings'
 import { UserSegmentBadges } from '@/components/admin/users/user-segments'
 import { UserTagControl } from '@/components/admin/users/user-tag-control'
-import { UserCompanyControl } from '@/components/admin/users/user-company-control'
 import {
   BlockPersonControl,
   usePersonBlockActions,
@@ -81,12 +82,19 @@ const ChangeRoleDialog = lazy(() =>
 )
 
 /** A teammate's role from the detail, as the role select and badge read it. */
-function teamRoleChoice(teamRole: PortalUserDetail['teamRole']): RoleChoice | null {
+function teamRoleChoice(
+  teamRole: PortalUserDetail['teamRole'],
+  intl: IntlShape
+): RoleChoice | null {
   if (!teamRole) return null
   return {
     role: teamRole.role,
     ...(teamRole.roleId ? { roleId: teamRole.roleId } : {}),
-    label: teamRole.roleName ?? (teamRole.role === 'admin' ? 'Admin' : 'Member'),
+    label:
+      teamRole.roleName ??
+      (teamRole.role === 'admin'
+        ? intl.formatMessage({ id: 'admin.people.roleAdmin', defaultMessage: 'Admin' })
+        : intl.formatMessage({ id: 'admin.people.roleMember', defaultMessage: 'Member' })),
   }
 }
 
@@ -179,12 +187,16 @@ function EmptyMessage({ message }: { message: string }) {
 }
 
 function EngagementBadges({ types }: { types: EngagedPost['engagementTypes'] }) {
+  const intl = useOptionalIntl()
   return (
     <div className="flex items-center gap-1">
       {types.includes('authored') && (
         <span
           className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[11px] font-medium bg-primary/10 text-primary"
-          title="Authored this post"
+          title={intl.formatMessage({
+            id: 'admin.people.detail.authoredTitle',
+            defaultMessage: 'Authored this post',
+          })}
         >
           <PencilSquareIcon className="h-2.5 w-2.5" />
         </span>
@@ -192,7 +204,10 @@ function EngagementBadges({ types }: { types: EngagedPost['engagementTypes'] }) 
       {types.includes('commented') && (
         <span
           className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[11px] font-medium bg-blue-500/10 text-blue-600 dark:text-blue-400"
-          title="Commented on this post"
+          title={intl.formatMessage({
+            id: 'admin.people.detail.commentedTitle',
+            defaultMessage: 'Commented on this post',
+          })}
         >
           <ChatBubbleLeftIcon className="h-2.5 w-2.5" />
         </span>
@@ -200,7 +215,10 @@ function EngagementBadges({ types }: { types: EngagedPost['engagementTypes'] }) 
       {types.includes('voted') && (
         <span
           className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[11px] font-medium bg-orange-500/10 text-orange-600 dark:text-orange-400"
-          title="Voted on this post"
+          title={intl.formatMessage({
+            id: 'admin.people.detail.votedTitle',
+            defaultMessage: 'Voted on this post',
+          })}
         >
           <HandThumbUpIcon className="h-2.5 w-2.5" />
         </span>
@@ -210,6 +228,7 @@ function EngagementBadges({ types }: { types: EngagedPost['engagementTypes'] }) 
 }
 
 function EngagedPostCard({ post }: { post: EngagedPost }) {
+  const intl = useOptionalIntl()
   return (
     <Link
       to="/b/$slug/posts/$postId"
@@ -240,7 +259,13 @@ function EngagedPostCard({ post }: { post: EngagedPost }) {
 
         {/* Footer */}
         <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-          <span className="text-foreground/70">{post.authorName || 'Anonymous'}</span>
+          <span className="text-foreground/70">
+            {post.authorName ||
+              intl.formatMessage({
+                id: 'admin.people.detail.anonymousAuthor',
+                defaultMessage: 'Anonymous',
+              })}
+          </span>
           <span className="text-muted-foreground/50">·</span>
           <TimeAgo date={new Date(post.createdAt)} />
           <div className="flex-1" />
@@ -269,8 +294,30 @@ const STATUS_STYLE: Record<ConversationStatus, string> = {
   closed: 'bg-muted text-muted-foreground',
 }
 
+const CONVERSATION_STATUS_LABEL: Record<ConversationStatus, MessageDescriptor> = {
+  open: { id: 'admin.people.detail.statusOpen', defaultMessage: 'Open' },
+  snoozed: { id: 'admin.people.detail.statusSnoozed', defaultMessage: 'Snoozed' },
+  closed: { id: 'admin.people.detail.statusClosed', defaultMessage: 'Closed' },
+}
+
+const CONVERSATIONS_EMPTY: Record<ConversationStatus, MessageDescriptor> = {
+  open: {
+    id: 'admin.people.detail.emptyOpenConversations',
+    defaultMessage: 'No open conversations',
+  },
+  snoozed: {
+    id: 'admin.people.detail.emptySnoozedConversations',
+    defaultMessage: 'No snoozed conversations',
+  },
+  closed: {
+    id: 'admin.people.detail.emptyClosedConversations',
+    defaultMessage: 'No closed conversations',
+  },
+}
+
 /** Read-only preview of a conversation's most recent visitor/agent messages. */
 function ConversationPreview({ conversationId }: { conversationId: ConversationDTO['id'] }) {
+  const intl = useOptionalIntl()
   const { data, isLoading } = useQuery({
     queryKey: ['admin', 'conversation-preview', conversationId],
     queryFn: () => getConversationFn({ data: { conversationId } }),
@@ -282,12 +329,26 @@ function ConversationPreview({ conversationId }: { conversationId: ConversationD
   return (
     <div className="mt-2 space-y-2 rounded-md border border-border/50 bg-muted/20 p-2.5">
       {messages.length === 0 ? (
-        <p className="text-xs text-muted-foreground">No messages yet</p>
+        <p className="text-xs text-muted-foreground">
+          {intl.formatMessage({
+            id: 'admin.people.detail.noMessages',
+            defaultMessage: 'No messages yet',
+          })}
+        </p>
       ) : (
         messages.map((m) => (
           <div key={m.id} className="text-xs">
             <span className="font-medium text-foreground">
-              {m.senderType === 'visitor' ? 'Visitor' : (m.author?.displayName ?? 'Agent')}
+              {m.senderType === 'visitor'
+                ? intl.formatMessage({
+                    id: 'admin.people.detail.visitor',
+                    defaultMessage: 'Visitor',
+                  })
+                : (m.author?.displayName ??
+                  intl.formatMessage({
+                    id: 'admin.people.detail.agent',
+                    defaultMessage: 'Agent',
+                  }))}
             </span>{' '}
             <span className="text-muted-foreground/60">
               <TimeAgo date={m.createdAt} />
@@ -309,6 +370,7 @@ function UserConversations({
   embedded?: boolean
 }) {
   const settings = useWorkspaceSettings()
+  const intl = useOptionalIntl()
   // Gated by the experimental supportInbox flag — when off, skip the fetch and
   // render nothing, so the profile shows no support history for a disabled feature.
   const supportInboxEnabled =
@@ -338,7 +400,16 @@ function UserConversations({
   return (
     <div className={cn(!embedded && 'border-t border-border/50 pt-4')}>
       <div className="mb-3 flex items-center justify-between">
-        {embedded ? <span /> : <h3 className="text-sm font-medium">Support conversations</h3>}
+        {embedded ? (
+          <span />
+        ) : (
+          <h3 className="text-sm font-medium">
+            {intl.formatMessage({
+              id: 'admin.people.detail.supportConversations',
+              defaultMessage: 'Support conversations',
+            })}
+          </h3>
+        )}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button
@@ -350,7 +421,14 @@ function UserConversations({
                   : 'text-muted-foreground hover:bg-muted'
               )}
             >
-              <span className="capitalize">{status === 'all' ? 'Status' : status}</span>
+              <span className="capitalize">
+                {status === 'all'
+                  ? intl.formatMessage({
+                      id: 'admin.people.detail.statusFilter',
+                      defaultMessage: 'Status',
+                    })
+                  : intl.formatMessage(CONVERSATION_STATUS_LABEL[status])}
+              </span>
               <ChevronDownIcon className="size-3.5" />
             </button>
           </DropdownMenuTrigger>
@@ -361,7 +439,10 @@ function UserConversations({
                 setExpandedId(null)
               }}
             >
-              All statuses
+              {intl.formatMessage({
+                id: 'admin.people.detail.allStatuses',
+                defaultMessage: 'All statuses',
+              })}
             </DropdownMenuItem>
             {(['open', 'snoozed', 'closed'] as const).map((s) => (
               <DropdownMenuItem
@@ -372,7 +453,7 @@ function UserConversations({
                 }}
                 className="capitalize"
               >
-                {s}
+                {intl.formatMessage(CONVERSATION_STATUS_LABEL[s])}
               </DropdownMenuItem>
             ))}
           </DropdownMenuContent>
@@ -383,7 +464,14 @@ function UserConversations({
         <Skeleton className="h-16 w-full rounded-lg" />
       ) : conversations.length === 0 ? (
         <EmptyMessage
-          message={status === 'all' ? 'No conversations yet' : `No ${status} conversations`}
+          message={
+            status === 'all'
+              ? intl.formatMessage({
+                  id: 'admin.people.detail.noConversations',
+                  defaultMessage: 'No conversations yet',
+                })
+              : intl.formatMessage(CONVERSATIONS_EMPTY[status])
+          }
         />
       ) : (
         <div className="divide-y divide-border/50 overflow-hidden rounded-lg border border-border/50">
@@ -400,7 +488,12 @@ function UserConversations({
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <span className="truncate text-sm text-foreground">
-                        {c.subject ?? c.lastMessagePreview ?? 'Conversation'}
+                        {c.subject ??
+                          c.lastMessagePreview ??
+                          intl.formatMessage({
+                            id: 'admin.people.detail.conversationFallback',
+                            defaultMessage: 'Conversation',
+                          })}
                       </span>
                       <span
                         className={cn(
@@ -408,24 +501,43 @@ function UserConversations({
                           STATUS_STYLE[c.status]
                         )}
                       >
-                        {c.status}
+                        {intl.formatMessage(CONVERSATION_STATUS_LABEL[c.status])}
                       </span>
                     </div>
                     <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                      {c.lastMessagePreview ?? 'No messages yet'}
+                      {c.lastMessagePreview ??
+                        intl.formatMessage({
+                          id: 'admin.people.detail.noMessages',
+                          defaultMessage: 'No messages yet',
+                        })}
                     </p>
                     <div className="mt-1 flex items-center gap-1.5 text-[11px] text-muted-foreground">
                       {c.assignedAgent ? (
                         <span className="flex items-center gap-1">
                           <Avatar
                             src={c.assignedAgent.avatarUrl}
-                            name={c.assignedAgent.displayName ?? 'Agent'}
+                            name={
+                              c.assignedAgent.displayName ??
+                              intl.formatMessage({
+                                id: 'admin.people.detail.agent',
+                                defaultMessage: 'Agent',
+                              })
+                            }
                             className="size-4 text-xs"
                           />
-                          {c.assignedAgent.displayName ?? 'Agent'}
+                          {c.assignedAgent.displayName ??
+                            intl.formatMessage({
+                              id: 'admin.people.detail.agent',
+                              defaultMessage: 'Agent',
+                            })}
                         </span>
                       ) : (
-                        <span>Unassigned</span>
+                        <span>
+                          {intl.formatMessage({
+                            id: 'admin.people.detail.unassigned',
+                            defaultMessage: 'Unassigned',
+                          })}
+                        </span>
                       )}
                       {getChannelDescriptor(c.channel)?.surface === 'ours' ? (
                         <span>· {getChannelDescriptor(c.channel)?.label ?? 'Messenger'}</span>
@@ -455,7 +567,10 @@ function UserConversations({
                         search={{ c: c.id }}
                         className="text-xs font-medium text-primary hover:underline"
                       >
-                        Open in inbox →
+                        {intl.formatMessage({
+                          id: 'admin.people.detail.openInInbox',
+                          defaultMessage: 'Open in inbox →',
+                        })}
                       </Link>
                     </div>
                   </div>
@@ -477,7 +592,10 @@ function UserConversations({
             {query.isFetchingNextPage ? (
               <ArrowPathIcon className="h-3.5 w-3.5 animate-spin" />
             ) : (
-              'Load more'
+              intl.formatMessage({
+                id: 'admin.people.loadMore',
+                defaultMessage: 'Load more',
+              })
             )}
           </Button>
         </div>
@@ -494,6 +612,7 @@ export function UserDetail({
   isRemovePending,
   currentMemberRole,
 }: UserDetailProps) {
+  const intl = useOptionalIntl()
   // The account address, or a lead's captured contact address. Both are
   // sanitised in the DTO (`user.detail.ts`), so a placeholder is already null
   // and reads here as "no address" rather than as something writable.
@@ -598,10 +717,21 @@ export function UserDetail({
     updateUser.mutate(updates, {
       onSuccess: () => {
         setIsEditing(false)
-        toast.success('User updated')
+        toast.success(
+          intl.formatMessage({
+            id: 'admin.people.detail.updated',
+            defaultMessage: 'User updated',
+          })
+        )
       },
       onError: (error) => {
-        toastError(error, 'Failed to update user')
+        toastError(
+          error,
+          intl.formatMessage({
+            id: 'admin.people.detail.updateFailed',
+            defaultMessage: 'Failed to update user',
+          })
+        )
       },
     })
   }
@@ -610,7 +740,10 @@ export function UserDetail({
     <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm px-3 py-2.5">
       <Button variant="ghost" size="sm" onClick={onClose}>
         <ArrowLeftIcon className="h-4 w-4 mr-1.5" />
-        Back to users
+        {intl.formatMessage({
+          id: 'admin.people.detail.backToUsers',
+          defaultMessage: 'Back to users',
+        })}
       </Button>
     </div>
   )
@@ -631,8 +764,11 @@ export function UserDetail({
   const { attributes, externalId } = parseUserMetadata(user.metadata)
   // The dialogs refetch the detail before they report back, so the badge and
   // menu follow the server's answer.
-  const teamRole = teamRoleChoice(user.teamRole)
-  const personName = user.name || displayEmail || 'this person'
+  const teamRole = teamRoleChoice(user.teamRole, intl)
+  const personName =
+    user.name ||
+    displayEmail ||
+    intl.formatMessage({ id: 'admin.people.detail.thisPerson', defaultMessage: 'this person' })
   // Only someone who has signed in can join the team from here; others are
   // invited by email from Members & Teams.
   const canJoinTeam = !teamRole && !user.isLead && user.hasSignedIn
@@ -642,7 +778,10 @@ export function UserDetail({
   const canChangeRole = !!teamRole && !isSelf
   const portalActions = !teamRole
   const hasMenu = canChangeRole || canJoinTeam || portalActions
-  const noEmailTooltip = 'This user has no email address to deliver a message to'
+  const noEmailTooltip = intl.formatMessage({
+    id: 'admin.people.detail.noEmailTooltip',
+    defaultMessage: 'This user has no email address to deliver a message to',
+  })
 
   return (
     <div className="max-w-5xl w-full">
@@ -656,14 +795,20 @@ export function UserDetail({
                 <Input
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
-                  placeholder="Name"
+                  placeholder={intl.formatMessage({
+                    id: 'admin.people.name',
+                    defaultMessage: 'Name',
+                  })}
                   className="text-sm"
                 />
                 <Input
                   type="email"
                   value={editEmail}
                   onChange={(e) => setEditEmail(e.target.value)}
-                  placeholder="Email (optional)"
+                  placeholder={intl.formatMessage({
+                    id: 'common.authorSelector.emailOptional',
+                    defaultMessage: 'Email (optional)',
+                  })}
                   className="text-sm"
                 />
                 <div className="flex gap-1.5">
@@ -678,11 +823,14 @@ export function UserDetail({
                     ) : (
                       <CheckIcon className="h-3.5 w-3.5 mr-1" />
                     )}
-                    Save
+                    {intl.formatMessage({
+                      id: 'common.authorSelector.save',
+                      defaultMessage: 'Save',
+                    })}
                   </Button>
                   <Button size="sm" variant="ghost" onClick={cancelEditing}>
                     <XMarkIcon className="h-3.5 w-3.5 mr-1" />
-                    Cancel
+                    {intl.formatMessage({ id: 'common.cancel', defaultMessage: 'Cancel' })}
                   </Button>
                 </div>
               </div>
@@ -690,7 +838,11 @@ export function UserDetail({
               <>
                 <div className="flex min-w-0 items-center gap-2">
                   <h2 className="min-w-0 truncate text-lg font-semibold leading-7">
-                    {user.name || 'Unnamed user'}
+                    {user.name ||
+                      intl.formatMessage({
+                        id: 'common.userPicker.unnamed',
+                        defaultMessage: 'Unnamed user',
+                      })}
                   </h2>
                   {user.emailVerified && (
                     <CheckCircleIcon className="h-4 w-4 shrink-0 text-primary" />
@@ -701,12 +853,20 @@ export function UserDetail({
                     </Badge>
                   ) : (
                     <Badge variant="secondary" className="shrink-0">
-                      {user.isLead ? 'Lead' : 'User'}
+                      {user.isLead
+                        ? intl.formatMessage({
+                            id: 'admin.people.lead',
+                            defaultMessage: 'Lead',
+                          })
+                        : intl.formatMessage({ id: 'common.user', defaultMessage: 'User' })}
                     </Badge>
                   )}
                   {blocked && (
                     <Badge variant="destructive" className="shrink-0">
-                      Blocked
+                      {intl.formatMessage({
+                        id: 'admin.people.hover.blocked',
+                        defaultMessage: 'Blocked',
+                      })}
                     </Badge>
                   )}
                   {canManageUsers && (
@@ -714,7 +874,10 @@ export function UserDetail({
                       type="button"
                       onClick={startEditing}
                       className="text-muted-foreground/50 transition-colors hover:text-muted-foreground"
-                      title="Edit user details"
+                      title={intl.formatMessage({
+                        id: 'admin.people.detail.editDetails',
+                        defaultMessage: 'Edit user details',
+                      })}
                     >
                       <PencilIcon className="h-3.5 w-3.5" />
                     </button>
@@ -724,7 +887,10 @@ export function UserDetail({
                   <p className="mt-0.5 truncate text-sm text-muted-foreground">{displayEmail}</p>
                 ) : (
                   <p className="mt-0.5 text-sm italic text-muted-foreground/50">
-                    No email &middot; cannot receive notifications
+                    {intl.formatMessage({
+                      id: 'admin.people.detail.noEmailNote',
+                      defaultMessage: 'No email · cannot receive notifications',
+                    })}
                   </p>
                 )}
               </>
@@ -743,7 +909,10 @@ export function UserDetail({
                         disabled={!displayEmail}
                       >
                         <ChatBubbleLeftIcon className="h-4 w-4" />
-                        Send message
+                        {intl.formatMessage({
+                          id: 'admin.people.detail.sendMessage',
+                          defaultMessage: 'Send message',
+                        })}
                       </Button>
                     </span>
                   </TooltipTrigger>
@@ -753,13 +922,23 @@ export function UserDetail({
               <Button size="sm" variant="outline" asChild>
                 <Link to="/u/$principalId" params={{ principalId: user.principalId }}>
                   <ArrowTopRightOnSquareIcon className="h-3.5 w-3.5" />
-                  View public profile
+                  {intl.formatMessage({
+                    id: 'admin.people.detail.viewPublicProfile',
+                    defaultMessage: 'View public profile',
+                  })}
                 </Link>
               </Button>
               {canManageUsers && hasMenu && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button size="icon-sm" variant="ghost" aria-label="More actions">
+                    <Button
+                      size="icon-sm"
+                      variant="ghost"
+                      aria-label={intl.formatMessage({
+                        id: 'admin.people.detail.moreActions',
+                        defaultMessage: 'More actions',
+                      })}
+                    >
                       <EllipsisHorizontalIcon className="h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
@@ -767,14 +946,20 @@ export function UserDetail({
                     {canChangeRole && (
                       <DropdownMenuItem onClick={() => setChangeRoleOpen(true)}>
                         <ShieldCheckIcon className="h-4 w-4" />
-                        Change role…
+                        {intl.formatMessage({
+                          id: 'admin.people.detail.changeRole',
+                          defaultMessage: 'Change role…',
+                        })}
                       </DropdownMenuItem>
                     )}
                     {canJoinTeam && (
                       <>
                         <DropdownMenuItem onClick={() => setAddToTeamOpen(true)}>
                           <UserPlusIcon className="h-4 w-4" />
-                          Make teammate…
+                          {intl.formatMessage({
+                            id: 'admin.people.detail.makeTeammate',
+                            defaultMessage: 'Make teammate…',
+                          })}
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                       </>
@@ -786,12 +971,23 @@ export function UserDetail({
                           onClick={() => (blocked ? unblock() : setBlockConfirmOpen(true))}
                         >
                           <NoSymbolIcon className="h-4 w-4" />
-                          {blocked ? 'Unblock' : 'Block'}
+                          {blocked
+                            ? intl.formatMessage({
+                                id: 'admin.people.detail.unblock',
+                                defaultMessage: 'Unblock',
+                              })
+                            : intl.formatMessage({
+                                id: 'admin.people.detail.block',
+                                defaultMessage: 'Block',
+                              })}
                         </DropdownMenuItem>
                         {user.isLead && (
                           <DropdownMenuItem onClick={() => setMergeOpen(true)}>
                             <ArrowsRightLeftIcon className="h-4 w-4" />
-                            Merge
+                            {intl.formatMessage({
+                              id: 'admin.people.merge.action',
+                              defaultMessage: 'Merge',
+                            })}
                           </DropdownMenuItem>
                         )}
                         <DropdownMenuSeparator />
@@ -805,7 +1001,10 @@ export function UserDetail({
                           ) : (
                             <TrashIcon className="h-4 w-4" />
                           )}
-                          Remove from portal
+                          {intl.formatMessage({
+                            id: 'admin.people.detail.removeFromPortal',
+                            defaultMessage: 'Remove from portal',
+                          })}
                         </DropdownMenuItem>
                       </>
                     )}
@@ -877,9 +1076,23 @@ export function UserDetail({
             <ConfirmDialog
               open={removeDialogOpen}
               onOpenChange={setRemoveDialogOpen}
-              title={`Remove ${user.name || 'this user'}?`}
-              description="This will remove the user from your portal. They lose access to vote and comment, and their votes are withdrawn. Their posts, comments and conversations stay, reattributed to “Deleted user”. Their global account is preserved and they can sign up again."
-              confirmLabel="Remove"
+              title={intl.formatMessage(
+                { id: 'admin.people.detail.removeTitle', defaultMessage: 'Remove {name}?' },
+                {
+                  name:
+                    user.name ||
+                    intl.formatMessage({
+                      id: 'admin.people.detail.thisUser',
+                      defaultMessage: 'this user',
+                    }),
+                }
+              )}
+              description={intl.formatMessage({
+                id: 'admin.people.detail.removeBody',
+                defaultMessage:
+                  'This will remove the user from your portal. They lose access to vote and comment, and their votes are withdrawn. Their posts, comments and conversations stay, reattributed to “Deleted user”. Their global account is preserved and they can sign up again.',
+              })}
+              confirmLabel={intl.formatMessage({ id: 'common.remove', defaultMessage: 'Remove' })}
               variant="destructive"
               isPending={isRemovePending}
               onConfirm={onRemoveUser}
@@ -896,18 +1109,39 @@ export function UserDetail({
         )}
 
         <div className="mt-4 flex overflow-hidden rounded-lg border border-border/50">
-          <FactCell value={user.postCount} label="Posts" numeric />
-          <FactCell value={user.commentCount} label="Comments" numeric />
-          <FactCell value={user.voteCount} label="Votes" numeric />
+          <FactCell
+            value={user.postCount}
+            label={intl.formatMessage({ id: 'common.userStats.ideas', defaultMessage: 'Posts' })}
+            numeric
+          />
+          <FactCell
+            value={user.commentCount}
+            label={intl.formatMessage({
+              id: 'common.userStats.comments',
+              defaultMessage: 'Comments',
+            })}
+            numeric
+          />
+          <FactCell
+            value={user.voteCount}
+            label={intl.formatMessage({ id: 'common.userStats.votes', defaultMessage: 'Votes' })}
+            numeric
+          />
           <FactCell
             value={user.lastSeenAt ? <TimeAgo date={user.lastSeenAt} /> : NO_VALUE}
-            label="Last seen"
+            label={intl.formatMessage({
+              id: 'admin.people.hover.lastSeen',
+              defaultMessage: 'Last seen',
+            })}
             muted={!user.lastSeenAt}
           />
-          <FactCell value={<ProfileDate date={user.joinedAt} />} label="Joined" />
+          <FactCell
+            value={<ProfileDate date={user.joinedAt} />}
+            label={intl.formatMessage({ id: 'admin.people.joined', defaultMessage: 'Joined' })}
+          />
           <FactCell
             value={user.country ? countryName(user.country) : NO_VALUE}
-            label="Country"
+            label={intl.formatMessage({ id: 'admin.people.country', defaultMessage: 'Country' })}
             muted={!user.country}
           />
         </div>
@@ -916,19 +1150,36 @@ export function UserDetail({
           <div className="min-w-0 w-full flex-1">
             <Tabs defaultValue="activity">
               <TabsList>
-                <TabsTrigger value="activity">Activity</TabsTrigger>
+                <TabsTrigger value="activity">
+                  {intl.formatMessage({
+                    id: 'admin.people.detail.activityTab',
+                    defaultMessage: 'Activity',
+                  })}
+                </TabsTrigger>
                 {supportInboxEnabled && (
                   <TabsTrigger value="conversations">
                     {conversationCount != null
-                      ? `Conversations (${conversationCount})`
-                      : 'Conversations'}
+                      ? intl.formatMessage(
+                          {
+                            id: 'admin.people.detail.conversationsTabCount',
+                            defaultMessage: 'Conversations ({count})',
+                          },
+                          { count: conversationCount }
+                        )
+                      : intl.formatMessage({
+                          id: 'admin.people.detail.conversationsTab',
+                          defaultMessage: 'Conversations',
+                        })}
                   </TabsTrigger>
                 )}
               </TabsList>
               <TabsContent value="activity" className="mt-3">
                 {user.engagedPosts.length === 0 ? (
                   <div className="rounded-lg border border-dashed border-border/60 px-4 py-6 text-center text-[13px] text-muted-foreground">
-                    No activity yet
+                    {intl.formatMessage({
+                      id: 'admin.people.detail.noActivity',
+                      defaultMessage: 'No activity yet',
+                    })}
                   </div>
                 ) : (
                   <div className="overflow-hidden rounded-lg border border-border/50">
@@ -947,28 +1198,39 @@ export function UserDetail({
           </div>
 
           <div className="flex w-full shrink-0 flex-col gap-3 lg:w-[300px]">
-            <RailCard title="Company">
-              <UserCompanyControl
-                principalId={user.principalId as PrincipalId}
-                canManage={canManageUsers}
-              />
-            </RailCard>
-            <RailCard title="Segments">
+            <RailCard
+              title={intl.formatMessage({
+                id: 'admin.people.hover.segments',
+                defaultMessage: 'Segments',
+              })}
+            >
               <UserSegmentBadges
                 principalId={user.principalId as PrincipalId}
                 segments={user.segments}
                 canManage={canManageUsers}
               />
             </RailCard>
-            <RailCard title="Tags">
+            <RailCard
+              title={intl.formatMessage({ id: 'admin.people.tags', defaultMessage: 'Tags' })}
+            >
               <UserTagControl
                 principalId={user.principalId as PrincipalId}
                 canManage={canManageUsers}
               />
             </RailCard>
-            <RailCard title="Attributes">
+            <RailCard
+              title={intl.formatMessage({
+                id: 'admin.people.detail.attributes',
+                defaultMessage: 'Attributes',
+              })}
+            >
               {attributes.length === 0 ? (
-                <p className="text-xs text-muted-foreground">No attributes</p>
+                <p className="text-xs text-muted-foreground">
+                  {intl.formatMessage({
+                    id: 'admin.people.detail.noAttributes',
+                    defaultMessage: 'No attributes',
+                  })}
+                </p>
               ) : (
                 attributes.map(([key, value]) => (
                   <KvRow key={key} label={key}>
@@ -983,11 +1245,26 @@ export function UserDetail({
                 ))
               )}
             </RailCard>
-            <RailCard title="Account">
-              <KvRow label="Account created">
+            <RailCard
+              title={intl.formatMessage({
+                id: 'admin.people.detail.account',
+                defaultMessage: 'Account',
+              })}
+            >
+              <KvRow
+                label={intl.formatMessage({
+                  id: 'admin.people.detail.accountCreated',
+                  defaultMessage: 'Account created',
+                })}
+              >
                 <ProfileDate date={user.createdAt} />
               </KvRow>
-              <KvRow label="External ID">
+              <KvRow
+                label={intl.formatMessage({
+                  id: 'admin.people.detail.externalId',
+                  defaultMessage: 'External ID',
+                })}
+              >
                 {externalId ? (
                   <span className="font-mono text-[11px]">{externalId}</span>
                 ) : (

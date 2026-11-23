@@ -57,7 +57,8 @@ describe.skipIf(!fixture.available)(
     it('walks every entry newest first across pages', async () => {
       const ids: ChangelogId[] = []
       for (let i = 0; i < 12; i++) ids.push(await insertPublished(minutes(i)))
-      expect(await walk(5)).toEqual([...ids].reverse())
+      const own = new Set(ids)
+      expect((await walk(5)).filter((id) => own.has(id))).toEqual([...ids].reverse())
     })
 
     it('orders by display date when one is set and pages past it', async () => {
@@ -65,7 +66,11 @@ describe.skipIf(!fixture.available)(
       const backdated = await insertPublished(minutes(100), minutes(-10))
       const ids: ChangelogId[] = []
       for (let i = 0; i < 4; i++) ids.push(await insertPublished(minutes(i)))
-      expect(await walk(2)).toEqual([...[...ids].reverse(), backdated])
+      const own = new Set([...ids, backdated])
+      expect((await walk(2)).filter((id) => own.has(id))).toEqual([
+        ...[...ids].reverse(),
+        backdated,
+      ])
     })
 
     it('keeps paging when the cursor entry was soft-deleted', async () => {

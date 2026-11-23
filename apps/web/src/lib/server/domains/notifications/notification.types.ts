@@ -28,10 +28,8 @@ export type NotificationType =
   | 'sla_warning'
   | 'sla_breach'
   | 'comment_mentioned'
-  | 'assistant_handed_off'
   | 'sending_domain_live'
   | 'sending_domain_needs_attention'
-  | 'domain_needs_attention'
 
 /**
  * Input for creating a single notification

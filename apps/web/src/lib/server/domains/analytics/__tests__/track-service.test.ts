@@ -3,9 +3,14 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 const mockValues = vi.fn().mockResolvedValue(undefined)
 const mockInsert = vi.fn(() => ({ values: mockValues }))
+const mockEnsurePageViewPartitionForToday = vi.fn().mockResolvedValue(undefined)
 vi.mock('@/lib/server/db', () => ({
   db: { insert: mockInsert, select: vi.fn() },
   pageViews: {},
+  ensurePageViewPartitionForToday: mockEnsurePageViewPartitionForToday,
+  isMissingPageViewPartition: (error: unknown) =>
+    (error as { code?: string })?.code === '23514' &&
+    String((error as { message?: string })?.message).includes('no partition of relation'),
   visitorDevices: { deviceId: 'deviceId', principalId: 'principalId' },
   conversations: {
     id: 'id',
@@ -39,12 +44,6 @@ vi.mock('@/lib/server/domains/settings/settings.service', () => ({
   isFeatureEnabled: mockIsFeatureEnabled,
 }))
 
-const mockIsVisitorAnalyticsEntitled = vi.fn()
-vi.mock('../visitor-tracking', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../visitor-tracking')>()
-  return { ...actual, isVisitorAnalyticsEntitled: mockIsVisitorAnalyticsEntitled }
-})
-
 const { recordPageView } = await import('../track.service')
 
 const CHROME_UA =
@@ -75,18 +74,9 @@ beforeEach(() => {
   mockIsFeatureEnabled.mockResolvedValue(true)
   mockIncrementBucket.mockResolvedValue({ count: 1 })
   mockGetDailySalt.mockResolvedValue('test-salt')
-  mockIsVisitorAnalyticsEntitled.mockResolvedValue(true)
 })
 
 describe('recordPageView', () => {
-  it('stores nothing for a workspace whose plan excludes visitor analytics', async () => {
-    mockIsVisitorAnalyticsEntitled.mockResolvedValue(false)
-
-    await recordPageView(makeRequest(validBeacon, { 'cf-ipcountry': 'DE' }))
-
-    expect(mockValues).not.toHaveBeenCalled()
-  })
-
   it('inserts a derived row for a valid beacon and never raw identifiers', async () => {
     await recordPageView(makeRequest(validBeacon, { 'cf-ipcountry': 'DE' }))
 
@@ -182,8 +172,39 @@ describe('recordPageView', () => {
     expect(mockValues).not.toHaveBeenCalled()
   })
 
-  it('swallows insert failures (missing partition) without throwing', async () => {
-    mockValues.mockRejectedValueOnce(new Error('no partition for 2026-07-01'))
+  it('creates a missing day partition and retries instead of dropping the view', async () => {
+    const missingPartition = Object.assign(
+      new Error('no partition of relation "page_views" found for row'),
+      { code: '23514' }
+    )
+    mockValues.mockRejectedValueOnce(missingPartition)
+
     await expect(recordPageView(makeRequest(validBeacon))).resolves.toBeUndefined()
+
+    expect(mockEnsurePageViewPartitionForToday).toHaveBeenCalledTimes(1)
+    expect(mockValues).toHaveBeenCalledTimes(2)
+  })
+
+  it('does not create a partition or retry for an unrelated insert failure', async () => {
+    mockValues.mockRejectedValueOnce(
+      Object.assign(new Error('connection reset'), { code: '08006' })
+    )
+
+    await expect(recordPageView(makeRequest(validBeacon))).resolves.toBeUndefined()
+
+    expect(mockEnsurePageViewPartitionForToday).not.toHaveBeenCalled()
+    expect(mockValues).toHaveBeenCalledTimes(1)
+  })
+
+  it('swallows a failed retry without throwing', async () => {
+    const missingPartition = Object.assign(
+      new Error('no partition of relation "page_views" found for row'),
+      { code: '23514' }
+    )
+    mockValues.mockRejectedValueOnce(missingPartition)
+    mockValues.mockRejectedValueOnce(new Error('still no partition'))
+
+    await expect(recordPageView(makeRequest(validBeacon))).resolves.toBeUndefined()
+    expect(mockValues).toHaveBeenCalledTimes(2)
   })
 })

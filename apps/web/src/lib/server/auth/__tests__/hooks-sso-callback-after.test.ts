@@ -178,45 +178,9 @@ describe('handleSsoCallbackAfter — bootstrap admin promotion', () => {
   // used to honour one, while the screen was telling the same browser
   // `openToClaim: false`. A screen that refuses and a promoter that honours is
   // the disagreement the shared module exists to prevent, inverted.
-  it('does NOT promote an arrival on a workspace a control plane created', async () => {
-    stamp.value = 'ws_acme'
-    mockTxFindFirst.mockResolvedValue(null)
-
-    await handleSsoCallbackAfter(
-      ctxFor({
-        path: '/oauth2/callback/:providerId',
-        providerParam: 'sso',
-        userId: 'user_first',
-      })
-    )
-
-    // Only the lastSsoSignInAt write, which is provider state rather than
-    // authority and stays unconditional.
-    expect(mockTxUpdateSet).toHaveBeenCalledTimes(1)
-    expect(mockTxUpdateSet).not.toHaveBeenCalledWith({ role: 'admin' })
-  })
-
   // The provenance read is a read that decides whether to hand out authority,
   // so it belongs inside the same lock window as the owner lookup rather than
   // racing it from outside. Asserted on the transaction's OWN executor.
-  it('asks the provenance question inside the lock', async () => {
-    stamp.value = 'ws_acme'
-
-    await handleSsoCallbackAfter(
-      ctxFor({
-        path: '/oauth2/callback/:providerId',
-        providerParam: 'sso',
-        userId: 'user_first',
-      })
-    )
-
-    const statements = mockExecute.mock.calls.map(([s]) =>
-      ((s as { strings?: TemplateStringsArray })?.strings ?? []).join('')
-    )
-    expect(statements[0]).toContain('pg_advisory_xact_lock')
-    expect(statements.findIndex((t) => t.includes('cloud_workspace_key'))).toBeGreaterThan(0)
-  })
-
   it('does NOT promote when a human admin already exists', async () => {
     mockTxFindFirst.mockResolvedValue({ id: 'principal_existing_admin' })
 

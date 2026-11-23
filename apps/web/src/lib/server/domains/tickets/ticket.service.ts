@@ -110,7 +110,7 @@ export async function loadTicketOr404(id: TicketId): Promise<Ticket> {
  * NotFound rather than a Forbidden that would leak the ticket's existence.
  *
  * Named `assertTicketVisible` (not `assertTicketViewable`) to stay distinct
- * from the assistant domain's `copilot-gate.ts` helper of that name, which
+ * from the removed assistant domain helper of that name, which
  * predates this one and now just delegates here — see its doc comment.
  */
 export async function assertTicketVisible(id: TicketId, actor: Actor): Promise<Ticket> {
@@ -309,7 +309,6 @@ export async function listTickets(filter: TicketListFilter, actor: Actor): Promi
         filter.requesterPrincipalId
           ? eq(tickets.requesterPrincipalId, filter.requesterPrincipalId)
           : undefined,
-        filter.companyId ? eq(tickets.companyId, filter.companyId) : undefined,
         searchCondition,
         // Keyset comparison for the active sort (re-resolved cursor row). id is
         // always the final tiebreak so a page boundary never dupes or skips.
@@ -335,9 +334,7 @@ export async function listTickets(filter: TicketListFilter, actor: Actor): Promi
  * tickets are born OWNED: the assignee defaults to the source conversation's
  * assignee (`input.sourceConversationId`, the create-from-a-conversation
  * flow), else to the creating agent — an explicit `input.assigneePrincipalId`
- * always wins and is validated like an `assignTicket` target. The company
- * propagates from the requester's own `principal.companyId` when the ticket
- * has a requester and no explicit company.
+ * always wins and is validated like an `assignTicket` target.
  *
  * Converged Messages (agent-only creation): a customer ticket opened FOR a
  * requester without a source conversation is born as its conversation pair
@@ -382,23 +379,10 @@ export async function createTicket(input: CreateTicketInput, actor: Actor): Prom
     if (creator && isTeamMember(creator.role)) assigneePrincipalId = defaultAssignee
   }
 
-  // Company propagation: the requester's own company fills in when nothing
-  // explicit was passed; a requester-less ticket stays company-less.
-  let companyId = input.companyId ?? null
-  if (!companyId && input.requesterPrincipalId) {
-    const [requester] = await db
-      .select({ companyId: principal.companyId })
-      .from(principal)
-      .where(eq(principal.id, input.requesterPrincipalId))
-      .limit(1)
-    companyId = requester?.companyId ?? null
-  }
-
   return createTicketCore(
     {
       ...input,
       assigneePrincipalId,
-      companyId,
       // The create-from-a-conversation flow stays standalone here — it links
       // its SOURCE conversation right after this call, and the pair unique
       // would reject that second link if a backing conversation were minted

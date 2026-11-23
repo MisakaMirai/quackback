@@ -40,13 +40,13 @@ describe('audit attribution context', () => {
   it('lets an inner boundary override the outer one for its subtree only', async () => {
     await runWithAuditAttribution(UI_ATTRIBUTION, async () => {
       const inner = await runWithAuditAttribution(
-        { channel: 'assistant', clientName: 'Quinn', onBehalfOfPrincipalId: CREATOR },
+        { channel: 'workflow', clientName: 'Quinn', onBehalfOfPrincipalId: CREATOR },
         async () => {
           await tick()
           return getAuditAttribution()
         }
       )
-      expect(inner).toMatchObject({ channel: 'assistant', onBehalfOfPrincipalId: CREATOR })
+      expect(inner).toMatchObject({ channel: 'workflow', onBehalfOfPrincipalId: CREATOR })
       expect(getAuditAttribution()).toEqual({ channel: 'ui' })
     })
   })

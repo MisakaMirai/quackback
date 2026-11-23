@@ -12,6 +12,7 @@ import { useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { IdpLogo } from '@/components/icons/idp-provider-icons'
 import { effectiveScopes, normalizeScopesInput } from '@/lib/shared/oidc-scopes'
 import {
@@ -136,13 +137,19 @@ export function ConnectionFields({
   existing: boolean
   optionsChildren?: React.ReactNode
 }) {
+  const intl = useOptionalIntl()
   const [changingKind, setChangingKind] = useState(!existing)
   const patch = (p: Partial<ConnectionDraft>) => onChange({ ...draft, ...p })
 
   return (
     <div className="space-y-6">
       <div className="space-y-3">
-        <Label>Provider</Label>
+        <Label>
+          {intl.formatMessage({
+            id: 'admin.settings.security.idp.provider',
+            defaultMessage: 'Provider',
+          })}
+        </Label>
         {changingKind ? (
           <ProviderKindPicker
             kind={draft.kind}
@@ -168,7 +175,10 @@ export function ConnectionFields({
               disabled={disabled}
               onClick={() => setChangingKind(true)}
             >
-              Change
+              {intl.formatMessage({
+                id: 'admin.settings.security.idp.change',
+                defaultMessage: 'Change',
+              })}
             </Button>
           </div>
         )}
@@ -187,7 +197,12 @@ export function ConnectionFields({
       </RedirectUriCallout>
 
       <div className="space-y-2">
-        <Label htmlFor="idp-client-id">Client ID</Label>
+        <Label htmlFor="idp-client-id">
+          {intl.formatMessage({
+            id: 'admin.settings.security.idp.clientId',
+            defaultMessage: 'Client ID',
+          })}
+        </Label>
         <Input
           id="idp-client-id"
           value={draft.clientId}
@@ -197,7 +212,12 @@ export function ConnectionFields({
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="idp-client-secret">Client secret</Label>
+        <Label htmlFor="idp-client-secret">
+          {intl.formatMessage({
+            id: 'admin.settings.security.idp.clientSecret',
+            defaultMessage: 'Client secret',
+          })}
+        </Label>
         <Input
           id="idp-client-secret"
           type="password"
@@ -205,7 +225,14 @@ export function ConnectionFields({
           spellCheck={false}
           value={draft.secret}
           onChange={(e) => patch({ secret: e.target.value })}
-          placeholder={existing ? 'Leave blank to keep the current secret' : undefined}
+          placeholder={
+            existing
+              ? intl.formatMessage({
+                  id: 'admin.settings.security.idp.keepCurrentSecret',
+                  defaultMessage: 'Leave blank to keep the current secret',
+                })
+              : undefined
+          }
           disabled={disabled}
         />
       </div>

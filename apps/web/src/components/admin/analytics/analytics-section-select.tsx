@@ -5,6 +5,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import type { Section, SectionNavItem } from './analytics-sections'
 
 interface AnalyticsSectionSelectProps {
@@ -17,9 +18,17 @@ interface AnalyticsSectionSelectProps {
  *  truth on large screens; below `lg` this stands in for it so no section is
  *  ever unreachable. */
 export function AnalyticsSectionSelect({ items, value, onChange }: AnalyticsSectionSelectProps) {
+  const intl = useOptionalIntl()
   return (
     <Select value={value} onValueChange={(v) => onChange(v as Section)}>
-      <SelectTrigger size="sm" className="w-44" aria-label="Section">
+      <SelectTrigger
+        size="sm"
+        className="w-44"
+        aria-label={intl.formatMessage({
+          id: 'admin.analytics.sectionSelector.aria',
+          defaultMessage: 'Section',
+        })}
+      >
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
@@ -27,7 +36,7 @@ export function AnalyticsSectionSelect({ items, value, onChange }: AnalyticsSect
           <SelectItem key={key} value={key}>
             <span className="flex items-center gap-2">
               <Icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-              {label}
+              {intl.formatMessage(label)}
             </span>
           </SelectItem>
         ))}

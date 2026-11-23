@@ -4,9 +4,8 @@
  * conversation gets every capability; a ticket's subtype (customer vs
  * back_office/tracker) narrows the composer to note-only and drops the
  * conversation-specific extras (macros, typing, convert-to-post, link
- * previews, translation, deep-link jump, the composer's emoji picker) while
- * keeping the inbox message actions (reactions, flags, mark-unread, delete)
- * and live SSE.
+ * previews, deep-link jump, the composer's emoji picker) while keeping the
+ * inbox message actions (reactions, flags, mark-unread, delete) and live SSE.
  *
  * Kept as a plain data table (no branching logic in the thread component
  * itself beyond reading these flags) so the capability matrix in the spec and
@@ -25,8 +24,6 @@ export interface ThreadCapabilities {
   convertToPost: boolean
   /** External link-unfurl previews (composer + bubbles). */
   linkPreviews: boolean
-  /** P2-D.1 two-way inbox translation. */
-  inboxTranslation: boolean
   /** "Saved for later" / notification deep-link jump-to-message + flash. */
   deepLinkJump: boolean
   /** The composer's insert-emoji picker button. */
@@ -40,7 +37,6 @@ export const CONVERSATION_CAPABILITIES: ThreadCapabilities = {
   macros: true,
   convertToPost: true,
   linkPreviews: true,
-  inboxTranslation: true,
   deepLinkJump: true,
   emojiPicker: true,
 }
@@ -57,7 +53,6 @@ export function ticketCapabilities(type: TicketType): ThreadCapabilities {
     macros: false,
     convertToPost: false,
     linkPreviews: false,
-    inboxTranslation: false,
     deepLinkJump: false,
     emojiPicker: false,
   }

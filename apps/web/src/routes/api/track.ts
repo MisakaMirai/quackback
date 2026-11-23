@@ -1,5 +1,4 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { corsHeaders, preflightResponse } from '@/lib/server/integrations/apps/cors'
 import { recordPageView } from '@/lib/server/domains/analytics/track.service'
 
 /**
@@ -11,6 +10,20 @@ import { recordPageView } from '@/lib/server/domains/analytics/track.service'
  * simple requests. Always answers 204 — invalid input is dropped, never
  * signaled.
  */
+const CORS_HEADERS: Record<string, string> = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type',
+  'Access-Control-Max-Age': '86400',
+}
+
+const corsHeaders = (): Record<string, string> => ({
+  ...CORS_HEADERS,
+  'Cache-Control': 'no-store, private',
+})
+
+const preflightResponse = (): Response => new Response(null, { status: 204, headers: CORS_HEADERS })
+
 export const Route = createFileRoute('/api/track')({
   server: {
     handlers: {

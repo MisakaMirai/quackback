@@ -55,7 +55,7 @@ status. Unverified destination data can only create a review for a current scope
 link, never an automatic update.
 
 Stripe, Freshdesk, and Salesforce use the same on-demand customer-context contract
-and settings control as HubSpot, Intercom, and Zendesk. Their obsolete event hooks
+and settings control as HubSpot and Intercom. Their obsolete event hooks
 and configuration panels are removed. All authenticated capability paths use the
 shared token resolver; configuration and credentials can be read together. Refresh
 is serialized, reuses the transaction connection for platform credentials, and
@@ -109,7 +109,7 @@ Resolved payloads/results and attempts expire after 90 days. Compact operation i
 This is a single offline replacement. There is no compatibility release, legacy importer, backfill command, operator activation gate, or mixed-version runtime.
 
 1. Stop and drain the earlier application and workers, including webhook ingress, event dispatch and Slack app workers. Wait for in-flight requests to end and back up the workspace databases. Old writers must not restart.
-2. Apply the new release's migrations through the normal workspace/fleet migrator. Migration 0284 records `integration_sync_start.started_at`, creates the ledger, and deletes retired integration jobs and post-create receipts. Migration 0285 scopes link uniqueness; existing links retain an empty scope as references only. Migration 0286 adds privacy erasure. All are idempotent. No prior delivery becomes a new sync operation.
+2. Apply the new release's migrations through the normal migration step (`QUACKBACK_ROLE=migrator`, or the entrypoint's startup migration). Migration 0284 records `integration_sync_start.started_at`, creates the ledger, and deletes retired integration jobs and post-create receipts. Migration 0285 scopes link uniqueness; existing links retain an empty scope as references only. Migration 0286 adds privacy erasure. All are idempotent. No prior delivery becomes a new sync operation.
 3. Start only the new release. The planned release containing this change is **0.13.3**, which is the minimum writer version in migration 0285's `safe-after` annotation. If release numbering changes, update the annotation to the actual release containing this implementation. No separately shipped compatibility change is required.
 4. Verify `integration-sync`, `integration-sync-sweep` and Sync history on a canary workspace using newly created test items. Check permissions, inbound updates, health and recovery before expanding the rollout.
 
@@ -155,8 +155,6 @@ Cross-provider follow-up validation on 2026-09-21:
 - After the final reconnect fence: **31 auth/provider-flow tests passed**. The
   real one-connection pool test preserves refresh serialization without a nested
   global connection. The remote-inspection race test rejects new-install credentials.
-- OAuth fragment/gateway and same-origin checks passed, including tenant-origin
-  handoff after a shared gateway bounce and rejection of gateway-origin token POSTs.
 - Browser checks covered all six customer-context labels at desktop/mobile widths,
   inbound status review in light/dark mode, and failed saves retaining the current
   value. No page errors or horizontal overflow. A separate browser check executed

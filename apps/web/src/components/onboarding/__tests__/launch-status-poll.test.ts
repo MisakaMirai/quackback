@@ -13,7 +13,6 @@ const supportOnly: LaunchStatus = {
     helpCenter: false,
     statusPage: false,
     integrations: true,
-    assistant: false,
   },
 }
 
@@ -23,7 +22,7 @@ describe('launch status polling', () => {
   })
 
   it('keeps polling with every chore done, until the first win', () => {
-    const chores = { ...supportOnly, hasWidgetInstalled: true, hasWidgetEnabled: true }
+    const chores = { ...supportOnly }
     expect(launchStatusRefetchInterval(chores)).toBe(15_000)
     expect(launchStatusRefetchInterval({ ...chores, hasFirstWin: true })).toBe(false)
   })

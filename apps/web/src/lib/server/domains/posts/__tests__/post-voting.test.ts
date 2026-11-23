@@ -203,7 +203,7 @@ describe('addVoteOnBehalf', () => {
     const result = await addVoteOnBehalf(
       POST_ID,
       PRINCIPAL_ID,
-      { type: 'zendesk', externalUrl: 'https://zendesk.com/ticket/123' },
+      { type: 'intercom', externalUrl: 'https://intercom.com/ticket/123' },
       ADMIN_ID
     )
 

@@ -3,8 +3,8 @@
  * updateMemberRole, the path behind the members "Add people" dialog, the
  * single-row server fn, and REST PATCH /principals/:id. A portal user who has
  * signed in joins the team at once; everyone else (never signed in, widget
- * only, anonymous, support) is refused. Seats and the admin grant ceiling
- * apply to promotion and to ordinary role changes alike, and the undo path
+ * only, anonymous, support) is refused. The admin grant ceiling applies to
+ * promotion and to ordinary role changes alike, and the undo path
  * (removeTeamMember) puts a just-promoted person back.
  */
 import { describe, it, expect, vi, beforeEach, afterEach, afterAll } from 'vitest'
@@ -46,15 +46,12 @@ vi.mock('@/lib/server/domains/principals/membership-sync', () => ({
 }))
 
 const { updateMemberRole, removeTeamMember } = await import('../principal.service')
-const { invalidateTierLimitsCache } =
-  await import('@/lib/server/domains/settings/tier-limits.service')
 
 const fixture = await createDbTestFixture({
   probe: async (db) => {
     await db.select({ id: principal.id, type: principal.type }).from(principal).limit(0)
     await db.select({ id: account.id }).from(account).limit(0)
     await db.select({ id: session.id, scope: session.scope }).from(session).limit(0)
-    await db.select({ id: settings.id, tierLimits: settings.tierLimits }).from(settings).limit(0)
   },
 })
 
@@ -133,23 +130,16 @@ async function inviteStatus(id: string) {
   return row.status
 }
 
-/** Set the workspace seat cap to `used + free` so exactly `free` seats remain. */
-async function setFreeSeats(free: number) {
-  const { used } = await countSeatUsage(testDb)
-  const tierLimits = JSON.stringify({ maxTeamSeats: used + free })
+/** The seat-ledger lock needs a settings row to exist, even with no cap. */
+async function seedSettings() {
   const existing = await testDb.select({ id: settings.id }).from(settings)
-  if (existing.length === 0) {
-    await testDb.insert(settings).values({
-      id: createId('workspace'),
-      name: 'Acme',
-      slug: `acme-${suffix()}`,
-      createdAt: new Date(),
-      tierLimits,
-    })
-  } else {
-    await testDb.update(settings).set({ tierLimits }).where(eq(settings.id, existing[0].id))
-  }
-  invalidateTierLimitsCache()
+  if (existing.length > 0) return
+  await testDb.insert(settings).values({
+    id: createId('workspace'),
+    name: 'Acme',
+    slug: `acme-${suffix()}`,
+    createdAt: new Date(),
+  })
 }
 
 async function roleOf(principalId: PrincipalId) {
@@ -166,12 +156,9 @@ const actor = { userId: null, email: 'admin@example.com', role: 'admin', type: '
 if (fixture.available) {
   beforeEach(async () => {
     await fixture.begin()
-    await setFreeSeats(100)
+    await seedSettings()
   })
-  afterEach(() => {
-    invalidateTierLimitsCache()
-    return fixture.rollback()
-  })
+  afterEach(() => fixture.rollback())
   afterAll(() => fixture.close())
 }
 
@@ -259,28 +246,9 @@ describe.skipIf(!fixture.available)('updateMemberRole: promoting a portal user',
     ).rejects.toMatchObject({ code: 'MEMBER_NOT_FOUND' })
   })
 
-  it('needs a free seat; with none, nothing changes and the error states needed and free', async () => {
-    const admin = await seedPerson({ role: 'admin' })
-    const target = await seedPerson({ role: 'user' })
-    await setFreeSeats(0)
-
-    await expect(
-      updateMemberRole(target.principalId, 'member', admin.principalId, actor, undefined, {
-        granterPermissions: ALL_PERMISSIONS,
-        granterRole: 'admin',
-      })
-    ).rejects.toMatchObject({
-      code: 'SEAT_LIMIT',
-      message: expect.stringMatching(/needs 1.*0 are free/),
-    })
-    expect(await roleOf(target.principalId)).toBe('user')
-    expect(await auditRows(target.principalId)).toEqual([])
-  })
-
-  it('a role change between teammates takes no extra seat', async () => {
+  it("changes a teammate's role", async () => {
     const admin = await seedPerson({ role: 'admin' })
     const target = await seedPerson({ role: 'member' })
-    await setFreeSeats(0)
 
     await updateMemberRole(target.principalId, 'admin', admin.principalId, actor, undefined, {
       granterPermissions: ALL_PERMISSIONS,
@@ -390,11 +358,10 @@ describe.skipIf(!fixture.available)('signed in by email, with no live session', 
 })
 
 describe.skipIf(!fixture.available)('a pending team invite for the person', () => {
-  it('reuses the invite seat and retires the invite in the same write', async () => {
+  it('retires the pending invite in the same write', async () => {
     const admin = await seedPerson({ role: 'admin' })
     const target = await seedPerson({ role: 'user' })
     const inviteId = await seedPendingInvite(target.email, admin.userId)
-    await setFreeSeats(0) // the pending invite already holds their seat
 
     await updateMemberRole(target.principalId, 'admin', admin.principalId, actor, undefined, {
       granterPermissions: ALL_PERMISSIONS,

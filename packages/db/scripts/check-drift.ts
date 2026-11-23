@@ -98,14 +98,6 @@ const SCRATCH_DB = 'quackback_drift_check'
  */
 const EXEMPTIONS: { reason: string; pattern: RegExp; optional?: boolean }[] = [
   {
-    reason: 'workspace turn dedupe: jsonb expression member does not round-trip introspection',
-    pattern: /^CREATE UNIQUE INDEX "conversation_messages_workspace_run_sender_idx"/,
-  },
-  {
-    reason: 'workspace turn dedupe: jsonb expression member does not round-trip introspection',
-    pattern: /^DROP INDEX "conversation_messages_workspace_run_sender_idx"/,
-  },
-  {
     reason:
       'drizzle-kit composite PK column-order rewrite on PG 17; identical named key and columns',
     pattern:
@@ -222,46 +214,11 @@ const EXEMPTIONS: { reason: string; pattern: RegExp; optional?: boolean }[] = [
     pattern: /^DROP INDEX "conversation_tags_name_lower_key"/,
   },
   {
-    // HNSW cosine indexes over embedding columns (migrations 0203 + 0209).
-    // drizzle-kit cannot round-trip an hnsw partial index (vector_cosine_ops
-    // opclass + partial predicate), so it emits a spurious drop/create pair for
-    // every one. Each listed index is created by a migration or by
-    // CONCURRENT_INDEX_SPECS, so a genuinely unbuilt hnsw index (a new,
-    // unlisted name) still fails the check.
-    reason:
-      'hnsw vector_cosine_ops partial index is not faithfully round-tripped by drizzle-kit; drop half of the spurious pair',
-    pattern:
-      /^DROP INDEX "(posts|kb_articles|feedback_signals|feedback_suggestions|assistant_snippets|assistant_documents|conversation_summaries|ticket_summaries|changelog)_embedding_hnsw_idx"/,
-  },
-  {
-    reason:
-      'hnsw vector_cosine_ops partial index is not faithfully round-tripped by drizzle-kit; create half of the spurious pair',
-    pattern:
-      /^CREATE INDEX "(posts|kb_articles|feedback_signals|feedback_suggestions|assistant_snippets|assistant_documents|conversation_summaries|ticket_summaries|changelog)_embedding_hnsw_idx" ON "\w+" USING hnsw /,
-  },
-  {
     // Same empty text[] default false positive as invitation.magic_link_tokens
-    // above: '{}'::text[] reads back as '{""}', so drizzle-kit always thinks the
-    // default changed. Semantically identical. (apps, 0193.)
-    reason: 'drizzle-kit false positive: empty text[] default reads back as \'{""}\'',
-    pattern:
-      /^ALTER TABLE "apps" ALTER COLUMN "(granted_scopes|subscribed_event_types)" SET DEFAULT '\{\}';?$/,
-  },
-  {
-    // Same empty text[] default false positive as apps / invitation
-    // (0279 Better Auth 1.7 oauth_client.client_credentials_scopes).
+    // above (0279 Better Auth 1.7 oauth_client.client_credentials_scopes).
     reason: 'drizzle-kit false positive: empty text[] default reads back as \'{""}\'',
     pattern:
       /^ALTER TABLE "oauth_client" ALTER COLUMN "client_credentials_scopes" SET DEFAULT '\{\}';?$/,
-  },
-  {
-    // The settings.assistant_config jsonb default (0204) is byte-identical in TS,
-    // but postgres normalizes the stored jsonb literal (spacing/formatting) so
-    // drizzle-kit's introspected default never string-matches the TS default.
-    reason:
-      'drizzle-kit false positive: jsonb default is normalized by postgres and no longer string-matches TS',
-    pattern:
-      /^ALTER TABLE "settings" ALTER COLUMN "assistant_config" SET DEFAULT '\{"version":4,.*\}'::jsonb;?$/,
   },
   {
     // dispatch_owner is rollout compatibility state owned by migrations 0253/0254.
@@ -290,24 +247,6 @@ const EXEMPTIONS: { reason: string; pattern: RegExp; optional?: boolean }[] = [
     optional: true,
   },
   {
-    reason: 'drizzle-kit no-op composite PK rename for workspace-keyed two-column stores on PG 17',
-    pattern:
-      /^ALTER TABLE "(kv_store|rate_bucket)" (?:DROP CONSTRAINT "\1_pkey"|ADD CONSTRAINT "\1_workspace_key_key_pk" PRIMARY KEY\("workspace_key","key"\));?$/,
-    optional: true,
-  },
-  {
-    reason: 'drizzle-kit no-op composite PK rename for workspace-keyed kv_set_member on PG 17',
-    pattern:
-      /^ALTER TABLE "kv_set_member" (?:DROP CONSTRAINT "kv_set_member_pkey"|ADD CONSTRAINT "kv_set_member_workspace_key_set_key_member_pk" PRIMARY KEY\("workspace_key","set_key","member"\));?$/,
-    optional: true,
-  },
-  {
-    reason: 'drizzle-kit no-op composite PK rename for workspace-keyed presence_stream on PG 17',
-    pattern:
-      /^ALTER TABLE "presence_stream" (?:DROP CONSTRAINT "presence_stream_pkey"|ADD CONSTRAINT "presence_stream_workspace_key_principal_id_stream_id_pk" PRIMARY KEY\("workspace_key","principal_id","stream_id"\));?$/,
-    optional: true,
-  },
-  {
     // The ownership stamp is deliberately read through to_jsonb() and omitted
     // from the ORM schema so older self-hosted databases can still serve while
     // the additive migration rolls out. Raw SQL owns this column.
@@ -320,12 +259,6 @@ const EXEMPTIONS: { reason: string; pattern: RegExp; optional?: boolean }[] = [
     // declaration would be a second owner for a column raw SQL already owns.
     reason: 'settings.cloud_secret_canary is a raw-SQL-only custody column',
     pattern: /^ALTER TABLE "settings" DROP COLUMN "cloud_secret_canary";?$/,
-  },
-  {
-    // The migration owns this partial index because it must sit after the
-    // guarded tenant_id-to-workspace_key rename and remain replay-safe.
-    reason: 'presence agent heartbeat index is raw-SQL-owned rename-completion DDL',
-    pattern: /^DROP INDEX "presence_stream_agents_idx";?$/,
   },
 ]
 

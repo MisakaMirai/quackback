@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { type MessageDescriptor } from 'react-intl'
 import {
   EnvelopeIcon,
   CalendarIcon,
@@ -23,6 +24,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { useUserAttributes } from '@/lib/client/hooks/use-user-attributes-queries'
 import type { UsersFilters } from '@/lib/shared/types'
 
@@ -48,26 +50,114 @@ type FilterCategory =
 
 interface FilterCategoryDef {
   key: FilterCategory
-  label: string
+  label: MessageDescriptor
   icon: typeof EnvelopeIcon
 }
 
 const FILTER_CATEGORIES: FilterCategoryDef[] = [
-  { key: 'verified', label: 'Email Status', icon: EnvelopeIcon },
-  { key: 'emailDomain', label: 'Email Domain', icon: GlobeAltIcon },
-  { key: 'date', label: 'Date Joined', icon: CalendarIcon },
-  { key: 'postCount', label: 'Post Count', icon: DocumentTextIcon },
-  { key: 'voteCount', label: 'Vote Count', icon: HandThumbUpIcon },
-  { key: 'commentCount', label: 'Comment Count', icon: ChatBubbleLeftIcon },
+  {
+    key: 'verified',
+    label: { id: 'admin.people.filters.categoryVerified', defaultMessage: 'Email Status' },
+    icon: EnvelopeIcon,
+  },
+  {
+    key: 'emailDomain',
+    label: { id: 'admin.people.filters.categoryEmailDomain', defaultMessage: 'Email Domain' },
+    icon: GlobeAltIcon,
+  },
+  {
+    key: 'date',
+    label: { id: 'admin.people.filters.categoryDate', defaultMessage: 'Date Joined' },
+    icon: CalendarIcon,
+  },
+  {
+    key: 'postCount',
+    label: { id: 'admin.people.filters.categoryPostCount', defaultMessage: 'Post Count' },
+    icon: DocumentTextIcon,
+  },
+  {
+    key: 'voteCount',
+    label: { id: 'admin.people.filters.categoryVoteCount', defaultMessage: 'Vote Count' },
+    icon: HandThumbUpIcon,
+  },
+  {
+    key: 'commentCount',
+    label: { id: 'admin.people.filters.categoryCommentCount', defaultMessage: 'Comment Count' },
+    icon: ChatBubbleLeftIcon,
+  },
 ]
 
-const ACTIVITY_OPERATORS = [
-  { value: 'gte', label: 'at least' },
-  { value: 'gt', label: 'more than' },
-  { value: 'lte', label: 'at most' },
-  { value: 'lt', label: 'less than' },
-  { value: 'eq', label: 'exactly' },
+const ACTIVITY_OPERATORS: { value: string; label: MessageDescriptor }[] = [
+  {
+    value: 'gte',
+    label: { id: 'admin.segments.operator.atLeast', defaultMessage: 'at least' },
+  },
+  {
+    value: 'gt',
+    label: { id: 'admin.people.filters.moreThan', defaultMessage: 'more than' },
+  },
+  {
+    value: 'lte',
+    label: { id: 'admin.segments.operator.atMost', defaultMessage: 'at most' },
+  },
+  {
+    value: 'lt',
+    label: { id: 'admin.segments.operator.lessThan', defaultMessage: 'less than' },
+  },
+  {
+    value: 'eq',
+    label: { id: 'admin.people.filters.exactly', defaultMessage: 'exactly' },
+  },
 ]
+
+const BOOLEAN_OPERATORS: { value: string; label: MessageDescriptor }[] = [
+  { value: 'eq', label: { id: 'admin.segments.operator.is', defaultMessage: 'is' } },
+]
+
+const TEXT_OPERATORS: { value: string; label: MessageDescriptor }[] = [
+  { value: 'eq', label: { id: 'admin.segments.operator.equals', defaultMessage: 'equals' } },
+  {
+    value: 'neq',
+    label: { id: 'admin.segments.operator.notEquals', defaultMessage: 'not equals' },
+  },
+  {
+    value: 'contains',
+    label: { id: 'admin.segments.operator.contains', defaultMessage: 'contains' },
+  },
+  { value: 'is_set', label: { id: 'admin.segments.operator.isSet', defaultMessage: 'is set' } },
+  {
+    value: 'is_not_set',
+    label: { id: 'admin.segments.operator.isNotSet', defaultMessage: 'is not set' },
+  },
+]
+
+const CUSTOM_ATTR_OPERATOR_LABELS: Record<string, MessageDescriptor> = {
+  eq: { id: 'admin.segments.operator.equals', defaultMessage: 'equals' },
+  neq: { id: 'admin.segments.operator.notEquals', defaultMessage: 'not equals' },
+  contains: { id: 'admin.segments.operator.contains', defaultMessage: 'contains' },
+  starts_with: { id: 'admin.people.filters.startsWith', defaultMessage: 'starts with' },
+  ends_with: { id: 'admin.people.filters.endsWith', defaultMessage: 'ends with' },
+  is_set: { id: 'admin.segments.operator.isSet', defaultMessage: 'is set' },
+  is_not_set: { id: 'admin.segments.operator.isNotSet', defaultMessage: 'is not set' },
+  gt: { id: 'admin.people.filters.moreThan', defaultMessage: 'more than' },
+  gte: { id: 'admin.segments.operator.atLeast', defaultMessage: 'at least' },
+  lt: { id: 'admin.segments.operator.lessThan', defaultMessage: 'less than' },
+  lte: { id: 'admin.segments.operator.atMost', defaultMessage: 'at most' },
+}
+
+const DATE_PRESET_LABELS: Record<(typeof DATE_PRESETS)[number]['value'], MessageDescriptor> = {
+  today: { id: 'portal.feedback.filter.date.today', defaultMessage: 'Today' },
+  '7days': { id: 'portal.feedback.filter.date.last7Days', defaultMessage: 'Last 7 days' },
+  '30days': { id: 'portal.feedback.filter.date.last30Days', defaultMessage: 'Last 30 days' },
+  '90days': { id: 'portal.feedback.filter.date.last90Days', defaultMessage: 'Last 90 days' },
+}
+
+function datePresetLabel(
+  intl: ReturnType<typeof useOptionalIntl>,
+  preset: (typeof DATE_PRESETS)[number]
+): string {
+  return intl.formatMessage(DATE_PRESET_LABELS[preset.value])
+}
 
 function parseActivityValue(raw?: string): { op: string; value: string } | null {
   if (!raw) return null
@@ -76,8 +166,13 @@ function parseActivityValue(raw?: string): { op: string; value: string } | null 
   return { op, value: val }
 }
 
-function formatActivityValue(op: string, value: string): string {
-  const opLabel = ACTIVITY_OPERATORS.find((o) => o.value === op)?.label ?? op
+function formatActivityValue(
+  op: string,
+  value: string,
+  intl: ReturnType<typeof useOptionalIntl>
+): string {
+  const operator = ACTIVITY_OPERATORS.find((o) => o.value === op)
+  const opLabel = operator ? intl.formatMessage(operator.label) : op
   return `${opLabel} ${value}`
 }
 
@@ -88,6 +183,7 @@ function ActivityFilterInput({
   onApply: (opValue: string) => void
   onClose: () => void
 }) {
+  const intl = useOptionalIntl()
   const [op, setOp] = useState('gte')
   const [value, setValue] = useState('')
 
@@ -100,7 +196,7 @@ function ActivityFilterInput({
         <SelectContent>
           {ACTIVITY_OPERATORS.map((o) => (
             <SelectItem key={o.value} value={o.value}>
-              {o.label}
+              {intl.formatMessage(o.label)}
             </SelectItem>
           ))}
         </SelectContent>
@@ -129,7 +225,7 @@ function ActivityFilterInput({
           }
         }}
       >
-        Apply
+        {intl.formatMessage({ id: 'admin.people.filters.apply', defaultMessage: 'Apply' })}
       </Button>
     </div>
   )
@@ -144,6 +240,7 @@ function TextFilterInput({
   onApply: (value: string) => void
   onClose: () => void
 }) {
+  const intl = useOptionalIntl()
   const [value, setValue] = useState('')
 
   return (
@@ -172,7 +269,7 @@ function TextFilterInput({
           }
         }}
       >
-        Apply
+        {intl.formatMessage({ id: 'admin.people.filters.apply', defaultMessage: 'Apply' })}
       </Button>
     </div>
   )
@@ -189,23 +286,14 @@ function CustomAttrFilterInput({
   onApply: (encoded: string) => void
   onClose: () => void
 }) {
+  const intl = useOptionalIntl()
   const isNumeric = attrType === 'number' || attrType === 'currency' || attrType === 'date'
   const isBool = attrType === 'boolean'
 
   const [op, setOp] = useState(isNumeric ? 'gte' : isBool ? 'eq' : 'eq')
   const [value, setValue] = useState(isBool ? 'true' : '')
 
-  const operators = isNumeric
-    ? ACTIVITY_OPERATORS
-    : isBool
-      ? [{ value: 'eq', label: 'is' }]
-      : [
-          { value: 'eq', label: 'equals' },
-          { value: 'neq', label: 'not equals' },
-          { value: 'contains', label: 'contains' },
-          { value: 'is_set', label: 'is set' },
-          { value: 'is_not_set', label: 'is not set' },
-        ]
+  const operators = isNumeric ? ACTIVITY_OPERATORS : isBool ? BOOLEAN_OPERATORS : TEXT_OPERATORS
 
   const isPresenceOp = op === 'is_set' || op === 'is_not_set'
 
@@ -224,7 +312,7 @@ function CustomAttrFilterInput({
         <SelectContent>
           {operators.map((o) => (
             <SelectItem key={o.value} value={o.value}>
-              {o.label}
+              {intl.formatMessage(o.label)}
             </SelectItem>
           ))}
         </SelectContent>
@@ -236,15 +324,26 @@ function CustomAttrFilterInput({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="true">True</SelectItem>
-              <SelectItem value="false">False</SelectItem>
+              <SelectItem value="true">
+                {intl.formatMessage({ id: 'admin.segments.rule.true', defaultMessage: 'True' })}
+              </SelectItem>
+              <SelectItem value="false">
+                {intl.formatMessage({ id: 'admin.segments.rule.false', defaultMessage: 'False' })}
+              </SelectItem>
             </SelectContent>
           </Select>
         ) : (
           <Input
             type={isNumeric ? 'number' : 'text'}
             className="h-7 text-xs"
-            placeholder={isNumeric ? '0' : 'value'}
+            placeholder={
+              isNumeric
+                ? '0'
+                : intl.formatMessage({
+                    id: 'admin.people.filters.valuePlaceholder',
+                    defaultMessage: 'value',
+                  })
+            }
             value={value}
             onChange={(e) => setValue(e.target.value)}
             onKeyDown={(e) => {
@@ -258,7 +357,7 @@ function CustomAttrFilterInput({
         disabled={!isPresenceOp && !value.trim()}
         onClick={handleApply}
       >
-        Apply
+        {intl.formatMessage({ id: 'admin.people.filters.apply', defaultMessage: 'Apply' })}
       </Button>
     </div>
   )
@@ -272,6 +371,7 @@ export function UsersFilterButton({
   onFiltersChange: (updates: Partial<UsersFilters>) => void
   filters: UsersFilters
 }) {
+  const intl = useOptionalIntl()
   const [open, setOpen] = useState(false)
   const [activeCategory, setActiveCategory] = useState<FilterCategory | null>(null)
   const [activeCustomAttr, setActiveCustomAttr] = useState<{
@@ -379,7 +479,7 @@ export function UsersFilterButton({
                 >
                   <span className="flex items-center gap-2">
                     <Icon className="size-4 text-muted-foreground" />
-                    {category.label}
+                    {intl.formatMessage(category.label)}
                   </span>
                   <ChevronRightIcon className="h-3 w-3 text-muted-foreground" />
                 </button>
@@ -389,7 +489,10 @@ export function UsersFilterButton({
               <>
                 <div className="border-b border-border/30 my-1" />
                 <div className="px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  Custom attributes
+                  {intl.formatMessage({
+                    id: 'admin.segments.rule.customAttributes',
+                    defaultMessage: 'Custom attributes',
+                  })}
                 </div>
                 {availableCustomAttrs.map((attr) => (
                   <button
@@ -422,7 +525,7 @@ export function UsersFilterButton({
               className="w-full flex items-center gap-2 px-2.5 py-1.5 text-[13px] text-muted-foreground hover:text-foreground border-b border-border/50"
             >
               <ChevronRightIcon className="h-2.5 w-2.5 rotate-180" />
-              Back
+              {intl.formatMessage({ id: 'admin.people.filters.back', defaultMessage: 'Back' })}
             </button>
             <div className="max-h-[250px] overflow-y-auto">
               {activeCategory === 'verified' && (
@@ -432,14 +535,20 @@ export function UsersFilterButton({
                     onClick={() => handleSelectVerified(true)}
                     className="w-full flex items-center gap-2 px-2.5 py-1.5 text-[13px] hover:bg-muted/50 transition-colors"
                   >
-                    Verified only
+                    {intl.formatMessage({
+                      id: 'admin.people.filters.verifiedOnly',
+                      defaultMessage: 'Verified only',
+                    })}
                   </button>
                   <button
                     type="button"
                     onClick={() => handleSelectVerified(false)}
                     className="w-full flex items-center gap-2 px-2.5 py-1.5 text-[13px] hover:bg-muted/50 transition-colors"
                   >
-                    Unverified only
+                    {intl.formatMessage({
+                      id: 'admin.people.filters.unverifiedOnly',
+                      defaultMessage: 'Unverified only',
+                    })}
                   </button>
                 </div>
               )}
@@ -453,7 +562,7 @@ export function UsersFilterButton({
                       onClick={() => handleSelectDate(preset)}
                       className="w-full flex items-center gap-2 px-2.5 py-1.5 text-[13px] hover:bg-muted/50 transition-colors"
                     >
-                      {preset.label}
+                      {datePresetLabel(intl, preset)}
                     </button>
                   ))}
                 </div>
@@ -517,22 +626,43 @@ function formatDate(dateStr: string): string {
 
 function computeActiveFilters(
   filters: UsersFilters,
-  onFiltersChange: (updates: Partial<UsersFilters>) => void
+  onFiltersChange: (updates: Partial<UsersFilters>) => void,
+  intl: ReturnType<typeof useOptionalIntl>
 ): ActiveFilter[] {
   const result: ActiveFilter[] = []
 
   // Verified filter
   const verifiedOptions: FilterOption[] = [
-    { id: 'verified', label: 'Verified' },
-    { id: 'unverified', label: 'Unverified' },
+    {
+      id: 'verified',
+      label: intl.formatMessage({
+        id: 'admin.people.filters.verified',
+        defaultMessage: 'Verified',
+      }),
+    },
+    {
+      id: 'unverified',
+      label: intl.formatMessage({
+        id: 'admin.people.filters.unverified',
+        defaultMessage: 'Unverified',
+      }),
+    },
   ]
 
   if (filters.verified !== undefined) {
     result.push({
       key: 'verified',
       type: 'verified',
-      label: 'Email:',
-      value: filters.verified ? 'Verified' : 'Unverified',
+      label: intl.formatMessage({
+        id: 'admin.people.filters.chipEmail',
+        defaultMessage: 'Email:',
+      }),
+      value: filters.verified
+        ? intl.formatMessage({ id: 'admin.people.filters.verified', defaultMessage: 'Verified' })
+        : intl.formatMessage({
+            id: 'admin.people.filters.unverified',
+            defaultMessage: 'Unverified',
+          }),
       valueId: filters.verified ? 'verified' : 'unverified',
       options: verifiedOptions,
       onChange: (val) => onFiltersChange({ verified: val === 'verified' }),
@@ -545,7 +675,10 @@ function computeActiveFilters(
     result.push({
       key: 'emailDomain',
       type: 'emailDomain',
-      label: 'Domain:',
+      label: intl.formatMessage({
+        id: 'admin.people.filters.chipDomain',
+        defaultMessage: 'Domain:',
+      }),
       value: filters.emailDomain,
       valueId: filters.emailDomain,
       onRemove: () => onFiltersChange({ emailDomain: undefined }),
@@ -555,14 +688,17 @@ function computeActiveFilters(
   // Date range
   const dateOptions: FilterOption[] = DATE_PRESETS.map((p) => ({
     id: p.value,
-    label: p.label,
+    label: datePresetLabel(intl, p),
   }))
 
   if (filters.dateFrom && filters.dateTo) {
     result.push({
       key: 'dateRange',
       type: 'dateRange',
-      label: 'Joined:',
+      label: intl.formatMessage({
+        id: 'admin.people.filters.chipJoined',
+        defaultMessage: 'Joined:',
+      }),
       value: `${formatDate(filters.dateFrom)} - ${formatDate(filters.dateTo)}`,
       valueId: 'custom',
       onRemove: () => onFiltersChange({ dateFrom: undefined, dateTo: undefined }),
@@ -574,8 +710,11 @@ function computeActiveFilters(
     result.push({
       key: 'dateFrom',
       type: 'dateFrom',
-      label: 'Joined:',
-      value: matchedPreset ? matchedPreset.label : formatDate(filters.dateFrom),
+      label: intl.formatMessage({
+        id: 'admin.people.filters.chipJoined',
+        defaultMessage: 'Joined:',
+      }),
+      value: matchedPreset ? datePresetLabel(intl, matchedPreset) : formatDate(filters.dateFrom),
       valueId: matchedPreset?.value || filters.dateFrom,
       options: dateOptions,
       onChange: (presetId) => {
@@ -590,7 +729,10 @@ function computeActiveFilters(
     result.push({
       key: 'dateTo',
       type: 'dateTo',
-      label: 'To:',
+      label: intl.formatMessage({
+        id: 'admin.people.filters.chipTo',
+        defaultMessage: 'To:',
+      }),
       value: formatDate(filters.dateTo),
       valueId: filters.dateTo,
       onRemove: () => onFiltersChange({ dateTo: undefined }),
@@ -599,9 +741,21 @@ function computeActiveFilters(
 
   // Activity count filters
   for (const [filterKey, filterLabel] of [
-    ['postCount', 'Posts:'],
-    ['voteCount', 'Votes:'],
-    ['commentCount', 'Comments:'],
+    [
+      'postCount',
+      intl.formatMessage({ id: 'admin.people.filters.chipPosts', defaultMessage: 'Posts:' }),
+    ],
+    [
+      'voteCount',
+      intl.formatMessage({ id: 'admin.people.filters.chipVotes', defaultMessage: 'Votes:' }),
+    ],
+    [
+      'commentCount',
+      intl.formatMessage({
+        id: 'admin.people.filters.chipComments',
+        defaultMessage: 'Comments:',
+      }),
+    ],
   ] as const) {
     const parsed = parseActivityValue(filters[filterKey])
     if (parsed) {
@@ -609,7 +763,7 @@ function computeActiveFilters(
         key: filterKey,
         type: filterKey,
         label: filterLabel,
-        value: formatActivityValue(parsed.op, parsed.value),
+        value: formatActivityValue(parsed.op, parsed.value, intl),
         valueId: filterKey,
         onRemove: () => onFiltersChange({ [filterKey]: undefined }),
       })
@@ -623,26 +777,17 @@ function computeActiveFilters(
       const [key, op, ...rest] = part.split(':')
       if (!key || !op) continue
       const value = rest.join(':')
-      const OP_LABELS: Record<string, string> = {
-        eq: 'equals',
-        neq: 'not equals',
-        contains: 'contains',
-        starts_with: 'starts with',
-        ends_with: 'ends with',
-        is_set: 'is set',
-        is_not_set: 'is not set',
-        gt: 'more than',
-        gte: 'at least',
-        lt: 'less than',
-        lte: 'at most',
-      }
-      const opLabel = OP_LABELS[op] ?? op
+      const opDescriptor = CUSTOM_ATTR_OPERATOR_LABELS[op]
+      const opLabel = opDescriptor ? intl.formatMessage(opDescriptor) : op
       const displayValue = op === 'is_set' || op === 'is_not_set' ? opLabel : `${opLabel} ${value}`
 
       result.push({
         key: `custom_${key}`,
         type: 'customAttr',
-        label: `${key}:`,
+        label: intl.formatMessage(
+          { id: 'admin.people.filters.chipCustomAttr', defaultMessage: '{key}:' },
+          { key }
+        ),
         value: displayValue,
         valueId: key,
         onRemove: () => {
@@ -661,9 +806,10 @@ export function UsersActiveFiltersBar({
   onFiltersChange,
   onClearFilters,
 }: UsersActiveFiltersBarProps) {
+  const intl = useOptionalIntl()
   const activeFilters = useMemo(
-    () => computeActiveFilters(filters, onFiltersChange),
-    [filters, onFiltersChange]
+    () => computeActiveFilters(filters, onFiltersChange, intl),
+    [filters, onFiltersChange, intl]
   )
 
   if (activeFilters.length === 0) return null
@@ -685,7 +831,7 @@ export function UsersActiveFiltersBar({
             'transition-colors'
           )}
         >
-          Clear all
+          {intl.formatMessage({ id: 'admin.people.filters.clearAll', defaultMessage: 'Clear all' })}
         </button>
       )}
     </div>

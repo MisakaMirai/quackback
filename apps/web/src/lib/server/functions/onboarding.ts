@@ -19,7 +19,6 @@ import { getSetupState } from '@/lib/shared/db-types'
 import { logger } from '@/lib/server/logger'
 import { applyDeferredLaunchStartingPoint, mutateSetupStateAtomic } from '@/lib/server/setup-state'
 import { applyOnboardingGoals, setupGoals } from '@/lib/server/onboarding-board'
-import { parseIdentityProjection } from '@/lib/server/domains/settings/cloud/identity-projection'
 import type { InstallChecks } from '@/lib/server/install-checks'
 import { requireAuth } from './auth-helpers'
 import { PERMISSIONS } from '@/lib/shared/permissions'
@@ -230,9 +229,7 @@ export const ensureOnboardingHomeReadyFn = createServerFn({ method: 'POST' }).ha
   })
   if (!caller || !isAdmin(caller.role)) return { ok: false as const, modulesChanged: false }
 
-  const identity = parseIdentityProjection(existingSettings.cloudIdentity)
-  const { friendlyPlatformLabel } = await import('@/lib/shared/platform-label')
-  const hasFriendlyHost = Boolean(friendlyPlatformLabel(identity?.platformHostname))
+  const hasFriendlyHost = false
 
   const { value } = await mutateSetupStateAtomic(async (current, row, tx) => {
     const now = new Date().toISOString()
@@ -312,7 +309,6 @@ export const getInstallChecksFn = createServerFn({ method: 'GET' }).handler(
   async (): Promise<InstallChecks | null> => {
     await requireAuth({ permission: PERMISSIONS.SETTINGS_MANAGE })
     const { config } = await import('@/lib/server/config')
-    if (config.isPooledTenancy) return null
     const { isEmailConfigured } = await import('@quackback/email')
     const { isS3Usable } = await import('@/lib/server/storage/s3')
     const { getRequestHeaders } = await import('@tanstack/react-start/server')

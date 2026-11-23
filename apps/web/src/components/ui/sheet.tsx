@@ -38,7 +38,7 @@ function SheetTrigger({
     <SheetPrimitive.Trigger
       data-slot="sheet-trigger"
       {...props}
-      nativeButton={composed.render ? composed.nativeButton : nativeButton}
+      nativeButton={composed.render ? (nativeButton ?? composed.nativeButton) : nativeButton}
       {...overlayTriggerProps(composed)}
     >
       {composed.children}

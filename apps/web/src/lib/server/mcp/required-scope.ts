@@ -23,9 +23,6 @@ export const TOOL_SCOPES: Readonly<Record<string, McpScope>> = {
   create_changelog: 'write:changelog',
   update_changelog: 'write:changelog',
   delete_changelog: 'write:changelog',
-  accept_suggestion: 'write:feedback',
-  dismiss_suggestion: 'write:feedback',
-  restore_suggestion: 'write:feedback',
   create_article: 'write:article',
   update_article: 'write:article',
   delete_article: 'write:article',
@@ -44,7 +41,6 @@ export const TOOL_SCOPES: Readonly<Record<string, McpScope>> = {
   link_ticket: 'write:chat',
   unlink_ticket: 'write:chat',
   upload_file: 'write:chat',
-  widget_install_status: 'read:feedback',
   get_settings: 'read:settings',
   update_settings: 'write:settings',
 }

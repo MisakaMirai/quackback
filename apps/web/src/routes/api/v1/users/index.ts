@@ -5,6 +5,7 @@ import {
   handleDomainError,
   decodeCursor,
   encodeCursor,
+  parsePaginationParams,
 } from '@/lib/server/domains/api/responses'
 import { PERMISSIONS } from '@/lib/shared/permissions'
 
@@ -42,8 +43,7 @@ export const Route = createFileRoute('/api/v1/users/')({
           const segmentIds = segmentIdsParam
             ? (segmentIdsParam.split(',').filter(Boolean) as import('@quackback/ids').SegmentId[])
             : undefined
-          const cursor = url.searchParams.get('cursor') ?? undefined
-          const limit = Math.min(parseInt(url.searchParams.get('limit') || '20', 10), 100)
+          const { cursor, limit } = parsePaginationParams(url)
           const offset = decodeCursor(cursor)
           const page = Math.floor(offset / limit) + 1
 

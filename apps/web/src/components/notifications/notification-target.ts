@@ -43,8 +43,7 @@ export function getNotificationTarget(
   if (
     (notification.type === 'chat_mention' ||
       notification.type === 'chat_message' ||
-      notification.type === 'conversation_assigned' ||
-      notification.type === 'assistant_handed_off') &&
+      notification.type === 'conversation_assigned') &&
     notification.conversationId
   ) {
     return { to: '/admin/inbox', search: { i: notification.conversationId } }
@@ -98,11 +97,6 @@ export function getNotificationTarget(
     notification.type === 'sending_domain_needs_attention'
   ) {
     return { to: '/admin/settings/email' }
-  }
-
-  // Domain bells open Settings → Domains, where each domain's record is.
-  if (notification.type === 'domain_needs_attention') {
-    return { to: '/admin/settings/domains' }
   }
 
   // Deep-link to the specific changelog entry when we have its id. Rows created

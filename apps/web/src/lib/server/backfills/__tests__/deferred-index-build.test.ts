@@ -49,8 +49,8 @@ vi.mock('@/lib/server/db', async (importOriginal) => {
 })
 
 const ledger = vi.hoisted(() => ({ applied: new Set<string>() }))
-vi.mock('@/lib/server/fleet/schema-floor', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/lib/server/fleet/schema-floor')>()),
+vi.mock('@/lib/server/db/migration-ledger', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/server/db/migration-ledger')>()),
   migrationAppliedIn: async (_reader: unknown, tag: string) => ledger.applied.has(tag),
 }))
 
@@ -184,7 +184,6 @@ function cronRow(): ClaimedJob {
     queue: QUEUE,
     dedupeKey: null,
     payload: { scheduledFor: new Date().toISOString() },
-    workspaceKey: null,
     attempts: 1,
     maxAttempts: 5,
     leaseToken: 'x',

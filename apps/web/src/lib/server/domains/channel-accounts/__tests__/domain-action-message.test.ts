@@ -5,9 +5,8 @@
  * a mapper that fell through to the fallback for everything would still return
  * a string, and only the exact text tells the branches apart.
  */
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { SesIdentityConfigError, SesIdentityError } from '@quackback/email/ses-identity'
-import { TierLimitError } from '@/lib/server/errors/tier-limit-error'
 import { ChannelAddressInUseError, SendingDomainInUseError } from '../channel-account.service'
 import { SendingDomainRefusedError } from '../sending-identity'
 import { SendingIdentityRefusedError } from '../outbound-identity'
@@ -29,16 +28,6 @@ describe('domainActionMessage', () => {
     expect(domainActionMessage(new ChannelAddressInUseError('help@acme.com'), 'address')).toBe(
       'help@acme.com is already used by your support inbox.'
     )
-  })
-
-  it('passes a plan limit through', () => {
-    const limit = new TierLimitError({
-      limit: 'sending_domains',
-      message: 'Your plan allows 3 sending domains.',
-      current: 3,
-      max: 3,
-    })
-    expect(domainActionMessage(limit, 'address')).toBe('Your plan allows 3 sending domains.')
   })
 
   it('says the server is not set up when the identity credential is missing', () => {
@@ -69,17 +58,6 @@ describe('domainActionMessage', () => {
     expect(domainActionMessage(err, 'address')).toBe(
       "Couldn't add the address. Try again, and if it keeps failing, contact your administrator."
     )
-  })
-
-  it('points a workspace on a shared server to support, who can act on it', () => {
-    vi.stubEnv('QUACKBACK_TENANCY', 'pooled')
-    try {
-      expect(domainActionMessage(new Error('boom'), 'address')).toBe(
-        "Couldn't add the address. Try again, and if it keeps failing, contact support."
-      )
-    } finally {
-      vi.unstubAllEnvs()
-    }
   })
 
   it('falls back per action for anything unrecognised', () => {

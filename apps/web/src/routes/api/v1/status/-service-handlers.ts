@@ -12,12 +12,13 @@
  * Not a route itself (the `-` prefix opts it out of file-based routing).
  */
 import { z } from 'zod'
-import { withApiKeyAuth } from '@/lib/server/domains/api/auth'
+import { withApiKeyAuth, assertApiPermissions } from '@/lib/server/domains/api/auth'
 import {
   successResponse,
   createdResponse,
   badRequestResponse,
   notFoundResponse,
+  noContentResponse,
   handleDomainError,
 } from '@/lib/server/domains/api/responses'
 import { parseTypeId, parseTypeIdArray } from '@/lib/server/domains/api/validation'
@@ -116,10 +117,6 @@ export async function createStatusComponentHandler({ request }: { request: Reque
     )
     const segmentIds = parseTypeIdArray<SegmentId>(parsed.data.segmentIds, 'segment', 'segmentIds')
 
-    const { enforceStatusComponentLimit } =
-      await import('@/lib/server/domains/settings/tier-enforce')
-    await enforceStatusComponentLimit()
-
     const { createStatusComponent } = await import('@/lib/server/domains/status')
 
     const component = await createStatusComponent({
@@ -132,6 +129,34 @@ export async function createStatusComponentHandler({ request }: { request: Reque
     })
 
     return createdResponse(serializeStatusComponent(component))
+  } catch (error) {
+    return handleDomainError(error)
+  }
+}
+
+/**
+ * DELETE /api/v1/status/components/:componentId (aliased at
+ * /api/v1/status/services/:serviceId)
+ *
+ * Soft-deletes the service (a hard delete would orphan incident history), so
+ * a monitoring integration can retire a service without the control panel.
+ */
+export async function deleteStatusComponentHandler({
+  request,
+  id,
+}: {
+  request: Request
+  id: string
+}) {
+  try {
+    await withApiKeyAuth(request, { permission: PERMISSIONS.STATUS_PAGE_MANAGE })
+
+    const componentId = parseTypeId<StatusComponentId>(id, 'status_component', 'component ID')
+
+    const { deleteStatusComponent } = await import('@/lib/server/domains/status')
+    await deleteStatusComponent(componentId)
+
+    return noContentResponse()
   } catch (error) {
     return handleDomainError(error)
   }
@@ -171,7 +196,11 @@ export async function patchStatusComponentHandler({
   id: string
 }) {
   try {
-    await withApiKeyAuth(request, { permission: PERMISSIONS.STATUS_PAGE_MANAGE })
+    // A bare key is required first; which permissions the body needs depends on
+    // the fields it carries, so those are asserted after parsing. Flipping the
+    // live status is publishing (STATUS_PAGE_PUBLISH); reshaping the component
+    // stays management (STATUS_PAGE_MANAGE).
+    const auth = await withApiKeyAuth(request)
 
     const componentId = parseTypeId<StatusComponentId>(id, 'status_component', 'component ID')
 
@@ -195,22 +224,42 @@ export async function patchStatusComponentHandler({
       return badRequestResponse('At least one field is required')
     }
 
+    if (hasMetadataUpdate) {
+      assertApiPermissions(auth, [PERMISSIONS.STATUS_PAGE_MANAGE])
+    }
+    if (status !== undefined) {
+      assertApiPermissions(auth, [PERMISSIONS.STATUS_PAGE_PUBLISH])
+    }
+
     const { updateStatusComponent, setComponentStatus } =
       await import('@/lib/server/domains/status')
+    const { db } = await import('@/lib/server/db')
 
-    if (hasMetadataUpdate) {
-      await updateStatusComponent(componentId, {
-        name,
-        description,
-        groupId: parseNullableTypeId<StatusComponentGroupId>(groupId, 'status_group', 'groupId'),
-        showUptime,
-        segmentIds: parseTypeIdArray<SegmentId>(segmentIds, 'segment', 'segmentIds'),
-      })
-    }
+    // One call, one transaction: a metadata write that succeeds must not be
+    // left behind when the status write fails (or vice versa).
+    await db.transaction(async (tx) => {
+      if (hasMetadataUpdate) {
+        await updateStatusComponent(
+          componentId,
+          {
+            name,
+            description,
+            groupId: parseNullableTypeId<StatusComponentGroupId>(
+              groupId,
+              'status_group',
+              'groupId'
+            ),
+            showUptime,
+            segmentIds: parseTypeIdArray<SegmentId>(segmentIds, 'segment', 'segmentIds'),
+          },
+          tx
+        )
+      }
 
-    if (status !== undefined) {
-      await setComponentStatus(componentId, status, 'api')
-    }
+      if (status !== undefined) {
+        await setComponentStatus(componentId, status, 'api', null, tx)
+      }
+    })
 
     const row = await findComponentRow(componentId)
     if (!row) return notFoundResponse('Status component')

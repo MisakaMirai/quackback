@@ -1,9 +1,9 @@
 import { memo, useContext, useMemo, type ComponentType, type ReactNode } from 'react'
 import { Link, useRouterState } from '@tanstack/react-router'
 import { cn } from '@/lib/shared/utils'
-import { NAV_ICON_CLASS, NAV_ITEM_CLASS } from '@/components/shared/nav-tokens'
+import { MENU_ICON, MENU_ROW } from '@/components/ui/menu'
 import { FilterSection } from '@/components/shared/filter-section'
-import { AUTOMATION_PAGE_ICONS, SETTINGS_PAGE_ICONS } from './settings-page-icons'
+import { SETTINGS_PAGE_ICONS } from './settings-page-icons'
 import {
   buildNavSections,
   isNavModule,
@@ -13,15 +13,13 @@ import {
   type NavModule,
 } from './settings-nav-sections'
 import { SettingsNavContext } from './settings-page'
-import {
-  useBillingEnabled,
-  useFeatureFlags,
-  usePermissions,
-} from '@/lib/client/hooks/use-root-context'
+import { settingsPageLabelId, settingsSectionLabelId } from '@/lib/shared/settings-pages'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
+import { useFeatureFlags, usePermissions } from '@/lib/client/hooks/use-root-context'
 
 type IconComponent = ComponentType<{ className?: string }>
 
-const ICONS: Record<string, IconComponent> = { ...SETTINGS_PAGE_ICONS, ...AUTOMATION_PAGE_ICONS }
+const ICONS: Record<string, IconComponent> = { ...SETTINGS_PAGE_ICONS }
 
 /** The icon of a row or module, keyed by its page path. */
 function iconFor(path: string): IconComponent {
@@ -30,7 +28,7 @@ function iconFor(path: string): IconComponent {
 
 function settingsRowClass(active: boolean) {
   return cn(
-    NAV_ITEM_CLASS,
+    MENU_ROW,
     'w-full',
     active
       ? 'bg-muted text-foreground font-medium'
@@ -45,12 +43,11 @@ function settingsRowClass(active: boolean) {
  */
 export function SettingsNavProvider({ children }: { children: ReactNode }) {
   const flags = useFeatureFlags()
-  const billingEnabled = useBillingEnabled()
   const permissions = usePermissions()
 
   const navSections = useMemo(
-    () => navSectionsFor(buildNavSections(flags, billingEnabled), permissions),
-    [flags, billingEnabled, permissions]
+    () => navSectionsFor(buildNavSections(flags), permissions),
+    [flags, permissions]
   )
 
   return <SettingsNavContext.Provider value={navSections}>{children}</SettingsNavContext.Provider>
@@ -61,13 +58,20 @@ export function SettingsNavProvider({ children }: { children: ReactNode }) {
  * on its own, so a navigation renders only the rows whose highlight moved.
  */
 export function SettingsNav() {
+  const intl = useOptionalIntl()
   const navSections = useContext(SettingsNavContext)
   if (!navSections) throw new Error('SettingsNav renders inside SettingsNavProvider')
 
   return (
     <div>
       {navSections.map((section) => (
-        <FilterSection key={section.label} title={section.label}>
+        <FilterSection
+          key={section.label}
+          title={intl.formatMessage({
+            id: settingsSectionLabelId(section.label),
+            defaultMessage: section.label,
+          })}
+        >
           <div className="space-y-0.5">
             {section.items.map((entry) =>
               isNavModule(entry) ? (
@@ -95,7 +99,7 @@ function rowContent(label: string, iconPath: string) {
   const Icon = iconFor(iconPath)
   return (
     <>
-      <Icon className={NAV_ICON_CLASS} />
+      <Icon className={MENU_ICON} />
       <span className="truncate flex-1">{label}</span>
     </>
   )
@@ -108,7 +112,18 @@ function rowContent(label: string, iconPath: string) {
  */
 const NavLink = memo(
   function NavLink({ item }: { item: NavItem }) {
-    const content = useMemo(() => rowContent(item.label, item.to), [item.label, item.to])
+    const intl = useOptionalIntl()
+    const content = useMemo(
+      () =>
+        rowContent(
+          intl.formatMessage({
+            id: settingsPageLabelId(item.to),
+            defaultMessage: item.label,
+          }),
+          item.to
+        ),
+      [intl, item.label, item.to]
+    )
     return (
       <Link
         to={item.to}
@@ -131,10 +146,21 @@ const NavLink = memo(
  * when the location moves into or out of the module.
  */
 const ModuleNavLink = memo(function ModuleNavLink({ module }: { module: NavModule }) {
+  const intl = useOptionalIntl()
   const active = useRouterState({
     select: (s) => module.pages.some((page) => pathIsUnder(s.location.pathname, page.to)),
   })
-  const content = useMemo(() => rowContent(module.label, module.id), [module.label, module.id])
+  const content = useMemo(
+    () =>
+      rowContent(
+        intl.formatMessage({
+          id: settingsPageLabelId(module.id),
+          defaultMessage: module.label,
+        }),
+        module.id
+      ),
+    [intl, module.id, module.label]
+  )
   return (
     <Link
       to={module.pages[0]!.to}

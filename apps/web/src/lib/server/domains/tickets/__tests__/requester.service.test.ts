@@ -192,7 +192,6 @@ async function runTicketReactionJobs(ticketId: TicketId): Promise<number> {
       queue: 'event-reactions',
       dedupeKey: null,
       payload: job.payload,
-      workspaceKey: null,
       attempts: 1,
       maxAttempts: 5,
       leaseToken: 'test',

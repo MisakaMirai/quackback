@@ -1,3 +1,4 @@
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { SettingsCard } from '@/components/admin/settings/settings-card'
 import { Switch } from '@/components/ui/switch'
 import { SettingRow, SettingRows } from '@/components/admin/settings/setting-row'
@@ -12,11 +13,24 @@ interface EmailCardProps {
 }
 
 export function EmailCard({ settings, onChange, disabled }: EmailCardProps) {
+  const intl = useOptionalIntl()
   return (
-    <SettingsCard title="Email" description="Who gets emailed when you publish an entry.">
+    <SettingsCard
+      title={intl.formatMessage({
+        id: 'admin.settings.changelog.email.title',
+        defaultMessage: 'Email',
+      })}
+      description={intl.formatMessage({
+        id: 'admin.settings.changelog.email.description',
+        defaultMessage: 'Who gets emailed when you publish an entry.',
+      })}
+    >
       <SettingRows>
         <SettingRow
-          label="Send changelog emails"
+          label={intl.formatMessage({
+            id: 'admin.settings.changelog.email.sendLabel',
+            defaultMessage: 'Send changelog emails',
+          })}
           htmlFor="changelog-emails-enabled"
           control={
             <Switch
@@ -29,8 +43,14 @@ export function EmailCard({ settings, onChange, disabled }: EmailCardProps) {
         />
         <SurfaceSenderRow surface="changelog" />
         <SettingRow
-          label="Auto-subscribe users"
-          description="Subscribe new users automatically"
+          label={intl.formatMessage({
+            id: 'admin.settings.changelog.email.autoSubscribeLabel',
+            defaultMessage: 'Auto-subscribe users',
+          })}
+          description={intl.formatMessage({
+            id: 'admin.settings.changelog.email.autoSubscribeDescription',
+            defaultMessage: 'Subscribe new users automatically',
+          })}
           htmlFor="changelog-auto-subscribe"
           control={
             <Switch

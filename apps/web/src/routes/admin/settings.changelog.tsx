@@ -17,7 +17,7 @@ import { warmQuery } from '@/lib/client/queries/warm-query'
 import { adminPageHead } from '@/lib/client/admin-head'
 
 export const Route = createFileRoute('/admin/settings/changelog')({
-  head: adminPageHead('Changelog settings'),
+  head: adminPageHead('Changelog settings', 'admin.pageTitle.changelogSettings'),
   beforeLoad: ({ context }) => {
     if (!isProductEnabled(context.settings?.featureFlags, 'changelog')) {
       throw redirect({ to: '/admin/settings/general' })

@@ -124,13 +124,13 @@ describe.skipIf(!fixture.available)('updateMemberRole — custom grants (real Po
   it('assignment is a grant: rejects a role richer than the assigner (ceiling)', async () => {
     const acting = await seedTeammate('admin')
     const target = await seedTeammate('member')
-    // A rich role carrying billing.manage; the assigner holds member.manage
+    // A rich role carrying audit.view; the assigner holds member.manage
     // but not billing — the F1 escalation shape.
     const richRoleId = await insertCustomRole()
     const [billing] = await testDb
       .select({ id: (await import('@/lib/server/db')).permissions.id })
       .from((await import('@/lib/server/db')).permissions)
-      .where(eq((await import('@/lib/server/db')).permissions.key, PERMISSIONS.BILLING_MANAGE))
+      .where(eq((await import('@/lib/server/db')).permissions.key, PERMISSIONS.AUDIT_VIEW))
       .limit(1)
     await testDb
       .insert((await import('@/lib/server/db')).rolePermissions)

@@ -1,14 +1,7 @@
 import { PERMISSIONS, type PermissionKey } from '@/lib/shared/permissions'
-import { AI_ANY_PERMISSIONS } from '@/lib/shared/ai-permissions'
-import { DOMAINS_PAGE_PERMISSIONS } from '@/lib/shared/domains-permissions'
 import { EMAIL_SENDING_PERMISSION } from '@/lib/shared/email-sending-permissions'
 import { isProductEnabled, type FeatureFlags } from '@/lib/shared/types'
-import {
-  AUTOMATION_PAGES,
-  SETTINGS_PAGES,
-  type AutomationPagePath,
-  type SettingsPagePath,
-} from './settings-pages'
+import { SETTINGS_PAGES, type SettingsPagePath } from './settings-pages'
 
 /*
  * The settings nav as plain data: which pages exist, their labels, and the
@@ -185,34 +178,17 @@ function navPage(to: SettingsPagePath): NavItem {
   return { label: SETTINGS_PAGES[to].label, to }
 }
 
-/** A nav row for an AI & Automation page; its label is the message's default text. */
-function navAutomationPage(to: AutomationPagePath, permission: PermissionKey): NavItem {
-  return { label: AUTOMATION_PAGES[to].defaultMessage, to, permission }
-}
-
-function navSharedAiPage(to: AutomationPagePath): NavItem {
-  return { label: AUTOMATION_PAGES[to].defaultMessage, to, anyOf: AI_ANY_PERMISSIONS }
-}
-
 export function isNavModule(entry: NavEntry): entry is NavModule {
   return 'pages' in entry
 }
 
 /**
- * The settings IA (SETTINGS-IA-SPEC Option B): four stable sections (Modules,
- * AI & Automation, Workspace, Data). Flags hide ITEMS (or whole product
- * modules), never sections, so the sidebar layout does not reflow when a
- * flag flips. A section a viewer holds no permission for is left out.
- *
- * @param billingEnabled Whether this workspace has a valid billing projection
- *   configured. Not a feature flag: a flag answers "has the admin turned it
- *   on", and this answers "does this deployment sell anything". False on
- *   every self-hosted install, which is why the Billing row is absent there.
+ * The settings IA (SETTINGS-IA-SPEC Option B): three stable sections
+ * (Modules, Workspace, Data). Flags hide ITEMS (or whole product modules),
+ * never sections, so the sidebar layout does not reflow when a flag flips.
+ * A section a viewer holds no permission for is left out.
  */
-export function buildNavSections(
-  flags?: Partial<FeatureFlags>,
-  billingEnabled = false
-): NavSection[] {
+export function buildNavSections(flags?: Partial<FeatureFlags>): NavSection[] {
   const products: NavEntry[] = buildSettingsModuleRows(flags).map((module): NavEntry => {
     const [only, ...rest] = module.pages
     if (only && rest.length === 0) {
@@ -228,38 +204,17 @@ export function buildNavSections(
   return [
     { label: 'Modules', items: products },
     {
-      label: 'AI & Automation',
-      items: [
-        navAutomationPage('/admin/settings/agent', PERMISSIONS.AI_CUSTOMER_MANAGE),
-        navAutomationPage('/admin/settings/copilot', PERMISSIONS.AI_TEAMMATE_MANAGE),
-        navSharedAiPage('/admin/settings/skills'),
-        navSharedAiPage('/admin/settings/connectors'),
-        ...(flags?.supportInbox
-          ? [navAutomationPage('/admin/settings/workflows', PERMISSIONS.WORKFLOW_MANAGE)]
-          : []),
-      ],
-    },
-    {
       label: 'Workspace',
       items: [
         {
           ...navPage('/admin/settings/general'),
           permission: PERMISSIONS.SETTINGS_MANAGE,
         },
-        {
-          ...navPage('/admin/settings/domains'),
-          anyOf: DOMAINS_PAGE_PERMISSIONS,
-          overview: { owner: PERMISSIONS.SETTINGS_CUSTOM_DOMAIN },
-        },
         { ...navPage('/admin/settings/email'), permission: EMAIL_SENDING_PERMISSION },
         { ...navPage('/admin/settings/notifications') },
         {
           ...navPage('/admin/settings/portal'),
           permission: PERMISSIONS.SETTINGS_BRANDING,
-        },
-        {
-          ...navPage('/admin/settings/widget'),
-          permission: PERMISSIONS.SETTINGS_MANAGE,
         },
         {
           ...navPage('/admin/settings/members'),
@@ -274,21 +229,9 @@ export function buildNavSections(
           permission: PERMISSIONS.API_KEY_MANAGE,
         },
         {
-          ...navPage('/admin/settings/labs'),
-          permission: PERMISSIONS.SETTINGS_MANAGE,
-        },
-        {
           ...navPage('/admin/settings/integrations'),
           permission: PERMISSIONS.INTEGRATION_VIEW,
         },
-        ...(billingEnabled
-          ? [
-              {
-                ...navPage('/admin/settings/billing'),
-                permission: PERMISSIONS.BILLING_MANAGE,
-              },
-            ]
-          : []),
       ],
     },
     {
@@ -297,10 +240,6 @@ export function buildNavSections(
         {
           ...navPage('/admin/settings/people'),
           permission: PERMISSIONS.USER_ATTRIBUTE_VIEW,
-        },
-        {
-          ...navPage('/admin/settings/companies'),
-          permission: PERMISSIONS.COMPANY_VIEW,
         },
         ...(isProductEnabled(flags, 'support')
           ? [

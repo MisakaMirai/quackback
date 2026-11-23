@@ -39,6 +39,7 @@ import {
   recoverExpiredSyncs,
   markSyncDispatched,
   finishSyncOperation,
+  SYNC_QUEUE,
 } from '../ledger'
 import { actOnSync, inspectSyncOperation } from '../history'
 import * as config from '@/lib/server/config'
@@ -241,7 +242,7 @@ describe('sync recovery regressions (PostgreSQL)', () => {
     })
     expect(result).toMatchObject({ state: 'retry_wait', retryAfterMs: 10_000 })
   })
-  it('keeps app-event recovery on the serial Slack queue', async () => {
+  it('keeps app-event recovery on the shared integration-sync queue', async () => {
     await seed('slack')
     await queueAppHookSync('slack', randomUUID(), { encryptedPayload: 'test' })
     const op = await testDb.query.integrationSyncOperations.findFirst({
@@ -261,9 +262,9 @@ describe('sync recovery regressions (PostgreSQL)', () => {
     const jobs = await testDb.execute(
       sql`SELECT queue FROM job_queue WHERE payload->>'operationId' = ${op!.id} AND payload->>'version' = ${String(current!.version)}`
     )
-    expect(jobs[0]?.queue).toBe('slack-hook')
+    expect(jobs[0]?.queue).toBe(SYNC_QUEUE)
   })
-  it('keeps a manual app-event retry on the serial Slack queue', async () => {
+  it('keeps a manual app-event retry on the shared integration-sync queue', async () => {
     await seed('slack')
     await queueAppHookSync('slack', randomUUID(), { encryptedPayload: 'test' })
     const op = (await testDb.query.integrationSyncOperations.findFirst({
@@ -287,7 +288,7 @@ describe('sync recovery regressions (PostgreSQL)', () => {
     const jobs = await testDb.execute(
       sql`SELECT queue FROM job_queue WHERE payload->>'operationId' = ${op.id} AND payload->>'version' = ${String(failed.version + 1)}`
     )
-    expect(jobs.map((job) => job.queue)).toEqual(['slack-hook'])
+    expect(jobs.map((job) => job.queue)).toEqual([SYNC_QUEUE])
   })
   it('keeps webhook registration errors when refreshing sync health', async () => {
     const { integration } = await seed()

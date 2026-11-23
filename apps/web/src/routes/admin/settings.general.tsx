@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useIntl } from 'react-intl'
 import { PERMISSIONS } from '@/lib/shared/permissions'
 import { assertRoutePermission } from '@/lib/shared/route-permission'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
@@ -10,7 +11,6 @@ import { SettingRow, SettingRows } from '@/components/admin/settings/setting-row
 import { AUTOSAVE } from '@/lib/client/autosave'
 import { SettingsCard } from '@/components/admin/settings/settings-card'
 import { updateWorkspaceNameFn } from '@/lib/server/functions/settings'
-import { getCloudIdentityFn, updateCloudIdentityFn } from '@/lib/server/functions/cloud-identity'
 import { updateFeatureFlagsFn } from '@/lib/server/functions/feature-flags'
 import { useDebouncedSave } from '@/lib/client/hooks/use-debounced-save'
 import { isPathManagedFromBootstrap, MANAGED_PATHS } from '@/lib/client/config-file'
@@ -25,7 +25,6 @@ import {
 } from '@/lib/shared/types'
 import { Switch } from '@/components/ui/switch'
 import { WorkspaceDataCard } from '@/components/admin/settings/workspace-data-card'
-import { WorkspaceDangerCard } from '@/components/admin/settings/workspace-danger-card'
 import { WorkspaceIdentityCard } from '@/components/admin/settings/workspace-identity-card'
 import { readBatch } from '@/lib/client/queries/read-batch'
 import { useManagedFieldPaths, useWorkspaceSettings } from '@/lib/client/hooks/use-root-context'
@@ -36,34 +35,53 @@ const searchSchema = z.object({
   focus: z.enum(['logo']).optional().catch(undefined),
 })
 
+/** Message ids for the product module rows; the shared definitions keep the English source. */
+const PRODUCT_COPY: Record<ProductId, { labelId: string; descriptionId: string }> = {
+  feedback: {
+    labelId: 'admin.settings.general.product.feedback.label',
+    descriptionId: 'admin.settings.general.product.feedback.description',
+  },
+  support: {
+    labelId: 'admin.settings.general.product.support.label',
+    descriptionId: 'admin.settings.general.product.support.description',
+  },
+  helpCenter: {
+    labelId: 'admin.settings.general.product.helpCenter.label',
+    descriptionId: 'admin.settings.general.product.helpCenter.description',
+  },
+  changelog: {
+    labelId: 'admin.settings.general.product.changelog.label',
+    descriptionId: 'admin.settings.general.product.changelog.description',
+  },
+  status: {
+    labelId: 'admin.settings.general.product.status.label',
+    descriptionId: 'admin.settings.general.product.status.description',
+  },
+}
+
 export const Route = createFileRoute('/admin/settings/general')({
-  head: adminPageHead('General settings'),
+  head: adminPageHead('General settings', 'admin.pageTitle.generalSettings'),
   validateSearch: searchSchema,
   loader: async ({ context }) => {
     assertRoutePermission(context.permissions, PERMISSIONS.SETTINGS_MANAGE)
     const ensure = readBatch(context.queryClient)
-    const [cloudIdentity] = await Promise.all([
-      getCloudIdentityFn(),
-      ensure(settingsQueries.logo()),
-    ])
-    return { cloudIdentity }
+    await ensure(settingsQueries.logo())
+    return {}
   },
   component: GeneralSettingsPage,
 })
 
 function GeneralSettingsPage() {
+  const intl = useIntl()
   const settings = useWorkspaceSettings()
   const managedFieldPaths = useManagedFieldPaths()
-  const { cloudIdentity } = Route.useLoaderData()
   const { focus } = Route.useSearch()
   const workspaceNameManaged = isPathManagedFromBootstrap(
     MANAGED_PATHS.WORKSPACE_NAME,
     managedFieldPaths ?? []
   )
 
-  const [workspaceName, setWorkspaceName] = useState(
-    cloudIdentity?.displayName ?? settings?.name ?? ''
-  )
+  const [workspaceName, setWorkspaceName] = useState(settings?.name ?? '')
   const [localFlags, setLocalFlags] = useState<FeatureFlags>(
     (settings?.featureFlags as FeatureFlags | undefined) ?? DEFAULT_FEATURE_FLAGS
   )
@@ -99,12 +117,7 @@ function GeneralSettingsPage() {
   const nameMutation = useMutation({
     meta: AUTOSAVE,
     mutationFn: async (trimmed: string) => {
-      if (cloudIdentity) {
-        if (trimmed !== cloudIdentity.displayName) {
-          await updateCloudIdentityFn({ data: { displayName: trimmed } })
-          await router.invalidate()
-        }
-      } else if (trimmed !== settings?.name) {
+      if (trimmed !== settings?.name) {
         await updateWorkspaceNameFn({ data: { name: trimmed } })
       }
     },
@@ -132,31 +145,46 @@ function GeneralSettingsPage() {
     <SettingsPage page="/admin/settings/general">
       <WorkspaceIdentityCard
         workspaceName={workspaceName}
-        managed={!cloudIdentity && workspaceNameManaged}
+        managed={workspaceNameManaged}
         onWorkspaceNameChange={handleNameChange}
-        maxLength={cloudIdentity ? 80 : undefined}
         focusLogo={focus === 'logo'}
       />
 
       <SettingsCard
-        title="Modules"
-        description="Choose the Quackback modules available to your team and customers."
+        title={intl.formatMessage({
+          id: 'admin.settings.general.modules.title',
+          defaultMessage: 'Modules',
+        })}
+        description={intl.formatMessage({
+          id: 'admin.settings.general.modules.description',
+          defaultMessage: 'Choose the Quackback modules available to your team and customers.',
+        })}
       >
         <SettingRows>
           {PRODUCT_DEFINITIONS.map((product) => {
             // The public portal homepage is the feedback board, so turning this
             // one off leaves the portal root with nothing to render.
             const alwaysOn = product.id === 'feedback'
+            const copy = PRODUCT_COPY[product.id]
             return (
               <SettingRow
                 key={product.id}
-                label={product.label}
-                description={product.description}
+                label={intl.formatMessage({
+                  id: copy.labelId,
+                  defaultMessage: product.label,
+                })}
+                description={intl.formatMessage({
+                  id: copy.descriptionId,
+                  defaultMessage: product.description,
+                })}
                 htmlFor={alwaysOn ? undefined : `product-${product.id}`}
                 control={
                   alwaysOn ? (
                     <Badge id={`product-${product.id}`} variant="secondary">
-                      Always on
+                      {intl.formatMessage({
+                        id: 'admin.settings.general.modules.alwaysOn',
+                        defaultMessage: 'Always on',
+                      })}
                     </Badge>
                   ) : (
                     <Switch
@@ -174,11 +202,6 @@ function GeneralSettingsPage() {
       </SettingsCard>
 
       <WorkspaceDataCard />
-
-      <WorkspaceDangerCard
-        cloudEnabled={Boolean(cloudIdentity)}
-        workspaceName={cloudIdentity?.displayName ?? settings?.name ?? ''}
-      />
     </SettingsPage>
   )
 }

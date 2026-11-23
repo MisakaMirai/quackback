@@ -3,19 +3,14 @@
  *
  * Each encryption purpose derives a unique key from the master secret
  * using HKDF (RFC 5869). This provides cryptographic isolation between
- * different uses (integrations, webhooks, API keys, etc.) and, when a workspace
- * scope is active, between workspaces.
+ * different uses (integrations, webhooks, API keys, etc.).
  *
  * @see https://tools.ietf.org/html/rfc5869
  */
 
 import { hkdfSync, randomBytes, createCipheriv, createDecipheriv } from 'crypto'
+import { BoundedCache } from './bounded-cache'
 import { activeSecretKey } from './secret-key'
-import {
-  currentWorkspaceNamespace,
-  SINGLE_WORKSPACE_NAMESPACE,
-  WorkspaceKeyedCache,
-} from './workspaces/workspace-keyed'
 
 // =============================================================================
 // Constants
@@ -42,56 +37,35 @@ const INFO_PREFIX = 'quackback:v1'
 // Key Derivation
 // =============================================================================
 
-const derivedKeys = new WorkspaceKeyedCache<Buffer>()
+const derivedKeys = new BoundedCache<Buffer>()
 
 /**
- * The HKDF info string for a purpose under the active workspace.
+ * The HKDF info string for a purpose.
  *
- * Domain separation was already per-purpose; under pooling it must also be
- * per-workspace, or one process holds one key that opens every workspace's
- * integration tokens, webhook signing secrets and connector secrets.
- *
- * The single-workspace namespace derives the historical info string byte for
- * byte, and that is not a style choice: a self-hosted install's ciphertexts
- * are sealed under this exact string, and a changed info yields a different
- * key, which is unrecoverable data rather than a migration.
+ * This is the string every stored ciphertext in the application was sealed
+ * under, so it must not change: a different info yields a different key, which
+ * is unrecoverable data rather than a migration.
  */
-function hkdfInfo(namespace: string, purpose: string): string {
-  if (namespace === SINGLE_WORKSPACE_NAMESPACE) return `${INFO_PREFIX}:${purpose}`
-  return `${INFO_PREFIX}:t:${namespace}:${purpose}`
+function hkdfInfo(purpose: string): string {
+  return `${INFO_PREFIX}:${purpose}`
 }
 
 /**
- * Derivation now starts from the WORKSPACE's master secret (`activeSecretKey`),
- * not from one fleet-wide value.
- *
- * Domain separation alone was not enough, and the distinction is worth stating.
- * The info string already carried the workspace, so two workspaces derived different
- * keys — but from one master, so any process holding it could derive every
- * workspace's keys, and the separation was a property of this function rather than
- * of custody. Different input keying material is what makes the boundary real.
- *
- * Both are kept. The info string still names the workspace, so the separation
- * survives even if a future custody scheme ever hands two workspaces one master.
- */
-/**
  * Derive a purpose-specific encryption key using HKDF-SHA256.
  *
+ * @param secretKey - The install's master secret
  * @param purpose - Identifies what the key is used for (e.g., 'integration-tokens')
  * @returns 256-bit derived key
  */
-/** HKDF-SHA256 for a purpose, from explicit IKM and workspace namespace. */
-export function derivePurposeKey(secretKey: string, namespace: string, purpose: string): Buffer {
-  return Buffer.from(
-    hkdfSync('sha256', secretKey, HKDF_SALT, hkdfInfo(namespace, purpose), KEY_LENGTH)
-  )
+export function derivePurposeKey(secretKey: string, purpose: string): Buffer {
+  return Buffer.from(hkdfSync('sha256', secretKey, HKDF_SALT, hkdfInfo(purpose), KEY_LENGTH))
 }
 
 function deriveKey(purpose: string): Buffer {
   const cached = derivedKeys.get(purpose)
   if (cached) return cached
 
-  const key = derivePurposeKey(activeSecretKey(), currentWorkspaceNamespace(), purpose)
+  const key = derivePurposeKey(activeSecretKey(), purpose)
   derivedKeys.set(purpose, key)
   return key
 }
@@ -151,25 +125,6 @@ export function decrypt(ciphertext: string, purpose: string): string {
     throw new Error('Encryption purpose is required')
   }
   return openCiphertext(ciphertext, deriveKey(purpose))
-}
-
-/**
- * Open ciphertext with an explicit master secret and namespace.
- *
- * Pool checkout samples stored rows before a workspace scope exists, so it
- * cannot go through `decrypt()` (that reads ALS). Same wire format and HKDF
- * info as `decrypt()`.
- */
-export function decryptWithSecret(
-  ciphertext: string,
-  secretKey: string,
-  namespace: string,
-  purpose: string
-): string {
-  if (!purpose || typeof purpose !== 'string') {
-    throw new Error('Encryption purpose is required')
-  }
-  return openCiphertext(ciphertext, derivePurposeKey(secretKey, namespace, purpose))
 }
 
 function openCiphertext(ciphertext: string, key: Buffer): string {

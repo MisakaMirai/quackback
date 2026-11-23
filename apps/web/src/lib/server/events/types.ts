@@ -7,24 +7,15 @@ import type { ConversationAttributeSource } from '@/lib/shared/conversation/attr
 import type { Channel } from '@/lib/shared/channels'
 
 /**
- * Timer-driven workflow triggers (support platform §4.6): synthetic events
- * emitted by workflow-sweep.ts's 5-minute tick (the unresponsive pair) or the
- * SLA domain's deadline scan (the SLA pair) — never raised by a real
- * user/system action. See lib/server/domains/workflows/dispatcher.ts's
- * dispatchWorkflowTrigger `targetWorkflowId` for why the unresponsive pair
- * dispatches differently from every other event type.
+ * Timer-driven events (support platform §4.6): synthetic events emitted by the
+ * SLA domain's deadline scan — never raised by a real user/system action.
  *
- * These four alone are dispatched with a caller-supplied DETERMINISTIC id
+ * These alone are dispatched with a caller-supplied DETERMINISTIC id
  * (dispatch.ts `timerEventEnvelope`), so the outbox bridge keys their dedupe on
  * that id — see outbox-dispatch.ts. Kept as one exported constant so the two
  * lists can't drift (adding a timer event here also makes it deduped there).
  */
-export const TIMER_DRIVEN_EVENT_TYPES = [
-  'conversation.customer_unresponsive',
-  'conversation.teammate_unresponsive',
-  'sla.approaching_breach',
-  'sla.breached',
-] as const
+export const TIMER_DRIVEN_EVENT_TYPES = ['sla.approaching_breach', 'sla.breached'] as const
 
 /**
  * Supported event types — single source of truth.
@@ -59,9 +50,6 @@ export const EVENT_TYPES = [
   'conversation.csat_submitted',
   'conversation.csat_comment_added',
   // Notification-only (WO-3 slice 3): an internal note @-mentions a teammate.
-  // Never a workflow trigger — see lib/shared/workflow-trigger-types.ts's own
-  // doc for why this event is deliberately absent from
-  // DISPATCHABLE_TRIGGER_TYPES.
   'conversation.note_mentioned',
   'message.created',
   'message.note_created',
@@ -75,8 +63,6 @@ export const EVENT_TYPES = [
   // Notification-only: a linked tracker issue changed status upstream (fired by
   // the inbound integration webhook path, independent of any status mapping).
   'ticket.external_status_changed',
-  'assistant.handed_off',
-  'assistant.resolved',
   // Timer-driven triggers (see TIMER_DRIVEN_EVENT_TYPES above for the rationale).
   ...TIMER_DRIVEN_EVENT_TYPES,
 ] as const
@@ -244,7 +230,7 @@ export interface ChangelogPublishedPayload {
 
 // Status page events (Status Product Spec §9). Email fires only on the two
 // publish events (incident_created, maintenance_scheduled); the rest reach
-// in-app + webhooks/workflows only.
+// in-app + webhooks only.
 export interface StatusIncidentEventData {
   id: string
   kind: 'incident' | 'maintenance'
@@ -346,9 +332,7 @@ export interface ConversationPriorityChangedPayload {
 }
 /**
  * Payload for conversation.attribute_changed — fired when a conversation
- * attribute is set or cleared by AI, a teammate, or a customer (never for a
- * workflow's own `set_attribute` action; see set-attribute.service.ts's
- * emit-site doc for the loop-prevention rule). `value` is the
+ * attribute is set or cleared by AI, a teammate, or a customer. `value` is the
  * envelope-unwrapped primitive (null on unset), never the `{ v, src, at }`
  * storage wrapper. `conversation` carries the same ref every sibling
  * conversation event embeds (status/channel/priority/assignedTeamId) —
@@ -377,8 +361,8 @@ export interface ConversationCsatCommentAddedPayload {
 /**
  * Payload for conversation.note_mentioned — fired once per internal note that
  * newly @-mentions one or more teammates (WO-3 slice 3, replaces the direct
- * notification write in sync-conversation-mentions.ts). Notification-only:
- * never a workflow trigger. `mentionedPrincipalIds` is already
+ * notification write in sync-conversation-mentions.ts). Notification-only.
+ * `mentionedPrincipalIds` is already
  * eligibility-filtered (team-only) and author-excluded by the emit site, so
  * consumers can treat it as the final recipient set.
  */
@@ -444,7 +428,6 @@ export interface EventTicketData extends EventTicketRef {
   /** Customer-facing public stage, or null when the status projects no stage. */
   stage: string | null
   requesterPrincipalId: string | null
-  companyId: string | null
   createdAt: string
   updatedAt: string
   resolvedAt: string | null
@@ -541,55 +524,16 @@ export interface EventTicketMessageData {
 }
 
 /**
- * Payload for assistant.handed_off — fired when Quinn escalates a conversation
- * to the human team, once per hand-off decision.
- */
-export interface AssistantHandedOffPayload {
-  conversationId: string
-  reason: string
-}
-
-export interface AssistantResolvedPayload {
-  conversationId: string
-  outcome: string
-}
-
-/**
- * Payload shared by conversation.customer_unresponsive / teammate_unresponsive
- * (support platform §4.6, timer-driven triggers). `workflowId` targets the ONE
- * live workflow workflow-sweep.ts already determined crossed ITS OWN
- * `inactivityMinutes` threshold — see dispatcher.ts's dispatchWorkflowTrigger
- * `targetWorkflowId` for why this routes to a single workflow instead of the
- * generic fan-out every other trigger uses. `sinceAt` is the stable anchor (the conversation's
- * `waitingSince` for teammate_unresponsive, `lastMessageAt` for
- * customer_unresponsive) the firing was keyed on — carried through so a
- * consumer can compute the exact silence window without a second read.
- * `conversation` carries the same ref every sibling conversation event
- * embeds — `conversationId` is kept alongside it for back-compat.
- */
-export interface ConversationUnresponsivePayload {
-  conversationId: string
-  conversation: EventConversationRef
-  workflowId: string
-  silenceMinutes: number
-  sinceAt: string // ISO
-}
-
-/**
  * Payload shared by sla.approaching_breach / sla.breached (support platform
- * §4.6, timer-driven triggers). Dispatched via the standard multi-workflow
- * fan-out (unlike the unresponsive pair above) since the SLA domain's
- * fire-once dedupe is a CAS-guarded marker scoped per (conversation, clock),
- * not per workflow — see sla.service.ts's sweepApproachingSlaBreaches /
- * sweepSlaBreachTriggers doc for the trade-off this implies when more than
- * one live workflow subscribes with different `breachLeadMinutes`.
+ * §4.6, timer-driven triggers). The SLA domain's fire-once dedupe is a
+ * CAS-guarded marker scoped per (conversation, clock) — see sla.service.ts's
+ * sweepApproachingSlaBreaches / sweepSlaBreachTriggers doc.
  * `conversation` carries the same ref every sibling conversation event
  * embeds — `conversationId` is kept alongside it for back-compat.
  *
  * The `time_to_resolve` clock is TICKET-anchored (ticket-sla.service.ts): the
  * conversation side of the payload then points at the ticket's linked
- * CUSTOMER conversation (all workflow runs are conversation-context, so the
- * trigger rides that anchor), and `ticketId`/`ticket` identify the ticket
+ * CUSTOMER conversation, and `ticketId`/`ticket` identify the ticket
  * whose TTR clock actually fired. Both are absent for conversation clocks.
  */
 export interface SlaTimerPayload {
@@ -742,20 +686,6 @@ export interface TicketExternalStatusChangedEvent extends EventBase<'ticket.exte
   data: TicketExternalStatusChangedPayload
 }
 
-export interface AssistantHandedOffEvent extends EventBase<'assistant.handed_off'> {
-  data: AssistantHandedOffPayload
-}
-
-export interface AssistantResolvedEvent extends EventBase<'assistant.resolved'> {
-  data: AssistantResolvedPayload
-}
-
-export interface ConversationCustomerUnresponsiveEvent extends EventBase<'conversation.customer_unresponsive'> {
-  data: ConversationUnresponsivePayload
-}
-export interface ConversationTeammateUnresponsiveEvent extends EventBase<'conversation.teammate_unresponsive'> {
-  data: ConversationUnresponsivePayload
-}
 export interface SlaApproachingBreachEvent extends EventBase<'sla.approaching_breach'> {
   data: SlaTimerPayload
 }
@@ -811,9 +741,5 @@ export type EventData =
   | TicketRepliedEvent
   | TicketNoteAddedEvent
   | TicketExternalStatusChangedEvent
-  | AssistantHandedOffEvent
-  | AssistantResolvedEvent
-  | ConversationCustomerUnresponsiveEvent
-  | ConversationTeammateUnresponsiveEvent
   | SlaApproachingBreachEvent
   | SlaBreachedEvent

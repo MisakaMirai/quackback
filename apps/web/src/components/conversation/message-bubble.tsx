@@ -8,8 +8,8 @@
  *    Internal notes keep 'self' geometry with an amber fill instead of the
  *    brand one.
  *  - VisitorMessageBubble: the messenger bubble — muted on the left for the
- *    team and assistant with an attribution line below, brand-colored on the
- *    right for the visitor.
+ *    team with an attribution line below, brand-colored on the right for the
+ *    visitor.
  *
  * `bubbleClasses`/`bubbleContentTextClass` below are the shared surface
  * tokens both bubbles render from (UNIFIED-INBOX-SPEC.md §2.6) — geometry
@@ -31,8 +31,9 @@ import {
   CheckIcon,
   ExclamationCircleIcon,
 } from '@heroicons/react/24/solid'
-import { BookmarkIcon, PencilIcon, SparklesIcon } from '@heroicons/react/24/outline'
+import { BookmarkIcon, PencilIcon } from '@heroicons/react/24/outline'
 import { Avatar } from '@/components/ui/avatar'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { AttachmentList } from '@/components/shared/files/attachment-list'
 import { ReactionChip } from '@/components/shared/reaction-chip'
 import { NoteContent } from '@/components/admin/conversation/note-content'
@@ -59,16 +60,9 @@ import type {
   AgentConversationMessageDTO,
   ChannelDelivery,
   ConversationAttachment,
-  ConversationMessageCitation,
 } from '@/lib/shared/conversation/types'
 import { getChannelDescriptor } from '@/lib/shared/channels'
-import type { MessageTranslationDisplay } from '@/lib/shared/conversation/translation'
 import type { BlockState } from '@/components/shared/conversation/conversation-rows'
-import {
-  AssistantSourcesTrace,
-  AssistantAnswer,
-} from '@/components/shared/conversation/assistant-turn'
-import { PendingActionCard } from '@/components/conversation/pending-action-card'
 import { RichTextEditor } from '@/components/ui/rich-text-editor'
 import {
   CONVERSATION_EDITOR_FEATURES,
@@ -218,9 +212,9 @@ function AgentBlockSummary({ block, state }: { block: WorkflowBlockPayload; stat
   }
 }
 
-/** 'self' = the thread's own side (visitor in the messenger; agent/assistant
- *  outbound in the admin thread) — brand-primary fill, right-aligned. 'peer'
- *  = the other party — neutral muted fill, left-aligned. */
+/** 'self' = the thread's own side (visitor in the messenger; agent outbound in
+ *  the admin thread) — brand-primary fill, right-aligned. 'peer' = the other
+ *  party — neutral muted fill, left-aligned. */
 export type BubbleSide = 'self' | 'peer'
 
 /**
@@ -232,26 +226,21 @@ export type BubbleSide = 'self' | 'peer'
  * that has marked notes since the flat-row era — readable in both themes at
  * this opacity, same as the flag/note tints this replaces.
  *
- * `opts.agentSelf` scopes the softer fill to the admin thread's own side
- * (human replies and Quinn's replies alike) so a full workday of reading it
- * isn't spent against the saturated brand-primary yellow — human replies get
- * a soft blue, `opts.assistant` (Quinn's own replies) get a soft purple so
- * the two are visually distinct at a glance. Deliberately opt-in:
- * `VisitorMessageBubble` never passes it, so the customer-facing
- * widget/portal keeps the brand-primary bubble for the visitor's own
- * messages.
+ * `opts.agentSelf` scopes the softer blue fill to the admin thread's own side
+ * (human replies) so a full workday of reading it isn't spent against the
+ * saturated brand-primary yellow. Deliberately opt-in: `VisitorMessageBubble`
+ * never passes it, so the customer-facing widget/portal keeps the
+ * brand-primary bubble for the visitor's own messages.
  */
 export function bubbleClasses(
   side: BubbleSide,
-  opts: { note?: boolean; agentSelf?: boolean; assistant?: boolean } = {}
+  opts: { note?: boolean; agentSelf?: boolean } = {}
 ): string {
   if (opts.note) {
     return 'max-w-[85%] rounded-2xl border border-amber-400/25 bg-amber-400/10 px-3.5 py-2.5 text-foreground'
   }
   if (side === 'self' && opts.agentSelf) {
-    return opts.assistant
-      ? 'max-w-[85%] rounded-2xl bg-purple-500/15 px-3.5 py-2.5 text-foreground dark:bg-purple-500/20'
-      : 'max-w-[85%] rounded-2xl bg-blue-500/15 px-3.5 py-2.5 text-foreground dark:bg-blue-500/20'
+    return 'max-w-[85%] rounded-2xl bg-blue-500/15 px-3.5 py-2.5 text-foreground dark:bg-blue-500/20'
   }
   return cn(
     'max-w-[85%] rounded-2xl px-3.5 py-2.5',
@@ -327,13 +316,6 @@ interface AgentMessageBubbleProps {
   highlighted?: boolean
   /** When true, render external link preview cards below non-note messages. */
   linkPreviews?: boolean
-  /** P2-D.1 inbox translation: present only for a plain-text message (never a
-   *  note, never a contentJson/rich message) while translation is active for
-   *  the conversation. Lets the bubble show the translated text by default
-   *  with a "Show original" toggle, in both directions (a fetched translation
-   *  of an incoming customer message, or the teammate's pre-translation
-   *  original of an outgoing reply that was translated before sending). */
-  translation?: MessageTranslationDisplay
   /** This message's own interactive-block state (conversation-rows.ts's pure
    *  derivation), when `message.block` is an interactive kind — undefined for
    *  every other message, and for a caller that hasn't threaded a block-states
@@ -359,7 +341,7 @@ interface VisitorMessageBubbleProps {
   /** Rich TipTap doc (inline images / post embeds). When present it renders in
    *  place of the plain-text `content`; messages without it keep the text path. */
   contentJson?: TiptapContent | null
-  /** 'peer' = agent/assistant (left, muted bubble + attribution below);
+  /** 'peer' = agent (left, muted bubble + attribution below);
    *  'self' = the visitor (right, brand bubble). */
   side?: 'peer' | 'self'
   authorName?: string
@@ -368,8 +350,6 @@ interface VisitorMessageBubbleProps {
    *  right-aligned "You · time" line mirroring the peer side; omit it to keep
    *  the self bubble bare (the live-messenger default). */
   selfLabel?: string
-  /** Marks the author as the AI assistant in the attribution line. */
-  isAssistant?: boolean
   attachments?: ConversationAttachment[]
   /** The message's id and raw ISO send time — only read when `attachments`
    *  is non-empty, to build the file viewer's whole-conversation gallery
@@ -377,9 +357,6 @@ interface VisitorMessageBubbleProps {
    *  below, which the attribution line renders). */
   messageId?: string
   sentAt?: string
-  /** KB sources for an AI reply. When present, a collapsed sources trace renders
-   *  above the bubble and inline [n] markers in `content` become citation dots. */
-  citations?: ConversationMessageCitation[]
   time?: string
   /** Localized "(edited)" mark for a message whose body was edited; omitted
    *  when it never was. */
@@ -494,7 +471,6 @@ export const AgentMessageBubble = memo(function AgentMessageBubble({
   onOpenPost,
   highlighted = false,
   linkPreviews = false,
-  translation,
   blockState,
   ticketProvenance = false,
   onRetryChannelDelivery,
@@ -503,6 +479,7 @@ export const AgentMessageBubble = memo(function AgentMessageBubble({
   // open (the pointer leaves the row to interact with the portal'd content).
   const [emojiOpen, setEmojiOpen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
+  const intl = useOptionalIntl()
   const [editing, setEditing] = useState(false)
 
   // System events (e.g. "assigned to …") are status notices, not messages:
@@ -527,11 +504,15 @@ export const AgentMessageBubble = memo(function AgentMessageBubble({
   // through `NoteContent` instead of the reply renderer.
   const isNote = message.isInternal
   const isAgent = message.senderType === 'agent'
-  const authorName = message.author?.displayName ?? (isAgent ? 'Agent' : 'Visitor')
+  const authorName =
+    message.author?.displayName ??
+    (isAgent
+      ? intl.formatMessage({ id: 'inbox.message.agent', defaultMessage: 'Agent' })
+      : intl.formatMessage({ id: 'inbox.message.visitor', defaultMessage: 'Visitor' }))
   const isFlagged = message.flaggedAt !== null
   const toolbarPinned = emojiOpen || menuOpen
-  // Agent replies, assistant turns, and notes all sit on the agent's side of
-  // the thread; only the visitor's own message is the peer.
+  // Agent replies and notes all sit on the agent's side of the thread; only
+  // the visitor's own message is the peer.
   const self = isAgent
   const side: BubbleSide = self ? 'self' : 'peer'
   // Notes never get the jumbo-emoji treatment — they keep their own body
@@ -546,20 +527,14 @@ export const AgentMessageBubble = memo(function AgentMessageBubble({
   // entry into the convert dialog. Captured as a const so the click handler can
   // safely pass the narrowed (non-null) value into `onTrackSuggestion`.
   const suggestion = isNote ? message.postSuggestion : null
-  // Agent-only pointer to a Quinn write-tool proposal awaiting approval
-  // (populated only on the internal note that announced it); the card fetches
-  // the live pending-action row itself, so this only needs to render once.
-  const pendingAction = isNote ? message.assistantPendingAction : null
-
+  // A note bubble carries the internal author attribution; replies do not.
   return (
     <div
       // The scroll/flash target for "jump to message" deep-links.
       data-message-id={message.id}
       // Named group ("message") scopes the hover toolbar to this row only —
-      // an unnamed `group` here would also satisfy every citation dot's own
-      // `group-hover:` (AssistantAnswer's CitationDot, nested inside this
-      // row), popping every citation's hovercard open at once instead of
-      // just the one under the pointer.
+      // an unnamed `group` here would also match nested `group-hover:` styles
+      // inside the bubble.
       className={cn('group/message flex gap-2 py-1.5', self ? 'flex-row-reverse' : 'flex-row')}
     >
       <Avatar
@@ -573,10 +548,6 @@ export const AgentMessageBubble = memo(function AgentMessageBubble({
           resolves against an indefinite box, collapsing short plain-text
           messages to min-content (one character per line). */}
       <div className={cn('flex min-w-0 flex-1 flex-col', self ? 'items-end' : 'items-start')}>
-        {message.isAssistant && message.citations.length > 0 && (
-          <AssistantSourcesTrace citations={message.citations} />
-        )}
-
         {/* The bubble and its hover toolbar share this positioning context so
             the toolbar anchors to the bubble's corner, not the row. The width
             cap lives HERE (a direct child of the definite-width column) and the
@@ -601,7 +572,6 @@ export const AgentMessageBubble = memo(function AgentMessageBubble({
                         bubbleClasses(side, {
                           note: isNote,
                           agentSelf: true,
-                          assistant: message.isAssistant,
                         }),
                         'max-w-full'
                       ),
@@ -633,37 +603,8 @@ export const AgentMessageBubble = memo(function AgentMessageBubble({
                       )}
                     />
                   </EmbedHydration>
-                ) : message.isAssistant ? (
-                  // Quinn's reply: render the same markdown + inline citations the
-                  // customer sees, so the agent has full context — uncited replies
-                  // don't show raw markdown. No explicit text color: it inherits
-                  // the bubble's `text-primary-foreground` from `bubbleClasses`.
-                  <AssistantAnswer text={message.content} citations={message.citations} />
                 ) : (
-                  message.content && (
-                    <>
-                      <MessageMarkdown
-                        text={
-                          translation
-                            ? translation.showingOriginal
-                              ? translation.originalContent
-                              : translation.translatedContent
-                            : message.content
-                        }
-                      />
-                      {translation && (
-                        <button
-                          type="button"
-                          onClick={translation.onToggleOriginal}
-                          className="mt-0.5 text-[11px] text-muted-foreground/60 underline decoration-dotted underline-offset-2 transition-colors hover:text-foreground"
-                        >
-                          {translation.showingOriginal
-                            ? 'Show translation'
-                            : `${translation.label} · Show original`}
-                        </button>
-                      )}
-                    </>
-                  )
+                  message.content && <MessageMarkdown text={message.content} />
                 )}
                 {linkPreviews && !isNote && (
                   <LinkPreviews content={message.content} contentJson={message.contentJson} />
@@ -765,12 +706,20 @@ export const AgentMessageBubble = memo(function AgentMessageBubble({
                         <DropdownMenuSeparator />
                         {onSharePost && (
                           <DropdownMenuItem onClick={() => onSharePost(message)}>
-                            <ChatBubbleLeftRightIcon className="h-4 w-4" /> Share a post…
+                            <ChatBubbleLeftRightIcon className="h-4 w-4" />{' '}
+                            {intl.formatMessage({
+                              id: 'inbox.message.sharePost',
+                              defaultMessage: 'Share a post…',
+                            })}
                           </DropdownMenuItem>
                         )}
                         {onTrackAsPost && (
                           <DropdownMenuItem onClick={() => onTrackAsPost(message)}>
-                            <AdjustmentsHorizontalIcon className="h-4 w-4" /> Track as feedback…
+                            <AdjustmentsHorizontalIcon className="h-4 w-4" />{' '}
+                            {intl.formatMessage({
+                              id: 'inbox.message.trackAsFeedback',
+                              defaultMessage: 'Track as feedback…',
+                            })}
                           </DropdownMenuItem>
                         )}
                       </>
@@ -799,26 +748,25 @@ export const AgentMessageBubble = memo(function AgentMessageBubble({
         {isNote && suggestion && onTrackSuggestion && (
           <div className="flex max-w-[85%] flex-wrap items-center gap-2 rounded-md border border-amber-400/30 bg-amber-400/10 px-2 py-1.5">
             <span className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-700 dark:text-amber-300">
-              <LightBulbIcon className="h-3.5 w-3.5" /> AI suggests tracking this as a post
+              <LightBulbIcon className="h-3.5 w-3.5" />{' '}
+              {intl.formatMessage({
+                id: 'inbox.message.aiSuggestion',
+                defaultMessage: 'AI suggests tracking this as a post',
+              })}
             </span>
             <button
               type="button"
               onClick={() => onTrackSuggestion(message)}
               className="ml-auto inline-flex items-center gap-1 rounded-md bg-primary px-2 py-1 text-[11px] font-medium text-primary-foreground transition-colors hover:bg-primary/90"
             >
-              <ArrowTopRightOnSquareIcon className="h-3.5 w-3.5" /> Track as feedback
+              <ArrowTopRightOnSquareIcon className="h-3.5 w-3.5" />{' '}
+              {intl.formatMessage({
+                id: 'inbox.message.trackAsFeedbackAction',
+                defaultMessage: 'Track as feedback',
+              })}
             </button>
           </div>
         )}
-        {isNote && pendingAction && (
-          <div className="max-w-[85%]">
-            <PendingActionCard
-              pendingActionId={pendingAction.pendingActionId}
-              summary={pendingAction.summary}
-            />
-          </div>
-        )}
-
         {message.reactions.length > 0 && (
           <div className="mt-1 flex flex-wrap gap-1">
             {message.reactions.map((r) => (
@@ -834,10 +782,9 @@ export const AgentMessageBubble = memo(function AgentMessageBubble({
           </div>
         )}
 
-        {/* Attribution below the bubble, matching VisitorMessageBubble: name
-            (assistant messages get a subtle sparkle before it), Internal-note badge, via-email icon, time, and the
-            flagged bookmark glyph — flag state is a meta-line glyph now, not
-            a row tint. */}
+        {/* Attribution below the bubble, matching VisitorMessageBubble: name,
+            Internal-note badge, via-email icon, time, and the flagged bookmark
+            glyph — flag state is a meta-line glyph now, not a row tint. */}
         <div
           className={cn(
             'mt-1 flex items-center gap-1.5 px-1 text-[11px] text-muted-foreground/70',
@@ -845,7 +792,6 @@ export const AgentMessageBubble = memo(function AgentMessageBubble({
           )}
         >
           <span className="flex min-w-0 items-center gap-1">
-            {message.isAssistant && <SparklesIcon className="h-3 w-3 shrink-0" aria-hidden />}
             <span className="truncate">{authorName}</span>
           </span>
           {isNote && (
@@ -856,8 +802,14 @@ export const AgentMessageBubble = memo(function AgentMessageBubble({
           {message.viaEmail && (
             <EnvelopeIcon
               className="h-3 w-3 shrink-0"
-              aria-label="Received by email"
-              title="Received by email"
+              aria-label={intl.formatMessage({
+                id: 'inbox.message.receivedByEmail',
+                defaultMessage: 'Received by email',
+              })}
+              title={intl.formatMessage({
+                id: 'inbox.message.receivedByEmail',
+                defaultMessage: 'Received by email',
+              })}
             />
           )}
           {/* Pair-thread provenance (convergence Phase 2): a legacy
@@ -865,7 +817,12 @@ export const AgentMessageBubble = memo(function AgentMessageBubble({
               not a chip — it answers "why does this read differently", nothing
               more. */}
           {ticketProvenance && message.ticketId && !isNote && (
-            <span className="shrink-0">· via ticket thread</span>
+            <span className="shrink-0">
+              {intl.formatMessage({
+                id: 'inbox.message.viaTicketThread',
+                defaultMessage: '· via ticket thread',
+              })}
+            </span>
           )}
           <MessageTime iso={message.createdAt} />
           {message.editedAt && <EditedAt iso={message.editedAt} />}
@@ -896,10 +853,9 @@ export const AgentMessageBubble = memo(function AgentMessageBubble({
 
 /**
  * A single visitor-facing message: a rounded bubble — muted on the left for the
- * team and assistant with a small attribution line below ("Name · time", or
- * "✨ Name AI · time" for the assistant), brand-colored on the right for the
- * visitor — matching the modern messenger bubble language. Lone-emoji messages
- * render large without a bubble.
+ * team with a small attribution line below ("Name · time"), brand-colored on
+ * the right for the visitor — matching the modern messenger bubble language.
+ * Lone-emoji messages render large without a bubble.
  */
 export function VisitorMessageBubble({
   content,
@@ -907,11 +863,9 @@ export function VisitorMessageBubble({
   side = 'peer',
   authorName,
   selfLabel,
-  isAssistant = false,
   attachments,
   messageId,
   sentAt,
-  citations,
   time,
   editedLabel,
   linkPreviews = false,
@@ -921,10 +875,6 @@ export function VisitorMessageBubble({
 }: VisitorMessageBubbleProps) {
   const self = side === 'self'
   const jumbo = isJumboEmojiMessage(content, contentJson)
-  // Quinn's turns render as Markdown, with
-  // inline citation dots + a sources trace only when the answer was grounded.
-  const isAiReply = !self && isAssistant
-  const cited = isAiReply && citations && citations.length > 0 ? citations : null
   return (
     <div
       // The scroll/flash target for "jump to message" deep-links, matching
@@ -932,7 +882,6 @@ export function VisitorMessageBubble({
       data-message-id={messageId}
       className={self ? 'flex flex-col items-end' : 'flex flex-col items-start'}
     >
-      {cited && <AssistantSourcesTrace citations={cited} />}
       <div className={jumbo ? 'max-w-[85%]' : bubbleClasses(side)}>
         {jumbo ? (
           // A lone-emoji message renders large (no bubble chrome).
@@ -949,12 +898,7 @@ export function VisitorMessageBubble({
             />
           </EmbedHydration>
         ) : (
-          content &&
-          (isAiReply ? (
-            <AssistantAnswer text={content} citations={cited ?? []} />
-          ) : (
-            <MessageMarkdown text={content} />
-          ))
+          content && <MessageMarkdown text={content} />
         )}
         {linkPreviews && (
           <LinkPreviews
@@ -977,17 +921,13 @@ export function VisitorMessageBubble({
         />
       )}
 
-      {/* Attribution below the bubble. Peer (team/assistant) shows name · time;
-          the assistant's name gets a subtle sparkle + "AI" suffix as one
-          cohesive label. Self (the visitor) shows "You · time" only when a
-          `selfLabel` is supplied (ticket surfaces opt in; the live messenger
-          leaves its own bubbles bare). */}
+      {/* Attribution below the bubble. Peer (team) shows name · time; self (the
+          visitor) shows "You · time" only when a `selfLabel` is supplied (ticket
+          surfaces opt in; the live messenger leaves its own bubbles bare). */}
       {!self && (authorName || time) && (
         <div className="mt-1 px-1">
           <p className="flex items-center gap-1 text-[11px] text-muted-foreground/70">
-            {isAssistant && <SparklesIcon className="h-3 w-3 shrink-0" aria-hidden />}
             {authorName}
-            {isAssistant ? ' AI' : ''}
             {time && (
               <>
                 {' · '}

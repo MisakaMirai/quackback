@@ -5,8 +5,6 @@ import { cn } from '@/lib/shared/utils'
 const TRIGGER_TYPE_NAMES = new Set([
   'AlertDialogTrigger',
   'CollapsibleTrigger',
-  'ContextMenuSubTrigger',
-  'ContextMenuTrigger',
   'DialogTrigger',
   'DropdownMenuSubTrigger',
   'DropdownMenuTrigger',
@@ -116,6 +114,11 @@ function isButtonLikeElement(element: React.ReactElement): boolean {
   if (typeof element.type === 'string') return false
   const name = componentName(element)
   if (isButtonComponent(element)) return true
+  // Wrappers that render a native <button> (FilterAddButton, NewButton, ...)
+  // are not observable statically, but the naming convention is reliable:
+  // telling Base UI these are non-native buttons makes it add role="button"
+  // and aria-disabled to a real <button>, which it warns about.
+  if (name.endsWith('Button')) return true
   if (TRIGGER_TYPE_NAMES.has(name) || name.endsWith('Trigger')) {
     const nested = React.Children.toArray(
       (element.props as { children?: React.ReactNode }).children

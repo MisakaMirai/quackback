@@ -11,16 +11,6 @@
  * lock every caller out of sign-in. Nothing here decides policy — the
  * per-endpoint limits live in `auth/signin-rate-limit.ts`,
  * `auth/widget-rate-limit.ts`, `domains/api/rate-limit.ts` and their siblings.
- *
- * ## The workspace is in the key, and that is load-bearing
- *
- * Bucket names are built from identifiers that only mean something inside one
- * workspace — a principal id, an email, an IP paired with an action. Left
- * undiscriminated, one workspace's traffic spends another's budget: a denial of
- * service that needs no credentials. `pg-kv.ts` writes
- * `rate_bucket.workspace_key` from the same `currentWorkspaceNamespace()` that built
- * the Redis `t:<workspaceKey>:` prefix, and every read filters on it. Under pooled
- * tenancy the row is additionally in the workspace's own database.
  */
 import {
   incrementRateBucket,
@@ -33,7 +23,7 @@ import { logger } from '@/lib/server/logger'
 const log = logger.child({ component: 'rate-bucket' })
 
 export interface RateBucketSpec {
-  /** Logical bucket name. Discriminated by workspace before it reaches a row. */
+  /** Logical bucket name. */
   key: string
   windowSeconds: number
 }

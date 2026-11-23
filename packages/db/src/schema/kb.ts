@@ -22,12 +22,6 @@ const tsvector = customType<{ data: string }>({
   },
 })
 
-const vector = customType<{ data: number[] }>({
-  dataType() {
-    return 'vector(1536)'
-  },
-})
-
 // ============================================
 // Locale -> Postgres text-search config (domains/languages §2)
 // ============================================
@@ -144,9 +138,6 @@ export const helpCenterArticles = pgTable(
     searchVector: tsvector('search_vector').generatedAlwaysAs(
       sql`setweight(to_tsvector('english', coalesce(title, '')), 'A') || setweight(to_tsvector('english', coalesce(content, '')), 'B')`
     ),
-    embedding: vector('embedding'),
-    embeddingModel: text('embedding_model'),
-    embeddingUpdatedAt: timestamp('embedding_updated_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
     deletedAt: timestamp('deleted_at', { withTimezone: true }),
@@ -162,9 +153,6 @@ export const helpCenterArticles = pgTable(
     index('kb_articles_search_vector_idx').using('gin', table.searchVector),
     // Workspace search: a title containing the query anywhere inside (0309).
     index('kb_articles_title_trgm_idx').using('gin', table.title.op('gin_trgm_ops')),
-    index('kb_articles_embedding_hnsw_idx')
-      .using('hnsw', sql`${table.embedding} vector_cosine_ops`)
-      .where(sql`${table.embedding} IS NOT NULL`),
   ]
 )
 

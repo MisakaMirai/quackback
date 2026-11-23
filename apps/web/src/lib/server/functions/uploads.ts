@@ -7,7 +7,6 @@
 import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
 import { requireAuth } from './auth-helpers'
-import { getWidgetSession } from './widget-auth'
 import {
   isS3Usable,
   generatePresignedUploadUrl,
@@ -17,7 +16,7 @@ import {
 } from '../storage/s3'
 import { logger } from '@/lib/server/logger'
 import { PERMISSIONS } from '@/lib/shared/permissions'
-import { UnauthorizedError, ValidationError, ServiceUnavailableError } from '@/lib/shared/errors'
+import { ValidationError, ServiceUnavailableError } from '@/lib/shared/errors'
 
 const log = logger.child({ component: 'uploads' })
 
@@ -161,43 +160,6 @@ export const getPostImageUploadUrlFn = createServerFn({ method: 'POST' })
     return presignedImageUpload(data, { label: 'post image', prefix: 'post-images' })
   })
 
-/**
- * Get a presigned URL for widget feedback submission images.
- * Requires an active widget Bearer token session — anonymous users are blocked server-side.
- */
-export const getWidgetImageUploadUrlFn = createServerFn({ method: 'POST' })
-  .validator(imageUploadSchema)
-  .handler(async ({ data }) => {
-    log.debug(
-      { content_type: data.contentType, file_size: data.fileSize },
-      'widget image upload url requested'
-    )
-    const session = await getWidgetSession()
-    if (!session) {
-      throw new UnauthorizedError('Authentication required to upload images.')
-    }
-    if (session.principal.type === 'anonymous') {
-      throw new UnauthorizedError('Authentication required to upload images.')
-    }
-
-    if (!isS3Usable()) {
-      throw new ServiceUnavailableError(
-        'STORAGE_NOT_CONFIGURED',
-        'File storage is not configured. Contact your administrator.'
-      )
-    }
-
-    if (!isAllowedImageType(data.contentType)) {
-      throw new ValidationError(
-        'INVALID_FILE_TYPE',
-        `Invalid image type: ${data.contentType}. Allowed types: JPEG, PNG, GIF, WebP.`
-      )
-    }
-
-    const key = generateStorageKey('widget-images', data.filename)
-    return await generatePresignedUploadUrl(key, data.contentType)
-  })
-
 // ============================================================================
 // Branding Image Upload Functions
 // ============================================================================
@@ -243,16 +205,6 @@ export const getIdentityProviderLogoUploadUrlFn = createServerFn({ method: 'POST
   })
 
 /**
- * Get a presigned URL for uploading the widget Home hero image.
- */
-export const getWidgetHeroUploadUrlFn = createServerFn({ method: 'POST' })
-  .validator(imageUploadSchema)
-  .handler(async ({ data }) => {
-    await requireAuth({ permission: PERMISSIONS.SETTINGS_MANAGE })
-    return presignedImageUpload(data, { label: 'widget hero', prefix: 'widget-hero' })
-  })
-
-/**
  * Get a presigned URL for uploading user avatars.
  */
 export const getAvatarUploadUrlFn = createServerFn({ method: 'POST' })
@@ -260,15 +212,4 @@ export const getAvatarUploadUrlFn = createServerFn({ method: 'POST' })
   .handler(async ({ data }) => {
     await requireAuth()
     return presignedImageUpload(data, { label: 'avatar', prefix: 'avatars' })
-  })
-
-/**
- * Get a presigned URL for uploading the AI agent's avatar. Gated on
- * ai.customer.manage; the returned publicUrl is stored in identity.avatarUrl.
- */
-export const getAssistantAvatarUploadUrlFn = createServerFn({ method: 'POST' })
-  .validator(imageUploadSchema)
-  .handler(async ({ data }) => {
-    await requireAuth({ permission: PERMISSIONS.AI_CUSTOMER_MANAGE })
-    return presignedImageUpload(data, { label: 'assistant avatar', prefix: 'assistant-avatars' })
   })

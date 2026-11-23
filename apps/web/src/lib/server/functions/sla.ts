@@ -15,7 +15,7 @@ import type { ConversationId, OfficeHoursId, SlaPolicyId } from '@quackback/ids'
 import { requireAuth } from './auth-helpers'
 import { PERMISSIONS } from '@/lib/shared/permissions'
 import { slaTargetsSummary } from '@/lib/shared/conversation/sla'
-import type { SlaPolicy, Workflow } from '@/lib/server/db'
+import type { SlaPolicy } from '@/lib/server/db'
 import {
   createSlaPolicy,
   getSlaPolicy,
@@ -26,37 +26,8 @@ import {
   updateSlaPolicy,
 } from '@/lib/server/domains/sla/sla-policy.service'
 import { removeSlaFromConversation } from '@/lib/server/domains/sla/sla.service'
-import { listWorkflows } from '@/lib/server/domains/workflows/workflow.service'
 import { getOfficeHoursSchedule } from '@/lib/server/domains/settings/settings.office-hours'
 import { NotFoundError, ValidationError } from '@/lib/shared/errors'
-
-/** A workflow that applies a policy, as listed on rows and in-use warnings. */
-export interface SlaWorkflowRef {
-  id: string
-  name: string
-  status: string
-}
-
-/**
- * Workflows whose graph contains an Apply-SLA action referencing the policy.
- * Deliberately defensive over the stored JSON: a malformed graph just never
- * matches.
- */
-export function workflowsReferencingPolicy(
-  workflows: Pick<Workflow, 'id' | 'name' | 'status' | 'graph'>[],
-  policyId: string
-): SlaWorkflowRef[] {
-  return workflows
-    .filter((w) => {
-      const nodes = (w.graph as { nodes?: unknown } | null)?.nodes
-      if (!Array.isArray(nodes)) return false
-      return nodes.some((node) => {
-        const action = (node as { action?: { type?: string; policyId?: string } } | null)?.action
-        return action?.type === 'apply_sla' && action.policyId === policyId
-      })
-    })
-    .map((w) => ({ id: w.id, name: w.name, status: w.status }))
-}
 
 export interface SlaPolicyDTO {
   id: string
@@ -74,10 +45,9 @@ export interface SlaPolicyDTO {
   archivedAt: string | null
   createdAt: string
   updatedAt: string
-  usedByWorkflows: SlaWorkflowRef[]
 }
 
-function serializePolicy(p: SlaPolicy, usedByWorkflows: SlaWorkflowRef[]): SlaPolicyDTO {
+function serializePolicy(p: SlaPolicy): SlaPolicyDTO {
   return {
     id: p.id,
     name: p.name,
@@ -91,7 +61,6 @@ function serializePolicy(p: SlaPolicy, usedByWorkflows: SlaWorkflowRef[]): SlaPo
     archivedAt: p.deletedAt ? p.deletedAt.toISOString() : null,
     createdAt: p.createdAt.toISOString(),
     updatedAt: p.updatedAt.toISOString(),
-    usedByWorkflows,
   }
 }
 
@@ -158,15 +127,12 @@ const TARGET_KEYS = [
   'timeToResolveTargetSecs',
 ] as const
 
-/** Full policy list (live + archived) with per-policy workflow references. */
+/** Full policy list (live + archived). */
 export const listSlaPoliciesFn = createServerFn({ method: 'GET' }).handler(
   async (): Promise<SlaPolicyDTO[]> => {
     await requireAuth({ permission: PERMISSIONS.SLA_MANAGE })
-    const [policies, workflows] = await Promise.all([
-      listSlaPoliciesIncludingArchived(),
-      listWorkflows(),
-    ])
-    return policies.map((p) => serializePolicy(p, workflowsReferencingPolicy(workflows, p.id)))
+    const policies = await listSlaPoliciesIncludingArchived()
+    return policies.map((p) => serializePolicy(p))
   }
 )
 
@@ -218,7 +184,7 @@ export const createSlaPolicyFn = createServerFn({ method: 'POST' })
       pauseOnPending: data.pauseOnPending,
       officeHoursScheduleId: parseScheduleId(data.officeHoursScheduleId) ?? null,
     })
-    return serializePolicy(created, [])
+    return serializePolicy(created)
   })
 
 export type UpdateSlaPolicyResult =
@@ -255,24 +221,14 @@ export const updateSlaPolicyFn = createServerFn({ method: 'POST' })
     return { ok: true }
   })
 
-export type ArchiveSlaPolicyResult =
-  { ok: true } | { ok: false; code: 'SLA_IN_USE'; workflows: { id: string; name: string }[] }
+export type ArchiveSlaPolicyResult = { ok: true }
 
-/** Archive (soft-delete) a policy; blocked while a LIVE workflow applies it.
- *  Archived policies stay on already-applied conversations and in reports. */
+/** Archive (soft-delete) a policy. Archived policies stay on already-applied
+ *  conversations and in reports. */
 export const archiveSlaPolicyFn = createServerFn({ method: 'POST' })
   .validator(idSchema)
   .handler(async ({ data }): Promise<ArchiveSlaPolicyResult> => {
     await requireAuth({ permission: PERMISSIONS.SLA_MANAGE })
-    const references = workflowsReferencingPolicy(await listWorkflows(), data.id)
-    const live = references.filter((w) => w.status === 'live')
-    if (live.length > 0) {
-      return {
-        ok: false,
-        code: 'SLA_IN_USE',
-        workflows: live.map(({ id, name }) => ({ id, name })),
-      }
-    }
     await softDeleteSlaPolicy(data.id as SlaPolicyId)
     return { ok: true }
   })

@@ -46,7 +46,6 @@ function conversationItem(over: {
     tags: [],
     sla: null,
     customAttributes: {},
-    translation: null,
   } as unknown as ConversationDTO
   return { kind: 'conversation', conversation, linkedTicket: null, searchSnippet: null }
 }
@@ -68,7 +67,6 @@ function ticketItem(over: {
     priority: over.priority ?? 'none',
     requester: null,
     assignee: { principalId: null, displayName: null, teamId: null, teamName: null },
-    company: null,
     firstResponseAt: null,
     dueAt: null,
     resolvedAt: null,

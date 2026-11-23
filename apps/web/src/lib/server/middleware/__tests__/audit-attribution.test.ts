@@ -295,7 +295,7 @@ describe('REST write auditing', () => {
     const req = keyed('DELETE', `/api/v1/posts/${POST_ID}`)
     const result = await serve(
       req,
-      route(() => noContentResponse(), PERMISSIONS.BILLING_MANAGE)
+      route(() => noContentResponse(), PERMISSIONS.AUDIT_VIEW)
     )
 
     expect(result.response?.status).toBe(403)

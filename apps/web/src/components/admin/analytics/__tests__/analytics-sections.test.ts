@@ -14,10 +14,6 @@ describe('SECTION_NAV_ITEMS', () => {
     expect(item('support').icon).toBe(ENTITY_ICONS.conversation)
     expect(item('changelog').icon).toBe(ENTITY_ICONS.changelog)
   })
-
-  it('names the assistant section Quackback AI', () => {
-    expect(item('ai').label).toBe('Quackback AI')
-  })
 })
 
 describe('parseSection', () => {

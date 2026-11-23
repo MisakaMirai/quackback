@@ -12,6 +12,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { ticketQueries } from '@/lib/client/queries/inbox'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { useUpdateTicketStatusMappings } from '@/lib/client/mutations'
 import type { ExternalStatus } from './status-sync-config'
 
@@ -37,6 +38,7 @@ export function TicketStatusSyncConfig({
   enabled,
   externalStatuses,
 }: TicketStatusSyncConfigProps) {
+  const intl = useOptionalIntl()
   const statusSyncEnabled = (config.statusSyncEnabled as boolean) ?? false
   const existingMappings = (config.ticketStatusMappings ?? {}) as Record<string, string | null>
 
@@ -60,10 +62,18 @@ export function TicketStatusSyncConfig({
   return (
     <div className="space-y-3">
       <div>
-        <Label className="text-base font-medium">Ticket status mapping</Label>
+        <Label className="text-base font-medium">
+          {intl.formatMessage({
+            id: 'admin.integrations.ticketStatusSync.title',
+            defaultMessage: 'Ticket status mapping',
+          })}
+        </Label>
         <p className="text-xs text-muted-foreground">
-          Map issue states to ticket statuses for tickets linked to issues. Unmapped states are
-          ignored.
+          {intl.formatMessage({
+            id: 'admin.integrations.ticketStatusSync.description',
+            defaultMessage:
+              'Map issue states to ticket statuses for tickets linked to issues. Unmapped states are ignored.',
+          })}
         </p>
       </div>
 
@@ -84,7 +94,12 @@ export function TicketStatusSyncConfig({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value={IGNORE_VALUE}>
-                  <span className="text-muted-foreground">Ignore</span>
+                  <span className="text-muted-foreground">
+                    {intl.formatMessage({
+                      id: 'admin.integrations.ticketStatusSync.ignore',
+                      defaultMessage: 'Ignore',
+                    })}
+                  </span>
                 </SelectItem>
                 {ticketStatuses.map((status) => (
                   <SelectItem key={status.id} value={status.id}>
@@ -100,13 +115,22 @@ export function TicketStatusSyncConfig({
       {saving && (
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <ArrowPathIcon className="h-4 w-4 animate-spin" />
-          <span>Saving...</span>
+          <span>
+            {intl.formatMessage({
+              id: 'admin.integrations.config.saving',
+              defaultMessage: 'Saving...',
+            })}
+          </span>
         </div>
       )}
 
       {updateMappings.isError && (
         <div className="text-sm text-destructive">
-          {updateMappings.error?.message || 'Failed to save changes'}
+          {updateMappings.error?.message ||
+            intl.formatMessage({
+              id: 'admin.integrations.config.saveFailed',
+              defaultMessage: 'Failed to save changes',
+            })}
         </div>
       )}
     </div>

@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { PlusIcon } from '@heroicons/react/24/outline'
 import { XMarkIcon } from '@heroicons/react/24/solid'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { changelogCategoryQueries } from '@/lib/client/queries/changelog'
 import { cn } from '@/lib/shared/utils'
 import type { ChangelogCategoryId } from '@quackback/ids'
@@ -18,6 +19,7 @@ interface ChangelogCategorySelectProps {
  * ones as removable colored chips, with an "Add" popover for the rest.
  */
 export function ChangelogCategorySelect({ value, onChange }: ChangelogCategorySelectProps) {
+  const intl = useOptionalIntl()
   const [open, setOpen] = useState(false)
   const { data: categories = [] } = useQuery(changelogCategoryQueries.list())
 
@@ -44,7 +46,13 @@ export function ChangelogCategorySelect({ value, onChange }: ChangelogCategorySe
           <button
             type="button"
             onClick={() => toggle(category.id)}
-            aria-label={`Remove ${category.name}`}
+            aria-label={intl.formatMessage(
+              {
+                id: 'admin.changelog.labels.remove',
+                defaultMessage: 'Remove {name}',
+              },
+              { name: category.name }
+            )}
             className="opacity-60 hover:opacity-100"
           >
             <XMarkIcon className="h-3 w-3" />
@@ -54,7 +62,10 @@ export function ChangelogCategorySelect({ value, onChange }: ChangelogCategorySe
 
       {categories.length === 0 ? (
         <p className="text-xs text-muted-foreground/60 italic">
-          No labels yet. Create some in Settings &gt; Changelog.
+          {intl.formatMessage({
+            id: 'admin.changelog.labels.empty',
+            defaultMessage: 'No labels yet. Create some in Settings > Changelog.',
+          })}
         </p>
       ) : (
         <Popover open={open} onOpenChange={setOpen}>
@@ -71,12 +82,17 @@ export function ChangelogCategorySelect({ value, onChange }: ChangelogCategorySe
               )}
             >
               <PlusIcon className="h-2.5 w-2.5" />
-              Add
+              {intl.formatMessage({ id: 'common.add', defaultMessage: 'Add' })}
             </button>
           </PopoverTrigger>
           <PopoverContent className="w-56 p-1" align="start">
             {unselected.length === 0 ? (
-              <p className="py-4 text-center text-xs text-muted-foreground">All labels applied</p>
+              <p className="py-4 text-center text-xs text-muted-foreground">
+                {intl.formatMessage({
+                  id: 'admin.changelog.labels.allApplied',
+                  defaultMessage: 'All labels applied',
+                })}
+              </p>
             ) : (
               unselected.map((category) => (
                 <button

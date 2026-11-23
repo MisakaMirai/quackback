@@ -1,6 +1,6 @@
 /**
  * Customer-context panel (IF WO-9). Renders normalized enrichment cards from
- * connected CRM integrations (Zendesk/HubSpot/Intercom) for a post's author.
+ * connected CRM integrations (HubSpot/Intercom) for a post's author.
  * Fetched ON DEMAND (only when an author email exists and the query is
  * enabled) — never eagerly per post row. Renders nothing when there's no
  * email or no connected provider returns a match. When no connected provider
@@ -10,6 +10,7 @@ import { useQuery } from '@tanstack/react-query'
 import type { EnrichmentCard } from '@/lib/server/functions/customer-context'
 import { customerContextQuery } from '@/lib/client/queries/customer-context'
 import { getIntegrationIcon } from '@/components/admin/settings/integrations/integration-ui'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { ArrowTopRightOnSquareIcon } from '@heroicons/react/16/solid'
 
 interface CustomerContextPanelProps {
@@ -40,6 +41,7 @@ export function CustomerContextPanel({ email }: CustomerContextPanelProps) {
 }
 
 function ContextCard({ card }: { card: EnrichmentCard }) {
+  const intl = useOptionalIntl()
   const Icon = getIntegrationIcon(card.provider)
   return (
     <div className="rounded-lg border border-border/50 bg-card p-3">
@@ -59,7 +61,10 @@ function ContextCard({ card }: { card: EnrichmentCard }) {
             target="_blank"
             rel="noopener noreferrer"
             className="shrink-0 text-muted-foreground hover:text-foreground"
-            title="Open in tool"
+            title={intl.formatMessage({
+              id: 'admin.feedback.customerContext.openInTool',
+              defaultMessage: 'Open in tool',
+            })}
           >
             <ArrowTopRightOnSquareIcon className="h-4 w-4" />
           </a>

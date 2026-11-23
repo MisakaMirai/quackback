@@ -1,10 +1,5 @@
 import { useState } from 'react'
-import {
-  BuildingOffice2Icon,
-  ChatBubbleOvalLeftIcon,
-  FlagIcon,
-  TicketIcon,
-} from '@heroicons/react/24/solid'
+import { ChatBubbleOvalLeftIcon, FlagIcon, TicketIcon } from '@heroicons/react/24/solid'
 import { ChevronDownIcon, PlusIcon } from '@heroicons/react/16/solid'
 import type { Channel, ConversationPriority } from '@/lib/shared/conversation/types'
 import { listChannelDescriptors } from '@/lib/shared/channels'
@@ -29,13 +24,16 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 
 const TRIAGE_FACETS: readonly InboxTriageFacet[] = ['open', 'waiting', 'closed']
 
-export interface CompanyFilter {
-  companies: { id: string; name: string }[]
-  value: string | undefined
-  onChange: (companyId: string | undefined) => void
+/** English defaults for the triage facet labels (the facet values are internal). */
+const FACET_MESSAGES: Record<InboxTriageFacet, { id: string; defaultMessage: string }> = {
+  all: { id: 'admin.inbox.facet.all', defaultMessage: 'All' },
+  open: { id: 'admin.inbox.facet.open', defaultMessage: 'Open' },
+  waiting: { id: 'admin.inbox.facet.waiting', defaultMessage: 'Waiting' },
+  closed: { id: 'admin.inbox.facet.closed', defaultMessage: 'Closed' },
 }
 
 export interface ConversationListToolbarProps {
@@ -52,7 +50,6 @@ export interface ConversationListToolbarProps {
   ticketTypeOptions?: Array<{ id: string; name: string; icon: string | null; color: string }>
   channelFilter?: Channel
   onChannelFilter?: (value: Channel | undefined) => void
-  companyFilter?: CompanyFilter
   sort: ConversationSort
   onSort: (value: ConversationSort) => void
 }
@@ -74,22 +71,18 @@ export function ConversationListToolbar({
   ticketTypeOptions,
   channelFilter,
   onChannelFilter,
-  companyFilter,
   sort,
   onSort,
 }: ConversationListToolbarProps) {
+  const intl = useOptionalIntl()
   const [filterOpen, setFilterOpen] = useState(false)
   const sorts = searching ? CONVERSATION_SORTS : TERMLESS_CONVERSATION_SORTS
   const channels = listChannelDescriptors()
   const activeType = ticketTypeOptions?.find((t) => t.id === ticketTypeFilter)
-  const activeCompany = companyFilter?.companies.find((c) => c.id === companyFilter.value)
   const activeChannel = channels.find((d) => d.id === channelFilter)
 
   const activeCount =
-    (priorityFilter !== 'all' ? 1 : 0) +
-    (channelFilter ? 1 : 0) +
-    (activeType ? 1 : 0) +
-    (activeCompany ? 1 : 0)
+    (priorityFilter !== 'all' ? 1 : 0) + (channelFilter ? 1 : 0) + (activeType ? 1 : 0)
 
   return (
     <div className="flex flex-wrap items-center gap-1.5 px-3 py-2">
@@ -105,14 +98,23 @@ export function ConversationListToolbar({
         <>
           <DropdownMenu>
             <DropdownMenuTrigger render={<Button variant="outline" size="sm" />}>
-              <span className="capitalize">{facet === 'all' ? 'Status' : facet}</span>
+              <span>
+                {facet === 'all'
+                  ? intl.formatMessage({
+                      id: 'admin.inbox.facet.label',
+                      defaultMessage: 'Status',
+                    })
+                  : intl.formatMessage(FACET_MESSAGES[facet])}
+              </span>
               <ChevronDownIcon className="size-3.5 text-muted-foreground" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start">
-              <DropdownMenuItem onClick={() => onFacet('all')}>All</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onFacet('all')}>
+                {intl.formatMessage(FACET_MESSAGES.all)}
+              </DropdownMenuItem>
               {TRIAGE_FACETS.map((f) => (
-                <DropdownMenuItem key={f} onClick={() => onFacet(f)} className="capitalize">
-                  {f}
+                <DropdownMenuItem key={f} onClick={() => onFacet(f)}>
+                  {intl.formatMessage(FACET_MESSAGES[f])}
                 </DropdownMenuItem>
               ))}
             </DropdownMenuContent>
@@ -123,7 +125,7 @@ export function ConversationListToolbar({
               render={<Button variant="outline" size="sm" className="border-dashed" />}
             >
               <PlusIcon className="size-3.5" />
-              Filter
+              {intl.formatMessage({ id: 'admin.inbox.toolbar.filter', defaultMessage: 'Filter' })}
               {activeCount > 0 && (
                 <span className="rounded-full bg-primary/15 px-1.5 text-[11px] font-medium tabular-nums text-foreground">
                   {activeCount}
@@ -134,11 +136,17 @@ export function ConversationListToolbar({
               <DropdownMenuSub>
                 <DropdownMenuSubTrigger>
                   <FlagIcon className="size-4" />
-                  Priority
+                  {intl.formatMessage({
+                    id: 'admin.inbox.toolbar.priority',
+                    defaultMessage: 'Priority',
+                  })}
                 </DropdownMenuSubTrigger>
                 <DropdownMenuSubContent>
                   <DropdownMenuItem onClick={() => onPriorityFilter('all')}>
-                    All priorities
+                    {intl.formatMessage({
+                      id: 'admin.inbox.toolbar.allPriorities',
+                      defaultMessage: 'All priorities',
+                    })}
                   </DropdownMenuItem>
                   <PriorityMenuItems
                     selected={priorityFilter === 'all' ? undefined : priorityFilter}
@@ -151,11 +159,17 @@ export function ConversationListToolbar({
                 <DropdownMenuSub>
                   <DropdownMenuSubTrigger>
                     <ChatBubbleOvalLeftIcon className="size-4" />
-                    Channel
+                    {intl.formatMessage({
+                      id: 'admin.inbox.toolbar.channel',
+                      defaultMessage: 'Channel',
+                    })}
                   </DropdownMenuSubTrigger>
                   <DropdownMenuSubContent>
                     <DropdownMenuItem onClick={() => onChannelFilter(undefined)}>
-                      Any channel
+                      {intl.formatMessage({
+                        id: 'admin.inbox.toolbar.anyChannel',
+                        defaultMessage: 'Any channel',
+                      })}
                     </DropdownMenuItem>
                     {channels.map((d) => (
                       <DropdownMenuItem key={d.id} onClick={() => onChannelFilter(d.id)}>
@@ -170,34 +184,18 @@ export function ConversationListToolbar({
                 <DropdownMenuSub>
                   <DropdownMenuSubTrigger>
                     <TicketIcon className="size-4" />
-                    Type
+                    {intl.formatMessage({ id: 'admin.inbox.toolbar.type', defaultMessage: 'Type' })}
                   </DropdownMenuSubTrigger>
                   <DropdownMenuSubContent>
                     <DropdownMenuItem onClick={() => onTicketTypeFilter(undefined)}>
-                      All types
+                      {intl.formatMessage({
+                        id: 'admin.inbox.toolbar.allTypes',
+                        defaultMessage: 'All types',
+                      })}
                     </DropdownMenuItem>
                     {ticketTypeOptions.map((t) => (
                       <DropdownMenuItem key={t.id} onClick={() => onTicketTypeFilter(t.id)}>
                         <span aria-hidden>{t.icon}</span> {t.name}
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuSubContent>
-                </DropdownMenuSub>
-              )}
-
-              {companyFilter && (
-                <DropdownMenuSub>
-                  <DropdownMenuSubTrigger>
-                    <BuildingOffice2Icon className="size-4" />
-                    Company
-                  </DropdownMenuSubTrigger>
-                  <DropdownMenuSubContent className="max-h-72 overflow-y-auto">
-                    <DropdownMenuItem onClick={() => companyFilter.onChange(undefined)}>
-                      All companies
-                    </DropdownMenuItem>
-                    {companyFilter.companies.map((co) => (
-                      <DropdownMenuItem key={co.id} onClick={() => companyFilter.onChange(co.id)}>
-                        {co.name}
                       </DropdownMenuItem>
                     ))}
                   </DropdownMenuSubContent>
@@ -209,7 +207,10 @@ export function ConversationListToolbar({
           {priorityFilter !== 'all' && (
             <FilterChip
               icon={FlagIcon}
-              label="Priority"
+              label={intl.formatMessage({
+                id: 'admin.inbox.toolbar.priority',
+                defaultMessage: 'Priority',
+              })}
               value={priorityMeta(priorityFilter).label}
               valueId={priorityFilter}
               onRemove={() => onPriorityFilter('all')}
@@ -218,7 +219,10 @@ export function ConversationListToolbar({
           {activeChannel && onChannelFilter && (
             <FilterChip
               icon={ChatBubbleOvalLeftIcon}
-              label="Channel"
+              label={intl.formatMessage({
+                id: 'admin.inbox.toolbar.channel',
+                defaultMessage: 'Channel',
+              })}
               value={activeChannel.label}
               valueId={activeChannel.id}
               onRemove={() => onChannelFilter(undefined)}
@@ -227,24 +231,13 @@ export function ConversationListToolbar({
           {activeType && onTicketTypeFilter && (
             <FilterChip
               icon={TicketIcon}
-              label="Type"
+              label={intl.formatMessage({ id: 'admin.inbox.toolbar.type', defaultMessage: 'Type' })}
               value={activeType.name}
               valueId={activeType.id}
               onRemove={() => onTicketTypeFilter(undefined)}
             />
           )}
         </>
-      )}
-      {/* A company filter narrows the list wherever it applies, so its chip
-          shows and clears even where the other refinements are hidden. */}
-      {activeCompany && companyFilter && (
-        <FilterChip
-          icon={BuildingOffice2Icon}
-          label="Company"
-          value={activeCompany.name}
-          valueId={activeCompany.id}
-          onRemove={() => companyFilter.onChange(undefined)}
-        />
       )}
     </div>
   )

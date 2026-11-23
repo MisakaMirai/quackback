@@ -31,9 +31,6 @@ vi.mock('@/lib/server/functions/workspace', () => ({
     settings: { slug: 'acme' },
   }),
 }))
-vi.mock('@/lib/server/domains/settings/tier-enforce', () => ({
-  assertTierFeature: async () => {},
-}))
 vi.mock('@/lib/server/domains/posts/post.export', () => ({
   listPostsForExport: hoisted.mockListPostsForExport,
 }))

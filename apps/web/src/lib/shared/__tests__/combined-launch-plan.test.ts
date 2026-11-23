@@ -12,7 +12,6 @@ const status: LaunchStatus = {
     helpCenter: true,
     statusPage: true,
     integrations: true,
-    assistant: false,
     changelog: true,
   },
 }
@@ -21,7 +20,6 @@ describe('combined launch plan', () => {
   it('includes chosen goal prerequisites in goal order without unrelated product work', () => {
     const tasks = buildLaunchTasks(status, ['customer_support', 'help_center'])
     expect(tasks.filter((t) => t.classification === 'prerequisite').map((t) => t.id)).toEqual([
-      'connect-messenger',
       'help-article',
     ])
     expect(tasks.some((t) => t.id === 'create-board' || t.id === 'add-status-service')).toBe(false)
@@ -35,7 +33,6 @@ describe('combined launch plan', () => {
     expect(tasks.filter((t) => t.classification === 'prerequisite').map((t) => t.id)).toEqual([
       'create-board',
       'distribute-feedback',
-      'connect-messenger',
     ])
   })
   it('shares the status page and adds a service for the status goal', () => {
@@ -124,12 +121,11 @@ it('puts every prerequisite first, ahead of polish a goal brought in earlier', (
   const tasks = buildLaunchTasks({
     ...status,
     goals: ['customer_support', 'help_center'],
-    features: { ...status.features!, assistant: true },
+    features: { ...status.features! },
   })
   const order = tasks.map((task) => task.id)
-  expect(order.slice(0, 2)).toEqual(['connect-messenger', 'help-article'])
-  expect(order.indexOf('set-up-quinn')).toBeGreaterThan(order.indexOf('help-article'))
-  expect(tasks.find((task) => task.id === 'set-up-quinn')?.classification).toBe('polish')
+  expect(order[0]).toBe('help-article')
+  expect(order).not.toContain('connect-messenger')
   expect(order.at(-1)).toBe('first-win')
 })
 

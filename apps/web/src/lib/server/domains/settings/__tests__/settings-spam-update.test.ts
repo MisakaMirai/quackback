@@ -37,16 +37,16 @@ beforeEach(() => {
 })
 
 describe('updateSpamFilterConfig', () => {
-  it('keeps the AI classifier off when only the trusted-sender list is saved', async () => {
-    hoisted.stored = JSON.stringify({ trustedSenders: [], aiClassifier: false })
+  it('saves the trusted-sender list', async () => {
+    hoisted.stored = JSON.stringify({ trustedSenders: [] })
     const result = await updateSpamFilterConfig({ trustedSenders: ['acme.com'] })
-    expect(result).toEqual({ trustedSenders: ['acme.com'], aiClassifier: false })
+    expect(result).toEqual({ trustedSenders: ['acme.com'] })
     expect(JSON.parse(hoisted.written[0])).toEqual(result)
   })
 
-  it('keeps the trusted-sender list when only the switch is saved', async () => {
-    hoisted.stored = JSON.stringify({ trustedSenders: ['jane@acme.com'], aiClassifier: false })
-    const result = await updateSpamFilterConfig({ aiClassifier: true })
-    expect(result).toEqual({ trustedSenders: ['jane@acme.com'], aiClassifier: true })
+  it('keeps the trusted-sender list when an empty update is saved', async () => {
+    hoisted.stored = JSON.stringify({ trustedSenders: ['jane@acme.com'] })
+    const result = await updateSpamFilterConfig({})
+    expect(result).toEqual({ trustedSenders: ['jane@acme.com'] })
   })
 })

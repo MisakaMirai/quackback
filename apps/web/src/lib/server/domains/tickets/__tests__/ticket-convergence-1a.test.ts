@@ -103,10 +103,6 @@ vi.mock('../../conversation/conversation.notify', () => convNotify)
 // The assistant turn would otherwise fire on a redirected visitor reply to a
 // widget-source conversation (full-pipeline behavior); stub it out of these
 // tests entirely.
-vi.mock('@/lib/server/domains/assistant/assistant.orchestrator', () => ({
-  runAssistantTurnForConversation: vi.fn().mockResolvedValue(undefined),
-}))
-
 import { createDbTestFixture, testDb } from '@/lib/server/__tests__/db-test-fixture'
 import {
   conversations,

@@ -138,21 +138,21 @@ describe('LocalDate inside an IntlProvider', () => {
 
   it("server-renders the app's language in UTC, whatever the server runtime", () => {
     setRuntimeLocale('en-US', 'Asia/Tokyo')
-    expect(renderToString(inApp('pl', <LocalDate date={AT} options={DAY} />))).toContain(
-      `>${formatIn('pl', 'UTC', AT, DAY)}</time>`
+    expect(renderToString(inApp('zh-cn', <LocalDate date={AT} options={DAY} />))).toContain(
+      `>${formatIn('zh-cn', 'UTC', AT, DAY)}</time>`
     )
   })
 
   it("hydrates without error, then keeps the app's language in the viewer's zone", async () => {
-    // The browser prefers German, but the page is in Polish: dates follow the page.
+    // The browser prefers German, but the page is in Chinese: dates follow the page.
     setPreferredLanguages(['de-DE', 'de'])
     const { container, serverHtml, errors } = await serverThenHydrate(
-      inApp('pl', <LocalDate date={AT} options={DAY} />)
+      inApp('zh-cn', <LocalDate date={AT} options={DAY} />)
     )
 
     expect(errors).toEqual([])
-    expect(serverHtml).toContain(formatIn('pl', 'UTC', AT, DAY))
-    expect(container.textContent).toBe(formatIn('pl', VIEWER.timeZone, AT, DAY))
+    expect(serverHtml).toContain(formatIn('zh-cn', 'UTC', AT, DAY))
+    expect(container.textContent).toBe(formatIn('zh-cn', VIEWER.timeZone, AT, DAY))
   })
 
   it("switches to the viewer's regional form of the app's language once hydrated", async () => {
@@ -179,7 +179,7 @@ describe('LocalDate inside an IntlProvider', () => {
   it('keeps a locale it is given over the app language', async () => {
     setPreferredLanguages(['pl-PL'])
     const { container, serverHtml, errors } = await serverThenHydrate(
-      inApp('pl', <LocalDate date={AT} options={DAY} locale="en-US" />)
+      inApp('zh-cn', <LocalDate date={AT} options={DAY} locale="en-US" />)
     )
 
     expect(errors).toEqual([])
@@ -191,9 +191,9 @@ describe('LocalDate inside an IntlProvider', () => {
 describe('viewerLocaleFor', () => {
   it.each([
     ['en', ['en-GB', 'en'], 'en-GB'],
-    ['de', ['fr-FR', 'de-AT'], 'de-AT'],
-    ['pt-br', ['pt-BR'], 'pt-BR'],
-    ['pl', ['de-DE', 'en'], 'pl'],
+    ['zh-tw', ['zh-Hant-TW'], 'zh-Hant-TW'],
+    ['zh-cn', ['zh-CN'], 'zh-CN'],
+    ['zh-tw', ['de-DE', 'en'], 'zh-tw'],
     // Traditional Chinese is not a regional form of Simplified Chinese.
     ['zh-cn', ['zh-TW'], 'zh-cn'],
     ['en', [], 'en'],

@@ -28,14 +28,12 @@ vi.mock('@/components/admin/conversation/conversation-attributes-editor', () => 
   ConversationAttributesEditor: () => null,
 }))
 vi.mock('@/components/admin/conversation/status-control', () => ({ StatusControl: () => null }))
-vi.mock('@/components/admin/conversation/company-card', () => ({ CompanyCard: () => null }))
 vi.mock('@/components/admin/inbox/ticket-links', () => ({ TicketLinks: () => null }))
 vi.mock('@/components/admin/users/block-person-control', () => ({
   usePersonBlockStatus: () => ({ blocked: false, isLoading: false }),
 }))
 vi.mock('@/lib/server/functions/conversation', () => ({
   listConversationsForUserFn: vi.fn().mockResolvedValue({ conversations: [], hasMore: false }),
-  getConversationAssistantActivityFn: vi.fn().mockResolvedValue(null),
 }))
 vi.mock('@/lib/server/functions/admin', () => ({
   getPortalUserFn: vi.fn().mockResolvedValue(null),
@@ -80,7 +78,6 @@ const conversation = {
   tags: [],
   sla: null,
   customAttributes: {},
-  translation: null,
 } as unknown as ConversationDTO
 
 function panel(client: QueryClient) {
@@ -93,7 +90,7 @@ function panel(client: QueryClient) {
         onSelectItem={() => {}}
         onTrackAsFeedback={() => {}}
         onCreateTicket={() => {}}
-        onInsertFromCopilot={() => {}}
+
         visible={false}
       />
     </QueryClientProvider>

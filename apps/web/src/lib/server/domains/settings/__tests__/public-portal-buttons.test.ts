@@ -83,7 +83,6 @@ const baseSettingsRow = {
   developerConfig: '{}',
   customCss: '',
   managedFieldPaths: [],
-  state: 'active',
 }
 
 /** Minimal IdentityProvider shape the public-button path reads. */

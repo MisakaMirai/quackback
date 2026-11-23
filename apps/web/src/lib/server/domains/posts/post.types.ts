@@ -26,7 +26,7 @@ export interface CreatePostInput {
   contentJson?: TiptapContent | null
   statusId?: PostStatusId
   tagIds?: PostTagId[]
-  widgetMetadata?: Record<string, string>
+  clientMetadata?: Record<string, string>
   /** Override creation timestamp (admin-only, for imports) */
   createdAt?: Date
   /** The team member who initiated this post on the customer's behalf. */
@@ -153,7 +153,7 @@ export interface InboxPostListParams {
   searchMode?: PostSearchMode
   /** Show only soft-deleted posts (within 30-day restorable window) */
   showDeleted?: boolean
-  /** Leave out teammates' test ideas (API, MCP and Copilot reads). */
+  /** Leave out teammates' test ideas (API and MCP reads). */
   excludeTest?: boolean
   cursor?: string
   limit?: number

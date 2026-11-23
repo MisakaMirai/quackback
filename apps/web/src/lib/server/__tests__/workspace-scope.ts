@@ -1,52 +1,15 @@
 /**
- * Opening a workspace scope from a test.
+ * Pinning the storage namespace in tests.
  *
- * The real scope is opened by the workspace middleware from a registry record.
- * Tests only need the parts the module-scope caches read — the workspace id, and
- * for storage the pinned bucket/origin — so this builds a structurally complete
- * descriptor and hands the database handles as stubs. A test that touches the
- * database should open a real scope instead.
+ * Production resolves the namespace from `settings.id` (see
+ * `lib/server/storage/namespace.ts`). A unit test has no database, so it pins a
+ * derived id instead for the duration of one call.
  */
 import { createHash } from 'node:crypto'
 import { fromUuid, type WorkspaceId } from '@quackback/ids'
-import type { WorkspaceDescriptor } from '@/lib/server/workspaces/registry'
-import {
-  createWorkspaceScope,
-  runWithWorkspaceScope,
-} from '@/lib/server/workspaces/workspace-context'
-import type { ResolvedWorkspaceSecrets } from '@/lib/server/workspaces/vendor/workspace-secret-resolution'
+import { __setWorkspaceIdForTests } from '@/lib/server/storage/namespace'
 
-type StorageOverrides = Partial<WorkspaceDescriptor['storage']>
-
-/**
- * A legal mail slug per workspace, derived rather than constant.
- *
- * Same rule as {@link makeWorkspaceSecrets} and {@link workspaceUuidFor}: two
- * workspaces sharing one slug would make every "an address minted for one
- * workspace does not verify for another" assertion vacuously true, which is the
- * exact property the address grammar exists to hold. A workspace key is not
- * itself a legal slug — keys carry underscores and run well past the 13
- * characters the local-part budget leaves — so it is reduced to the slug
- * vocabulary here the way the control plane reduces a hostname label.
- */
-export function mailSlugFor(workspaceKey: string): string {
-  const reduced = workspaceKey
-    .toLowerCase()
-    .replace(/[^a-z0-9-]+/g, '-')
-    .slice(0, 13)
-    .replace(/^-+|-+$/g, '')
-  return reduced === '' ? 'ws' : reduced
-}
-
-/**
- * A distinct `settings.id` per workspace, derived rather than shared.
- *
- * Same rule as {@link makeWorkspaceSecrets}: a fixture that hands every workspace one
- * value lets a test that accidentally relied on two workspaces colliding pass. It
- * matters more here than it did for the secrets, because `settings.id` is now
- * the storage namespace — a constant would make every isolation assertion in
- * the storage tests vacuously true.
- */
+/** A distinct `settings.id` per key, derived rather than shared. */
 export function workspaceUuidFor(workspaceKey: string): string {
   const hex = createHash('sha256').update(workspaceKey).digest('hex')
   return [
@@ -58,96 +21,40 @@ export function workspaceUuidFor(workspaceKey: string): string {
   ].join('-')
 }
 
-/** The branded form of {@link workspaceUuidFor} — what the storage namespace is built from. */
+/** The branded form of {@link workspaceUuidFor}. */
 export function workspaceIdFor(workspaceKey: string): WorkspaceId {
   return fromUuid('workspace', workspaceUuidFor(workspaceKey))
 }
 
 /**
- * The per-workspace secrets the real scope carries.
+ * A legal mail slug for a key, derived rather than constant.
  *
- * Derived from the workspace id rather than shared, so a test that accidentally
- * relied on two workspaces holding one key fails instead of passing — which is the
- * property the production resolver provides and the reason this fixture must
- * not hand out a constant.
+ * The product mints under one fixed label (`SELF_HOSTED_MAIL_SLUG`); this stays
+ * for the address-grammar tests, which need two distinct legal slugs.
  */
-export function makeWorkspaceSecrets(
-  workspaceKey: string,
-  overrides: Partial<ResolvedWorkspaceSecrets> = {}
-): ResolvedWorkspaceSecrets {
-  return {
-    secretKey: `test-secret-key-for-${workspaceKey}-0123456789abcdef`,
-    // Per-workspace like the key itself. A constant here would let a fixture pass
-    // the stamp comparison that the production resolver would fail, which is
-    // the same reason the key above is derived from the workspace id.
-    provenance: { refScheme: 'env', generation: 0, material: `test-material-${workspaceKey}` },
-    storage: {
-      accessKeyId: `AK-${workspaceKey}`,
-      secretAccessKey: `SK-${workspaceKey}-0123456789abcdef`,
-    },
-    storageProblem: null,
-    ...overrides,
-  }
+export function mailSlugFor(workspaceKey: string): string {
+  const reduced = workspaceKey
+    .toLowerCase()
+    .replace(/[^a-z0-9-]+/g, '-')
+    .slice(0, 13)
+    .replace(/^-+|-+$/g, '')
+  return reduced === '' ? 'ws' : reduced
 }
 
-export function makeWorkspaceDescriptor(
-  workspaceKey: string,
-  overrides: { storage?: StorageOverrides; baseUrl?: string } = {}
-): WorkspaceDescriptor {
-  const host = `${workspaceKey}.example.com`
-  const baseUrl = overrides.baseUrl ?? `https://${host}`
-  return {
-    contractVersion: 1,
-    workspaceKey,
-    revision: 1,
-    routing: { primaryHostname: host, hostnames: [host], baseUrl },
-    database: {
-      pooledUrl: `postgresql://app@db-pooler.example.com/${workspaceKey}`,
-      directUrl: `postgresql://app@db.example.com/${workspaceKey}`,
-      name: workspaceKey,
-      role: 'app',
-      credentialRef: 'env://QUACKBACK_TENANT_SECRET_DB',
-    },
-    fingerprint: {
-      expectedWorkspaceKey: workspaceKey,
-      expectedSelfReportedWorkspaceId: workspaceUuidFor(workspaceKey),
-      stampedAt: '2026-01-01T00:00:00.000Z',
-    },
-    secrets: { appSecretsRef: 'env://QUACKBACK_TENANT_SECRET_APP' },
-    storage: {
-      provider: 'r2',
-      bucket: `${workspaceKey}-bucket`,
-      endpoint: 'https://storage.example.com',
-      region: 'auto',
-      forcePathStyle: false,
-      publicUrl: `https://assets-${workspaceKey}.example.com`,
-      credentialRef: 'env://QUACKBACK_TENANT_SECRET_STORAGE',
-      ...(overrides.storage ?? {}),
-    },
-    email: { from: `support@${host}`, mailSlug: mailSlugFor(workspaceKey) },
-    features: { aiEnabled: true },
-    physical: { catalogName: null, catalogOid: null, clusterId: null },
+/**
+ * Run `fn` with the storage namespace pinned to `workspaceKey`'s derived id.
+ *
+ * A promise result keeps the pin until it settles, so an async body addresses
+ * one namespace throughout. The third parameter is accepted and ignored so call
+ * sites written for the removed per-install overrides still compile; cases that
+ * depended on those overrides belong with the code they tested and were deleted.
+ */
+export function withWorkspace<T>(workspaceKey: string, fn: () => T, _overrides?: unknown): T {
+  __setWorkspaceIdForTests(workspaceIdFor(workspaceKey))
+  const out = fn()
+  if (out instanceof Promise) {
+    return out.finally(() => __setWorkspaceIdForTests(null)) as T
   }
-}
-
-/** Run `fn` with `workspaceKey` as the ambient workspace. */
-export function withWorkspace<T>(
-  workspaceKey: string,
-  fn: () => T,
-  overrides?: {
-    storage?: StorageOverrides
-    baseUrl?: string
-    secrets?: Partial<ResolvedWorkspaceSecrets>
-  }
-): T {
-  return runWithWorkspaceScope(
-    createWorkspaceScope({
-      workspace: makeWorkspaceDescriptor(workspaceKey, overrides),
-      db: {} as never,
-      sql: {} as never,
-      secrets: makeWorkspaceSecrets(workspaceKey, overrides?.secrets ?? {}),
-      origin: 'test',
-    }),
-    fn
-  )
+  __setWorkspaceIdForTests(null)
+  return out
 }

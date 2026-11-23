@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 const hoisted = vi.hoisted(() => ({
   mockSavePlatformCredentials: vi.fn(async () => undefined),
-  mockGetTierLimits: vi.fn(),
   mockCheckUrlSafety: vi.fn(),
 }))
 
@@ -16,14 +15,10 @@ vi.mock('@/lib/server/domains/platform-credentials/platform-credential.service',
   getConfiguredIntegrationTypes: vi.fn(async () => new Set()),
 }))
 vi.mock('@/lib/server/auth/index', () => ({ resetAuth: vi.fn() }))
-vi.mock('@/lib/server/domains/settings/tier-limits.service', () => ({
-  getTierLimits: hoisted.mockGetTierLimits,
-}))
 vi.mock('@/lib/server/content/ssrf-guard', () => ({
   checkUrlSafety: (...args: unknown[]) => hoisted.mockCheckUrlSafety(...args),
 }))
 
-import { OSS_TIER_LIMITS } from '@/lib/server/domains/settings/tier-limits.types'
 import { saveAuthProviderCredentialsFn } from '../auth-provider-credentials'
 
 const oidcCreds = {
@@ -35,8 +30,6 @@ const oidcCreds = {
 describe('saveAuthProviderCredentialsFn — SSRF URL guard', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    // customOidcProvider on, so the tier gate passes and we reach the URL check.
-    hoisted.mockGetTierLimits.mockResolvedValue(OSS_TIER_LIMITS)
   })
 
   it('rejects a custom-OIDC URL that fails the SSRF guard, before storing', async () => {

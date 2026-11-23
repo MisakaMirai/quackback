@@ -1,10 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 const mockGenerateKbEmbedding = vi.fn()
-vi.mock('../help-center-embedding.service', () => ({
-  generateKbEmbedding: (...args: unknown[]) => mockGenerateKbEmbedding(...args),
-  generateKbQueryEmbedding: (...args: unknown[]) => mockGenerateKbEmbedding(...args),
-}))
 
 const mockLimit = vi.fn()
 

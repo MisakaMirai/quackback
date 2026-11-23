@@ -3,6 +3,7 @@ import { ArrowPathIcon, CheckCircleIcon, ExclamationCircleIcon } from '@heroicon
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { saveFreshdeskKeyFn } from '@/integrations/freshdesk/server/functions'
 import { useDeleteIntegration } from '@/lib/client/mutations'
@@ -19,6 +20,7 @@ export function FreshdeskConnectionActions({
   isConnected,
   subdomain,
 }: FreshdeskConnectionActionsProps) {
+  const intl = useOptionalIntl()
   const deleteMutation = useDeleteIntegration()
   const [subdomainValue, setSubdomainValue] = useState(subdomain || '')
   const [apiKey, setApiKey] = useState('')
@@ -44,7 +46,15 @@ export function FreshdeskConnectionActions({
       const timer = setTimeout(() => setShowSuccess(false), 3000)
       return () => clearTimeout(timer)
     } catch (err) {
-      setError(errorText(err, 'Failed to save credentials'))
+      setError(
+        errorText(
+          err,
+          intl.formatMessage({
+            id: 'admin.integrations.freshdesk.saveFailed',
+            defaultMessage: 'Failed to save credentials',
+          })
+        )
+      )
     } finally {
       setSaving(false)
     }
@@ -69,18 +79,37 @@ export function FreshdeskConnectionActions({
           {disconnecting ? (
             <>
               <ArrowPathIcon className="mr-2 h-4 w-4 animate-spin" />
-              Disconnecting...
+              {intl.formatMessage({
+                id: 'admin.integrations.connection.disconnecting',
+                defaultMessage: 'Disconnecting...',
+              })}
             </>
           ) : (
-            'Disconnect'
+            intl.formatMessage({
+              id: 'admin.integrations.connection.disconnect',
+              defaultMessage: 'Disconnect',
+            })
           )}
         </Button>
         <ConfirmDialog
           open={disconnectDialogOpen}
           onOpenChange={setDisconnectDialogOpen}
-          title="Disconnect Freshdesk?"
-          description="This will remove the Freshdesk integration and stop all ticket synchronization. You can reconnect at any time."
-          confirmLabel="Disconnect"
+          title={intl.formatMessage(
+            {
+              id: 'admin.integrations.connection.disconnectTitle',
+              defaultMessage: 'Disconnect {name}?',
+            },
+            { name: 'Freshdesk' }
+          )}
+          description={intl.formatMessage({
+            id: 'admin.integrations.freshdesk.disconnectDescription',
+            defaultMessage:
+              'This will remove the Freshdesk integration and stop all ticket synchronization. You can reconnect at any time.',
+          })}
+          confirmLabel={intl.formatMessage({
+            id: 'admin.integrations.connection.disconnect',
+            defaultMessage: 'Disconnect',
+          })}
           isPending={disconnecting}
           onConfirm={handleDisconnect}
         />
@@ -93,7 +122,12 @@ export function FreshdeskConnectionActions({
       {showSuccess && (
         <div className="flex items-center gap-2 rounded-lg border border-green-500/30 bg-green-500/10 px-3 py-2 text-sm text-green-600 dark:text-green-400">
           <CheckCircleIcon className="h-4 w-4" />
-          <span>Credentials saved and verified!</span>
+          <span>
+            {intl.formatMessage({
+              id: 'admin.integrations.freshdesk.saved',
+              defaultMessage: 'Credentials saved and verified!',
+            })}
+          </span>
         </div>
       )}
 
@@ -107,7 +141,10 @@ export function FreshdeskConnectionActions({
       <div className="space-y-4">
         <div className="space-y-2">
           <Label htmlFor="subdomain" className="text-sm">
-            Freshdesk Subdomain
+            {intl.formatMessage({
+              id: 'admin.integrations.freshdesk.subdomainLabel',
+              defaultMessage: 'Freshdesk Subdomain',
+            })}
           </Label>
           <Input
             id="subdomain"
@@ -118,24 +155,37 @@ export function FreshdeskConnectionActions({
             disabled={saving}
           />
           <p className="text-xs text-muted-foreground">
-            The subdomain from your Freshdesk URL (e.g., yourcompany.freshdesk.com)
+            {intl.formatMessage({
+              id: 'admin.integrations.freshdesk.subdomainHint',
+              defaultMessage:
+                'The subdomain from your Freshdesk URL (e.g., yourcompany.freshdesk.com)',
+            })}
           </p>
         </div>
 
         <div className="space-y-2">
           <Label htmlFor="api-key" className="text-sm">
-            Freshdesk API Key
+            {intl.formatMessage({
+              id: 'admin.integrations.freshdesk.apiKeyLabel',
+              defaultMessage: 'Freshdesk API Key',
+            })}
           </Label>
           <Input
             id="api-key"
             type="password"
-            placeholder="Your Freshdesk API key"
+            placeholder={intl.formatMessage({
+              id: 'admin.integrations.freshdesk.apiKeyPlaceholder',
+              defaultMessage: 'Your Freshdesk API key',
+            })}
             value={apiKey}
             onChange={(e) => setApiKey(e.target.value)}
             disabled={saving}
           />
           <p className="text-xs text-muted-foreground">
-            Find your API key in Freshdesk under Profile Settings → API Key
+            {intl.formatMessage({
+              id: 'admin.integrations.freshdesk.apiKeyHint',
+              defaultMessage: 'Find your API key in Freshdesk under Profile Settings → API Key',
+            })}
           </p>
         </div>
 
@@ -143,10 +193,16 @@ export function FreshdeskConnectionActions({
           {saving ? (
             <>
               <ArrowPathIcon className="mr-2 h-4 w-4 animate-spin" />
-              Saving...
+              {intl.formatMessage({
+                id: 'admin.integrations.config.saving',
+                defaultMessage: 'Saving...',
+              })}
             </>
           ) : (
-            'Save'
+            intl.formatMessage({
+              id: 'admin.integrations.connection.save',
+              defaultMessage: 'Save',
+            })
           )}
         </Button>
       </div>

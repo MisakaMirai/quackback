@@ -6,6 +6,7 @@ import { CategoryIcon } from '@/components/help-center/category-icon'
 import { ArticleAudienceControl } from '@/components/admin/help-center/article-audience-control'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import type { SegmentItem } from '@/components/admin/segments/segment-multi-select'
 import {
   Select,
@@ -51,12 +52,18 @@ function SidebarContent({
   onOpenTranslations,
   publishPending,
 }: HelpCenterMetadataSidebarProps) {
+  const intl = useOptionalIntl()
   const [createCategoryOpen, setCreateCategoryOpen] = useState(false)
   const { data: categories } = useQuery(helpCenterQueries.categories())
 
   return (
     <>
-      <SidebarRow label="Status">
+      <SidebarRow
+        label={intl.formatMessage({
+          id: 'admin.helpCenter.filter.status',
+          defaultMessage: 'Status',
+        })}
+      >
         <button
           type="button"
           onClick={onPublishToggle}
@@ -79,12 +86,22 @@ function SidebarContent({
 
       <SidebarDivider />
 
-      <SidebarRow label="Category">
+      <SidebarRow
+        label={intl.formatMessage({
+          id: 'admin.helpCenter.performance.columnCategory',
+          defaultMessage: 'Category',
+        })}
+      >
         <div className="flex items-center gap-1.5">
           <Select value={categoryId || undefined} onValueChange={onCategoryChange}>
             <SelectTrigger size="sm" className="flex-1 min-w-0">
               {/* Saving without a pick files the article under General. */}
-              <SelectValue placeholder="General" />
+              <SelectValue
+                placeholder={intl.formatMessage({
+                  id: 'admin.settings.helpCenter.tabGeneral',
+                  defaultMessage: 'General',
+                })}
+              />
             </SelectTrigger>
             <SelectContent align="end">
               {categories?.map((cat) => (
@@ -101,7 +118,10 @@ function SidebarContent({
             type="button"
             onClick={() => setCreateCategoryOpen(true)}
             className="h-8 w-8 flex items-center justify-center rounded-md border border-border/50 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0"
-            title="Create new category"
+            title={intl.formatMessage({
+              id: 'admin.helpCenter.category.createNew',
+              defaultMessage: 'Create new category',
+            })}
           >
             <PlusIcon className="h-3.5 w-3.5" />
           </button>
@@ -117,7 +137,12 @@ function SidebarContent({
       {authorName && (
         <>
           <SidebarDivider />
-          <SidebarRow label="Author">
+          <SidebarRow
+            label={intl.formatMessage({
+              id: 'admin.changelog.meta.author',
+              defaultMessage: 'Author',
+            })}
+          >
             <span className="text-sm text-foreground">{authorName}</span>
           </SidebarRow>
         </>
@@ -126,7 +151,12 @@ function SidebarContent({
       {segments && onSegmentIdsChange ? (
         <>
           <SidebarDivider />
-          <SidebarRow label="Audience">
+          <SidebarRow
+            label={intl.formatMessage({
+              id: 'admin.helpCenter.audience.label',
+              defaultMessage: 'Audience',
+            })}
+          >
             <ArticleAudienceControl
               segments={segments}
               value={segmentIds ?? []}
@@ -139,7 +169,12 @@ function SidebarContent({
       {onOpenTranslations ? (
         <>
           <SidebarDivider />
-          <SidebarRow label="Translations">
+          <SidebarRow
+            label={intl.formatMessage({
+              id: 'admin.helpCenter.translations.title',
+              defaultMessage: 'Translations',
+            })}
+          >
             <Button type="button" variant="ghost" size="sm" onClick={onOpenTranslations}>
               <LanguageIcon className="h-3.5 w-3.5" />
               Manage
@@ -151,7 +186,9 @@ function SidebarContent({
       {onOpenFeedback && (notHelpfulCount ?? 0) > 0 ? (
         <>
           <SidebarDivider />
-          <SidebarRow label="Feedback">
+          <SidebarRow
+            label={intl.formatMessage({ id: 'admin.nav.feedback', defaultMessage: 'Feedback' })}
+          >
             <Button type="button" variant="ghost" size="sm" onClick={onOpenFeedback}>
               <HandThumbDownIcon className="h-3.5 w-3.5" />
               Unhelpful

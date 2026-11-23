@@ -1,8 +1,6 @@
-import { config } from '@/lib/server/config'
 import { db, integrationDeliveries } from '@/lib/server/db'
 import { getIntegration } from './index'
 import { getPlatformCredentials } from '@/lib/server/domains/platform-credentials/platform-credential.service'
-import { verifyGatewayForward, verifyGatewayReceipt } from './gateway-forward'
 
 export async function readAppHookBody(request: Request, limit = 1_048_576): Promise<string> {
   if (Number(request.headers.get('content-length')) > limit) throw new Error('Body too large')
@@ -39,30 +37,8 @@ export async function handleAppHook(
   } catch {
     return new Response(null, { status: 413 })
   }
-  if (
-    config.isPooledTenancy &&
-    (request.headers.get('x-quackback-gateway-provider') !== type ||
-      !verifyGatewayForward(
-        rawBody,
-        request.headers.get('x-quackback-gateway-timestamp'),
-        request.headers.get('x-quackback-gateway-signature'),
-        config.integrationGatewayForwardSecret
-      ))
-  )
-    return new Response(null, { status: 401 })
-  let verifiedAt: number | undefined
-  if (config.isPooledTenancy) {
-    const receivedAt = verifyGatewayReceipt(
-      rawBody,
-      request.headers.get('x-quackback-gateway-received-at'),
-      request.headers.get('x-quackback-gateway-receipt-signature'),
-      config.integrationGatewayForwardSecret
-    )
-    if (receivedAt === null) return new Response(null, { status: 401 })
-    verifiedAt = receivedAt
-  }
   const credentials = await getPlatformCredentials(type)
-  if (!credentials || !hooks.verify({ headers: request.headers, rawBody, credentials, verifiedAt }))
+  if (!credentials || !hooks.verify({ headers: request.headers, rawBody, credentials }))
     return new Response(null, { status: 401 })
   const contentType = request.headers.get('content-type')
   let deliveryId: string | null

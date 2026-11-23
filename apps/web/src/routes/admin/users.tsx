@@ -6,6 +6,7 @@ import { ExclamationCircleIcon } from '@heroicons/react/24/solid'
 import { Button } from '@/components/ui/button'
 import { errorMessage } from '@/components/shared/error-page'
 import { adminPageHead } from '@/lib/client/admin-head'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 
 const searchSchema = z.object({
   search: z.string().optional(),
@@ -17,14 +18,9 @@ const searchSchema = z.object({
   voteCount: z.string().optional(),
   commentCount: z.string().optional(),
   customAttrs: z.string().optional(),
-  // Companies-tab filters, "key:op:value" parts (reserved keys: plan, mrr).
-  companyAttrs: z.string().optional(),
   // Lifecycle view: absent = identified users, 'leads' = engaged anonymous
-  // principals (the "All leads" nav entry), 'companies' = the companies
-  // directory tab.
-  lifecycle: z.enum(['leads', 'companies']).optional(),
-  // Selected company id — flips the companies view to the company profile.
-  company: z.string().optional(),
+  // principals (the "All leads" nav entry).
+  lifecycle: z.enum(['leads']).optional(),
   sort: z
     .enum([
       'newest',
@@ -49,7 +45,7 @@ const searchSchema = z.object({
 })
 
 export const Route = createFileRoute('/admin/users')({
-  head: adminPageHead('Users'),
+  head: adminPageHead('Users', 'admin.pageTitle.users'),
   validateSearch: searchSchema,
   // Note: No loaderDeps for the filter fields - the loader only runs on
   // initial route load for SSR (prefetching the default/unfiltered dataset).
@@ -78,15 +74,24 @@ export const Route = createFileRoute('/admin/users')({
 
 function UsersErrorComponent({ error, reset }: { error: unknown; reset: () => void }) {
   const message = errorMessage(error)
+  const intl = useOptionalIntl()
   return (
     <div className="flex items-center justify-center min-h-[400px] p-4">
       <Alert variant="destructive" className="max-w-2xl">
         <ExclamationCircleIcon className="h-4 w-4" />
-        <AlertTitle>Failed to load users</AlertTitle>
+        <AlertTitle>
+          {intl.formatMessage({
+            id: 'admin.users.loadFailed',
+            defaultMessage: 'Failed to load users',
+          })}
+        </AlertTitle>
         <AlertDescription className="mt-2">
           <p className="mb-4">{message}</p>
           <Button onClick={reset} variant="outline" size="sm">
-            Try again
+            {intl.formatMessage({
+              id: 'common.tryAgain',
+              defaultMessage: 'Try again',
+            })}
           </Button>
         </AlertDescription>
       </Alert>

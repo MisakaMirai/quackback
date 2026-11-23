@@ -48,7 +48,7 @@ import journal from '../drizzle/meta/_journal.json'
  * `MIGRATIONS_FOLDER` does not break it, and is needed. Bundling collapses
  * every module into one file, so `import.meta.url` becomes the bundle's own
  * path and `../drizzle` lands a directory above the SQL — which is exactly the
- * shape the image ships: `/app/fleet-migrator.mjs` beside `/app/drizzle`. The
+ * shape the image ships: `/app/migrate.mjs` beside `/app/drizzle`. The
  * variable is deployment-level and read once here, so both halves still resolve
  * to the same directory; it is also the variable `migrate.ts` has always
  * honoured, so the image's existing `MIGRATIONS_FOLDER=/app/drizzle` already

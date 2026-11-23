@@ -85,7 +85,7 @@ const proxyVoteSchema = {
     .describe('Whether to add or remove the proxy vote'),
   postId: z.string().describe('Post TypeID to vote on'),
   voterPrincipalId: z.string().describe('Principal TypeID of the user to vote on behalf of'),
-  sourceType: z.string().optional().describe('Attribution source type (e.g. "zendesk", "slack")'),
+  sourceType: z.string().optional().describe('Attribution source type (e.g. "intercom", "slack")'),
   sourceExternalUrl: z.string().optional().describe('URL linking to the originating record'),
 }
 
@@ -241,7 +241,7 @@ Examples:
 
 Examples:
 - Add proxy vote: proxy_vote({ postId: "post_01abc...", voterPrincipalId: "principal_01xyz..." })
-- Add with attribution: proxy_vote({ postId: "post_01abc...", voterPrincipalId: "principal_01xyz...", sourceType: "zendesk", sourceExternalUrl: "https://..." })
+- Add with attribution: proxy_vote({ postId: "post_01abc...", voterPrincipalId: "principal_01xyz...", sourceType: "intercom", sourceExternalUrl: "https://..." })
 - Remove vote: proxy_vote({ action: "remove", postId: "post_01abc...", voterPrincipalId: "principal_01xyz..." })`,
     schema: proxyVoteSchema,
     annotations: WRITE,

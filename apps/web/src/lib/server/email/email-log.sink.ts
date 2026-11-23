@@ -1,6 +1,4 @@
 import {
-  setDefaultFromResolver,
-  setDefaultFromShared,
   setEmailLogSink,
   setEmailPoweredByResolver,
   setSesTenantHooks,
@@ -9,8 +7,6 @@ import {
 import type { ConversationId, PostId, TicketId } from '@quackback/ids'
 import { db, emailLog } from '@/lib/server/db'
 import { logger } from '@/lib/server/logger'
-import { getCurrentWorkspace } from '@/lib/server/workspaces/workspace-context'
-import { isPooledTenancy } from '@/lib/server/workspaces/mode'
 
 const log = logger.child({ component: 'email-log' })
 
@@ -77,15 +73,7 @@ export function ensureEmailLogSink(): void {
   setEmailLogSink((entry) => {
     void writeOutbound(entry)
   })
-  setEmailPoweredByResolver(async () => {
-    const { getCloudConfig } = await import('@/lib/server/domains/settings/cloud/cloud.service')
-    const { shouldShowPoweredBy } = await import('@/lib/server/domains/settings/cloud/powered-by')
-    return shouldShowPoweredBy(await getCloudConfig())
-  })
-  setDefaultFromResolver(() => getCurrentWorkspace()?.email.from ?? null)
-  // A server shared by many workspaces never lends its own From name to one of
-  // them, including on a send made outside any workspace's scope.
-  setDefaultFromShared(() => isPooledTenancy())
+  setEmailPoweredByResolver(async () => false)
   // Per-workspace provider tenants. Each lookup returns null without touching
   // the database when tenants are off or no workspace is in scope.
   setSesTenantHooks({

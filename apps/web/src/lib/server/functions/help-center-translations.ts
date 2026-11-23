@@ -43,17 +43,8 @@ export const getArticleTranslationStatusesFn = createServerFn({ method: 'GET' })
   .validator(z.object({ articleId: z.string().min(1) }))
   .handler(async ({ data }) => {
     await requireAuth({ permission: PERMISSIONS.HELP_CENTER_MANAGE })
-    const { listPausedTranslationLocales } =
-      await import('@/lib/server/domains/help-center/help-center-translate-queue')
-    const [config, pausedLocales] = await Promise.all([
-      getHelpCenterConfig(),
-      listPausedTranslationLocales(data.articleId),
-    ])
-    return getArticleTranslationStatuses(
-      data.articleId as KbArticleId,
-      config.locales.additional,
-      pausedLocales
-    )
+    const config = await getHelpCenterConfig()
+    return getArticleTranslationStatuses(data.articleId as KbArticleId, config.locales.additional)
   })
 
 export const upsertArticleTranslationFn = createServerFn({ method: 'POST' })

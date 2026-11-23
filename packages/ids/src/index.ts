@@ -118,13 +118,11 @@ export type {
   // User segmentation
   SegmentId,
   UserAttributeId,
-  CompanyAttributeId,
   UserTagId,
   // AI entities
   SentimentId,
   PostActivityId,
   // Support platform entities
-  CompanyId,
   TeamId,
   TeamMemberId,
   MacroId,
@@ -150,7 +148,6 @@ export type {
   ChannelAccountId,
   ChannelThreadId,
   SendingDomainId,
-  WorkspaceDomainId,
   OfficeHoursId,
   SlaPolicyId,
   SlaEventId,
@@ -242,7 +239,6 @@ export {
   sessionIdSchema,
   inviteIdSchema,
   domainIdSchema,
-  workspaceDomainIdSchema,
   segmentIdSchema,
   importRunIdSchema,
   exportRunIdSchema,

@@ -34,6 +34,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { SettingsCard } from '@/components/admin/settings/settings-card'
 import { SettingRow, SettingRows } from '@/components/admin/settings/setting-row'
 import { RowIcon, SettingsList, SettingsListRow } from '@/components/admin/settings/settings-list'
@@ -56,10 +57,19 @@ import { toastError } from '@/lib/client/error-notice'
 
 /** Category presentation for the registry rows (label comes from the shared
  *  ticketTypeLabel so the inbox chips can't drift). */
-const CATEGORY_NOTE: Record<TicketType, string> = {
-  customer: 'Customers submit these from the portal and Messenger.',
-  back_office: 'Internal only, customers never see them.',
-  tracker: 'Internal work item. Status changes cascade to linked tickets.',
+const CATEGORY_NOTE: Record<TicketType, { id: string; defaultMessage: string }> = {
+  customer: {
+    id: 'admin.settings.ticketTypes.categoryNote.customer',
+    defaultMessage: 'Customers submit these from the portal and Messenger.',
+  },
+  back_office: {
+    id: 'admin.settings.ticketTypes.categoryNote.backOffice',
+    defaultMessage: 'Internal only, customers never see them.',
+  },
+  tracker: {
+    id: 'admin.settings.ticketTypes.categoryNote.tracker',
+    defaultMessage: 'Internal work item. Status changes cascade to linked tickets.',
+  },
 }
 
 export function TicketTypesManager({
@@ -71,6 +81,7 @@ export function TicketTypesManager({
   onCreatingChange: (creating: boolean) => void
 }) {
   const qc = useQueryClient()
+  const intl = useOptionalIntl()
   const { data: types } = useSuspenseQuery(ticketTypesQuery)
 
   const [editing, setEditing] = useState<TicketTypeDTO | null>(null)
@@ -88,10 +99,24 @@ export function TicketTypesManager({
     if (!toArchive) return
     try {
       await archiveTicketTypeFn({ data: { id: toArchive.id } })
-      toast.success(`Archived "${toArchive.name}"`)
+      toast.success(
+        intl.formatMessage(
+          {
+            id: 'admin.settings.ticketTypes.archivedToast',
+            defaultMessage: 'Archived "{name}"',
+          },
+          { name: toArchive.name }
+        )
+      )
       await refresh()
     } catch (error) {
-      toastError(error, 'Failed to archive type')
+      toastError(
+        error,
+        intl.formatMessage({
+          id: 'admin.settings.ticketTypes.archiveFailed',
+          defaultMessage: 'Failed to archive type',
+        })
+      )
     } finally {
       setToArchive(null)
     }
@@ -100,10 +125,24 @@ export function TicketTypesManager({
   async function handleRestore(type: TicketTypeDTO) {
     try {
       await restoreTicketTypeFn({ data: { id: type.id } })
-      toast.success(`Restored "${type.name}"`)
+      toast.success(
+        intl.formatMessage(
+          {
+            id: 'admin.settings.ticketTypes.restoredToast',
+            defaultMessage: 'Restored "{name}"',
+          },
+          { name: type.name }
+        )
+      )
       await refresh()
     } catch (error) {
-      toastError(error, 'Failed to restore type')
+      toastError(
+        error,
+        intl.formatMessage({
+          id: 'admin.settings.ticketTypes.restoreFailed',
+          defaultMessage: 'Failed to restore type',
+        })
+      )
     }
   }
 
@@ -118,7 +157,10 @@ export function TicketTypesManager({
               <div className="px-4 sm:px-6 pt-4 pb-1.5">
                 <p className="text-xs font-medium text-muted-foreground">
                   {ticketTypeLabel(category)}
-                  <span className="font-normal"> · {CATEGORY_NOTE[category]}</span>
+                  <span className="font-normal">
+                    {' · '}
+                    {intl.formatMessage(CATEGORY_NOTE[category])}
+                  </span>
                 </p>
               </div>
               <SettingsList>
@@ -139,8 +181,17 @@ export function TicketTypesManager({
           <div>
             <div className="px-4 sm:px-6 pt-4 pb-1.5">
               <p className="text-xs font-medium text-muted-foreground">
-                Archived
-                <span className="font-normal"> · kept on ticket history, hidden from pickers.</span>
+                {intl.formatMessage({
+                  id: 'admin.settings.ticketTypes.archived',
+                  defaultMessage: 'Archived',
+                })}
+                <span className="font-normal">
+                  {' · '}
+                  {intl.formatMessage({
+                    id: 'admin.settings.ticketTypes.archivedNote',
+                    defaultMessage: 'kept on ticket history, hidden from pickers.',
+                  })}
+                </span>
               </p>
             </div>
             <SettingsList>
@@ -167,9 +218,22 @@ export function TicketTypesManager({
       <ConfirmDialog
         open={!!toArchive}
         onOpenChange={() => setToArchive(null)}
-        title="Archive type?"
-        description={`Archive "${toArchive?.name}"? It stays on existing tickets but leaves every picker. You can restore it later.`}
-        confirmLabel="Archive type"
+        title={intl.formatMessage({
+          id: 'admin.settings.ticketTypes.archiveTitle',
+          defaultMessage: 'Archive type?',
+        })}
+        description={intl.formatMessage(
+          {
+            id: 'admin.settings.ticketTypes.archiveDescription',
+            defaultMessage:
+              'Archive "{name}"? It stays on existing tickets but leaves every picker. You can restore it later.',
+          },
+          { name: toArchive?.name ?? '' }
+        )}
+        confirmLabel={intl.formatMessage({
+          id: 'admin.settings.ticketTypes.archiveConfirm',
+          defaultMessage: 'Archive type',
+        })}
         onConfirm={handleArchive}
       />
     </SettingsCard>
@@ -184,18 +248,56 @@ interface TypeRowProps {
 }
 
 function TypeRow({ type, onEdit, onArchive, onRestore }: TypeRowProps) {
+  const intl = useOptionalIntl()
   const fieldSummary =
     type.fields.length === 0
-      ? 'No custom fields'
-      : `${type.fields.length} field${type.fields.length === 1 ? '' : 's'} · ${type.fields
+      ? intl.formatMessage({
+          id: 'admin.settings.ticketTypes.emptyFields',
+          defaultMessage: 'No custom fields',
+        })
+      : `${intl.formatMessage(
+          {
+            id: 'admin.settings.ticketTypes.fieldCount',
+            defaultMessage: '{count, plural, one {# field} other {# fields}}',
+          },
+          { count: type.fields.length }
+        )} · ${type.fields
           .slice(0, 5)
           .map((f) => f.label)
           .join(', ')}${type.fields.length > 5 ? ', …' : ''}`
   const actions = onRestore
-    ? [{ label: 'Restore', onSelect: onRestore }]
+    ? [
+        {
+          label: intl.formatMessage({
+            id: 'admin.settings.ticketTypes.restore',
+            defaultMessage: 'Restore',
+          }),
+          onSelect: onRestore,
+        },
+      ]
     : [
-        ...(onEdit ? [{ label: 'Edit', onSelect: onEdit }] : []),
-        ...(onArchive ? [{ label: 'Archive', onSelect: onArchive }] : []),
+        ...(onEdit
+          ? [
+              {
+                label: intl.formatMessage({
+                  id: 'admin.settings.ticketTypes.edit',
+                  defaultMessage: 'Edit',
+                }),
+                onSelect: onEdit,
+              },
+            ]
+          : []),
+        ...(onArchive
+          ? [
+              {
+                label: intl.formatMessage({
+                  id: 'admin.settings.ticketTypes.archive',
+                  defaultMessage: 'Archive',
+                }),
+                onSelect: onArchive,
+              },
+            ]
+          : []),
       ]
   return (
     <SettingsListRow
@@ -216,13 +318,33 @@ function TypeRow({ type, onEdit, onArchive, onRestore }: TypeRowProps) {
       meta={
         fieldSummary +
         (type.ticketCount !== undefined && type.ticketCount > 0
-          ? ` · ${type.ticketCount} ticket${type.ticketCount === 1 ? '' : 's'}`
+          ? ` · ${intl.formatMessage(
+              {
+                id: 'admin.settings.ticketTypes.ticketCount',
+                defaultMessage: '{count, plural, one {# ticket} other {# tickets}}',
+              },
+              { count: type.ticketCount }
+            )}`
           : '')
       }
       badges={
         <>
-          {type.category !== 'customer' && <Badge variant="subtle">Internal</Badge>}
-          {type.archived && <Badge variant="subtle">Archived</Badge>}
+          {type.category !== 'customer' && (
+            <Badge variant="subtle">
+              {intl.formatMessage({
+                id: 'admin.settings.ticketTypes.internal',
+                defaultMessage: 'Internal',
+              })}
+            </Badge>
+          )}
+          {type.archived && (
+            <Badge variant="subtle">
+              {intl.formatMessage({
+                id: 'admin.settings.ticketTypes.archived',
+                defaultMessage: 'Archived',
+              })}
+            </Badge>
+          )}
         </>
       }
       actions={actions}
@@ -243,6 +365,7 @@ interface TypeEditorDialogProps {
 }
 
 function TypeEditorDialog({ open, onOpenChange, type, onSaved }: TypeEditorDialogProps) {
+  const intl = useOptionalIntl()
   const [name, setName] = useState('')
   const [slug, setSlug] = useState('')
   const [category, setCategory] = useState<TicketType>('customer')
@@ -307,7 +430,15 @@ function TypeEditorDialog({ open, onOpenChange, type, onSaved }: TypeEditorDialo
             fields: ordered,
           },
         })
-        toast.success(`Saved "${name.trim()}"`)
+        toast.success(
+          intl.formatMessage(
+            {
+              id: 'admin.settings.ticketTypes.savedToast',
+              defaultMessage: 'Saved "{name}"',
+            },
+            { name: name.trim() }
+          )
+        )
       } else {
         await createTicketTypeFn({
           data: {
@@ -321,12 +452,28 @@ function TypeEditorDialog({ open, onOpenChange, type, onSaved }: TypeEditorDialo
             fields: ordered,
           },
         })
-        toast.success(`Created "${name.trim()}"`)
+        toast.success(
+          intl.formatMessage(
+            {
+              id: 'admin.settings.ticketTypes.createdToast',
+              defaultMessage: 'Created "{name}"',
+            },
+            { name: name.trim() }
+          )
+        )
       }
       await onSaved()
       onOpenChange(false)
     } catch (err) {
-      setError(errorText(err, 'Failed to save type'))
+      setError(
+        errorText(
+          err,
+          intl.formatMessage({
+            id: 'admin.settings.ticketTypes.saveFailed',
+            defaultMessage: 'Failed to save type',
+          })
+        )
+      )
     } finally {
       setSubmitting(false)
     }
@@ -336,41 +483,81 @@ function TypeEditorDialog({ open, onOpenChange, type, onSaved }: TypeEditorDialo
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>{editing ? 'Edit type' : 'New type'}</DialogTitle>
-          <DialogDescription>Behavior comes from the category; fields are yours.</DialogDescription>
+          <DialogTitle>
+            {editing
+              ? intl.formatMessage({
+                  id: 'admin.settings.ticketTypes.editTitle',
+                  defaultMessage: 'Edit type',
+                })
+              : intl.formatMessage({
+                  id: 'admin.settings.ticketTypes.newTitle',
+                  defaultMessage: 'New type',
+                })}
+          </DialogTitle>
+          <DialogDescription>
+            {intl.formatMessage({
+              id: 'admin.settings.ticketTypes.dialogDescription',
+              defaultMessage: 'Behavior comes from the category; fields are yours.',
+            })}
+          </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={submit} className="space-y-5">
           <div className="grid sm:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="ticket-type-name">Name</Label>
+              <Label htmlFor="ticket-type-name">
+                {intl.formatMessage({
+                  id: 'admin.settings.ticketTypes.nameLabel',
+                  defaultMessage: 'Name',
+                })}
+              </Label>
               <Input
                 id="ticket-type-name"
                 value={name}
                 maxLength={60}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="e.g. Bug report"
+                placeholder={intl.formatMessage({
+                  id: 'admin.settings.ticketTypes.namePlaceholder',
+                  defaultMessage: 'e.g. Bug report',
+                })}
                 required
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="ticket-type-slug">Slug</Label>
+              <Label htmlFor="ticket-type-slug">
+                {intl.formatMessage({
+                  id: 'admin.settings.ticketTypes.slugLabel',
+                  defaultMessage: 'Slug',
+                })}
+              </Label>
               <Input
                 id="ticket-type-slug"
                 value={slug}
                 maxLength={64}
                 onChange={(e) => setSlug(e.target.value)}
-                placeholder="auto-generated from name"
+                placeholder={intl.formatMessage({
+                  id: 'admin.settings.ticketTypes.slugPlaceholder',
+                  defaultMessage: 'auto-generated from name',
+                })}
               />
               <p className="text-[11px] text-muted-foreground">
-                Lowercase letters, digits, underscores. Stable key for API + workflows.
+                {intl.formatMessage({
+                  id: 'admin.settings.ticketTypes.slugHint',
+                  defaultMessage:
+                    'Lowercase letters, digits, underscores. Stable key for API + workflows.',
+                })}
               </p>
             </div>
           </div>
 
           <div className="grid sm:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Category</Label>
+              <Label>
+                {intl.formatMessage({
+                  id: 'admin.settings.ticketTypes.categoryLabel',
+                  defaultMessage: 'Category',
+                })}
+              </Label>
               <Select
                 value={category}
                 onValueChange={(v) => setCategory(v as TicketType)}
@@ -389,14 +576,25 @@ function TypeEditorDialog({ open, onOpenChange, type, onSaved }: TypeEditorDialo
               </Select>
               {categoryLocked && (
                 <p className="text-[11px] text-muted-foreground">
-                  Locked: {type.ticketCount} ticket{type.ticketCount === 1 ? '' : 's'} use this
-                  type. Archive it and create a new type instead.
+                  {intl.formatMessage(
+                    {
+                      id: 'admin.settings.ticketTypes.categoryLockedHint',
+                      defaultMessage:
+                        'Locked: {count, plural, one {# ticket} other {# tickets}} use this type. Archive it and create a new type instead.',
+                    },
+                    { count: type?.ticketCount ?? 0 }
+                  )}
                 </p>
               )}
             </div>
             <div className="grid grid-cols-[64px_1fr] gap-3">
               <div className="space-y-2">
-                <Label htmlFor="ticket-type-icon">Icon</Label>
+                <Label htmlFor="ticket-type-icon">
+                  {intl.formatMessage({
+                    id: 'admin.settings.ticketTypes.iconLabel',
+                    defaultMessage: 'Icon',
+                  })}
+                </Label>
                 <Input
                   id="ticket-type-icon"
                   value={icon}
@@ -407,7 +605,12 @@ function TypeEditorDialog({ open, onOpenChange, type, onSaved }: TypeEditorDialo
                 />
               </div>
               <div className="space-y-2">
-                <Label>Color</Label>
+                <Label>
+                  {intl.formatMessage({
+                    id: 'admin.settings.ticketTypes.colorLabel',
+                    defaultMessage: 'Color',
+                  })}
+                </Label>
                 <ColorHexInput color={color} onColorChange={setColor} />
               </div>
             </div>
@@ -418,7 +621,10 @@ function TypeEditorDialog({ open, onOpenChange, type, onSaved }: TypeEditorDialo
           <SettingRows>
             {category === 'customer' && (
               <SettingRow
-                label="Show on portal and Messenger intake"
+                label={intl.formatMessage({
+                  id: 'admin.settings.ticketTypes.intakeLabel',
+                  defaultMessage: 'Show on portal and Messenger intake',
+                })}
                 htmlFor="ticket-type-intake"
                 control={
                   <Switch
@@ -430,10 +636,20 @@ function TypeEditorDialog({ open, onOpenChange, type, onSaved }: TypeEditorDialo
               />
             )}
             <SettingRow
-              label={`Default for ${ticketTypeLabel(category)} tickets`}
+              label={intl.formatMessage(
+                {
+                  id: 'admin.settings.ticketTypes.defaultFor',
+                  defaultMessage: 'Default for {category} tickets',
+                },
+                { category: ticketTypeLabel(category) }
+              )}
               description={
                 defaultLocked
-                  ? 'This is the category default. Set another type as default to change it.'
+                  ? intl.formatMessage({
+                      id: 'admin.settings.ticketTypes.defaultLockedDescription',
+                      defaultMessage:
+                        'This is the category default. Set another type as default to change it.',
+                    })
                   : undefined
               }
               htmlFor="ticket-type-default"
@@ -454,10 +670,23 @@ function TypeEditorDialog({ open, onOpenChange, type, onSaved }: TypeEditorDialo
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
+              {intl.formatMessage({ id: 'common.cancel', defaultMessage: 'Cancel' })}
             </Button>
             <Button type="submit" disabled={submitting || !name.trim()}>
-              {submitting ? 'Saving…' : editing ? 'Save changes' : 'Create type'}
+              {submitting
+                ? intl.formatMessage({
+                    id: 'admin.settings.ticketTypes.saving',
+                    defaultMessage: 'Saving…',
+                  })
+                : editing
+                  ? intl.formatMessage({
+                      id: 'admin.settings.ticketTypes.saveChanges',
+                      defaultMessage: 'Save changes',
+                    })
+                  : intl.formatMessage({
+                      id: 'admin.settings.ticketTypes.createType',
+                      defaultMessage: 'Create type',
+                    })}
             </Button>
           </DialogFooter>
         </form>

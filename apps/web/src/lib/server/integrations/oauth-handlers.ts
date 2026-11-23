@@ -39,7 +39,7 @@ interface OAuthState {
   principalId: PrincipalId
   nonce: string
   ts: number
-  /** Pre-auth fields collected before OAuth (e.g. Zendesk subdomain) */
+  /** Pre-auth fields collected before OAuth (e.g. a CRM subdomain) */
   preAuthFields?: Record<string, string>
   /** Allowlisted path to return to after connect (GitHub channel page). */
   returnPath?: string
@@ -248,13 +248,6 @@ export async function handleOAuthCallback(
       }
     }
 
-    const { InstallBoundElsewhereError } = await import('./install-registry')
-    return redirectResponse(
-      fail(
-        err instanceof InstallBoundElsewhereError
-          ? 'already_connected_elsewhere'
-          : 'exchange_failed'
-      )
-    )
+    return redirectResponse(fail('exchange_failed'))
   }
 }

@@ -1,5 +1,5 @@
 import { cn } from '@/lib/shared/utils'
-import { NAV_SECTION_CLASS } from '@/components/shared/nav-tokens'
+import { MENU_LABEL } from '@/components/ui/menu'
 
 /**
  * The canonical admin left-pane subheading. Pass `action` to render a control
@@ -20,7 +20,7 @@ export function FilterSection({
   return (
     <div className="pb-4 last:pb-0">
       <div className="flex w-full items-center justify-between">
-        <span className={cn('py-1', NAV_SECTION_CLASS)}>{title}</span>
+        <span className={cn('py-1', MENU_LABEL)}>{title}</span>
         {action}
       </div>
       <div className="mt-0.5">

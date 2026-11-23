@@ -5,6 +5,7 @@ import {
   type ChartConfig,
 } from '@/components/ui/chart'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid } from 'recharts'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { cn } from '@/lib/shared/utils'
 import { CHART_HEIGHT_CLASS, formatResponseTime, formatBucketDay } from './analytics-constants'
 import type { FirstResponseDay } from '@/lib/server/domains/analytics/first-response'
@@ -20,14 +21,21 @@ function formatAxisMinutes(minutes: number): string {
   return `${Math.round(minutes / 1440)}d`
 }
 
-const chartConfig: ChartConfig = {
-  medianMinutes: { label: 'Median first response', color: 'var(--chart-1)' },
-}
-
 /** Median first-response time per day. Days with no answered conversation are
  *  null, so the line gaps instead of dipping to zero — a gap day means "nobody
  *  was answered", not "instant replies". */
 export function AnalyticsFirstResponseChart({ days }: AnalyticsFirstResponseChartProps) {
+  const intl = useOptionalIntl()
+  const chartConfig: ChartConfig = {
+    medianMinutes: {
+      label: intl.formatMessage({
+        id: 'admin.analytics.stat.medianFirstResponse',
+        defaultMessage: 'Median first response',
+      }),
+      color: 'var(--chart-1)',
+    },
+  }
+
   if (days.every((d) => d.medianMinutes == null)) {
     return (
       <div

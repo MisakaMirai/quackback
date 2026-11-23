@@ -75,6 +75,7 @@ import { generateDkimKey, isKeyRecord } from './dkim-key'
 import { returnPathTarget as operatorReturnPathTarget } from './return-path'
 import {
   OWNERSHIP_VALUE_PREFIX,
+  mintOwnershipToken,
   ownershipRecord,
   ownershipRecordsOf,
   sendingDomainDnsRecords,
@@ -102,7 +103,6 @@ import { enqueueSesTenantReconcile } from './ses-tenant-queue'
 import { saveSendingDomainCheck } from './sending-domain-check-write'
 import { rekeyToHeldSigningKey, sealSigningKey, shouldHoldSigningKey } from './pending-signing-key'
 import { MAIL_DOMAIN_RE } from '@/lib/server/utils/mail-domain'
-import { issueOwnershipToken } from './sending-domain-token'
 import { SendingDomainRefusedError, normalizeSendingDomain } from './sending-domain-name'
 
 export {
@@ -426,7 +426,7 @@ export async function refreshSendingDomain(
   const existing = ownershipRecordsOf(stored.dnsRecords ?? [])
   const ownershipToken = byo
     ? undefined
-    : existing[0]?.value.slice(OWNERSHIP_VALUE_PREFIX.length) || (await issueOwnershipToken(stored))
+    : existing[0]?.value.slice(OWNERSHIP_VALUE_PREFIX.length) || mintOwnershipToken()
   // Only ever this row's own proof records. Anything else in the set is a value
   // published from our instructions and therefore identical for every
   // workspace, which is the definition of a record that proves nothing.
@@ -531,15 +531,6 @@ export async function refreshSendingDomain(
     },
   })
   let updated = written
-
-  // The record found may be the token of the domain added at this name, which
-  // this row was issued: the same finding verifies that domain. Only when the
-  // row holds one proof record, so the record found is known to be that one.
-  if (written && ownershipProven && !byo && proofRecords.length === 1) {
-    const { verifyDomainOnFoundRecord } =
-      await import('@/lib/server/domains/domain-proof/domains.service')
-    await verifyDomainOnFoundRecord(row.domain, proofRecords[0], now)
-  }
 
   if (written && demoted) {
     // Named at warn because it is a live deliverability change for a

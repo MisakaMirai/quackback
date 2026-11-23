@@ -1,24 +1,9 @@
 import { afterAll, afterEach, beforeEach, expect, it, vi } from 'vitest'
-import { createId, type CompanyId, type PrincipalId } from '@quackback/ids'
+import { createId, type PrincipalId } from '@quackback/ids'
 import { createDbTestFixture, testDb } from './db-test-fixture'
-import {
-  companies,
-  conversationAttributeDefinitions,
-  conversations,
-  principal,
-  tickets,
-  ticketStatuses,
-  ticketConversations,
-} from '@/lib/server/db'
+import { conversationAttributeDefinitions, conversations, principal } from '@/lib/server/db'
 import { attributeValueCounts } from '../domains/conversation-attributes/attribute-value-counts.service'
 import { attributeValueBreakdown } from '../domains/conversation-attributes/attribute-reporting'
-import {
-  getActivityCounts,
-  getCompanyWithMemberCount,
-  listCompanies,
-  listCompaniesPage,
-  listMembers,
-} from '../domains/companies/company.service'
 
 vi.mock('@/lib/server/db', async (original) => ({
   ...(await original<typeof import('@/lib/server/db')>()),
@@ -26,7 +11,7 @@ vi.mock('@/lib/server/db', async (original) => ({
 }))
 
 const fixture = await createDbTestFixture()
-let companyId: CompanyId, owner: PrincipalId, customer: PrincipalId, ordinary: PrincipalId
+let owner: PrincipalId, customer: PrincipalId, ordinary: PrincipalId
 let key: string
 const from = new Date('2035-04-01T00:00:00Z')
 const at = new Date('2035-04-01T12:00:00Z')
@@ -36,22 +21,19 @@ beforeEach(async () => {
   expect(fixture.available).toBe(true)
   expect(process.env.DATABASE_URL).toMatch(/\/quackback_test(?:_\w+)?(?:\?|$)/)
   await fixture.begin()
-  companyId = createId('company')
   owner = createId('principal')
   customer = createId('principal')
   ordinary = createId('principal')
   key = `acme_${createId('conversation_attribute')}`
-  await testDb.insert(companies).values({ id: companyId, name: 'Acme', externalId: companyId })
   await testDb.insert(principal).values([
-    { id: owner, type: 'user', role: 'admin', companyId, createdAt: at },
-    { id: ordinary, type: 'user', role: 'user', companyId, createdAt: at },
+    { id: owner, type: 'user', role: 'admin', createdAt: at },
+    { id: ordinary, type: 'user', role: 'user', createdAt: at },
   ])
   await testDb.insert(principal).values({
     id: customer,
     type: 'anonymous',
     role: 'user',
     testOwnerPrincipalId: owner,
-    companyId,
     createdAt: at,
   })
   await testDb.insert(conversationAttributeDefinitions).values({
@@ -130,53 +112,4 @@ it('keeps test identities out of the date-window attribute breakdown and counts 
     values: [{ value: 'real_option', count: 4 }],
     unset: baseline.unset + 1,
   })
-})
-
-it('counts real company conversations and tickets while excluding test identities and linked test threads', async () => {
-  const rows = await seedConversations()
-  const statusId = createId('ticket_status')
-  await testDb.insert(ticketStatuses).values({ id: statusId, name: 'Acme open', slug: statusId })
-  const [, , , paired] = await testDb
-    .insert(tickets)
-    .values([
-      { title: 'Acme real request', statusId, requesterPrincipalId: ordinary, companyId },
-      { title: 'Acme test customer', statusId, requesterPrincipalId: customer, companyId },
-      {
-        title: 'Acme legacy marker',
-        statusId,
-        requesterPrincipalId: ordinary,
-        companyId,
-        customAttributes: { test: true },
-      },
-      { title: 'Acme linked test', statusId, requesterPrincipalId: ordinary, companyId },
-      {
-        title: 'Acme removed request',
-        statusId,
-        requesterPrincipalId: ordinary,
-        companyId,
-        deletedAt: at,
-      },
-    ])
-    .returning({ id: tickets.id })
-  await testDb.insert(ticketConversations).values({
-    ticketId: paired.id,
-    conversationId: rows[2].id,
-    ticketType: 'customer',
-  })
-  expect(await getActivityCounts(companyId)).toEqual({ conversations: 5, tickets: 2 })
-})
-
-it('keeps the test customer out of company directory counts and the company roster', async () => {
-  expect((await getCompanyWithMemberCount(companyId)).memberCount).toBe(2)
-  const listed = await listCompanies({ externalId: companyId })
-  expect(listed.map((company) => ({ id: company.id, memberCount: company.memberCount }))).toEqual([
-    { id: companyId, memberCount: 2 },
-  ])
-  const page = await listCompaniesPage({ externalId: companyId })
-  expect(
-    page.items.map((company) => ({ id: company.id, memberCount: company.memberCount }))
-  ).toEqual([{ id: companyId, memberCount: 2 }])
-  expect((await listMembers(companyId)).map((member) => member.principalId).sort()).toEqual(
-    [owner, ordinary].sort()
-  )
 })

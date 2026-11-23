@@ -36,12 +36,12 @@ import {
   InviteLinkRow,
 } from '@/components/admin/settings/team/pending-invitations'
 import { MemberActions } from '@/components/admin/settings/team/member-actions'
-import { CloudOwnershipActions } from '@/components/admin/settings/team/cloud-ownership-actions'
 import { seatInviteBlocked } from '@/components/admin/settings/team/seat-usage'
 import type { UserId, PrincipalId } from '@quackback/ids'
 import { isAdmin } from '@/lib/shared/roles'
-import { useSessionContext, useWorkspaceSettings } from '@/lib/client/hooks/use-root-context'
+import { useWorkspaceSettings } from '@/lib/client/hooks/use-root-context'
 import { useOpenedOnce } from '@/lib/client/hooks/use-opened-once'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 
 // Loads the first time it opens, not with the roster.
 const AddPeopleDialog = lazy(() =>
@@ -127,6 +127,7 @@ function SignInLabel({
   prefix?: string
   withTitle?: boolean
 }) {
+  const intl = useOptionalIntl()
   const formatDate = useLocalDateFormatter()
   const date = new Date(at)
   // Days-ago is enough granularity for a team list; the audit
@@ -134,11 +135,23 @@ function SignInLabel({
   const daysAgo = Math.floor((Date.now() - date.getTime()) / (24 * 60 * 60 * 1000))
   const label =
     daysAgo === 0
-      ? 'Today'
+      ? intl.formatMessage({
+          id: 'portal.feedback.filter.date.today',
+          defaultMessage: 'Today',
+        })
       : daysAgo === 1
-        ? 'Yesterday'
+        ? intl.formatMessage({
+            id: 'portal.notifications.groupYesterday',
+            defaultMessage: 'Yesterday',
+          })
         : daysAgo < 30
-          ? `${daysAgo}d ago`
+          ? intl.formatMessage(
+              {
+                id: 'admin.settings.team.membersTab.daysAgo',
+                defaultMessage: '{days}d ago',
+              },
+              { days: daysAgo }
+            )
           : formatDate(date)
   return (
     <span title={withTitle ? formatDate(date, NUMERIC_DATE_TIME) : undefined}>
@@ -158,7 +171,7 @@ interface MembersTabProps {
 
 /** The teammate roster + pending invitations (the Members tab of Members & Teams). */
 export function MembersTab({ currentMember, canManageMembers, initialSearch }: MembersTabProps) {
-  const session = useSessionContext()
+  const intl = useOptionalIntl()
   const workspaceName = useWorkspaceSettings()?.name
   const teamDataQuery = useSuspenseQuery(settingsQueries.teamMembersAndInvitations())
   const { members, avatarMap, formattedInvitations, seatUsage } = teamDataQuery.data
@@ -182,10 +195,25 @@ export function MembersTab({ currentMember, canManageMembers, initialSearch }: M
   }, [formattedInvitations])
 
   const inviteBlocked = seatInviteBlocked(seatUsage)
-  const seatLine = seatUsage?.limit != null ? `${seatUsage.used} of ${seatUsage.limit} seats` : null
+  const seatLine =
+    seatUsage?.limit != null
+      ? intl.formatMessage(
+          {
+            id: 'admin.settings.team.membersTab.seatCount',
+            defaultMessage: '{used} of {limit} seats',
+          },
+          { used: seatUsage.used, limit: seatUsage.limit }
+        )
+      : null
   const seatDescription = seatLine
     ? inviteBlocked
-      ? `${seatLine}. Upgrade to add more people.`
+      ? intl.formatMessage(
+          {
+            id: 'admin.settings.team.membersTab.seatUpgrade',
+            defaultMessage: '{seats}. Upgrade to add more people.',
+          },
+          { seats: seatLine }
+        )
       : seatLine
     : null
 
@@ -238,7 +266,10 @@ export function MembersTab({ currentMember, canManageMembers, initialSearch }: M
         id: 'name',
         accessorFn: (row) =>
           `${row.type === 'member' ? row.name : row.name || ''} ${row.email || ''} ${row.role || ''}`,
-        header: 'Name',
+        header: intl.formatMessage({
+          id: 'admin.people.new.nameLabel',
+          defaultMessage: 'Name',
+        }),
         cell: ({ row }) => {
           const r = row.original
           if (r.type === 'member') {
@@ -251,7 +282,12 @@ export function MembersTab({ currentMember, canManageMembers, initialSearch }: M
                   <p className="font-medium text-foreground truncate">
                     {r.name}
                     {isCurrentUser && (
-                      <span className="ml-2 text-xs text-muted-foreground">(you)</span>
+                      <span className="ml-2 text-xs text-muted-foreground">
+                        {intl.formatMessage({
+                          id: 'admin.settings.team.membersTab.you',
+                          defaultMessage: '(you)',
+                        })}
+                      </span>
                     )}
                   </p>
                   {r.email && <p className="text-sm text-muted-foreground truncate">{r.email}</p>}
@@ -261,7 +297,7 @@ export function MembersTab({ currentMember, canManageMembers, initialSearch }: M
           }
 
           // Invitation row
-          const expiry = getExpiryText(r.expiresAt)
+          const expiry = getExpiryText(r.expiresAt, intl)
           return (
             <div className="flex items-center gap-3">
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted">
@@ -271,12 +307,19 @@ export function MembersTab({ currentMember, canManageMembers, initialSearch }: M
                 <p className="font-medium text-foreground truncate">
                   {r.name || r.email}
                   <Badge variant="warning" className="ml-2">
-                    Invited
+                    {intl.formatMessage({
+                      id: 'admin.settings.team.membersTab.invited',
+                      defaultMessage: 'Invited',
+                    })}
                   </Badge>
                 </p>
                 {r.name && <p className="text-sm text-muted-foreground truncate">{r.email}</p>}
                 <p className="text-xs text-muted-foreground">
-                  Sent <InviteDate date={r.lastSentAt || r.createdAt} />
+                  {intl.formatMessage({
+                    id: 'admin.settings.team.membersTab.sent',
+                    defaultMessage: 'Sent',
+                  })}{' '}
+                  <InviteDate date={r.lastSentAt || r.createdAt} />
                   <span className="mx-1">&middot;</span>
                   <span className={expiry.className}>{expiry.text}</span>
                 </p>
@@ -287,7 +330,7 @@ export function MembersTab({ currentMember, canManageMembers, initialSearch }: M
       },
       {
         id: 'role',
-        header: 'Role',
+        header: intl.formatMessage({ id: 'apiKeys.column.role', defaultMessage: 'Role' }),
         meta: { className: 'w-0 whitespace-nowrap' },
         cell: ({ row }) => {
           const r = row.original
@@ -297,20 +340,32 @@ export function MembersTab({ currentMember, canManageMembers, initialSearch }: M
       },
       {
         id: 'lastSignIn',
-        header: 'Last sign-in',
+        header: intl.formatMessage({
+          id: 'admin.settings.team.membersTab.lastSignIn',
+          defaultMessage: 'Last sign-in',
+        }),
         meta: { className: 'w-0 whitespace-nowrap text-xs text-muted-foreground' },
         cell: ({ row }) => {
           const r = row.original
           // Invitation rows have their own time info inline with the
           // name; skip the column.
           if (r.type !== 'member') return null
-          if (!r.lastSignInAt) return <span className="text-muted-foreground">Never</span>
+          if (!r.lastSignInAt)
+            return (
+              <span className="text-muted-foreground">
+                {intl.formatMessage({ id: 'apiKeys.never', defaultMessage: 'Never' })}
+              </span>
+            )
           return <SignInLabel at={r.lastSignInAt} withTitle />
         },
       },
       {
         id: 'actions',
-        header: () => <span className="sr-only">Actions</span>,
+        header: () => (
+          <span className="sr-only">
+            {intl.formatMessage({ id: 'apiKeys.column.actions', defaultMessage: 'Actions' })}
+          </span>
+        ),
         meta: { className: 'w-0 whitespace-nowrap' },
         cell: ({ row }) => {
           const r = row.original
@@ -337,7 +392,14 @@ export function MembersTab({ currentMember, canManageMembers, initialSearch }: M
               <MemberActions
                 principalId={r.principalId}
                 userId={r.userId}
-                memberName={r.name || r.email || 'Unnamed'}
+                memberName={
+                  r.name ||
+                  r.email ||
+                  intl.formatMessage({
+                    id: 'common.authorSelector.unnamed',
+                    defaultMessage: 'Unnamed',
+                  })
+                }
                 memberRole={r.role as 'admin' | 'member'}
                 assignedRoleId={r.assignedRole?.id ?? null}
                 isLastAdmin={isLastAdmin && isAdmin(r.role)}
@@ -347,7 +409,7 @@ export function MembersTab({ currentMember, canManageMembers, initialSearch }: M
         },
       },
     ],
-    [avatarMap, currentMember.id, isCurrentUserAdmin, isLastAdmin]
+    [avatarMap, currentMember.id, isCurrentUserAdmin, isLastAdmin, intl]
   )
 
   const table = useTable({
@@ -360,23 +422,28 @@ export function MembersTab({ currentMember, canManageMembers, initialSearch }: M
     getRowId: (row) => row.id,
   })
 
+  const emptyLabel = intl.formatMessage(
+    data.length === 0
+      ? {
+          id: 'admin.settings.team.membersTab.noMembers',
+          defaultMessage: 'No team members yet',
+        }
+      : { id: 'admin.settings.team.membersTab.noResults', defaultMessage: 'No results found' }
+  )
+
   return (
     <div className="space-y-6">
       {error && <FormError message={error} />}
-
-      <CloudOwnershipActions
-        sessionEmail={session?.user?.email ?? null}
-        memberEmails={members
-          .map((member) => member.userEmail)
-          .filter((email): email is string => Boolean(email))}
-      />
 
       <div className="flex flex-wrap items-center gap-3">
         <div className="min-w-[220px] flex-1 sm:max-w-md">
           <SearchInput
             value={search}
             onChange={setSearch}
-            placeholder="Search by name, email or role..."
+            placeholder={intl.formatMessage({
+              id: 'admin.settings.team.membersTab.searchPlaceholder',
+              defaultMessage: 'Search by name, email or role...',
+            })}
           />
         </div>
         {seatDescription && (
@@ -385,7 +452,10 @@ export function MembersTab({ currentMember, canManageMembers, initialSearch }: M
         {canManageMembers && (
           <Button size="sm" className="ml-auto" onClick={() => setShowAddPeople(true)}>
             <PlusIcon className="h-4 w-4" />
-            Add people
+            {intl.formatMessage({
+              id: 'admin.settings.team.membersTab.addPeople',
+              defaultMessage: 'Add people',
+            })}
           </Button>
         )}
       </div>
@@ -412,7 +482,7 @@ export function MembersTab({ currentMember, canManageMembers, initialSearch }: M
                     colSpan={columns.length}
                     className="h-24 text-center text-muted-foreground"
                   >
-                    {data.length === 0 ? 'No team members yet' : 'No results found'}
+                    {emptyLabel}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -445,7 +515,7 @@ export function MembersTab({ currentMember, canManageMembers, initialSearch }: M
         <div className="md:hidden divide-y divide-border/50">
           {table.getRowModel().rows.length === 0 ? (
             <p className="h-24 flex items-center justify-center text-muted-foreground text-sm">
-              {data.length === 0 ? 'No team members yet' : 'No results found'}
+              {emptyLabel}
             </p>
           ) : (
             table.getRowModel().rows.map((row) => {
@@ -472,11 +542,19 @@ export function MembersTab({ currentMember, canManageMembers, initialSearch }: M
                           <p className="font-medium text-sm truncate">
                             {r.type === 'member' ? r.name : r.name || r.email}
                             {isCurrentUser && (
-                              <span className="ml-2 text-xs text-muted-foreground">(you)</span>
+                              <span className="ml-2 text-xs text-muted-foreground">
+                                {intl.formatMessage({
+                                  id: 'admin.settings.team.membersTab.you',
+                                  defaultMessage: '(you)',
+                                })}
+                              </span>
                             )}
                             {r.type === 'invitation' && (
                               <Badge variant="warning" className="ml-2">
-                                Invited
+                                {intl.formatMessage({
+                                  id: 'admin.settings.team.membersTab.invited',
+                                  defaultMessage: 'Invited',
+                                })}
                               </Badge>
                             )}
                           </p>
@@ -492,18 +570,31 @@ export function MembersTab({ currentMember, canManageMembers, initialSearch }: M
                     {r.type === 'member' && (
                       <p className="text-xs text-muted-foreground">
                         {r.lastSignInAt ? (
-                          <SignInLabel at={r.lastSignInAt} prefix="Last sign-in: " />
+                          <SignInLabel
+                            at={r.lastSignInAt}
+                            prefix={`${intl.formatMessage({
+                              id: 'admin.settings.team.membersTab.lastSignIn',
+                              defaultMessage: 'Last sign-in',
+                            })}: `}
+                          />
                         ) : (
-                          'Never signed in'
+                          intl.formatMessage({
+                            id: 'admin.settings.team.membersTab.neverSignedIn',
+                            defaultMessage: 'Never signed in',
+                          })
                         )}
                       </p>
                     )}
                     {r.type === 'invitation' && (
                       <p className="text-xs text-muted-foreground">
-                        Sent <InviteDate date={r.lastSentAt || r.createdAt} />
+                        {intl.formatMessage({
+                          id: 'admin.settings.team.membersTab.sent',
+                          defaultMessage: 'Sent',
+                        })}{' '}
+                        <InviteDate date={r.lastSentAt || r.createdAt} />
                         <span className="mx-1">&middot;</span>
-                        <span className={getExpiryText(r.expiresAt).className}>
-                          {getExpiryText(r.expiresAt).text}
+                        <span className={getExpiryText(r.expiresAt, intl).className}>
+                          {getExpiryText(r.expiresAt, intl).text}
                         </span>
                       </p>
                     )}
@@ -523,7 +614,14 @@ export function MembersTab({ currentMember, canManageMembers, initialSearch }: M
                           <MemberActions
                             principalId={r.principalId}
                             userId={r.userId}
-                            memberName={r.name || r.email || 'Unnamed'}
+                            memberName={
+                              r.name ||
+                              r.email ||
+                              intl.formatMessage({
+                                id: 'common.authorSelector.unnamed',
+                                defaultMessage: 'Unnamed',
+                              })
+                            }
                             memberRole={r.role as 'admin' | 'member'}
                             assignedRoleId={r.assignedRole?.id ?? null}
                             isLastAdmin={isLastAdmin && isAdmin(r.role)}

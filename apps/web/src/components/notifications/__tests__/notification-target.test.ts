@@ -199,28 +199,11 @@ describe('getNotificationTarget', () => {
     })
   })
 
-  it('routes assistant_handed_off with a conversationId to the inbox', () => {
-    const notification = buildNotification({
-      type: 'assistant_handed_off',
-      conversationId: 'conversation_6',
-    })
-    expect(getNotificationTarget(notification)).toEqual({
-      to: '/admin/inbox',
-      search: { i: 'conversation_6' },
-    })
-  })
-
   it('routes both sending domain bells to the email channel settings', () => {
     for (const type of ['sending_domain_live', 'sending_domain_needs_attention'] as const)
       expect(getNotificationTarget(buildNotification({ type }))).toEqual({
         to: '/admin/settings/email',
       })
-  })
-
-  it('routes a domain bell to the domains settings', () => {
-    expect(getNotificationTarget(buildNotification({ type: 'domain_needs_attention' }))).toEqual({
-      to: '/admin/settings/domains',
-    })
   })
 
   it('routes changelog_published with a changelogId to the specific entry', () => {

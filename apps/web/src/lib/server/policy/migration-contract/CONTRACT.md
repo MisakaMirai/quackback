@@ -6,14 +6,14 @@ Regenerate with `bunx vitest run apps/web/src/lib/server/policy/migration-contra
 
 ## Summary
 
-Migrations scanned: 293. Migrations with destructive DDL: 39.
+Migrations scanned: 300. Migrations with destructive DDL: 48.
 
 | Kind | Occurrences |
 | --- | --- |
-| DROP COLUMN | 23 |
-| DROP TABLE | 21 |
-| DROP CONSTRAINT | 18 |
-| RENAME COLUMN | 15 |
+| DROP COLUMN | 62 |
+| DROP TABLE | 51 |
+| DROP CONSTRAINT | 27 |
+| RENAME COLUMN | 17 |
 | RENAME TO (table) | 14 |
 | SET NOT NULL | 4 |
 | ALTER COLUMN TYPE | 2 |
@@ -62,6 +62,15 @@ Migrations scanned: 293. Migrations with destructive DDL: 39.
 | 0288_kb_translations_dutch_search.sql | DROP COLUMN kb_article_translations.search_vector | annotated (safe-after 0.13.2) |
 | 0294_workspace_copilot.sql | DROP CONSTRAINT conversation_messages.conversation_messages_parent_check | annotated (safe-after 0.13.2) |
 | 0302_approvals_foundation.sql | DROP CONSTRAINT assistant_pending_actions.assistant_pending_actions_parent_check | annotated (safe-after 0.14.1) |
+| 0316_drop_quackback_ai.sql | DROP TABLE assistant_pending_actions; DROP TABLE assistant_tool_calls; DROP TABLE assistant_events; DROP TABLE assistant_guidance_rules; DROP TABLE assistant_web_sources; DROP TABLE assistant_snippets; DROP TABLE assistant_documents; DROP TABLE assistant_involvements; DROP TABLE agent_skills; DROP TABLE connectors; DROP TABLE ai_usage_log; DROP TABLE conversation_summaries; DROP TABLE ticket_summaries; DROP TABLE post_sentiment; DROP TABLE post_merge_suggestions; DROP CONSTRAINT conversation_messages.conversation_messages_workspace_thread_key_fkey; DROP CONSTRAINT conversation_messages.conversation_messages_workspace_internal_check; DROP COLUMN conversation_messages.workspace_thread_key; DROP TABLE workspace_assistant_threads; DROP CONSTRAINT conversation_messages.conversation_messages_parent_check; DROP COLUMN conversations.detected_customer_language; DROP COLUMN conversations.translation_enabled; DROP COLUMN conversations.translation_dismissed_at; DROP TABLE conversation_message_translations; DROP CONSTRAINT conversation_messages.conversation_messages_principal_id_fkey; DROP CONSTRAINT conversation_messages.conversation_messages_deleted_by_principal_id_fkey; DROP COLUMN posts.embedding; DROP COLUMN posts.embedding_model; DROP COLUMN posts.embedding_updated_at; DROP COLUMN posts.summary_json; DROP COLUMN posts.summary_model; DROP COLUMN posts.summary_updated_at; DROP COLUMN posts.summary_comment_count; DROP COLUMN posts.merge_checked_at; DROP COLUMN changelog_entries.embedding; DROP COLUMN changelog_entries.embedding_model; DROP COLUMN changelog_entries.embedding_updated_at; DROP COLUMN kb_articles.embedding; DROP COLUMN kb_articles.embedding_model; DROP COLUMN kb_articles.embedding_updated_at; DROP COLUMN settings.assistant_config; DROP COLUMN settings.assistant_config_revision; DROP COLUMN conversation_messages.citations; DROP COLUMN post_tags.ai_prompt; DROP COLUMN conversation_attribute_definitions.ai_detect; DROP COLUMN conversation_attribute_definitions.detect_on_close; DROP TABLE slack_thread_sessions | annotated (safe-after 0.14.0) |
+| 0317_drop_companies.sql | DROP COLUMN tickets.company_id; DROP COLUMN principal.company_id; DROP TABLE company_attribute_definitions; DROP TABLE companies | annotated (safe-after 0.15.0) |
+| 0318_drop_widget.sql | RENAME COLUMN settings.widget_config -> messenger_config; DROP COLUMN settings.widget_secret; DROP COLUMN settings.widget_installed_first_seen_at; DROP COLUMN settings.widget_installed_last_seen_at; DROP COLUMN settings.widget_installed_origin_host; DROP COLUMN settings.widget_installed_sdk_version; RENAME COLUMN posts.widget_metadata -> client_metadata; DROP TABLE widget_identified_session; DROP TABLE widget_origin_session | annotated (safe-after 0.15.0) |
+| 0319_drop_retired_tables.sql | DROP TABLE workflow_run_events; DROP TABLE workflow_runs; DROP TABLE workflow_versions; DROP TABLE workflows; DROP TABLE workspace_experiments; DROP COLUMN settings.state | annotated (safe-after 0.15.0) |
+| 0320_drop_domain_proof.sql | DROP TABLE domains | annotated (safe-after 0.15.0) |
+| 0321_drop_push_devices.sql | DROP TABLE push_devices | annotated (safe-after 0.15.0) |
+| 0322_drop_apps.sql | DROP TABLE apps | annotated (safe-after 0.15.0) |
+| 0323_drop_tier_limits.sql | DROP COLUMN settings.tier_limits | annotated (safe-after 0.15.0) |
+| 0324_drop_workspace_columns.sql | DROP CONSTRAINT kv_store.kv_store_pkey; DROP COLUMN kv_store.workspace_key; DROP CONSTRAINT rate_bucket.rate_bucket_pkey; DROP COLUMN rate_bucket.workspace_key; DROP CONSTRAINT kv_set_member.kv_set_member_pkey; DROP COLUMN kv_set_member.workspace_key; DROP CONSTRAINT presence_stream.presence_stream_pkey; DROP COLUMN presence_stream.workspace_key; DROP COLUMN realtime_overflow.workspace_key; DROP COLUMN job_queue.workspace_key | annotated (safe-after 0.15.0) |
 
 ## Grandfathered (29)
 

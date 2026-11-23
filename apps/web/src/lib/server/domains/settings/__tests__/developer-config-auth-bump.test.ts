@@ -53,10 +53,6 @@ vi.mock('@/lib/server/storage/s3', () => ({
   deleteObject: vi.fn(),
 }))
 
-vi.mock('@/lib/server/domains/settings/tier-enforce', () => ({
-  assertTierFeature: vi.fn(),
-}))
-
 const { updateDeveloperConfig } = await import('../settings.service')
 
 beforeEach(() => {

@@ -40,7 +40,7 @@ export const changelogKeys = {
 
 /**
  * Changelog categories (labels). Public read (no auth required) — powers
- * the admin multi-select, the Labels settings card, and the public/widget
+ * the admin multi-select, the Labels settings card, and the public
  * filter chips from a single query.
  */
 export const changelogCategoryQueries = {

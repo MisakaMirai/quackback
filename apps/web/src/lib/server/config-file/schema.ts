@@ -1,5 +1,4 @@
 import { z } from 'zod'
-import { httpsUrl } from '@/lib/shared/schemas/auth'
 
 /**
  * Declarative Quackback config file schema.
@@ -46,64 +45,11 @@ const workspaceSchema = z
   })
   .strict()
 
-// Mirrors the TierLimits shape from
-// apps/web/src/lib/server/domains/settings/tier-limits.types.ts.
-// `null` in any numeric field = unlimited; partial objects allowed
-// (the reconciler merges into the existing tierLimits row, so the
-// file only needs to declare the fields it wants to lock).
-const tierLimitNumberSchema = z.number().int().nonnegative().nullable()
-
-// Optional operator-set admin banner. Delivered alongside tier limits;
-// see PlanNotice in domains/settings/tier-limits.types.ts.
-const planNoticeSchema = z
-  .object({
-    label: z.string().min(1),
-    message: z.string().optional(),
-    expiresAt: z.string().optional(),
-    actionUrl: httpsUrl.optional(),
-    actionLabel: z.string().optional(),
-  })
-  .strict()
-
-const tierFeatureFlagsSchema = z
-  .object({
-    customDomain: z.boolean().optional(),
-    customOidcProvider: z.boolean().optional(),
-    ipAllowlist: z.boolean().optional(),
-    webhooks: z.boolean().optional(),
-    mcpServer: z.boolean().optional(),
-    analyticsExports: z.boolean().optional(),
-    customColors: z.boolean().optional(),
-    customCss: z.boolean().optional(),
-    integrations: z.boolean().optional(),
-    visitorAnalytics: z.boolean().optional(),
-  })
-  .strict()
-  .optional()
-const tierLimitsSchema = z
-  .object({
-    maxBoards: tierLimitNumberSchema.optional(),
-    maxPosts: tierLimitNumberSchema.optional(),
-    maxTeamSeats: tierLimitNumberSchema.optional(),
-    maxStatusComponents: tierLimitNumberSchema.optional(),
-    maxSendingDomains: tierLimitNumberSchema.optional(),
-    aiTokensPerMonth: tierLimitNumberSchema.optional(),
-    emailsPerMonth: tierLimitNumberSchema.optional(),
-    maxInboundEmailAddresses: tierLimitNumberSchema.optional(),
-    maxHelpCenterLocales: tierLimitNumberSchema.optional(),
-    maxStatusSubscribers: tierLimitNumberSchema.optional(),
-    apiRequestsPerMonth: tierLimitNumberSchema.optional(),
-    apiRequestsPerMinute: tierLimitNumberSchema.optional(),
-    features: tierFeatureFlagsSchema,
-    notice: planNoticeSchema.optional(),
-  })
-  .strict()
-
-// Deprecated compatibility keys. `auth` and top-level `features` were managed
-// by older config files, but are now in-app only. Keep accepting them for one
-// release so old files do not make the whole watcher fail before supported
-// workspace/tier fields can reconcile. The reconciler deliberately ignores
-// both keys.
+// Deprecated compatibility keys. `auth`, top-level `features` and `tierLimits`
+// were managed by older config files, but are now in-app only (operator limits
+// were removed with the hosted runtime). Keep accepting them for one release so
+// old files do not make the whole watcher fail before supported workspace
+// fields can reconcile. The reconciler deliberately ignores all three.
 const deprecatedFeaturesSchema = z.record(z.string(), z.boolean())
 const deprecatedAuthSchema = z.unknown()
 
@@ -115,7 +61,7 @@ export const quackbackConfigSchema = z
     spec: z
       .object({
         workspace: workspaceSchema.optional(),
-        tierLimits: tierLimitsSchema.optional(),
+        tierLimits: z.unknown().optional(),
         features: deprecatedFeaturesSchema.optional(),
         auth: deprecatedAuthSchema.optional(),
       })
@@ -126,10 +72,13 @@ export const quackbackConfigSchema = z
 export type QuackbackConfig = z.infer<typeof quackbackConfigSchema>
 export type QuackbackConfigSpec = QuackbackConfig['spec']
 
-export function getDeprecatedConfigKeys(spec: QuackbackConfigSpec): Array<'auth' | 'features'> {
-  const keys: Array<'auth' | 'features'> = []
+export function getDeprecatedConfigKeys(
+  spec: QuackbackConfigSpec
+): Array<'auth' | 'features' | 'tierLimits'> {
+  const keys: Array<'auth' | 'features' | 'tierLimits'> = []
   if (Object.prototype.hasOwnProperty.call(spec, 'auth')) keys.push('auth')
   if (Object.prototype.hasOwnProperty.call(spec, 'features')) keys.push('features')
+  if (Object.prototype.hasOwnProperty.call(spec, 'tierLimits')) keys.push('tierLimits')
   return keys
 }
 

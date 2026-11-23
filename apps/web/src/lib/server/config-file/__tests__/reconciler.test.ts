@@ -14,14 +14,11 @@ const baseDeps = (): ReconcileDeps => ({
     name: 'Old',
     slug: 'old',
     setupState: JSON.stringify(incompleteState()),
-    tierLimits: null,
     managedFieldPaths: [],
   })),
   updateSettings: vi.fn(async () => {}),
-  applyTierLimits: vi.fn(async () => true),
   createSettings: vi.fn(async () => {}),
   invalidateSettingsCache: vi.fn(async () => {}),
-  invalidateTierLimitsCache: vi.fn(async () => {}),
 })
 
 describe('reconcileFileIntoDb', () => {
@@ -114,25 +111,11 @@ describe('reconcileFileIntoDb', () => {
     expect(next).toMatchObject({ useCase: 'product_feedback', feedbackPrivate: true })
   })
 
-  it('hands tier limits to the write seam, not to the column update', async () => {
-    // `settings.tier_limits` gained a second writer (the billing module), so
-    // the reconciler no longer sets the column directly: a `SET tier_limits`
-    // computed from a row read earlier in the function would erase whatever
-    // that writer committed in between.
-    const deps = baseDeps()
-    await reconcileFileIntoDb({ tierLimits: { maxBoards: 7 } }, deps)
-    expect(deps.applyTierLimits).toHaveBeenCalledWith({ maxBoards: 7 })
-    const update = (deps.updateSettings as ReturnType<typeof vi.fn>).mock.calls[0]![0]
-    expect(update).not.toHaveProperty('tierLimits')
-    expect(update.managedFieldPaths).toEqual(['tierLimits'])
-  })
-
   it('ignores deprecated auth and features keys', async () => {
     const deps = baseDeps()
     await reconcileFileIntoDb(
       {
         workspace: { name: 'Acme' },
-        tierLimits: { maxBoards: 3 },
         auth: { oauth: { google: true } },
         features: { helpCenter: true },
       },
@@ -140,8 +123,7 @@ describe('reconcileFileIntoDb', () => {
     )
     const update = (deps.updateSettings as ReturnType<typeof vi.fn>).mock.calls[0]![0]
     expect(update.name).toBe('Acme')
-    expect(deps.applyTierLimits).toHaveBeenCalledWith({ maxBoards: 3 })
-    expect(update.managedFieldPaths).toEqual(['workspace.name', 'tierLimits'])
+    expect(update.managedFieldPaths).toEqual(['workspace.name'])
     expect(update).not.toHaveProperty('authConfig')
     expect(update).not.toHaveProperty('featureFlags')
   })
@@ -153,19 +135,17 @@ describe('reconcileFileIntoDb', () => {
       name: 'X',
       slug: 'x',
       setupState: null,
-      tierLimits: null,
-      managedFieldPaths: ['tierLimits', 'workspace.name'],
+      managedFieldPaths: ['auth', 'workspace.name'],
     }))
     await reconcileFileIntoDb({}, deps)
     const update = (deps.updateSettings as ReturnType<typeof vi.fn>).mock.calls[0]![0]
     expect(update.managedFieldPaths).toEqual([])
   })
 
-  it('invalidates settings and tier caches after a write', async () => {
+  it('invalidates the settings cache after a write', async () => {
     const deps = baseDeps()
-    await reconcileFileIntoDb({ tierLimits: { maxBoards: 1 } }, deps)
+    await reconcileFileIntoDb({ workspace: { name: 'Acme' } }, deps)
     expect(deps.invalidateSettingsCache).toHaveBeenCalledOnce()
-    expect(deps.invalidateTierLimitsCache).toHaveBeenCalledOnce()
   })
 
   it('skips a no-op reconcile', async () => {
@@ -177,7 +157,6 @@ describe('reconcileFileIntoDb', () => {
       setupState: JSON.stringify(
         incompleteState({ steps: { core: true, workspace: true, startingPoint: null } })
       ),
-      tierLimits: null,
       managedFieldPaths: ['workspace.name', 'workspace.slug'],
     }))
     await reconcileFileIntoDb({ workspace: { name: 'Acme', slug: 'acme' } }, deps)
@@ -207,18 +186,14 @@ describe('reconcileFileIntoDb', () => {
       })
     )
     expect(deps.invalidateSettingsCache).toHaveBeenCalledOnce()
-    expect(deps.invalidateTierLimitsCache).toHaveBeenCalledOnce()
   })
 
-  it.each([{ tierLimits: { maxBoards: 5 } }, { workspace: { name: 'Acme' } }])(
-    'does not create an incomplete settings row: %o',
-    async (spec) => {
-      const deps = baseDeps()
-      deps.readSettings = vi.fn(async () => null)
-      await reconcileFileIntoDb(spec, deps)
-      expect(deps.createSettings).not.toHaveBeenCalled()
-    }
-  )
+  it('does not create an incomplete settings row', async () => {
+    const deps = baseDeps()
+    deps.readSettings = vi.fn(async () => null)
+    await reconcileFileIntoDb({ workspace: { name: 'Acme' } }, deps)
+    expect(deps.createSettings).not.toHaveBeenCalled()
+  })
 })
 
 describe('private feedback follows the config file', () => {

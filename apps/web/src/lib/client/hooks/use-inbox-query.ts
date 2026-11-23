@@ -20,7 +20,6 @@ import {
   fetchPostWithDetails,
 } from '@/lib/server/functions/posts'
 import type { InboxFilters, PostDetails } from '@/lib/shared/types'
-import { mergeSuggestionQueries } from '@/lib/client/queries/signals'
 import type { PostListItem, InboxPostListResult } from '@/lib/shared/db-types'
 import type { BoardId, PrincipalId, PostId, PostTagId, SegmentId } from '@quackback/ids'
 
@@ -98,11 +97,11 @@ function facetCountFilters(filters: InboxFilters): InboxFilters {
  * in order), so the badges need no request of their own.
  */
 async function fetchInboxPosts(
-  client: QueryClient,
+  _client: QueryClient,
   filters: InboxFilters,
   cursor?: string
 ): Promise<InboxPostListResult> {
-  const { duplicateCounts, ...page } = await fetchInboxPostsForAdmin({
+  const page = await fetchInboxPostsForAdmin({
     data: {
       ...toInboxListInput(filters),
       sort: filters.sort,
@@ -110,8 +109,6 @@ async function fetchInboxPosts(
       limit: 20,
     },
   })
-  const ids = page.items.map((p) => p.id as PostId)
-  client.setQueryData(mergeSuggestionQueries.countsForPosts(ids).queryKey, duplicateCounts)
   return page as unknown as InboxPostListResult
 }
 

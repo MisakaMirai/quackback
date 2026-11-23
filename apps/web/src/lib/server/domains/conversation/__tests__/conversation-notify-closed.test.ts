@@ -2,7 +2,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ConversationId, PrincipalId } from '@quackback/ids'
 
 const sendConversationClosedEmail = vi.fn(async (_opts: unknown) => ({ sent: true }))
-const enforceEmailBudget = vi.fn(async () => undefined)
 const buildHookContext = vi.fn(async () => ({
   workspaceName: 'Acme',
   portalBaseUrl: 'https://acme.example.com',
@@ -13,18 +12,6 @@ let limitQueue: Array<Array<Record<string, unknown>>> = []
 
 vi.mock('@quackback/email', () => ({
   sendConversationClosedEmail: (opts: unknown) => sendConversationClosedEmail(opts),
-}))
-
-vi.mock('@/lib/server/domains/settings/tier-enforce', () => ({
-  enforceEmailBudget: () => enforceEmailBudget(),
-  emailBudgetAvailable: async () => {
-    try {
-      await enforceEmailBudget()
-      return true
-    } catch {
-      return false
-    }
-  },
 }))
 
 vi.mock('@/lib/server/events/hook-context', () => ({
@@ -83,7 +70,6 @@ beforeEach(() => {
   csatRows = []
   limitQueue = []
   sendConversationClosedEmail.mockResolvedValue({ sent: true })
-  enforceEmailBudget.mockResolvedValue(undefined)
 })
 
 describe('notifyConversationClosed', () => {
@@ -250,32 +236,5 @@ describe('notifyConversationClosed', () => {
     expect(
       (sendConversationClosedEmail.mock.calls[0][0] as { ratingUrls?: unknown }).ratingUrls
     ).toBeUndefined()
-  })
-
-  it('still sends close mail when the monthly broadcast budget is exhausted', async () => {
-    const { TierLimitError } = await import('@/lib/server/errors/tier-limit-error')
-    enforceEmailBudget.mockRejectedValueOnce(
-      new TierLimitError({ limit: 'emailsPerMonth', message: 'Email budget exhausted' })
-    )
-    limitQueue = [
-      [
-        {
-          id: 'conversation_1',
-          channel: 'email',
-          subject: 'Billing',
-          visitorPrincipalId: 'principal_v' as PrincipalId,
-          visitorEmail: 'priya@x.com',
-          endReason: null,
-        },
-      ],
-      [{ type: 'user', email: 'priya@x.com', contactEmail: null }],
-    ]
-
-    await notifyConversationClosed({
-      conversationId: 'conversation_1' as ConversationId,
-      variant: 'closed',
-    })
-
-    expect(sendConversationClosedEmail).toHaveBeenCalled()
   })
 })

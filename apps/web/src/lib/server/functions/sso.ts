@@ -27,7 +27,6 @@ import { ConflictError, ForbiddenError, ValidationError } from '@/lib/shared/err
 import { httpsUrl } from '@/lib/shared/schemas/auth'
 import { actorFromAuth, withAuditEvent } from '@/lib/server/audit/log'
 import { PERMISSIONS } from '@/lib/shared/permissions'
-import { shownProofSource, type ShownProofSource } from '@/lib/shared/domain-proof'
 import { diffProviderAudit } from '@/lib/server/auth/idp-audit-diff'
 import { applyClaimMappingEdits } from '@/lib/shared/sso-claim-mapping-edit'
 import { PROFILE_FIELDS, isRoleRuleRoleId } from '@/lib/shared/oidc-claim-mapping'
@@ -108,12 +107,12 @@ export const clearSsoClientSecretFn = createServerFn({ method: 'POST' }).handler
 
 /**
  * Per-domain rate-limit (set-if-absent, 10s window). Throws when
- * throttled. Keyed on workspace+domain so admins can verify multiple
- * pending domains in parallel without throttling each other.
+ * throttled. Keyed on the domain so admins can verify multiple pending domains
+ * in parallel without throttling each other.
  */
-async function assertVerifyDomainRateLimit(workspaceKey: string, domainId: string): Promise<void> {
+async function assertVerifyDomainRateLimit(domainId: string): Promise<void> {
   const { kvSetNx } = await import('@/lib/server/kv/pg-kv')
-  const took = await kvSetNx(`verify-domain:${workspaceKey}:${domainId}`, 1, 10)
+  const took = await kvSetNx(`verify-domain:${domainId}`, 1, 10)
   if (!took) {
     throw new ConflictError(
       'VERIFY_RATE_LIMITED',
@@ -135,7 +134,7 @@ export const removeVerifiedDomainFn = createServerFn({ method: 'POST' })
   })
 
 export type VerifyDomainResult =
-  | { verified: true; verifiedAt: string; via: 'dns' | ShownProofSource }
+  | { verified: true; verifiedAt: string }
   | { verified: false; reason: 'no-record' | 'lookup-failed' | 'mismatch' | 'no-pending-domain' }
 
 /** Read-only listing of the workspace's verified-domain rows. */
@@ -292,23 +291,6 @@ export const upsertIdentityProviderFn = createServerFn({ method: 'POST' })
       ? existing.find((p) => p.id === data.id)
       : existing.find((p) => p.registrationId === data.registrationId)
 
-    // Plan gate. The carve-out is exactly one shape — taking a currently-enabled
-    // provider out of service — so a workspace that loses the entitlement can
-    // still switch SSO off. It deliberately mirrors the lockout check below
-    // rather than the looser `data.enabled !== false`: that form also let a
-    // caller CREATE a provider, persisting a full set of connection details and
-    // an idp.created audit event, merely by sending `enabled: false`. Editing an
-    // already-disabled provider is a reconfiguration, not a take-out-of-service,
-    // and needs the entitlement like any other write.
-    //
-    // No-op on any install without a cloud config.
-    const isTakingProviderOutOfService = data.enabled === false && prior?.enabled === true
-    if (!isTakingProviderOutOfService) {
-      const { requireEntitlement } =
-        await import('@/lib/server/domains/settings/cloud/entitlements')
-      await requireEntitlement('sso')
-    }
-
     // Refuse to disable the workspace's only working sign-in method (lockout).
     // Only a true→false transition on a currently-usable provider can do it.
     if (data.enabled === false && prior?.enabled && prior.configured) {
@@ -410,9 +392,6 @@ export const saveIdentityProviderClaimMappingFn = createServerFn({ method: 'POST
   .validator(saveClaimMappingInput)
   .handler(async ({ data }) => {
     const auth = await requireAuth({ permission: PERMISSIONS.AUTH_MANAGE })
-    const { requireEntitlement } = await import('@/lib/server/domains/settings/cloud/entitlements')
-    await requireEntitlement('sso')
-
     const { listIdentityProviders, saveIdentityProviderClaimMapping } =
       await import('@/lib/server/domains/settings/identity-providers.service')
     const { roleRuleGrantCheck } = await import('@/lib/server/domains/roles/role.rule-grants')
@@ -670,7 +649,7 @@ const verifyProviderDomainInput = z.object({
 export const verifyProviderDomainFn = createServerFn({ method: 'POST' })
   .validator(verifyProviderDomainInput)
   .handler(async ({ data }): Promise<VerifyDomainResult> => {
-    const auth = await requireAuth({ permission: PERMISSIONS.AUTH_MANAGE })
+    await requireAuth({ permission: PERMISSIONS.AUTH_MANAGE })
 
     const { getWorkspaceSettings, stampVerifiedDomain } =
       await import('@/lib/server/domains/settings/settings.service')
@@ -684,10 +663,10 @@ export const verifyProviderDomainFn = createServerFn({ method: 'POST' })
     if (!dom) {
       return { verified: false, reason: 'no-pending-domain' }
     }
-    await assertVerifyDomainRateLimit(workspace.settings.id, dom.id)
+    await assertVerifyDomainRateLimit(dom.id)
 
     const { checkSsoDomainOwnership } =
-      await import('@/lib/server/domains/domain-proof/sso-domain-check')
+      await import('@/lib/server/domains/settings/sso-domain-verify')
     const check = await checkSsoDomainOwnership(dom)
     if (!check.ok) {
       return { verified: false, reason: check.reason }
@@ -707,30 +686,8 @@ export const verifyProviderDomainFn = createServerFn({ method: 'POST' })
       }
       throw err
     }
-    return {
-      verified: true,
-      verifiedAt,
-      via: check.via === 'dns' ? 'dns' : shownProofSource(check.via, auth.permissions),
-    }
+    return { verified: true, verifiedAt }
   })
-
-/**
- * The single sign-on domains another proof already covers, by domain id, with
- * the source that covers each. A pending one shows that note instead of the
- * TXT record, and a verified one says where its proof came from.
- */
-export const getSsoDomainProofsFn = createServerFn({ method: 'GET' }).handler(
-  async (): Promise<Record<string, ShownProofSource>> => {
-    const auth = await requireAuth({ permission: PERMISSIONS.AUTH_MANAGE })
-    const { listSignInDomainSummaries } =
-      await import('@/lib/server/domains/domain-proof/domains-overview')
-    const proofs: Record<string, ShownProofSource> = {}
-    for (const d of await listSignInDomainSummaries(auth.permissions)) {
-      if (d.provenBy) proofs[d.id] = d.provenBy
-    }
-    return proofs
-  }
-)
 
 const setDomainEnforcedInput = z.object({
   id: verifiedDomainId,

@@ -28,14 +28,6 @@ const tsvector = customType<{ data: string }>({
   },
 })
 
-// Custom vector type for embeddings (pgvector)
-// 1536 dimensions = OpenAI text-embedding-3-small
-const vector = customType<{ data: number[] }>({
-  dataType() {
-    return 'vector(1536)'
-  },
-})
-
 export const posts = pgTable(
   'posts',
   {
@@ -91,8 +83,8 @@ export const posts = pgTable(
     })
       .default('published')
       .notNull(),
-    // Key-value metadata attached by the widget SDK
-    widgetMetadata: jsonb('widget_metadata').$type<Record<string, string>>(),
+    // Key-value metadata attached by the submitting client
+    clientMetadata: jsonb('client_metadata').$type<Record<string, string>>(),
     // Validated answers to the board's configured custom fields
     // (boards.settings.customFields), keyed by field key. Null when the board
     // configures no fields.
@@ -109,22 +101,6 @@ export const posts = pgTable(
     searchVector: tsvector('search_vector').generatedAlwaysAs(
       sql`setweight(to_tsvector('english', coalesce(title, '')), 'A') || setweight(to_tsvector('english', coalesce(content, '')), 'B')`
     ),
-    // Semantic embedding for AI-powered similarity search (1536 dims = OpenAI text-embedding-3-small)
-    embedding: vector('embedding'),
-    // Track model version for future upgrades (allows re-embedding without data loss)
-    embeddingModel: text('embedding_model'),
-    embeddingUpdatedAt: timestamp('embedding_updated_at', { withTimezone: true }),
-    // AI-generated post summary (structured JSON for PM triage)
-    summaryJson: jsonb('summary_json').$type<{
-      summary: string
-      keyQuotes: string[]
-      nextSteps: string[]
-    }>(),
-    summaryModel: text('summary_model'),
-    summaryUpdatedAt: timestamp('summary_updated_at', { withTimezone: true }),
-    summaryCommentCount: integer('summary_comment_count'),
-    // Merge suggestion staleness tracking
-    mergeCheckedAt: timestamp('merge_checked_at', { withTimezone: true }),
     // Nullable target ship date for time-based roadmap columns. Stored as a full
     // timestamp (single-datetime ETA model); presented at month granularity.
     eta: timestamp('eta', { withTimezone: true }),
@@ -149,9 +125,6 @@ export const posts = pgTable(
     index('posts_tracked_by_principal_id_idx').on(table.trackedByPrincipalId),
     index('posts_created_at_idx').on(table.createdAt),
     index('posts_vote_count_idx').on(table.voteCount),
-    index('posts_embedding_hnsw_idx')
-      .using('hnsw', sql`${table.embedding} vector_cosine_ops`)
-      .where(sql`${table.embedding} IS NOT NULL`),
     // Composite indexes for post listings sorted by "top" and "new"
     index('posts_board_vote_idx').on(table.boardId, table.voteCount),
     index('posts_board_created_at_idx').on(table.boardId, table.createdAt),
@@ -227,7 +200,7 @@ export const postVotes = pgTable(
     principalId: typeIdColumn('principal')('principal_id')
       .notNull()
       .references(() => principal.id, { onDelete: 'cascade' }),
-    // Source tracking for integration-created votes (e.g. Zendesk sidebar)
+    // Source tracking for integration-created votes (e.g. an Intercom ticket)
     sourceType: varchar('source_type', { length: 40 }),
     sourceExternalUrl: text('source_external_url'),
     // Which admin/member added this vote on behalf of the voter

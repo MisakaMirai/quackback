@@ -17,7 +17,6 @@ import type { ChannelAccountId, SendingDomainId, TeamId, UserId } from '@quackba
 import type { ChannelAccount, EmailSendingDomain } from '@/lib/server/db'
 import { logger } from '@/lib/server/logger'
 import { isUniqueViolation } from '@/lib/server/utils/pg-error'
-import { TierLimitError } from '@/lib/server/errors/tier-limit-error'
 import { resolveAccountRecipient } from '@/lib/server/email/recipient'
 import {
   createSendingAddress,
@@ -44,10 +43,6 @@ import {
   provisionSendingDomain,
 } from './sending-identity'
 import { clearEmailSendersFor } from './email-senders'
-import {
-  discardUnusedDomain,
-  ensureDomain,
-} from '@/lib/server/domains/domain-proof/domains.service'
 
 const log = logger.child({ component: 'sending-address' })
 
@@ -66,7 +61,7 @@ export type SendingAddressMode = 'any' | 'verified-domains' | 'unavailable'
 
 /** The mode for a guard context: the same answer the guard gives for an unknown From. */
 export function addressModeFor(ctx: SendingIdentityContext): SendingAddressMode {
-  if (!ctx.pooled) return 'any'
+  if (!ctx.strict) return 'any'
   return customSendingDomainsAvailable() ? 'verified-domains' : 'unavailable'
 }
 
@@ -110,11 +105,10 @@ export async function addSendingAddress(input: {
   const mode = addressModeFor(ctx)
   const domains = await listSendingDomains(input.owningTeamId)
 
-  // Asked as if the server were shared, so "may send" means a real reason to,
-  // not the single-workspace allowance that permits everything.
-  if (isSendingIdentityPermitted(address, { ...ctx, pooled: true })) {
+  // Asked strictly, so "may send" means a real reason to, not the
+  // single-workspace allowance that permits everything.
+  if (isSendingIdentityPermitted(address, { ...ctx, strict: true })) {
     const covering = domain ? verifiedCovering(domains, domain) : undefined
-    if (covering) await ensureDomain(covering.domain)
     return createSendingAddress({ ...input, address, sendingDomainId: covering?.id })
   }
   if (mode === 'unavailable') {
@@ -122,18 +116,7 @@ export async function addSendingAddress(input: {
   }
   if (!customSendingDomainsAvailable()) return createSendingAddress({ ...input, address })
 
-  // The domain goes on Settings > Domains first, so a sending row issued a
-  // token later takes the domain's and one record proves both. One this add
-  // created goes again if the address ends up on no sending row.
-  const ensured = domain ? await ensureDomain(domain) : null
-  try {
-    const account = await addOnItsDomain(input, address, domain, mode, domains)
-    if (ensured?.created && !account.sendingDomainId) await discardUnusedDomain(ensured.domain)
-    return account
-  } catch (err) {
-    if (ensured?.created) await discardUnusedDomain(ensured.domain)
-    throw err
-  }
+  return addOnItsDomain(input, address, domain, mode, domains)
 }
 
 /** The address on its domain's sending row: this workspace's, or a new one set up for it. */
@@ -158,9 +141,7 @@ async function addOnItsDomain(
       created = true
     } catch (err) {
       // Another add for the same new domain inserted its row first: use it.
-      // Refused at the plan cap is the same race when that add took the last
-      // slot, so it reads the domains again too.
-      if (isUniqueViolation(err) || err instanceof TierLimitError) {
+      if (isUniqueViolation(err)) {
         row = (await listSendingDomains(input.owningTeamId)).find(sameDomain)
       }
       if (!row) {

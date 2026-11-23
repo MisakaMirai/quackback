@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 import { useMutation, useSuspenseQuery, useQueryClient } from '@tanstack/react-query'
 import { AUTOSAVE } from '@/lib/client/autosave'
 import {
@@ -38,6 +38,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { SettingsCard } from '@/components/admin/settings/settings-card'
 import { RowDot, SettingsList, SettingsListRow } from '@/components/admin/settings/settings-list'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
@@ -59,10 +60,10 @@ const HIDDEN = 'hidden'
 
 /** Each category's effect on an SLA clock, shown in its card title (the label
  *  comes from the shared TICKET_STATUS_CATEGORY_LABELS). */
-const CATEGORY_SLA: Record<TicketStatusCategory, string> = {
-  open: 'SLA runs',
-  pending: 'SLA pauses',
-  closed: 'SLA stops',
+const CATEGORY_SLA: Record<TicketStatusCategory, { id: string; defaultMessage: string }> = {
+  open: { id: 'admin.settings.ticketStatuses.sla.open', defaultMessage: 'SLA runs' },
+  pending: { id: 'admin.settings.ticketStatuses.sla.pending', defaultMessage: 'SLA pauses' },
+  closed: { id: 'admin.settings.ticketStatuses.sla.closed', defaultMessage: 'SLA stops' },
 }
 
 const KEY = ticketStatusesQuery.queryKey
@@ -83,6 +84,7 @@ export function TicketStatusList({
   onCreatingChange: (creating: boolean) => void
 }) {
   const qc = useQueryClient()
+  const intl = useOptionalIntl()
   const { data: statuses } = useSuspenseQuery(ticketStatusesQuery)
   const { data: stageLabels } = useSuspenseQuery(ticketStageLabelsQuery)
 
@@ -91,6 +93,7 @@ export function TicketStatusList({
   const [toDelete, setToDelete] = useState<TicketStatusEntity | null>(null)
   const dialogOpen = creating || editing !== null
 
+  const dndId = useId()
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
@@ -183,7 +186,13 @@ export function TicketStatusList({
         (qc.getQueryData<TicketStatusEntity[]>(KEY) ?? statuses).filter((s) => s.id !== toDelete.id)
       )
     } catch (error) {
-      toastError(error, 'Failed to delete status')
+      toastError(
+        error,
+        intl.formatMessage({
+          id: 'admin.settings.ticketStatuses.deleteFailed',
+          defaultMessage: 'Failed to delete status',
+        })
+      )
     } finally {
       setToDelete(null)
     }
@@ -191,14 +200,19 @@ export function TicketStatusList({
 
   return (
     <>
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+      <DndContext
+        id={dndId}
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+      >
         {TICKET_STATUS_CATEGORIES.map((category) => {
           const group = byCategory[category]
           if (group.length === 0) return null
           return (
             <SettingsCard
               key={category}
-              title={`${TICKET_STATUS_CATEGORY_LABELS[category]} · ${CATEGORY_SLA[category]}`}
+              title={`${TICKET_STATUS_CATEGORY_LABELS[category]} · ${intl.formatMessage(CATEGORY_SLA[category])}`}
               flush
             >
               <SortableContext
@@ -242,9 +256,21 @@ export function TicketStatusList({
       <ConfirmDialog
         open={!!toDelete}
         onOpenChange={() => setToDelete(null)}
-        title="Delete status?"
-        description={`Delete "${toDelete?.name}"? Tickets using it must be reassigned first.`}
-        confirmLabel="Delete status"
+        title={intl.formatMessage({
+          id: 'admin.settings.ticketStatuses.deleteTitle',
+          defaultMessage: 'Delete status?',
+        })}
+        description={intl.formatMessage(
+          {
+            id: 'admin.settings.ticketStatuses.deleteDescription',
+            defaultMessage: 'Delete "{name}"? Tickets using it must be reassigned first.',
+          },
+          { name: toDelete?.name ?? '' }
+        )}
+        confirmLabel={intl.formatMessage({
+          id: 'admin.settings.ticketStatuses.deleteStatus',
+          defaultMessage: 'Delete status',
+        })}
         variant="destructive"
         onConfirm={handleDelete}
       />
@@ -273,6 +299,7 @@ function StatusRow({
   onEdit,
   onDelete,
 }: StatusRowProps) {
+  const intl = useOptionalIntl()
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: status.id,
   })
@@ -289,7 +316,13 @@ function StatusRow({
             {...attributes}
             {...listeners}
             className="touch-none cursor-grab active:cursor-grabbing"
-            aria-label={`Reorder ${status.name}`}
+            aria-label={intl.formatMessage(
+              {
+                id: 'admin.settings.ticketStatuses.reorderAria',
+                defaultMessage: 'Reorder {name}',
+              },
+              { name: status.name }
+            )}
           >
             <Bars3Icon className="size-4 text-muted-foreground/70" />
           </button>
@@ -302,12 +335,23 @@ function StatusRow({
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <span role="img" aria-label="Default status">
+                    <span
+                      role="img"
+                      aria-label={intl.formatMessage({
+                        id: 'admin.settings.ticketStatuses.defaultAria',
+                        defaultMessage: 'Default status',
+                      })}
+                    >
                       <LockClosedIcon className="h-3 w-3 text-muted-foreground" />
                     </span>
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p>The default status for new tickets. It can't be deleted.</p>
+                    <p>
+                      {intl.formatMessage({
+                        id: 'admin.settings.ticketStatuses.defaultTooltip',
+                        defaultMessage: "The default status for new tickets. It can't be deleted.",
+                      })}
+                    </p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
@@ -324,12 +368,23 @@ function StatusRow({
             <SelectTrigger
               size="sm"
               className="w-44"
-              aria-label={`Customer stage for ${status.name}`}
+              aria-label={intl.formatMessage(
+                {
+                  id: 'admin.settings.ticketStatuses.customerStageAria',
+                  defaultMessage: 'Customer stage for {name}',
+                },
+                { name: status.name }
+              )}
             >
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={HIDDEN}>Hidden</SelectItem>
+              <SelectItem value={HIDDEN}>
+                {intl.formatMessage({
+                  id: 'admin.settings.ticketStatuses.hidden',
+                  defaultMessage: 'Hidden',
+                })}
+              </SelectItem>
               {TICKET_STAGES.map((stage) => (
                 <SelectItem key={stage} value={stage}>
                   {stageLabels[stage]}
@@ -339,15 +394,26 @@ function StatusRow({
           </Select>
         }
         actions={[
-          { label: 'Edit', onSelect: onEdit },
+          {
+            label: intl.formatMessage({
+              id: 'admin.settings.ticketStatuses.edit',
+              defaultMessage: 'Edit',
+            }),
+            onSelect: onEdit,
+          },
           ...(canDelete
             ? [
                 {
-                  label: 'Delete',
+                  label: intl.formatMessage({ id: 'common.delete', defaultMessage: 'Delete' }),
                   destructive: true,
                   onSelect: onDelete,
                   disabled: lastInCategory,
-                  hint: lastInCategory ? 'Keep at least one status in each category' : undefined,
+                  hint: lastInCategory
+                    ? intl.formatMessage({
+                        id: 'admin.settings.ticketStatuses.keepOneHint',
+                        defaultMessage: 'Keep at least one status in each category',
+                      })
+                    : undefined,
                 },
               ]
             : []),
@@ -366,6 +432,7 @@ interface StatusDialogProps {
 }
 
 function StatusDialog({ open, onOpenChange, status, stageLabels, onSubmit }: StatusDialogProps) {
+  const intl = useOptionalIntl()
   const [name, setName] = useState('')
   const [color, setColor] = useState(randomColor())
   const [category, setCategory] = useState<TicketStatusCategory>('open')
@@ -398,7 +465,15 @@ function StatusDialog({ open, onOpenChange, status, stageLabels, onSubmit }: Sta
       await onSubmit({ name: name.trim(), color, category, publicStage })
       onOpenChange(false)
     } catch (err) {
-      setError(errorText(err, 'Failed to save status'))
+      setError(
+        errorText(
+          err,
+          intl.formatMessage({
+            id: 'admin.settings.ticketStatuses.saveFailed',
+            defaultMessage: 'Failed to save status',
+          })
+        )
+      )
     } finally {
       setSubmitting(false)
     }
@@ -408,34 +483,66 @@ function StatusDialog({ open, onOpenChange, status, stageLabels, onSubmit }: Sta
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>{status ? 'Edit status' : 'New status'}</DialogTitle>
+          <DialogTitle>
+            {status
+              ? intl.formatMessage({
+                  id: 'admin.settings.ticketStatuses.editTitle',
+                  defaultMessage: 'Edit status',
+                })
+              : intl.formatMessage({
+                  id: 'admin.settings.ticketStatuses.newTitle',
+                  defaultMessage: 'New status',
+                })}
+          </DialogTitle>
           <DialogDescription>
-            Statuses group into a category and optionally project to a customer-facing stage.
+            {intl.formatMessage({
+              id: 'admin.settings.ticketStatuses.dialogDescription',
+              defaultMessage:
+                'Statuses group into a category and optionally project to a customer-facing stage.',
+            })}
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={submit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="ticket-status-name">Name</Label>
+            <Label htmlFor="ticket-status-name">
+              {intl.formatMessage({
+                id: 'admin.settings.ticketStatuses.nameLabel',
+                defaultMessage: 'Name',
+              })}
+            </Label>
             <Input
               id="ticket-status-name"
               value={name}
               maxLength={50}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Waiting on customer"
+              placeholder={intl.formatMessage({
+                id: 'admin.settings.ticketStatuses.namePlaceholder',
+                defaultMessage: 'e.g. Waiting on customer',
+              })}
               required
             />
           </div>
 
           <div className="space-y-2">
-            <Label>Color</Label>
+            <Label>
+              {intl.formatMessage({
+                id: 'admin.settings.ticketStatuses.colorLabel',
+                defaultMessage: 'Color',
+              })}
+            </Label>
             <ColorPickerGrid selectedColor={color} onColorChange={setColor} />
             <ColorHexInput color={color} onColorChange={setColor} />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Category</Label>
+              <Label>
+                {intl.formatMessage({
+                  id: 'admin.settings.ticketStatuses.categoryLabel',
+                  defaultMessage: 'Category',
+                })}
+              </Label>
               <Select
                 value={category}
                 onValueChange={(v) => setCategory(v as TicketStatusCategory)}
@@ -446,7 +553,7 @@ function StatusDialog({ open, onOpenChange, status, stageLabels, onSubmit }: Sta
                 <SelectContent>
                   {TICKET_STATUS_CATEGORIES.map((c) => (
                     <SelectItem key={c} value={c}>
-                      {TICKET_STATUS_CATEGORY_LABELS[c]} · {CATEGORY_SLA[c]}
+                      {TICKET_STATUS_CATEGORY_LABELS[c]} · {intl.formatMessage(CATEGORY_SLA[c])}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -454,7 +561,12 @@ function StatusDialog({ open, onOpenChange, status, stageLabels, onSubmit }: Sta
             </div>
 
             <div className="space-y-2">
-              <Label>Customer stage</Label>
+              <Label>
+                {intl.formatMessage({
+                  id: 'admin.settings.ticketStatuses.customerStageLabel',
+                  defaultMessage: 'Customer stage',
+                })}
+              </Label>
               <Select
                 value={publicStage ?? HIDDEN}
                 onValueChange={(v) => setPublicStage(v === HIDDEN ? null : (v as TicketStage))}
@@ -463,7 +575,12 @@ function StatusDialog({ open, onOpenChange, status, stageLabels, onSubmit }: Sta
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={HIDDEN}>Hidden</SelectItem>
+                  <SelectItem value={HIDDEN}>
+                    {intl.formatMessage({
+                      id: 'admin.settings.ticketStatuses.hidden',
+                      defaultMessage: 'Hidden',
+                    })}
+                  </SelectItem>
                   {TICKET_STAGES.map((stage) => (
                     <SelectItem key={stage} value={stage}>
                       {stageLabels[stage]}
@@ -478,10 +595,23 @@ function StatusDialog({ open, onOpenChange, status, stageLabels, onSubmit }: Sta
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
+              {intl.formatMessage({ id: 'common.cancel', defaultMessage: 'Cancel' })}
             </Button>
             <Button type="submit" disabled={submitting || !name.trim()}>
-              {submitting ? 'Saving…' : status ? 'Save changes' : 'Create status'}
+              {submitting
+                ? intl.formatMessage({
+                    id: 'admin.settings.ticketStatuses.saving',
+                    defaultMessage: 'Saving…',
+                  })
+                : status
+                  ? intl.formatMessage({
+                      id: 'admin.settings.ticketStatuses.saveChanges',
+                      defaultMessage: 'Save changes',
+                    })
+                  : intl.formatMessage({
+                      id: 'admin.settings.ticketStatuses.createStatus',
+                      defaultMessage: 'Create status',
+                    })}
             </Button>
           </DialogFooter>
         </form>

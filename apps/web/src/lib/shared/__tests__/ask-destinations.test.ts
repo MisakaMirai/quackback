@@ -5,7 +5,7 @@ import {
   searchAskDestinations,
   buildAskStarterPrompts,
 } from '../ask-destinations'
-import { SETTINGS_PAGES, AUTOMATION_PAGES } from '../settings-pages'
+import { SETTINGS_PAGES } from '../settings-pages'
 
 const options = {
   permissions: new Set(ALL_PERMISSIONS),
@@ -17,13 +17,12 @@ const options = {
     statusPage: true,
     changelog: true,
   },
-  billingEnabled: true,
 }
 
 describe('Ask destinations', () => {
-  it('includes every registered settings and automation page once', () => {
+  it('includes every registered settings page once', () => {
     const paths = buildAskDestinations(options).map((item) => item.href)
-    for (const path of [...Object.keys(SETTINGS_PAGES), ...Object.keys(AUTOMATION_PAGES)]) {
+    for (const path of Object.keys(SETTINGS_PAGES)) {
       expect(
         paths.filter((candidate) => candidate === path),
         path
@@ -44,28 +43,26 @@ describe('Ask destinations', () => {
       permissions: new Set([PERMISSIONS.OFFICE_HOURS_MANAGE]),
     }).map((item) => item.href)
     expect(limited).toContain('/admin/settings/office-hours')
-    expect(limited).not.toContain('/admin/settings/widget')
+    expect(limited).not.toContain('/admin/settings/channels/messenger')
   })
-  it('hides disabled products and optional billing destinations', () => {
+  it('hides disabled products', () => {
     const paths = buildAskDestinations({
       ...options,
       featureFlags: { feedback: true },
-      billingEnabled: false,
     }).map((item) => item.href)
     expect(paths).not.toContain('/admin/inbox')
     expect(paths).not.toContain('/admin/settings/office-hours')
     expect(paths).not.toContain('/admin/settings/status')
     expect(paths).not.toContain('/admin/settings/billing')
-    expect(paths).toContain('/admin/settings/domains')
-    expect(paths).toContain('/admin/settings/widget/install')
+    expect(paths).toContain('/admin/settings/portal')
   })
   it('searches translated labels and keywords without a model or server dependency', () => {
     expect(searchAskDestinations('invite', options)[0]?.href).toBe('/admin/settings/members')
     expect(
       searchAskDestinations('Facturation', options, (item) =>
-        item.href === '/admin/settings/billing' ? 'Facturation' : item.defaultMessage
+        item.href === '/admin/settings/members' ? 'Facturation' : item.defaultMessage
       )[0]?.href
-    ).toBe('/admin/settings/billing')
+    ).toBe('/admin/settings/members')
     expect(searchAskDestinations('  ', options)).toHaveLength(0)
   })
   it('offers at most three prompts, so they fit on one line', () => {
@@ -84,28 +81,15 @@ describe('Ask destinations', () => {
   it('keeps useful prompts after the launch plan is complete', () => {
     const prompts = buildAskStarterPrompts(
       ['help_center', 'status_page'],
-      [
-        'help-article',
-        'add-status-service',
-        'customize-branding',
-        'invite-team',
-        'connect-messenger',
-      ]
+      ['help-article', 'add-status-service', 'customize-branding', 'invite-team']
     )
-    expect(prompts.map((item) => item.id)).toEqual([
-      'ask.starter.branding',
-      'ask.starter.invite',
-      'ask.starter.install',
-    ])
+    expect(prompts.map((item) => item.id)).toEqual(['ask.starter.branding', 'ask.starter.invite'])
   })
   it('combines goal starter prompts, preserving order and avoiding completed tasks', () => {
-    const prompts = buildAskStarterPrompts(
-      ['customer_support', 'help_center'],
-      ['connect-messenger']
-    )
+    const prompts = buildAskStarterPrompts(['customer_support', 'help_center'], ['create-board'])
     expect(prompts.map((item) => item.id)).toContain('ask.starter.welcome')
     expect(prompts.map((item) => item.id)).toContain('ask.starter.help')
     expect(prompts.map((item) => item.id)).not.toContain('ask.starter.install')
-    expect(prompts.length).toBeLessThanOrEqual(4)
+    expect(prompts.length).toBeLessThanOrEqual(3)
   })
 })

@@ -2,7 +2,6 @@ import {
   db,
   eq,
   settings,
-  sql,
   ssoVerifiedDomain,
   type Database,
   type Transaction,
@@ -13,11 +12,6 @@ import { localCacheGet, localCacheSet, settingsLocalTtlMs } from '@/lib/server/l
 import { memoizePerRequest } from '@/lib/server/request-memo'
 import { ValidationError, NotFoundError } from '@/lib/shared/errors'
 import { httpsUrl } from '@/lib/shared/schemas/auth'
-import {
-  assistantConfigSchema,
-  DEFAULT_ASSISTANT_CONFIG,
-  type AssistantCopilotCapabilities,
-} from '@/lib/shared/assistant/config'
 import { assertNotManaged } from '@/lib/server/config-file/managed-guard'
 import { absolutizeOffHostAssetUrl } from '@/lib/server/storage/asset-url'
 import { getPublicUrlOrNull } from '@/lib/server/storage/s3'
@@ -50,7 +44,8 @@ import {
   resolveFeatureFlags,
 } from './settings.types'
 import { signupOpenFor } from '@/lib/shared/signup-open'
-import { projectPublicWidgetConfig, widgetActivationConfig } from './settings.widget'
+import { DEFAULT_LOCALE, SUPPORTED_LOCALES } from '@/lib/shared/i18n'
+import { parseMessengerSettings, publicMessengerConfig } from './settings.messenger'
 import { getSetupState, isOnboardingComplete } from '@/lib/shared/db-types'
 import { resolveStatusSettings } from './settings.status'
 import {
@@ -58,7 +53,6 @@ import {
   parseJsonOrNull,
   parseMetadataBag,
   parsePortalConfig,
-  parseWidgetConfig,
   deepMerge,
   requireSettings,
   requireSettingsCached,
@@ -75,8 +69,6 @@ import {
 import { withCurrentStorageReadTokens } from '@/lib/server/content/storage-read-urls'
 
 import { logSettingsReadError } from './settings-log'
-import { getTierLimits } from './tier-limits.service'
-import { TierLimitError } from '@/lib/server/errors/tier-limit-error'
 
 const log = logger.child({ component: 'settings' })
 
@@ -192,12 +184,6 @@ export async function getAuthConfig(freshness: SettingsFreshness = 'cached'): Pr
   }
 }
 
-/**
- * OAuth providers that are always available regardless of tier.
- * Anything outside this set requires the customOidcProvider feature flag.
- */
-const STANDARD_OAUTH_PROVIDERS = new Set(['google', 'github', 'microsoft', 'discord'])
-
 export async function updateAuthConfig(input: UpdateAuthConfigInput): Promise<AuthConfig> {
   log.info('update auth config')
   try {
@@ -207,29 +193,12 @@ export async function updateAuthConfig(input: UpdateAuthConfigInput): Promise<Au
       }
     }
 
-    // Tier gate: refuse non-standard OAuth providers when
-    // customOidcProvider is off. No-op when the feature is unlimited.
-    if (input.oauth) {
-      const enablingNonStandard = Object.entries(input.oauth).some(
-        ([id, enabled]) => enabled && !STANDARD_OAUTH_PROVIDERS.has(id)
-      )
-      if (enablingNonStandard) {
-        const { assertTierFeature } = await import('@/lib/server/domains/settings/tier-enforce')
-        await assertTierFeature('customOidcProvider', 'Custom OIDC providers')
-      }
-    }
-
-    // Tier gate: ssoOidc itself requires customOidcProvider. Reject
-    // attempts to enable or configure SSO when the tier is off.
+    // Secret-presence gate: enabling SSO without a saved client
+    // secret would register a Better-Auth provider that 4xxs on
+    // every callback. Force the admin to paste the secret first via
+    // the UI's ClientSecretField component (which writes to
+    // platform_credentials and triggers a rebuild on save).
     if (input.ssoOidc?.enabled === true) {
-      const { assertTierFeature } = await import('@/lib/server/domains/settings/tier-enforce')
-      await assertTierFeature('customOidcProvider', 'Single sign-on (OIDC)')
-
-      // Secret-presence gate: enabling SSO without a saved client
-      // secret would register a Better-Auth provider that 4xxs on
-      // every callback. Force the admin to paste the secret first via
-      // the UI's ClientSecretField component (which writes to
-      // platform_credentials and triggers a rebuild on save).
       const { ValidationError } = await import('@/lib/shared/errors')
       const { hasSsoClientSecret } = await import('@/lib/server/auth/sso-secret')
       if (!(await hasSsoClientSecret())) {
@@ -490,7 +459,7 @@ function generateVerificationToken(): string {
  * but *unlinked* row is adopted by the given provider (a previously
  * global / backfilled domain). A row already owned by another provider is
  * returned untouched — `name` is globally unique, so a domain belongs to
- * exactly one provider. The name is put on Settings > Domains too.
+ * exactly one provider.
  */
 export async function insertVerifiedDomain(
   name: string,
@@ -547,10 +516,6 @@ export async function insertVerifiedDomain(
     log.error({ err: error }, 'insert verified domain failed')
     wrapDbError('insert verified domain', error)
   }
-  // The same domain on Settings > Domains, made in this one step. After the
-  // write and the resets, and never a reason to report the write as failed.
-  const { ensureDomainAfterUse } = await import('@/lib/server/domains/domain-proof/ensure-domain')
-  await ensureDomainAfterUse(name)
   return rowToVerifiedDomain(inserted.row)
 }
 
@@ -720,16 +685,6 @@ export async function updateDeveloperConfig(
 ): Promise<DeveloperConfig> {
   log.info('update developer config')
   try {
-    // Plan first (names the plan), then the operator-cap overlay. Disabling MCP
-    // stays open so a downgraded workspace can turn the endpoint off.
-    if (input.mcpEnabled === true) {
-      const { requireEntitlement } =
-        await import('@/lib/server/domains/settings/cloud/entitlements')
-      await requireEntitlement('mcpServer')
-      const { assertTierFeature } = await import('@/lib/server/domains/settings/tier-enforce')
-      await assertTierFeature('mcpServer', 'MCP server')
-    }
-
     const org = await requireSettings()
     const existing = parseJsonConfig(org.developerConfig, DEFAULT_DEVELOPER_CONFIG)
     const updated = deepMerge(existing, input as Partial<DeveloperConfig>)
@@ -766,12 +721,37 @@ export async function updateDeveloperConfig(
   }
 }
 
+/**
+ * A stored help-center config may name locales this build no longer ships: a
+ * workspace that enabled `de` before its catalog was removed. Filter those on
+ * read so the code can't route /hc/de, list it in the switcher or emit
+ * hreflang. An unsupported default coerces to English, the only locale that is
+ * always available.
+ */
+function withSupportedHelpCenterLocales(config: HelpCenterConfig): HelpCenterConfig {
+  const isSupported = (locale: string) => (SUPPORTED_LOCALES as readonly string[]).includes(locale)
+  const { locales } = config
+  return {
+    ...config,
+    locales: {
+      ...locales,
+      default: isSupported(locales.default) ? locales.default : DEFAULT_LOCALE,
+      additional: locales.additional.filter(isSupported),
+      chrome: Object.fromEntries(
+        Object.entries(locales.chrome).filter(([locale]) => isSupported(locale))
+      ),
+    },
+  }
+}
+
 export async function getHelpCenterConfig(
   freshness: SettingsFreshness = 'cached'
 ): Promise<HelpCenterConfig> {
   try {
     const org = await readSettingsRow(freshness)
-    return parseJsonConfig(org.helpCenterConfig, DEFAULT_HELP_CENTER_CONFIG)
+    return withSupportedHelpCenterLocales(
+      parseJsonConfig(org.helpCenterConfig, DEFAULT_HELP_CENTER_CONFIG)
+    )
   } catch (error) {
     log.error({ err: error }, 'get help center config failed')
     wrapDbError('fetch help center config', error)
@@ -779,12 +759,11 @@ export async function getHelpCenterConfig(
 }
 
 /**
- * A help-center update. `seo` and `autoTranslate` may be partial: they are
- * merged over the stored section, so a caller never sends back a copy it read.
+ * A help-center update. `seo` may be partial: it is merged over the stored
+ * section, so a caller never sends back a copy it read.
  */
-export type HelpCenterConfigUpdate = Omit<Partial<HelpCenterConfig>, 'seo' | 'autoTranslate'> & {
+export type HelpCenterConfigUpdate = Omit<Partial<HelpCenterConfig>, 'seo'> & {
   seo?: Partial<HelpCenterConfig['seo']>
-  autoTranslate?: Partial<HelpCenterConfig['autoTranslate']>
 }
 
 export async function updateHelpCenterConfig(
@@ -823,32 +802,13 @@ export async function enableHelpCenterLocale(input: {
       'Enabling a locale requires a homepage title'
     )
   }
-  const limit = (await getTierLimits()).maxHelpCenterLocales
-  // The lock is held to the end of the transaction, so two concurrent enables
-  // read the same language count only one at a time and cannot both take the
-  // last slot. The read and the write both run on the transaction.
   const locales = await db.transaction(async (tx) => {
-    await tx.execute(
-      sql`SELECT pg_advisory_xact_lock(hashtext('quackback:help_center_locale_slot'))`
-    )
     const org = await requireSettings(tx)
     const existing = parseJsonConfig(org.helpCenterConfig, DEFAULT_HELP_CENTER_CONFIG)
     if (input.locale === existing.locales.default) {
       throw new ValidationError('HC_LOCALE_IS_DEFAULT', 'The default locale is always enabled')
     }
     const alreadyEnabled = existing.locales.additional.includes(input.locale)
-    if (!alreadyEnabled && limit !== null) {
-      // The default language counts toward the plan's language cap.
-      const enabled = 1 + existing.locales.additional.length
-      if (enabled >= limit) {
-        throw new TierLimitError({
-          limit: 'maxHelpCenterLocales',
-          current: enabled,
-          max: limit,
-          message: `You've reached your plan's help center languages limit (${limit}). Upgrade to add more.`,
-        })
-      }
-    }
     const additional = alreadyEnabled
       ? existing.locales.additional
       : [...existing.locales.additional, input.locale]
@@ -951,7 +911,6 @@ export async function getPublicPortalConfig(): Promise<PublicPortalConfig> {
       ...(welcome && { welcomeCard: liveWelcomeCard(welcome) }),
       portalAccess: {
         isPrivate: portalConfig.access?.visibility === 'private',
-        widgetSignIn: portalConfig.access?.widgetSignIn ?? false,
       },
     }
   } catch (error) {
@@ -1026,12 +985,12 @@ async function readWorkspaceSettings(): Promise<WorkspaceSettings | null> {
     const brandingConfig = parseJsonOrNull<BrandingConfig>(org.brandingConfig) ?? {}
     const developerConfig = parseJsonConfig(org.developerConfig, DEFAULT_DEVELOPER_CONFIG)
 
-    const widgetConfig = parseWidgetConfig(org.widgetConfig)
-    const assistantConfig = assistantConfigSchema.safeParse(org.assistantConfig)
-    const assistantIdentity = assistantConfig.success
-      ? assistantConfig.data.identity
-      : DEFAULT_ASSISTANT_CONFIG.identity
-    const helpCenterConfig = parseJsonConfig(org.helpCenterConfig, DEFAULT_HELP_CENTER_CONFIG)
+    const messengerSettings = parseMessengerSettings(org.messengerConfig)
+    // The portal's /hc routes read this copy, so stale locales have to be
+    // filtered here too, not only in getHelpCenterConfig (see above).
+    const helpCenterConfig = withSupportedHelpCenterLocales(
+      parseJsonConfig(org.helpCenterConfig, DEFAULT_HELP_CENTER_CONFIG)
+    )
     const statusConfig = resolveStatusSettings(org.metadata)
 
     const featureFlags = resolveFeatureFlags(org.featureFlags)
@@ -1085,16 +1044,17 @@ async function readWorkspaceSettings(): Promise<WorkspaceSettings | null> {
           ...(welcome && { welcomeCard: welcome }),
           portalAccess: {
             isPrivate: portalConfig.access?.visibility === 'private',
-            widgetSignIn: portalConfig.access?.widgetSignIn ?? false,
           },
         }
       })(),
-      publicWidgetConfig: projectPublicWidgetConfig(widgetConfig, featureFlags, assistantIdentity),
+      publicMessengerConfig: publicMessengerConfig(
+        messengerSettings.messenger,
+        featureFlags.supportInbox
+      ),
       featureFlags,
       brandingData,
       faviconData: brandingData.faviconUrl ? { url: brandingData.faviconUrl } : null,
       managedFieldPaths: org.managedFieldPaths ?? [],
-      state: (org.state as 'active' | 'suspended' | 'deleting' | null) ?? 'active',
       verifiedDomains,
     }
 
@@ -1130,34 +1090,14 @@ export async function isFeatureEnabled(flag: keyof FeatureFlags): Promise<boolea
 }
 
 /**
- * Whether the Copilot Q&A capability is enabled in the v3 assistant config.
- * Reads the cached workspace settings (`getWorkspaceSettings`) — the same
- * single-Redis-GET path `isFeatureEnabled` uses — so gating the copilot route
- * on its hot path costs no extra DB round-trip; every config mutation calls
- * `invalidateSettingsCache()`. Fails OPEN to the v3 default (on): a
- * missing/invalid/unreadable config must not silently disable a working
- * default, mirroring how the route already degrades.
- */
-export async function isCopilotCapabilityEnabled(
-  capability: keyof AssistantCopilotCapabilities
-): Promise<boolean> {
-  const workspace = await getWorkspaceSettings()
-  const parsed = assistantConfigSchema.safeParse(workspace?.settings.assistantConfig)
-  const capabilities = parsed.success
-    ? parsed.data.agents.copilot.capabilities
-    : DEFAULT_ASSISTANT_CONFIG.agents.copilot.capabilities
-  return capabilities[capability]
-}
-
-/**
  * Update feature flags (partial update, merges with existing)
  */
 export async function updateFeatureFlags(
   input: Partial<FeatureFlags>,
   options: SettingsWriteOptions = {}
 ): Promise<FeatureFlags> {
-  // The patch rewrites columns it was computed from (flags, metadata, widget
-  // and portal config), so the row is read under its lock: a concurrent write
+  // The patch rewrites columns it was computed from (flags, metadata and
+  // portal config), so the row is read under its lock: a concurrent write
   // to any of them is read here rather than overwritten.
   const write = async (tx: Database | Transaction) => {
     const [org] = await tx.select().from(settings).limit(1).for('update')
@@ -1174,11 +1114,10 @@ export async function updateFeatureFlags(
 /**
  * The settings columns one flag change writes. Exported so setup applies its
  * goals through the same side effects as Settings > General: Status ON
- * publishes the page, Support ON opens the Messenger and portal surfaces,
- * Help center ON adds the Messenger help tab.
+ * publishes the page and Support ON opens the portal Support surface.
  */
 export function featureFlagsWrite(
-  org: Pick<SettingsRecord, 'id' | 'featureFlags' | 'metadata' | 'widgetConfig' | 'portalConfig'>,
+  org: Pick<SettingsRecord, 'id' | 'featureFlags' | 'metadata' | 'portalConfig'>,
   input: Partial<FeatureFlags>
 ) {
   // Unknown stored keys (retired Labs flags) drop here; the next write
@@ -1186,7 +1125,6 @@ export function featureFlagsWrite(
   const current = resolveFeatureFlags(org.featureFlags)
   const updated = { ...current, ...input, feedback: true }
   const turningSupportOn = current.supportInbox !== true && updated.supportInbox === true
-  const turningHelpOn = current.helpCenter !== true && updated.helpCenter === true
   // General Status ON is the single publish control: clear a legacy
   // unpublished bit so the page actually goes live. OFF only flips the flag;
   // workspaces that stored statusPage:true with enabled:false stay unpublished
@@ -1195,7 +1133,6 @@ export function featureFlagsWrite(
   const patch: {
     featureFlags: string
     metadata?: string
-    widgetConfig?: string
     portalConfig?: string
   } = {
     featureFlags: JSON.stringify(updated),
@@ -1205,12 +1142,6 @@ export function featureFlagsWrite(
     const meta = parseMetadataBag(org.metadata, { settingsId: org.id, key: 'statusSettings' })
     meta.statusSettings = { ...existing, enabled: true }
     patch.metadata = JSON.stringify(meta)
-  }
-  if (turningSupportOn || turningHelpOn) {
-    let widget = parseWidgetConfig(org.widgetConfig)
-    if (turningSupportOn) widget = widgetActivationConfig(widget, 'messenger')
-    if (turningHelpOn) widget = { ...widget, tabs: { ...widget.tabs, help: true } }
-    patch.widgetConfig = JSON.stringify(widget)
   }
   if (turningSupportOn) {
     const portal = parsePortalConfig(org.portalConfig)

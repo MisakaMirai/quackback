@@ -40,10 +40,9 @@ function activity(n: number) {
   }))
 }
 
-function renderPage(rows = 12, provider = 'smtp', aiClassifier = false) {
+function renderPage(rows = 12, provider = 'smtp') {
   client.setQueryData(settingsQueries.spamFilterConfig().queryKey, {
     trustedSenders: [],
-    aiClassifier,
   } as never)
   client.setQueryData(channelSettingsQueries.emailStatus().queryKey, {
     provider,
@@ -122,20 +121,5 @@ describe('EmailChannelPage', () => {
     fireEvent.click(screen.getByRole('switch', { name: 'Acknowledge new inbound mail' }))
     await waitFor(() => expect(updateAck).toHaveBeenCalledWith({ data: { enabled: true } }))
     expect(client.getMutationCache().getAll()[0].meta).toEqual({ autosave: true })
-  })
-
-  it('shows the stored AI spam filter state and autosaves only that switch', async () => {
-    renderPage(3, 'smtp', false)
-    const toggle = screen.getByRole('switch', { name: 'AI spam filter' })
-    expect(toggle.getAttribute('aria-checked')).toBe('false')
-    fireEvent.click(toggle)
-    await waitFor(() => expect(updateSpam).toHaveBeenCalledWith({ data: { aiClassifier: true } }))
-  })
-
-  it('shows the AI spam filter on when the workspace has it on', () => {
-    renderPage(3, 'smtp', true)
-    expect(
-      screen.getByRole('switch', { name: 'AI spam filter' }).getAttribute('aria-checked')
-    ).toBe('true')
   })
 })

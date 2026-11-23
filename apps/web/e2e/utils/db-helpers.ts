@@ -66,32 +66,12 @@ export function getOtpCode(email: string, _host?: string): string {
 }
 
 /**
- * Enable (or disable) the conversation surfaces: the supportInbox flag, the
- * widget messenger (master + surface + tab), and the portal Support tab.
- * Also busts the cached workspace settings so the change is live at once.
+ * Enable (or disable) the conversation surfaces: the supportInbox flag and the
+ * portal Support tab. Also busts the cached workspace settings so the change is
+ * live at once.
  */
 export function setSupportSurfaces(enabled: boolean = true): void {
   runScript('set-support-surfaces.ts', [enabled ? 'on' : 'off'], 'set support surfaces')
-}
-
-/** Enable (or disable) widget Help/Changelog/Messages tabs plus product flags. */
-export function setWidgetSurfaces(enabled: boolean = true): void {
-  runScript('set-widget-surfaces.ts', [enabled ? 'on' : 'off'], 'set widget surfaces')
-}
-
-export interface SeededWidgetIdentified {
-  customerEmail: string
-  articleSlug: string
-  articleTitle: string
-  ticketTitle: string
-  csatSubject: string
-}
-
-/** Customer user, published article, ticket, and CSAT conversation for identified widget e2e. */
-export function seedWidgetIdentified(): SeededWidgetIdentified {
-  return JSON.parse(
-    runScript('seed-widget-identified.ts', [], 'seed widget identified')
-  ) as SeededWidgetIdentified
 }
 
 export interface SeededConversation {
@@ -158,4 +138,136 @@ export function getMentionTarget(excludeEmail: string = 'demo@example.com'): {
     principalId: string
     displayName: string
   }
+}
+
+/** Actions the emailed unsubscribe link carries. */
+export type UnsubscribeAction = 'unsubscribe_all' | 'unsubscribe_post' | 'unsubscribe_changelog'
+
+export interface UnsubscribeFixture {
+  token: string
+  principalId: string
+}
+
+/**
+ * Reset `email`'s notification preferences to the all-on baseline and insert
+ * one live unsubscribe token for `action`. The user must have signed in once
+ * (the seed scripts resolve principals through `"user"`).
+ */
+export function seedUnsubscribeToken(email: string, action: UnsubscribeAction): UnsubscribeFixture {
+  return JSON.parse(
+    runScript('seed-unsubscribe-token.ts', ['seed', email, action], 'seed unsubscribe token')
+  ) as UnsubscribeFixture
+}
+
+export interface UnsubscribeState {
+  emailStatusChange: boolean | null
+  emailNewComment: boolean | null
+  emailMuted: boolean | null
+}
+
+/** The preferences an unsubscribe link would change, straight from the DB. */
+export function readUnsubscribeState(email: string): UnsubscribeState {
+  return JSON.parse(
+    runScript('seed-unsubscribe-token.ts', ['state', email], 'read unsubscribe state')
+  ) as UnsubscribeState
+}
+
+/**
+ * Clear a conversation's CSAT fields and mint a real CSAT-over-email token for
+ * its visitor. `conversationTypeId` is the TypeID string (`conversation_...`).
+ */
+export function mintCsatToken(conversationTypeId: string): string {
+  const out = JSON.parse(
+    runScript('csat-token.ts', ['mint', conversationTypeId], 'mint csat token')
+  ) as { token: string }
+  return out.token
+}
+
+export interface CsatState {
+  csatRating: number | null
+  csatComment: string | null
+  csatSubmittedAt: string | null
+}
+
+/** The rating/comment stored on a conversation. */
+export function readCsatState(conversationTypeId: string): CsatState {
+  return JSON.parse(
+    runScript('csat-token.ts', ['state', conversationTypeId], 'read csat state')
+  ) as CsatState
+}
+
+export interface ImportedPost {
+  title: string
+  boardName: string
+  boardSlug: string
+}
+
+/** Posts whose title starts with `prefix` (used to find one import run's rows). */
+export function getImportedPosts(prefix: string): ImportedPost[] {
+  return JSON.parse(
+    runScript('get-imported-posts.ts', [prefix], 'get imported posts')
+  ) as ImportedPost[]
+}
+
+export interface NotificationPreferencesFixture {
+  emailMuted: boolean
+  emailStatusChange: boolean
+  emailNewComment: boolean
+  matrix: Record<string, Record<string, boolean | undefined> | undefined>
+}
+
+/** The stored notification preferences for `email`'s principal. */
+export function getNotificationPreferences(email: string): NotificationPreferencesFixture {
+  return JSON.parse(
+    runScript('get-notification-preferences.ts', [email], 'get notification preferences')
+  ) as NotificationPreferencesFixture
+}
+
+/**
+ * The live password-reset token for `email` (the value the emailed
+ * `/auth/reset-password?token=…` link carries). Polls briefly: Better-Auth
+ * writes the verification row just after `request-password-reset` answers.
+ */
+export function getResetToken(email: string): string {
+  return runScript('get-reset-token.ts', [email], 'get reset token')
+}
+
+export interface TeamInvitation {
+  invitationId: string
+  status: string
+  role: string | null
+  email: string
+}
+
+/** The newest team invitation for `email` (created by the members page). */
+export function getTeamInvitation(email: string): TeamInvitation {
+  return JSON.parse(
+    runScript('get-team-invitation.ts', [email], 'get team invitation')
+  ) as TeamInvitation
+}
+
+export interface PortalInvitation {
+  invitationId: string
+  status: string
+  email: string
+}
+
+/** The newest portal-access invitation for `email`. */
+export function getPortalInvitation(email: string): PortalInvitation {
+  return JSON.parse(
+    runScript('get-portal-invitation.ts', [email], 'get portal invitation')
+  ) as PortalInvitation
+}
+
+export interface StatusIncidentFixture {
+  incidentId: string
+  status: string
+  title: string
+}
+
+/** The newest status incident with `title` (rows are found by their title). */
+export function getStatusIncident(title: string): StatusIncidentFixture {
+  return JSON.parse(
+    runScript('get-status-incident.ts', [title], 'get status incident')
+  ) as StatusIncidentFixture
 }

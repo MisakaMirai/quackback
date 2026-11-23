@@ -9,7 +9,6 @@ import {
 describe('isSsoOnlySignIn', () => {
   // Workspace whose only working method is a registered identity provider.
   const ssoOnly = {
-    tierEnabled: true,
     providers: [{ id: 'idp_1', enabled: true, configured: true }],
     oauth: { password: false, magicLink: false },
     emailConfigured: true,
@@ -65,7 +64,6 @@ describe('isSsoOnlySignIn', () => {
     // That is a lockout, caught by the separate last-method guard. SSO-only
     // means SSO specifically remains, so it must not also be true here.
     expect(isSsoOnlySignIn({ ...ssoOnly, providers: [] })).toBe(false)
-    expect(isSsoOnlySignIn({ ...ssoOnly, tierEnabled: false })).toBe(false)
   })
 
   it('false when the provider is disabled or unconfigured', () => {
@@ -88,7 +86,6 @@ describe('isSsoOnlySignIn', () => {
 // no social. The IdP is the workspace's last sign-in method.
 const base: SignInMethodSnapshot = {
   targetIdpId: 'idp_1',
-  tierEnabled: true,
   providers: [{ id: 'idp_1', enabled: true, configured: true }],
   oauth: { password: false, magicLink: false },
   emailConfigured: true,
@@ -117,10 +114,6 @@ describe('isOnlyWorkingSignInMethod', () => {
         providers: [{ id: 'idp_1', enabled: true, configured: false }],
       })
     ).toBe(false)
-  })
-
-  it('false when the customOidcProvider tier is off (IdP registers nothing at runtime)', () => {
-    expect(isOnlyWorkingSignInMethod({ ...base, tierEnabled: false })).toBe(false)
   })
 
   it('false when another enabled + configured IdP exists', () => {
@@ -178,10 +171,9 @@ describe('isOnlyWorkingSignInMethod', () => {
 })
 
 describe('hasAnyWorkingSignInMethod', () => {
-  // No working method at all: tier off so the IdP doesn't register, email off.
+  // No working method at all: no provider, email off.
   const none = {
-    tierEnabled: false,
-    providers: [{ id: 'idp_1', enabled: true, configured: true }],
+    providers: [] as Array<{ id: string; enabled: boolean; configured: boolean }>,
     oauth: { password: false, magicLink: false } as Record<string, boolean | undefined>,
     emailConfigured: false,
     socialIds: ['google', 'github'],
@@ -192,8 +184,13 @@ describe('hasAnyWorkingSignInMethod', () => {
     expect(hasAnyWorkingSignInMethod(none)).toBe(false)
   })
 
-  it('true for a registered IdP (tier on)', () => {
-    expect(hasAnyWorkingSignInMethod({ ...none, tierEnabled: true })).toBe(true)
+  it('true for a registered IdP', () => {
+    expect(
+      hasAnyWorkingSignInMethod({
+        ...none,
+        providers: [{ id: 'idp_1', enabled: true, configured: true }],
+      })
+    ).toBe(true)
   })
 
   it('true for password', () => {
@@ -228,7 +225,6 @@ describe('hasAnyWorkingSignInMethod', () => {
     // The unified opt-in default means absent ⇒ off, so this must return false.
     expect(
       hasAnyWorkingSignInMethod({
-        tierEnabled: false,
         providers: [],
         oauth: { password: false }, // magicLink key intentionally absent
         emailConfigured: true,

@@ -14,18 +14,24 @@
  *   4. Accepted → redirect to / (portal gate now sees the accepted invite).
  *   5. Any other status → return it so the component renders a message.
  */
-import { createFileRoute, redirect } from '@tanstack/react-router'
+import { createFileRoute, isRedirect, redirect } from '@tanstack/react-router'
+import { useIntl, type MessageDescriptor } from 'react-intl'
+import { PortalIntlProvider } from '@/components/portal-intl-provider'
 import {
   acceptPortalInviteFn,
   type AcceptPortalInviteResult,
 } from '@/lib/server/functions/portal-invites'
+import { DEFAULT_LOCALE, loadPortalMessages, type SupportedLocale } from '@/lib/shared/i18n'
 import { buildSigninRedirect } from '@/lib/shared/auth-prompt'
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
-type LoaderData = AcceptPortalInviteResult | { status: 'not_found' } | { status: 'error' }
+type LoaderData = (AcceptPortalInviteResult | { status: 'not_found' } | { status: 'error' }) & {
+  locale: SupportedLocale
+  messages: Record<string, string>
+}
 
 // ---------------------------------------------------------------------------
 // Route
@@ -40,6 +46,9 @@ export const Route = createFileRoute('/portal-invite/$inviteId')({
       throw redirect(buildSigninRedirect(`/portal-invite/${inviteId}`))
     }
 
+    const locale = context.acceptLanguageLocale ?? DEFAULT_LOCALE
+    const messages = await loadPortalMessages(locale)
+
     try {
       const result = await acceptPortalInviteFn({ data: { inviteId } })
 
@@ -47,10 +56,14 @@ export const Route = createFileRoute('/portal-invite/$inviteId')({
         throw redirect({ to: '/' })
       }
 
-      return result
+      return { ...result, locale, messages }
     } catch (err) {
-      // Re-throw redirects so TanStack Router handles them.
-      if (err && typeof err === 'object' && 'isRedirect' in err) {
+      // Re-throw redirects so TanStack Router handles them. `redirect()`
+      // returns a wrapper with only `options`; the router's `isRedirect`
+      // helper is the only supported test for it (the old `'isRedirect' in
+      // err` probe never matched, so an accepted invite rendered the generic
+      // error page instead of entering the portal).
+      if (isRedirect(err)) {
         throw err
       }
 
@@ -63,83 +76,126 @@ export const Route = createFileRoute('/portal-invite/$inviteId')({
       }
 
       if (message === 'PORTAL_INVITE_NOT_FOUND') {
-        return { status: 'not_found' }
+        return { status: 'not_found', locale, messages }
       }
 
       // Unexpected error — show a generic message instead of misleading the
       // user with "invite not found". The acceptPortalInviteFn server fn owns
       // server-side error logging for this path.
-      return { status: 'error' }
+      return { status: 'error', locale, messages }
     }
   },
-  component: PortalInvitePage,
+  component: PortalInviteRoute,
 })
 
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
-function PortalInvitePage() {
-  const data = Route.useLoaderData()
-  const { inviteId } = Route.useParams()
+function PortalInviteRoute() {
+  const { locale, messages } = Route.useLoaderData()
 
-  const { title, body } = getMessage(data.status, inviteId)
+  return (
+    <PortalIntlProvider locale={locale} messages={messages}>
+      <PortalInvitePage />
+    </PortalIntlProvider>
+  )
+}
+
+function PortalInvitePage() {
+  const intl = useIntl()
+  const data = Route.useLoaderData()
+
+  const { title, body } = getMessage(data.status)
 
   return (
     <PageShell>
       <Card>
-        <h1 className="text-xl font-semibold tracking-tight">{title}</h1>
-        <p className="mt-2 text-sm text-muted-foreground">{body}</p>
+        <h1 className="text-xl font-semibold tracking-tight">{intl.formatMessage(title)}</h1>
+        <p className="mt-2 text-sm text-muted-foreground">{intl.formatMessage(body)}</p>
         <a
           href="/"
           className="mt-6 inline-block text-sm font-medium text-primary hover:underline underline-offset-4"
         >
-          Go to portal
+          {intl.formatMessage({
+            id: 'portal.invite.goToPortal',
+            defaultMessage: 'Go to portal',
+          })}
         </a>
       </Card>
     </PageShell>
   )
 }
 
-function getMessage(
-  status: LoaderData['status'],
-  _inviteId: string
-): { title: string; body: string } {
+function getMessage(status: LoaderData['status']): {
+  title: MessageDescriptor
+  body: MessageDescriptor
+} {
   switch (status) {
     case 'canceled':
       return {
-        title: 'Invite revoked',
-        body: 'This invitation has been revoked. Please ask the workspace admin to send a new one.',
+        title: { id: 'portal.invite.revoked.title', defaultMessage: 'Invite revoked' },
+        body: {
+          id: 'portal.invite.revoked.body',
+          defaultMessage:
+            'This invitation has been revoked. Please ask the workspace admin to send a new one.',
+        },
       }
     case 'expired':
       return {
-        title: 'Invite expired',
-        body: 'This invitation has expired. Please ask the workspace admin to resend it.',
+        title: { id: 'portal.invite.expired.title', defaultMessage: 'Invite expired' },
+        body: {
+          id: 'portal.invite.expired.body',
+          defaultMessage:
+            'This invitation has expired. Please ask the workspace admin to resend it.',
+        },
       }
     case 'mismatch':
       return {
-        title: 'Wrong account',
-        body: 'This invite was sent to a different email address. Please sign in with the address it was sent to, then open the link again.',
+        title: { id: 'portal.invite.mismatch.title', defaultMessage: 'Wrong account' },
+        body: {
+          id: 'portal.invite.mismatch.body',
+          defaultMessage:
+            'This invite was sent to a different email address. Please sign in with the address it was sent to, then open the link again.',
+        },
       }
     case 'email_not_verified':
       return {
-        title: 'Verify your email first',
-        body: 'Your email address needs to be verified before you can accept this invitation. Please check your inbox for a verification email, then try the invite link again.',
+        title: {
+          id: 'portal.invite.emailNotVerified.title',
+          defaultMessage: 'Verify your email first',
+        },
+        body: {
+          id: 'portal.invite.emailNotVerified.body',
+          defaultMessage:
+            'Your email address needs to be verified before you can accept this invitation. Please check your inbox for a verification email, then try the invite link again.',
+        },
       }
     case 'not_found':
       return {
-        title: 'Invite not found',
-        body: 'This invitation could not be found. It may have already been used or does not exist.',
+        title: { id: 'portal.invite.notFound.title', defaultMessage: 'Invite not found' },
+        body: {
+          id: 'portal.invite.notFound.body',
+          defaultMessage:
+            'This invitation could not be found. It may have already been used or does not exist.',
+        },
       }
     case 'error':
       return {
-        title: 'Something went wrong',
-        body: 'An unexpected error occurred. Please try again later or contact the workspace admin.',
+        title: { id: 'portal.invite.error.title', defaultMessage: 'Something went wrong' },
+        body: {
+          id: 'portal.invite.error.body',
+          defaultMessage:
+            'An unexpected error occurred. Please try again later or contact the workspace admin.',
+        },
       }
     default:
       return {
-        title: 'Invite not found',
-        body: 'This invitation could not be found.',
+        title: { id: 'portal.invite.notFound.title', defaultMessage: 'Invite not found' },
+        body: {
+          id: 'portal.invite.notFound.bodyShort',
+          defaultMessage: 'This invitation could not be found.',
+        },
       }
   }
 }

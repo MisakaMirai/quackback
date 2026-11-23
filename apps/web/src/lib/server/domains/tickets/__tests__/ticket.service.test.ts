@@ -24,7 +24,6 @@ import {
   principal,
   user,
   settings,
-  companies,
   conversationMessages,
   conversations,
   ticketConversations,
@@ -891,14 +890,6 @@ describe.skipIf(!fixture.available)('ticket.service (real DB, rolled back)', () 
     const subsFor = (ticketId: TicketId) =>
       testDb.select().from(ticketSubscriptions).where(eq(ticketSubscriptions.ticketId, ticketId))
 
-    async function seedCompany(name = 'Acme') {
-      const [company] = await testDb
-        .insert(companies)
-        .values({ name: `${name}-${suffix()}` })
-        .returning()
-      return company
-    }
-
     it('defaults the assignee to the creating agent and subscribes them as assignee', async () => {
       await seedSettings()
       await seedStatuses()
@@ -990,37 +981,6 @@ describe.skipIf(!fixture.available)('ticket.service (real DB, rolled back)', () 
         actor
       )
       expect((await readTicket(other.id)).assigneePrincipalId).toBe(explicit)
-    })
-
-    it("propagates the requester's company when none is given; an explicit company wins", async () => {
-      await seedSettings()
-      await seedStatuses()
-      const actor = await messageAuthorActor()
-      const company = await seedCompany()
-      const otherCompany = await seedCompany('Other')
-      const requester = await seedTeammate()
-      await testDb
-        .update(principal)
-        .set({ companyId: company.id })
-        .where(eq(principal.id, requester))
-
-      const created = await createTicket(
-        { type: 'customer', title: 'Company inferred', requesterPrincipalId: requester },
-        actor
-      )
-      expect((await readTicket(created.id)).companyId).toBe(company.id)
-      expect(created.company?.id).toBe(company.id)
-
-      const explicit = await createTicket(
-        {
-          type: 'customer',
-          title: 'Company explicit',
-          requesterPrincipalId: requester,
-          companyId: otherCompany.id,
-        },
-        actor
-      )
-      expect((await readTicket(explicit.id)).companyId).toBe(otherCompany.id)
     })
 
     it('a bare (unbacked) creator id gets no default assignee and no watcher row', async () => {

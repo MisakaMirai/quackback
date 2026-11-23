@@ -1,10 +1,12 @@
 import { useMemo } from 'react'
+import { type MessageDescriptor } from 'react-intl'
 import { useNavigate } from '@tanstack/react-router'
 import { ArrowPathIcon, EnvelopeIcon } from '@heroicons/react/24/solid'
 import { PageHeader } from '@/components/shared/page-header'
 import { NewButton } from '@/components/shared/new-button'
 import { EmptyState } from '@/components/shared/empty-state'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { usePortalInvites } from './use-portal-invites'
 import { InviteRow } from './invite-row'
 import { InvitePeopleDialog } from './invite-people-dialog'
@@ -13,29 +15,53 @@ type InvitesStatus = 'pending' | 'accepted' | 'expired' | 'all'
 
 const STATUSES: InvitesStatus[] = ['pending', 'accepted', 'expired', 'all']
 
-const STATUS_LABEL: Record<InvitesStatus, string> = {
-  pending: 'Pending',
-  accepted: 'Accepted',
-  expired: 'Expired',
-  all: 'All',
+const STATUS_LABEL: Record<InvitesStatus, MessageDescriptor> = {
+  pending: { id: 'admin.people.invites.statusPending', defaultMessage: 'Pending' },
+  accepted: { id: 'admin.people.invites.statusAccepted', defaultMessage: 'Accepted' },
+  expired: { id: 'admin.people.invites.statusExpired', defaultMessage: 'Expired' },
+  all: { id: 'admin.people.invites.statusAll', defaultMessage: 'All' },
 }
 
-const EMPTY_COPY: Record<InvitesStatus, { title: string; body: string }> = {
+const EMPTY_COPY: Record<InvitesStatus, { title: MessageDescriptor; body: MessageDescriptor }> = {
   pending: {
-    title: 'No invitations yet',
-    body: 'Invitations appear here until the recipient signs in.',
+    title: {
+      id: 'admin.people.invites.emptyPendingTitle',
+      defaultMessage: 'No invitations yet',
+    },
+    body: {
+      id: 'admin.people.invites.emptyPendingBody',
+      defaultMessage: 'Invitations appear here until the recipient signs in.',
+    },
   },
   accepted: {
-    title: 'No accepted invitations yet',
-    body: 'Accepted invitations move here once the recipient signs in.',
+    title: {
+      id: 'admin.people.invites.emptyAcceptedTitle',
+      defaultMessage: 'No accepted invitations yet',
+    },
+    body: {
+      id: 'admin.people.invites.emptyAcceptedBody',
+      defaultMessage: 'Accepted invitations move here once the recipient signs in.',
+    },
   },
   expired: {
-    title: 'No expired invitations',
-    body: 'Pending invitations expire after 30 days and show here to resend.',
+    title: {
+      id: 'admin.people.invites.emptyExpiredTitle',
+      defaultMessage: 'No expired invitations',
+    },
+    body: {
+      id: 'admin.people.invites.emptyExpiredBody',
+      defaultMessage: 'Pending invitations expire after 30 days and show here to resend.',
+    },
   },
   all: {
-    title: 'No invitations yet',
-    body: 'Invite users to give them access to your portal.',
+    title: {
+      id: 'admin.people.invites.emptyPendingTitle',
+      defaultMessage: 'No invitations yet',
+    },
+    body: {
+      id: 'admin.people.invites.emptyAllBody',
+      defaultMessage: 'Invite users to give them access to your portal.',
+    },
   },
 }
 
@@ -52,6 +78,7 @@ interface InvitationsViewProps {
  * People filter chips would be meaningless here.
  */
 export function InvitationsView({ status }: InvitationsViewProps) {
+  const intl = useOptionalIntl()
   const navigate = useNavigate()
   const portal = usePortalInvites()
 
@@ -77,10 +104,16 @@ export function InvitationsView({ status }: InvitationsViewProps) {
     <div className="flex h-full flex-col">
       <div className="w-full max-w-5xl space-y-4 px-4 pt-4 sm:px-6">
         <PageHeader
-          title="Invitations"
+          title={intl.formatMessage({
+            id: 'admin.people.invites.title',
+            defaultMessage: 'Invitations',
+          })}
           actions={
             <NewButton noun="user" onClick={portal.openDialog}>
-              Invite users
+              {intl.formatMessage({
+                id: 'admin.people.invites.inviteUsers',
+                defaultMessage: 'Invite users',
+              })}
             </NewButton>
           }
         />
@@ -93,7 +126,7 @@ export function InvitationsView({ status }: InvitationsViewProps) {
           <TabsList>
             {STATUSES.map((value) => (
               <TabsTrigger key={value} value={value}>
-                {STATUS_LABEL[value]}
+                {intl.formatMessage(STATUS_LABEL[value])}
                 {value === 'pending' && portal.pendingCount > 0 && (
                   <span className="ml-1.5 text-xs tabular-nums text-muted-foreground">
                     {portal.pendingCount}
@@ -118,7 +151,14 @@ export function InvitationsView({ status }: InvitationsViewProps) {
               {portal.actionError}
             </p>
           )}
-          {portal.resendConfirm && <p className="text-xs text-muted-foreground">Invite resent.</p>}
+          {portal.resendConfirm && (
+            <p className="text-xs text-muted-foreground">
+              {intl.formatMessage({
+                id: 'admin.people.invites.resent',
+                defaultMessage: 'Invite resent.',
+              })}
+            </p>
+          )}
         </div>
       )}
 
@@ -127,17 +167,29 @@ export function InvitationsView({ status }: InvitationsViewProps) {
         {portal.isLoading ? (
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <ArrowPathIcon className="h-3.5 w-3.5 animate-spin" />
-            <span>Loading invites…</span>
+            <span>
+              {intl.formatMessage({
+                id: 'admin.people.invites.loading',
+                defaultMessage: 'Loading invites…',
+              })}
+            </span>
           </div>
         ) : visible.length === 0 ? (
           <EmptyState
             size="compact"
             icon={EnvelopeIcon}
-            title={empty.title}
-            description={empty.body}
+            title={intl.formatMessage(empty.title)}
+            description={intl.formatMessage(empty.body)}
           />
         ) : (
-          <ul className="space-y-1.5" role="list" aria-label="Portal invitations">
+          <ul
+            className="space-y-1.5"
+            role="list"
+            aria-label={intl.formatMessage({
+              id: 'admin.people.invites.listAria',
+              defaultMessage: 'Portal invitations',
+            })}
+          >
             {visible.map((inv) => (
               <InviteRow
                 key={inv.id}

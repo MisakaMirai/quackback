@@ -65,10 +65,7 @@ const log = logger.child({ component: 'job-deadlines' })
 
 const MINUTE_MS = 60_000
 
-/**
- * The earliest instant this workspace has due work of one kind, or null when it has
- * none at all. Runs inside a workspace scope.
- */
+/** The earliest instant this install has due work of one kind, or null when it has none. */
 export type WorkspaceDeadlineProvider = () => Promise<Date | null>
 
 const providers = new Map<string, WorkspaceDeadlineProvider>()

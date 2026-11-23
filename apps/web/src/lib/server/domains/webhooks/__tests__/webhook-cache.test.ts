@@ -62,27 +62,6 @@ vi.mock('@/lib/server/db', async (importOriginal) => ({
   sql: vi.fn(),
 }))
 
-// Stub the tier-limits resolver so it doesn't trigger db.select inside getTierLimits
-vi.mock('@/lib/server/domains/settings/tier-limits.service', () => ({
-  getTierLimits: vi.fn(async () => ({
-    maxBoards: null,
-    maxPosts: null,
-    maxTeamSeats: null,
-    aiTokensPerMonth: null,
-    apiRequestsPerMonth: null,
-    apiRequestsPerMinute: null,
-    features: {
-      customDomain: true,
-      customOidcProvider: true,
-      ipAllowlist: true,
-      webhooks: true,
-      mcpServer: true,
-      analyticsExports: true,
-    },
-  })),
-  invalidateTierLimitsCache: vi.fn(),
-}))
-
 vi.mock('../encryption', () => ({
   encryptWebhookSecret: vi.fn().mockReturnValue('encrypted-secret'),
 }))

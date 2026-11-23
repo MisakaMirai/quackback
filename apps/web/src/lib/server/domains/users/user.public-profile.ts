@@ -2,15 +2,14 @@
  * Public portal profile query — the sanitized sibling of getPortalUserDetail.
  *
  * Everything here is viewable by ANY portal visitor the portal-access gate
- * admits, so the payload carries no email, no company, no segments, no
- * lastSeenAt. Activity (posts authored / commented / upvoted) is filtered
+ * admits, so the payload carries no email, no segments, no lastSeenAt. Activity (posts authored / commented / upvoted) is filtered
  * through the VIEWER's board visibility via `postViewFilter(actor)` — a
  * profile never leaks that its owner was active on a board the viewer
  * cannot see, and a principal with zero viewer-visible contributions
  * resolves to null (anti-enumeration: the route 404s).
  *
- * The team-only context strip (email / company / segments / lastSeenAt) is a
- * separate query, `getProfileTeamContext`, whose server fn is people.view-gated.
+ * The team-only context strip (email / segments / lastSeenAt) is a separate
+ * query, `getProfileTeamContext`, whose server fn is people.view-gated.
  */
 
 import {
@@ -31,7 +30,6 @@ import {
   boards,
   userSegments,
   segments,
-  companies,
   visitorDevices,
   asc,
 } from '@/lib/server/db'
@@ -60,7 +58,7 @@ export interface PublicProfileActivityItem {
   occurredAt: Date
 }
 
-/** The public, viewer-safe profile payload. NO email / company / segments. */
+/** The public, viewer-safe profile payload. NO email / segments. */
 export interface PublicUserProfile {
   principalId: PrincipalId
   displayName: string
@@ -81,7 +79,6 @@ export interface PublicUserProfile {
 export interface PublicProfileTeamContext {
   /** realEmail-sanitized — the synthetic anon placeholder never surfaces. */
   email: string | null
-  company: { id: string; name: string; plan: string | null; mrrCents: number | null } | null
   segments: { id: SegmentId; name: string; color: string }[]
   /** Freshest activity signal: session touch or device beacon; null = none. */
   lastSeenAt: Date | null
@@ -289,8 +286,8 @@ function normalizeItem(row: {
 // ---------------------------------------------------------------------------
 
 /**
- * The team-only context for a profile: sanitized email, company summary,
- * segment chips, last-seen, verified and blocked flags. Same principal
+ * The team-only context for a profile: sanitized email, segment chips,
+ * last-seen, verified and blocked flags. Same principal
  * eligibility rules as the public profile, but NO activity-visibility
  * requirement — a team viewer with people.view already sees this person
  * in the admin directory.
@@ -307,14 +304,9 @@ export async function getProfileTeamContext(
         emailVerified: user.emailVerified,
         blockedAt: principal.blockedAt,
         contactEmail: principal.contactEmail,
-        companyId: companies.id,
-        companyName: companies.name,
-        companyPlan: companies.plan,
-        companyMrrCents: companies.mrrCents,
       })
       .from(principal)
       .innerJoin(user, eq(principal.userId, user.id))
-      .leftJoin(companies, eq(principal.companyId, companies.id))
       .where(
         and(
           eq(principal.id, principalId),
@@ -354,14 +346,6 @@ export async function getProfileTeamContext(
     return {
       // Synthetic anon placeholder must never surface.
       email: realEmail(row.email) ?? realEmail(row.contactEmail),
-      company: row.companyId
-        ? {
-            id: row.companyId,
-            name: row.companyName ?? '',
-            plan: row.companyPlan,
-            mrrCents: row.companyMrrCents,
-          }
-        : null,
       segments: segmentRows.map((s) => ({ id: s.id, name: s.name, color: s.color })),
       lastSeenAt,
       emailVerified: Boolean(row.emailVerified),

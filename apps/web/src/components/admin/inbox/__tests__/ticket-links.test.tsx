@@ -32,7 +32,6 @@ function ticket(overrides: Partial<TicketDTO> = {}): TicketDTO {
     priority: 'high',
     requester: null,
     assignee: { principalId: null, displayName: null, teamId: null, teamName: null },
-    company: null,
     firstResponseAt: null,
     dueAt: null,
     resolvedAt: null,

@@ -1,5 +1,4 @@
 import { lazy, Suspense, useState } from 'react'
-import { useQuery, useInfiniteQuery } from '@tanstack/react-query'
 import { UsersLayout } from '@/components/admin/users/users-layout'
 import { UsersSegmentNav } from '@/components/admin/users/users-segment-nav'
 import { UsersList } from '@/components/admin/users/users-list'
@@ -16,7 +15,6 @@ import {
 import { useRemovePortalUser } from '@/lib/client/mutations'
 import { useSegments, type SegmentListItem } from '@/lib/client/hooks/use-segments-queries'
 import { useUserAttributes } from '@/lib/client/hooks/use-user-attributes-queries'
-import { useCompanyAttributes } from '@/lib/client/hooks/use-company-attributes-queries'
 import {
   useCreateSegment,
   useUpdateSegment,
@@ -29,7 +27,6 @@ import {
   serializeCondition,
   deserializeCondition,
 } from '@/components/admin/segments/segment-utils'
-import { canReadCompanies, companiesDirectoryQueries } from '@/lib/client/queries/users-page'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { useOpenedOnce } from '@/lib/client/hooks/use-opened-once'
 import type { PrincipalId, SegmentId } from '@quackback/ids'
@@ -49,15 +46,9 @@ const NewPersonDialog = lazy(() =>
 )
 
 // The page opens on the people list. A person's profile (with its composer and
-// channel icons) and the Companies tab load the first time one is shown.
+// channel icons) loads the first time one is shown.
 const UserDetail = lazy(() =>
   import('@/components/admin/users/user-detail').then((m) => ({ default: m.UserDetail }))
-)
-const CompaniesView = lazy(() =>
-  import('@/components/admin/users/companies-view').then((m) => ({ default: m.CompaniesView }))
-)
-const CompanyDetail = lazy(() =>
-  import('@/components/admin/users/company-detail').then((m) => ({ default: m.CompanyDetail }))
 )
 
 interface UsersContainerProps {
@@ -66,16 +57,8 @@ interface UsersContainerProps {
 
 export function UsersContainer({ currentMemberRole }: UsersContainerProps) {
   // URL-based filter state
-  const {
-    filters,
-    setFilters,
-    clearFilters,
-    selectedUserId,
-    setSelectedUserId,
-    selectedCompanyId,
-    setSelectedCompanyId,
-    hasActiveFilters,
-  } = useUsersFilters()
+  const { filters, setFilters, clearFilters, selectedUserId, setSelectedUserId, hasActiveFilters } =
+    useUsersFilters()
 
   // The `?invites=<status>` param flips the entire main pane to the
   // Invitations view. Reading it via the route's typed search keeps
@@ -116,31 +99,10 @@ export function UsersContainer({ currentMemberRole }: UsersContainerProps) {
   const { data: totalUserCount } = useTotalUserCount()
   const { data: totalLeadCount } = useTotalUserCount('leads')
   const inLeadsMode = filters.lifecycle === 'leads'
-  const inCompaniesMode = filters.lifecycle === 'companies'
-
-  // Companies directory (the Companies lifecycle tab). Fetched only for team
-  // roles — the server fn is gated on company.view, which both presets hold.
-  const companiesEnabled = canReadCompanies(currentMemberRole)
-  const {
-    data: companyPages,
-    isLoading: isLoadingCompanies,
-    isFetchingNextPage: isLoadingMoreCompanies,
-    hasNextPage: hasMoreCompanies,
-    fetchNextPage: fetchMoreCompanies,
-  } = useInfiniteQuery({
-    ...companiesDirectoryQueries.page(filters.search, filters.companyAttrs),
-    enabled: companiesEnabled,
-  })
-  const companies = companyPages?.pages.flatMap((p) => p.items)
-  const { data: companyCount } = useQuery({
-    ...companiesDirectoryQueries.count(),
-    enabled: companiesEnabled,
-  })
 
   // Segments data
   const { data: segments, isLoading: isLoadingSegments } = useSegments()
   const { data: customAttributes } = useUserAttributes()
-  const { data: companyAttributes } = useCompanyAttributes()
 
   // Segment mutations
   const createSegment = useCreateSegment()
@@ -213,7 +175,7 @@ export function UsersContainer({ currentMemberRole }: UsersContainerProps) {
           ? {
               match: values.rules.match,
               conditions: values.rules.conditions.map((c) =>
-                serializeCondition(c, customAttributes, companyAttributes)
+                serializeCondition(c, customAttributes)
               ),
             }
           : undefined,
@@ -236,7 +198,7 @@ export function UsersContainer({ currentMemberRole }: UsersContainerProps) {
             ? {
                 match: values.rules.match,
                 conditions: values.rules.conditions.map((c) =>
-                  serializeCondition(c, customAttributes, companyAttributes)
+                  serializeCondition(c, customAttributes)
                 ),
               }
             : null
@@ -289,38 +251,11 @@ export function UsersContainer({ currentMemberRole }: UsersContainerProps) {
             invitesPendingCount={invitesPendingCount}
             inLeadsMode={inLeadsMode}
             totalLeadCount={totalLeadCount}
-            inCompaniesMode={inCompaniesMode}
-            totalCompanyCount={companyCount}
           />
         }
       >
         {inInvitesMode ? (
           <InvitationsView status={invitesStatus ?? 'pending'} />
-        ) : inCompaniesMode ? (
-          <Suspense fallback={null}>
-            {selectedCompanyId ? (
-              <CompanyDetail
-                companyId={selectedCompanyId}
-                onClose={() => setSelectedCompanyId(null)}
-                canManage={currentMemberRole === 'admin'}
-              />
-            ) : (
-              <CompaniesView
-                companies={companies}
-                isLoading={isLoadingCompanies}
-                hasMore={!!hasMoreCompanies}
-                isLoadingMore={isLoadingMoreCompanies}
-                onLoadMore={() => fetchMoreCompanies()}
-                totalCount={companyCount}
-                search={filters.search}
-                onSearchChange={(value) => setFilters({ search: value })}
-                companyAttrs={filters.companyAttrs}
-                onCompanyAttrsChange={(encoded) => setFilters({ companyAttrs: encoded })}
-                onSelectCompany={setSelectedCompanyId}
-                canManage={currentMemberRole === 'admin'}
-              />
-            )}
-          </Suspense>
         ) : selectedUserId ? (
           <Suspense fallback={null}>
             <UserDetail
@@ -376,7 +311,6 @@ export function UsersContainer({ currentMemberRole }: UsersContainerProps) {
             onSubmit={handleCreateSegment}
             isPending={createSegment.isPending}
             customAttributes={customAttributes}
-            companyAttributes={companyAttributes}
           />
 
           {/* Edit dialog */}
@@ -394,7 +328,7 @@ export function UsersContainer({ currentMemberRole }: UsersContainerProps) {
                       ? {
                           match: editTarget.rules.match,
                           conditions: editTarget.rules.conditions.map((c: SegmentCondition) =>
-                            deserializeCondition(c, customAttributes, companyAttributes)
+                            deserializeCondition(c, customAttributes)
                           ) as unknown as RuleCondition[],
                         }
                       : { match: 'all', conditions: [] },
@@ -404,7 +338,6 @@ export function UsersContainer({ currentMemberRole }: UsersContainerProps) {
             onSubmit={handleUpdateSegment}
             isPending={updateSegment.isPending}
             customAttributes={customAttributes}
-            companyAttributes={companyAttributes}
           />
         </Suspense>
       )}

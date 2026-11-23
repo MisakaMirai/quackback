@@ -2,7 +2,7 @@
 
 /**
  * Backends-for-frontends RPC for the shared visitor messenger.
- * Portal defaults to cookie/site functions; the widget injects widget BFF fns.
+ * Portal uses the cookie/site functions.
  */
 import { createContext, useContext } from 'react'
 import {

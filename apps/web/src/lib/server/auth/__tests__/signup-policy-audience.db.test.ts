@@ -33,9 +33,10 @@
  * fails loudly if the read stops telling the two answers apart.
  */
 import { describe, it, expect, vi, beforeEach, afterEach, afterAll } from 'vitest'
+import { finishIdentityOnboarding } from '@/lib/server/setup-state'
 import { createId, type PrincipalId, type UserId } from '@quackback/ids'
 import { createDbTestFixture, testDb } from '@/lib/server/__tests__/db-test-fixture'
-import { settings, principal, user, invitation } from '@/lib/server/db'
+import { settings, principal, user, invitation, DEFAULT_SETUP_STATE } from '@/lib/server/db'
 
 vi.mock('@/lib/server/db', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/server/db')>()),
@@ -95,9 +96,12 @@ async function seedWorkspace(
     // The stamp a provisioner leaves, in the bag shape every database has.
     // Without it the workspace reads as claimable and the bootstrap exemption
     // would answer every case below with "yes" for reasons of its own.
-    metadata: JSON.stringify({
-      cloudTenant: { v: 1, workspaceKey: 'ws_acme', stampedAt: '2026-01-01T00:00:00.000Z' },
-    }),
+    setupState: JSON.stringify(
+      finishIdentityOnboarding(
+        { ...DEFAULT_SETUP_STATE, steps: { ...DEFAULT_SETUP_STATE.steps, workspace: true } },
+        'product_feedback'
+      )
+    ),
     authConfig: opts.authConfig === undefined ? null : JSON.stringify(opts.authConfig),
     portalConfig: opts.portalConfig === undefined ? null : JSON.stringify(opts.portalConfig),
   })

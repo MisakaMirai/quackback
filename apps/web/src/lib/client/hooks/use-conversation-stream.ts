@@ -50,10 +50,6 @@ const NAMED_EVENTS = [
   // as `message_edited` instead, so agent-only fields never ride along.
   'message_updated',
   'message_edited',
-  // Ephemeral AI-assistant turn signals (conversation channel only). EventSource
-  // drops any named frame with no matching listener, so these MUST be registered.
-  'assistant_activity',
-  'assistant_delta',
   // Ticket frames (inbox stream). EventSource drops named events with no
   // listener, so hover-prefetched ticket caches would stay stale without these.
   'ticket_message',

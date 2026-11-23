@@ -13,7 +13,7 @@ type ComposerMode = 'reply' | 'note'
 
 /**
  * The keyboard-first "focus a composer mode" seam behind the inbox's `r` and
- * `n` shortcuts (support platform §4.6), mirroring `useCopilotInsert`'s
+ * `n` shortcuts (support platform §4.6), mirroring the insert shortcut's
  * mount-timing contract.
  *
  * The reply and note editors are mutually exclusive in the DOM

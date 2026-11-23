@@ -33,11 +33,11 @@ import {
   ensureConcurrentIndexes,
   type ConcurrentIndexSpec,
 } from '@/lib/server/db'
+import { config } from '@/lib/server/config'
 import { logger } from '@/lib/server/logger'
 import { kvGet, kvSet } from '@/lib/server/kv/pg-kv'
 import { enqueueJob, findJobByDedupeKey } from '@/lib/server/jobs/job-queue'
-import { directConnection } from '@/lib/server/workspaces/pool-cache'
-import { WorkspaceKeyedCache } from '@/lib/server/workspaces/workspace-keyed'
+import { BoundedCache } from '@/lib/server/bounded-cache'
 import { DURABLE_KV_TTL_SECONDS, maxAttemptsOf } from './batched'
 
 const log = logger.child({ component: 'deferred-index-build' })
@@ -80,7 +80,7 @@ interface IndexPassState {
   allBuiltFor?: string
 }
 
-const indexPassState = new WorkspaceKeyedCache<IndexPassState>(10_000)
+const indexPassState = new BoundedCache<IndexPassState>(10_000)
 
 function passState(): IndexPassState {
   return indexPassState.memo('state', () => ({ passed: false, warned: new Set() }))
@@ -210,8 +210,11 @@ export async function deferredIndexBuildDue(): Promise<boolean> {
  */
 export async function buildDeferredIndex(spec: ConcurrentIndexSpec): Promise<void> {
   // One connection of its own, closed after the build.
-  const { url, password } = await directConnection()
-  const direct = postgres(url, { max: 1, connect_timeout: 15, password, onnotice: () => {} })
+  const direct = postgres(config.databaseUrl, {
+    max: 1,
+    connect_timeout: 15,
+    onnotice: () => {},
+  })
   try {
     await ensureConcurrentIndexes(direct, [spec], (event) => {
       if (event.phase === 'start') {
@@ -227,6 +230,10 @@ export async function buildDeferredIndex(spec: ConcurrentIndexSpec): Promise<voi
       }
     })
   } finally {
-    await direct.end({ timeout: 5 }).catch(() => {})
+    await direct.end({ timeout: 5 }).catch((err) => {
+      // Not fatal (the index build already reported), but a silent close
+      // failure hides connection leaks.
+      log.warn({ err }, 'deferred index: closing the direct connection failed')
+    })
   }
 }

@@ -19,6 +19,7 @@ import { useInboxTeams } from '@/components/admin/conversation/inbox-nav-sidebar
 import { PriorityMenuItems } from '@/components/admin/conversation/priority-control'
 import { AssigneeMenuItems } from '@/components/admin/conversation/assignee-control'
 import { macrosQuery } from '@/lib/client/queries/macros'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { tomorrowAt, inHours, nextMondayAt } from '@/lib/shared/utils'
 import {
   DropdownMenu,
@@ -107,6 +108,7 @@ export function BulkActionBar({
 }: BulkActionBarProps) {
   const { data: members } = useTeamMembers()
   const { data: teams } = useInboxTeams()
+  const intl = useOptionalIntl()
   // Only fetch the label taxonomy once its menu is actually open.
   const { data: tags } = useConversationTags({ enabled: openMenu === 'tag' })
   // Same lazy fetch for the macro list — the support-surface macros only.
@@ -120,6 +122,22 @@ export function BulkActionBar({
     onOpenChange: (o: boolean) => onOpenMenuChange(o ? id : null),
   })
 
+  const targetLabel = solo
+    ? intl.formatMessage({
+        id: 'inbox.bulk.thisConversation',
+        defaultMessage: 'This conversation',
+      })
+    : intl.formatMessage(
+        { id: 'inbox.bulk.selected', defaultMessage: '{count} selected' },
+        { count }
+      )
+  const clearLabel = solo
+    ? intl.formatMessage({ id: 'inbox.bulk.dismiss', defaultMessage: 'Dismiss' })
+    : intl.formatMessage({
+        id: 'inbox.bulk.clearSelection',
+        defaultMessage: 'Clear selection',
+      })
+
   // Spam-view mode: only the spam-lifecycle actions. Triage menus (assign,
   // priority, snooze, tag, macro, close) operate on live threads and would be
   // no-ops or lies against a spam-ended one.
@@ -128,23 +146,24 @@ export function BulkActionBar({
       <div className="pointer-events-none fixed inset-x-0 bottom-4 z-40 flex justify-center px-4">
         <div
           role="toolbar"
-          aria-label="Bulk actions"
+          aria-label={intl.formatMessage({
+            id: 'inbox.bulk.aria',
+            defaultMessage: 'Bulk actions',
+          })}
           className="pointer-events-auto flex items-center gap-0.5 rounded-full border border-border bg-background/95 px-2 py-1.5 shadow-lg backdrop-blur"
         >
           <button
             type="button"
             onClick={onClear}
-            aria-label={solo ? 'Dismiss' : 'Clear selection'}
+            aria-label={clearLabel}
             className="flex size-7 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
           >
             <XMarkIcon className="size-4" />
           </button>
-          <span className="px-1.5 text-xs font-semibold whitespace-nowrap">
-            {solo ? 'This conversation' : `${count} selected`}
-          </span>
+          <span className="px-1.5 text-xs font-semibold whitespace-nowrap">{targetLabel}</span>
           <span className="mx-1 h-5 w-px bg-border" />
           <button type="button" onClick={onRestore} disabled={pending} className={triggerClass}>
-            Restore
+            {intl.formatMessage({ id: 'inbox.bulk.restore', defaultMessage: 'Restore' })}
           </button>
           <button
             type="button"
@@ -152,29 +171,52 @@ export function BulkActionBar({
             disabled={pending}
             className={cn(triggerClass, 'text-destructive hover:bg-destructive/10')}
           >
-            Delete forever
+            {intl.formatMessage({
+              id: 'inbox.bulk.deleteForever',
+              defaultMessage: 'Delete forever',
+            })}
           </button>
         </div>
         <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>
-                Delete {solo ? 'this conversation' : `${count} conversations`} forever?
+                {solo
+                  ? intl.formatMessage({
+                      id: 'inbox.bulk.deleteForeverTitleSolo',
+                      defaultMessage: 'Delete this conversation forever?',
+                    })
+                  : intl.formatMessage(
+                      {
+                        id: 'inbox.bulk.deleteForeverTitle',
+                        defaultMessage:
+                          'Delete {count, plural, one {# conversation} other {# conversations}} forever?',
+                      },
+                      { count }
+                    )}
               </AlertDialogTitle>
               <AlertDialogDescription>
-                This permanently deletes the conversation and its entire history. This action cannot
-                be undone.
+                {intl.formatMessage({
+                  id: 'inbox.bulk.deleteForeverBody',
+                  defaultMessage:
+                    'This permanently deletes the conversation and its entire history. This action cannot be undone.',
+                })}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogCancel>
+                {intl.formatMessage({ id: 'common.cancel', defaultMessage: 'Cancel' })}
+              </AlertDialogCancel>
               <AlertDialogAction
                 onClick={() => {
                   setConfirmDelete(false)
                   onDeleteForever?.()
                 }}
               >
-                Delete permanently
+                {intl.formatMessage({
+                  id: 'admin.settings.conversationData.tags.deletePermanently',
+                  defaultMessage: 'Delete permanently',
+                })}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
@@ -187,20 +229,21 @@ export function BulkActionBar({
     <div className="pointer-events-none fixed inset-x-0 bottom-4 z-40 flex justify-center px-4">
       <div
         role="toolbar"
-        aria-label="Bulk actions"
+        aria-label={intl.formatMessage({
+          id: 'inbox.bulk.aria',
+          defaultMessage: 'Bulk actions',
+        })}
         className="pointer-events-auto flex items-center gap-0.5 rounded-full border border-border bg-background/95 px-2 py-1.5 shadow-lg backdrop-blur"
       >
         <button
           type="button"
           onClick={onClear}
-          aria-label={solo ? 'Dismiss' : 'Clear selection'}
+          aria-label={clearLabel}
           className="flex size-7 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
         >
           <XMarkIcon className="size-4" />
         </button>
-        <span className="px-1.5 text-xs font-semibold whitespace-nowrap">
-          {solo ? 'This conversation' : `${count} selected`}
-        </span>
+        <span className="px-1.5 text-xs font-semibold whitespace-nowrap">{targetLabel}</span>
         <span className="mx-1 h-5 w-px bg-border" />
 
         {/* Macro. Replies to every target at once: the body renders against
@@ -212,10 +255,17 @@ export function BulkActionBar({
             <button
               type="button"
               disabled={pending || disableMacro}
-              title={disableMacro ? 'Not available for tickets' : undefined}
+              title={
+                disableMacro
+                  ? intl.formatMessage({
+                      id: 'inbox.bulk.unavailableForTickets',
+                      defaultMessage: 'Not available for tickets',
+                    })
+                  : undefined
+              }
               className={triggerClass}
             >
-              Macro
+              {intl.formatMessage({ id: 'inbox.bulk.macro', defaultMessage: 'Macro' })}
               <ChevronUpIcon className="size-3" />
             </button>
           </DropdownMenuTrigger>
@@ -231,7 +281,9 @@ export function BulkActionBar({
                 </DropdownMenuItem>
               ))
             ) : (
-              <DropdownMenuItem disabled>No macros</DropdownMenuItem>
+              <DropdownMenuItem disabled>
+                {intl.formatMessage({ id: 'inbox.bulk.noMacros', defaultMessage: 'No macros' })}
+              </DropdownMenuItem>
             )}
           </DropdownMenuContent>
         </DropdownMenu>
@@ -240,7 +292,7 @@ export function BulkActionBar({
         <DropdownMenu {...menuOpen('assign')}>
           <DropdownMenuTrigger asChild>
             <button type="button" disabled={pending} className={triggerClass}>
-              Assign
+              {intl.formatMessage({ id: 'inbox.bulk.assign', defaultMessage: 'Assign' })}
               <ChevronUpIcon className="size-3" />
             </button>
           </DropdownMenuTrigger>
@@ -253,7 +305,7 @@ export function BulkActionBar({
         <DropdownMenu {...menuOpen('assign_team')}>
           <DropdownMenuTrigger asChild>
             <button type="button" disabled={pending} className={triggerClass}>
-              Team
+              {intl.formatMessage({ id: 'inbox.bulk.team', defaultMessage: 'Team' })}
               <ChevronUpIcon className="size-3" />
             </button>
           </DropdownMenuTrigger>
@@ -273,7 +325,9 @@ export function BulkActionBar({
                 </DropdownMenuItem>
               ))
             ) : (
-              <DropdownMenuItem disabled>No teams</DropdownMenuItem>
+              <DropdownMenuItem disabled>
+                {intl.formatMessage({ id: 'inbox.bulk.noTeams', defaultMessage: 'No teams' })}
+              </DropdownMenuItem>
             )}
           </DropdownMenuContent>
         </DropdownMenu>
@@ -282,7 +336,7 @@ export function BulkActionBar({
         <DropdownMenu {...menuOpen('priority')}>
           <DropdownMenuTrigger asChild>
             <button type="button" disabled={pending} className={triggerClass}>
-              Priority
+              {intl.formatMessage({ id: 'inbox.bulk.priority', defaultMessage: 'Priority' })}
               <ChevronUpIcon className="size-3" />
             </button>
           </DropdownMenuTrigger>
@@ -300,10 +354,17 @@ export function BulkActionBar({
             <button
               type="button"
               disabled={pending || disableTag}
-              title={disableTag ? 'Not available for tickets' : undefined}
+              title={
+                disableTag
+                  ? intl.formatMessage({
+                      id: 'inbox.bulk.unavailableForTickets',
+                      defaultMessage: 'Not available for tickets',
+                    })
+                  : undefined
+              }
               className={triggerClass}
             >
-              Tag
+              {intl.formatMessage({ id: 'inbox.bulk.tag', defaultMessage: 'Tag' })}
               <ChevronUpIcon className="size-3" />
             </button>
           </DropdownMenuTrigger>
@@ -323,7 +384,9 @@ export function BulkActionBar({
                 </DropdownMenuItem>
               ))
             ) : (
-              <DropdownMenuItem disabled>No tags</DropdownMenuItem>
+              <DropdownMenuItem disabled>
+                {intl.formatMessage({ id: 'inbox.bulk.noTags', defaultMessage: 'No tags' })}
+              </DropdownMenuItem>
             )}
           </DropdownMenuContent>
         </DropdownMenu>
@@ -336,25 +399,39 @@ export function BulkActionBar({
             <button
               type="button"
               disabled={pending || disableSnooze}
-              title={disableSnooze ? 'Not available for tickets' : undefined}
+              title={
+                disableSnooze
+                  ? intl.formatMessage({
+                      id: 'inbox.bulk.unavailableForTickets',
+                      defaultMessage: 'Not available for tickets',
+                    })
+                  : undefined
+              }
               className={triggerClass}
             >
-              Snooze
+              {intl.formatMessage({ id: 'inbox.bulk.snooze', defaultMessage: 'Snooze' })}
               <ChevronUpIcon className="size-3" />
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="center" side="top">
-            <DropdownMenuLabel className="text-muted-foreground">Snooze until</DropdownMenuLabel>
+            <DropdownMenuLabel className="text-muted-foreground">
+              {intl.formatMessage({ id: 'inbox.bulk.snoozeUntil', defaultMessage: 'Snooze until' })}
+            </DropdownMenuLabel>
             <DropdownMenuItem onClick={() => onSnooze(inHours(4).toISOString())}>
-              Later today
+              {intl.formatMessage({ id: 'inbox.bulk.laterToday', defaultMessage: 'Later today' })}
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => onSnooze(tomorrowAt(9).toISOString())}>
-              Tomorrow
+              {intl.formatMessage({ id: 'inbox.bulk.tomorrow', defaultMessage: 'Tomorrow' })}
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => onSnooze(nextMondayAt(9).toISOString())}>
-              Next week
+              {intl.formatMessage({ id: 'inbox.bulk.nextWeek', defaultMessage: 'Next week' })}
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onSnooze(null)}>Until they reply</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onSnooze(null)}>
+              {intl.formatMessage({
+                id: 'inbox.bulk.untilReply',
+                defaultMessage: 'Until they reply',
+              })}
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
 
@@ -365,7 +442,7 @@ export function BulkActionBar({
           disabled={pending}
           className={cn(triggerClass, 'text-muted-foreground hover:text-foreground')}
         >
-          Close
+          {intl.formatMessage({ id: 'inbox.bulk.close', defaultMessage: 'Close' })}
         </button>
       </div>
     </div>

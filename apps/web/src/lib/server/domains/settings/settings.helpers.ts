@@ -10,13 +10,10 @@ import { isEmptyTiptapDoc } from '@/lib/shared/utils/is-empty-tiptap-doc'
 import { logger } from '@/lib/server/logger'
 import {
   DEFAULT_PORTAL_CONFIG,
-  DEFAULT_WIDGET_CONFIG,
   EMPTY_WELCOME_BODY,
   LEGACY_PORTAL_CONFIG,
-  LEGACY_WIDGET_CONFIG,
   type PortalConfig,
   type PortalWelcomeCard,
-  type WidgetConfig,
   workspaceAllowsAnonymous,
 } from './settings.types'
 import type { TiptapContent } from '@/lib/shared/db-types'
@@ -56,11 +53,6 @@ export function parseStoredConfig<T extends object>(
   } catch {
     return currentDefault
   }
-}
-
-/** @internal */
-export function parseWidgetConfig(json: string | null): WidgetConfig {
-  return parseStoredConfig(json, DEFAULT_WIDGET_CONFIG, LEGACY_WIDGET_CONFIG)
 }
 
 /** @internal */
@@ -156,8 +148,7 @@ export async function findSettingsCached(): Promise<SettingsRecord | null> {
 
 /** @internal */
 export function wrapDbError(operation: string, error: unknown): never {
-  // Named refusals (402/403/404/…) must stay themselves. Wrapping a
-  // TierLimitError here turned branding custom-colour saves into 500s.
+  // Named refusals (403/404/…) must stay themselves rather than becoming 500s.
   if (error instanceof DomainException) throw error
   const message = error instanceof Error ? error.message : 'Unknown error'
   throw new InternalError('DATABASE_ERROR', `Failed to ${operation}: ${message}`, error)

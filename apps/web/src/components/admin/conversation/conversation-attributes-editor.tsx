@@ -7,6 +7,7 @@
  * clean for workspaces that haven't adopted attributes.
  */
 import { memo, useEffect, useState } from 'react'
+import type { IntlShape } from 'react-intl'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ChevronDownIcon } from '@heroicons/react/24/solid'
 import type { ConversationId, TicketId } from '@quackback/ids'
@@ -40,14 +41,20 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { DetailRow as Row } from '@/components/shared/detail-row'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { toastError } from '@/lib/client/error-notice'
 
 const NONE = '__none__'
 
 /** Human hint for where the current value came from. */
-function provenanceTitle(raw: unknown): string | undefined {
+function provenanceTitle(raw: unknown, intl: IntlShape): string | undefined {
   const src = readAttributeValue(raw)?.src
-  return src ? `Set by ${src}` : undefined
+  return src
+    ? intl.formatMessage(
+        { id: 'inbox.attributes.setBy', defaultMessage: 'Set by {source}' },
+        { source: src }
+      )
+    : undefined
 }
 
 /** Commit-on-blur/Enter text or number input (avoids a write per keystroke). */
@@ -90,7 +97,9 @@ function AttributeEditor({
   raw: unknown
   onSet: (value: unknown) => void
 }) {
+  const intl = useOptionalIntl()
   const value = readAttributeValue(raw)?.v
+  const none = intl.formatMessage({ id: 'common.none', defaultMessage: 'None' })
   switch (definition.fieldType) {
     case 'text':
       return (
@@ -127,10 +136,10 @@ function AttributeEditor({
           onValueChange={(next) => onSet(next === NONE ? null : next)}
         >
           <SelectTrigger size="sm" className="w-36">
-            <SelectValue placeholder="None" />
+            <SelectValue placeholder={none} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value={NONE}>None</SelectItem>
+            <SelectItem value={NONE}>{none}</SelectItem>
             {options.map((o) => (
               <SelectItem key={o.id} value={o.id} title={o.description ?? undefined}>
                 {o.label}
@@ -151,7 +160,7 @@ function AttributeEditor({
               type="button"
               className="inline-flex h-7 max-w-40 items-center gap-1 rounded-md px-2 text-sm hover:bg-muted"
             >
-              <span className="truncate">{labels.length > 0 ? labels.join(', ') : 'None'}</span>
+              <span className="truncate">{labels.length > 0 ? labels.join(', ') : none}</span>
               <ChevronDownIcon className="h-3 w-3 shrink-0 text-muted-foreground" />
             </button>
           </DropdownMenuTrigger>
@@ -187,6 +196,7 @@ export const ConversationAttributesEditor = memo(function ConversationAttributes
   enabled?: boolean
 }) {
   const queryClient = useQueryClient()
+  const intl = useOptionalIntl()
   const { data: definitions } = useQuery({
     ...conversationAttributeQueries.live(),
     enabled,
@@ -204,26 +214,38 @@ export const ConversationAttributesEditor = memo(function ConversationAttributes
       })
       onChanged()
     },
-    onError: (e) => toastError(e, 'Failed to update attribute'),
+    onError: (e) =>
+      toastError(
+        e,
+        intl.formatMessage({
+          id: 'admin.settings.conversationData.attributes.updateFailed',
+          defaultMessage: 'Failed to update attribute',
+        })
+      ),
   })
 
   if (!definitions || definitions.length === 0) return null
 
   return (
     <div className="space-y-4 border-t border-border/30 pt-4">
-      <span className={MENU_LABEL}>Attributes</span>
+      <span className={MENU_LABEL}>
+        {intl.formatMessage({ id: 'inbox.attributes.title', defaultMessage: 'Attributes' })}
+      </span>
       {definitions.map((def) => {
         const raw = customAttributes[def.key]
         const isAiSet = readAttributeValue(raw)?.src === 'ai'
         return (
-          <div key={def.id} title={isAiSet ? undefined : provenanceTitle(raw)}>
+          <div key={def.id} title={isAiSet ? undefined : provenanceTitle(raw, intl)}>
             <Row label={def.label} align="center">
               <div className="flex items-center gap-1.5">
                 {isAiSet && (
                   <Badge
                     variant="secondary"
                     className="h-5 border border-indigo-500/20 bg-indigo-500/10 px-1.5 text-xs text-indigo-600"
-                    title="Set by AI"
+                    title={intl.formatMessage({
+                      id: 'inbox.attributes.setByAi',
+                      defaultMessage: 'Set by AI',
+                    })}
                   >
                     AI
                   </Badge>

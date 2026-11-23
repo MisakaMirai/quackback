@@ -6,7 +6,6 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { PrincipalId, ConversationId } from '@quackback/ids'
-import { mailSlugFor, withWorkspace } from '@/lib/server/__tests__/workspace-scope'
 import type { Conversation } from '@/lib/server/db'
 import { conversationIdFromInboundAddress } from '../conversation.email-channel'
 import { SELF_HOSTED_MAIL_SLUG } from '../conversation.mail-slug'
@@ -391,8 +390,8 @@ describe('notifyAgentReply', () => {
       to: 'account@x.com',
       direction: 'agent_reply',
       senderName: 'Agent',
-      // Token-free deep link straight to the widget's messenger view.
-      ctaUrl: expect.stringContaining('https://acme.example.com/widget/?c='),
+      // Token-free deep link straight to the portal Support thread.
+      ctaUrl: expect.stringContaining('https://acme.example.com/support/conversation_1'),
       workspaceName: 'Acme',
     })
   })
@@ -529,7 +528,6 @@ describe('notifyAgentReply', () => {
   describe('inbound-email Reply-To', () => {
     const prevDomain = process.env.EMAIL_INBOUND_DOMAIN
     const prevSecret = process.env.EMAIL_INBOUND_SIGNING_SECRET
-    const prevTenancy = process.env.QUACKBACK_TENANCY
 
     /** The one Reply-To the send layer was handed, or undefined. */
     async function replyToOf(run: (fn: () => Promise<void>) => Promise<void>): Promise<unknown> {
@@ -555,28 +553,11 @@ describe('notifyAgentReply', () => {
       else process.env.EMAIL_INBOUND_DOMAIN = prevDomain
       if (prevSecret === undefined) delete process.env.EMAIL_INBOUND_SIGNING_SECRET
       else process.env.EMAIL_INBOUND_SIGNING_SECRET = prevSecret
-      if (prevTenancy === undefined) delete process.env.QUACKBACK_TENANCY
-      else process.env.QUACKBACK_TENANCY = prevTenancy
     })
 
-    // An inbound address names the workspace it belongs to, because one inbound
-    // domain can stand in front of a whole fleet. Where that name comes from is
-    // the only part that differs between a fleet replica and a self-hosted
-    // install, so all three outcomes are pinned here.
-    it('advertises an address under the active workspace’s mail slug', async () => {
-      process.env.EMAIL_INBOUND_DOMAIN = 'tenaevexeo.resend.app'
-      process.env.EMAIL_INBOUND_SIGNING_SECRET = 'whsec_test'
-      process.env.QUACKBACK_TENANCY = 'pooled'
-
-      const replyTo = await replyToOf((fn) => withWorkspace('ws-t2', fn))
-
-      expect(replyTo).toMatch(
-        new RegExp(`^${mailSlugFor('ws-t2')}\\+c1\\.[A-Za-z0-9_-]{22}@tenaevexeo\\.resend\\.app$`)
-      )
-      // The address is not merely slug-shaped: it verifies back to this
-      // conversation, which is the whole point of advertising it.
-      expect(conversationIdFromInboundAddress(String(replyTo))).toBe(conversationId)
-    })
+    // An inbound address names the workspace it belongs to. A workspace scope
+    // may carry a slug; production never creates one, so the self-hosted label
+    // is the answer there. Both outcomes are pinned here.
 
     it('advertises the self-hosted label when there is no workspace scope', async () => {
       // A single-workspace install owns its whole inbound domain, and `reply` is
@@ -585,7 +566,6 @@ describe('notifyAgentReply', () => {
       // here would end reply-by-email for every self-hoster on upgrade.
       process.env.EMAIL_INBOUND_DOMAIN = 'tenaevexeo.resend.app'
       process.env.EMAIL_INBOUND_SIGNING_SECRET = 'whsec_test'
-      delete process.env.QUACKBACK_TENANCY
 
       const replyTo = await replyToOf(bare)
 
@@ -593,16 +573,6 @@ describe('notifyAgentReply', () => {
         new RegExp(`^${SELF_HOSTED_MAIL_SLUG}\\+c1\\.[A-Za-z0-9_-]{22}@tenaevexeo\\.resend\\.app$`)
       )
       expect(conversationIdFromInboundAddress(String(replyTo))).toBe(conversationId)
-    })
-
-    it('omits Reply-To on a pooled process with no workspace resolved', async () => {
-      // The address would name no workspace, so the shared front door could not
-      // route it: better no route home than one that does not exist.
-      process.env.EMAIL_INBOUND_DOMAIN = 'tenaevexeo.resend.app'
-      process.env.EMAIL_INBOUND_SIGNING_SECRET = 'whsec_test'
-      process.env.QUACKBACK_TENANCY = 'pooled'
-
-      expect(await replyToOf(bare)).toBeUndefined()
     })
 
     it('omits Reply-To when inbound email is not configured', async () => {

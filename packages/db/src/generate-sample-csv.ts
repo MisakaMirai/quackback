@@ -45,7 +45,6 @@ const feedbackTitles = [
   'Salesforce CRM integration',
   'HubSpot integration',
   'Intercom integration',
-  'Zendesk integration',
   'Asana integration',
   'Monday.com integration',
 

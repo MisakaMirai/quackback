@@ -52,26 +52,12 @@ describe('conversationKeys parity', () => {
       'user-conversations',
       principalId,
     ])
-    expect(conversationKeys.agentAssistantActivity(convId)).toEqual([
-      'admin',
-      'inbox',
-      'assistant-activity',
-      convId,
-    ])
     expect(conversationKeys.agentConversationFiles(convId)).toEqual([
       'admin',
       'inbox',
       'files',
       convId,
     ])
-  })
-
-  it('widget list key matches the legacy inline widget key', () => {
-    expect(conversationKeys.widgetConversationList(3)).toEqual(['widget', 'my-conversations', 3])
-  })
-
-  it('widget unread badge key matches the legacy inline key', () => {
-    expect(conversationKeys.widgetMessengerUnread(3)).toEqual(['widget', 'messenger-unread', 3])
   })
 
   it('portal list key matches PORTAL_MY_CONVERSATIONS_QUERY_KEY', () => {

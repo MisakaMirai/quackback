@@ -45,7 +45,7 @@ export interface SendVisitorMessageResult {
 export interface SendAgentMessageResult {
   conversation: ConversationDTO
   // Agent-only DTO (mirrors enrichMessagesForAgent's shape) so the sending
-  // agent's own response — and the inbox-only message_updated broadcast to
-  // other agents — carries translatedFrom (P2-D.1). Never handed to a visitor.
+  // agent's own response carries the agent-enriched fields. Never handed to a
+  // visitor.
   message: AgentConversationMessageDTO
 }

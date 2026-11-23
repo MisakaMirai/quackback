@@ -27,6 +27,7 @@ import {
 } from '@/components/shared/sidebar-primitives'
 import { ChangelogCategorySelect } from './changelog-category-select'
 import { SegmentMultiSelect } from '@/components/admin/segments/segment-multi-select'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { listSegmentsFn } from '@/lib/server/functions/admin'
 import { changelogSettingsQueries } from '@/lib/client/queries/changelog'
 import { useImageUpload } from '@/lib/client/hooks/use-image-upload'
@@ -58,12 +59,6 @@ interface ChangelogMetadataSidebarContentProps {
 
 const PUBLISH_DAY: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric', year: 'numeric' }
 
-const PUBLISH_STATUS_OPTIONS: readonly StatusOption[] = [
-  { value: 'draft', label: 'Draft', color: '#94a3b8' }, // slate-400
-  { value: 'scheduled', label: 'Scheduled', color: '#f59e0b' }, // amber-500
-  { value: 'published', label: 'Published', color: '#22c55e' }, // green-500
-]
-
 export function ChangelogMetadataSidebarContent({
   publishState,
   onPublishStateChange,
@@ -83,6 +78,35 @@ export function ChangelogMetadataSidebarContent({
   featuredImageUrl = null,
   onFeaturedImageChange = () => {},
 }: ChangelogMetadataSidebarContentProps) {
+  const intl = useOptionalIntl()
+  // Status options are worded per locale, so they are built here rather than
+  // in a module-level constant.
+  const publishStatusOptions: readonly StatusOption[] = [
+    {
+      value: 'draft',
+      label: intl.formatMessage({
+        id: 'admin.changelog.status.draft',
+        defaultMessage: 'Draft',
+      }),
+      color: '#94a3b8', // slate-400
+    },
+    {
+      value: 'scheduled',
+      label: intl.formatMessage({
+        id: 'admin.changelog.status.scheduled',
+        defaultMessage: 'Scheduled',
+      }),
+      color: '#f59e0b', // amber-500
+    },
+    {
+      value: 'published',
+      label: intl.formatMessage({
+        id: 'admin.changelog.status.published',
+        defaultMessage: 'Published',
+      }),
+      color: '#22c55e', // green-500
+    },
+  ]
   const [postsOpen, setPostsOpen] = useState(false)
   const [search, setSearch] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -129,7 +153,7 @@ export function ChangelogMetadataSidebarContent({
     publishDay != null ? (
       <LocalDate date={publishDay} options={PUBLISH_DAY} locale="en-US" />
     ) : (
-      'Pick a date'
+      intl.formatMessage({ id: 'ui.dateTime.pickDate', defaultMessage: 'Pick a date' })
     )
 
   // Search shipped posts
@@ -184,10 +208,15 @@ export function ChangelogMetadataSidebarContent({
     <div className="space-y-5">
       {/* Status - uses shared StatusSelect component */}
       <div className="flex items-center justify-between">
-        <span className="text-sm text-muted-foreground">Status</span>
+        <span className="text-sm text-muted-foreground">
+          {intl.formatMessage({
+            id: 'admin.changelog.filters.status',
+            defaultMessage: 'Status',
+          })}
+        </span>
         <StatusSelect
           value={publishState.type}
-          options={PUBLISH_STATUS_OPTIONS}
+          options={publishStatusOptions}
           onChange={handleStatusChange}
         />
       </div>
@@ -197,7 +226,12 @@ export function ChangelogMetadataSidebarContent({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <UserIcon className="h-4 w-4" />
-            <span>Author</span>
+            <span>
+              {intl.formatMessage({
+                id: 'admin.changelog.meta.author',
+                defaultMessage: 'Author',
+              })}
+            </span>
           </div>
           <span className="text-sm font-medium text-foreground">{authorName}</span>
         </div>
@@ -206,7 +240,12 @@ export function ChangelogMetadataSidebarContent({
       {/* Schedule Date - only show when scheduled */}
       {publishState.type === 'scheduled' && (
         <div className="flex items-center justify-between">
-          <span className="text-sm text-muted-foreground">Schedule</span>
+          <span className="text-sm text-muted-foreground">
+            {intl.formatMessage({
+              id: 'admin.changelog.schedule',
+              defaultMessage: 'Schedule',
+            })}
+          </span>
           <DateTimePicker
             value={scheduledDateTime}
             onChange={handleDateTimeChange}
@@ -220,15 +259,21 @@ export function ChangelogMetadataSidebarContent({
       {publishState.type === 'published' && (
         <div className="flex items-center justify-between gap-2 min-w-0">
           <span className="flex items-center gap-1 text-sm text-muted-foreground shrink-0">
-            Published date
+            {intl.formatMessage({
+              id: 'admin.changelog.meta.publishedDate',
+              defaultMessage: 'Published date',
+            })}
             <Tooltip>
               <TooltipTrigger asChild>
                 <InformationCircleIcon className="h-3.5 w-3.5 text-muted-foreground/60" />
               </TooltipTrigger>
               <TooltipContent className="max-w-[15rem]">
                 <p>
-                  The date shown on your public changelog. Changing it won&apos;t send
-                  notifications.
+                  {intl.formatMessage({
+                    id: 'admin.changelog.meta.publishedDateHint',
+                    defaultMessage:
+                      "The date shown on your public changelog. Changing it won't send notifications.",
+                  })}
                 </p>
               </TooltipContent>
             </Tooltip>
@@ -252,7 +297,10 @@ export function ChangelogMetadataSidebarContent({
         <div className="flex items-center justify-between gap-2">
           <span className="flex items-center gap-2 text-sm text-muted-foreground">
             <EnvelopeIcon className="h-4 w-4" />
-            Send email to subscribers
+            {intl.formatMessage({
+              id: 'admin.changelog.meta.notifySubscribers',
+              defaultMessage: 'Send email to subscribers',
+            })}
           </span>
           <Checkbox
             checked={notify}
@@ -265,24 +313,42 @@ export function ChangelogMetadataSidebarContent({
           members of the selected segments. Empty = every subscriber. */}
       {willSendEmail && segments.length > 0 && (
         <div className="space-y-2">
-          <SidebarRow icon={<UsersIcon className="h-4 w-4" />} label="Notify segments">
+          <SidebarRow
+            icon={<UsersIcon className="h-4 w-4" />}
+            label={intl.formatMessage({
+              id: 'admin.changelog.meta.notifySegments',
+              defaultMessage: 'Notify segments',
+            })}
+          >
             {null}
           </SidebarRow>
           <p className="text-xs text-muted-foreground pl-6">
-            Leave empty to notify every subscriber.
+            {intl.formatMessage({
+              id: 'admin.changelog.meta.notifySegmentsHint',
+              defaultMessage: 'Leave empty to notify every subscriber.',
+            })}
           </p>
           <SegmentMultiSelect
             segments={segments}
             value={segmentIds}
             onChange={(next) => onSegmentIdsChange(next as SegmentId[])}
-            ariaLabel="Changelog notify segments"
+            ariaLabel={intl.formatMessage({
+              id: 'admin.changelog.meta.notifySegmentsAria',
+              defaultMessage: 'Changelog notify segments',
+            })}
           />
         </div>
       )}
 
       {/* Labels (categories) */}
       <div className="space-y-2">
-        <SidebarRow icon={<TagIcon className="h-4 w-4" />} label="Labels">
+        <SidebarRow
+          icon={<TagIcon className="h-4 w-4" />}
+          label={intl.formatMessage({
+            id: 'admin.changelog.meta.labels',
+            defaultMessage: 'Labels',
+          })}
+        >
           {null}
         </SidebarRow>
         <ChangelogCategorySelect value={categoryIds} onChange={onCategoriesChange} />
@@ -290,7 +356,13 @@ export function ChangelogMetadataSidebarContent({
 
       {/* Featured image — hero rendered atop the public entry detail page */}
       <div className="space-y-2">
-        <SidebarRow icon={<PhotoIcon className="h-4 w-4" />} label="Featured image">
+        <SidebarRow
+          icon={<PhotoIcon className="h-4 w-4" />}
+          label={intl.formatMessage({
+            id: 'admin.changelog.meta.featuredImage',
+            defaultMessage: 'Featured image',
+          })}
+        >
           <button
             type="button"
             disabled={featuredImageUploading}
@@ -306,7 +378,17 @@ export function ChangelogMetadataSidebarContent({
             )}
           >
             <PlusIcon className="h-2.5 w-2.5" />
-            {featuredImageUploading ? 'Uploading…' : featuredImageUrl ? 'Replace' : 'Add'}
+            {featuredImageUploading
+              ? intl.formatMessage({
+                  id: 'admin.changelog.meta.uploading',
+                  defaultMessage: 'Uploading…',
+                })
+              : featuredImageUrl
+                ? intl.formatMessage({
+                    id: 'admin.changelog.meta.replace',
+                    defaultMessage: 'Replace',
+                  })
+                : intl.formatMessage({ id: 'common.add', defaultMessage: 'Add' })}
           </button>
         </SidebarRow>
         <input
@@ -323,26 +405,43 @@ export function ChangelogMetadataSidebarContent({
           <div className="relative group">
             <img
               src={featuredImageUrl}
-              alt="Featured image preview"
+              alt={intl.formatMessage({
+                id: 'admin.changelog.meta.featuredImagePreview',
+                defaultMessage: 'Featured image preview',
+              })}
               className="w-full rounded-md border border-border/50 object-cover aspect-[2/1]"
             />
             <button
               type="button"
               onClick={() => onFeaturedImageChange(null)}
-              aria-label="Remove featured image"
+              aria-label={intl.formatMessage({
+                id: 'admin.changelog.meta.removeFeaturedImage',
+                defaultMessage: 'Remove featured image',
+              })}
               className="absolute top-1.5 right-1.5 rounded-full bg-background/80 border border-border/60 p-1 text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity"
             >
               <XMarkIcon className="h-3 w-3" />
             </button>
           </div>
         ) : (
-          <p className="text-xs text-muted-foreground/60 italic pl-6">No featured image</p>
+          <p className="text-xs text-muted-foreground/60 italic pl-6">
+            {intl.formatMessage({
+              id: 'admin.changelog.meta.noFeaturedImage',
+              defaultMessage: 'No featured image',
+            })}
+          </p>
         )}
       </div>
 
       {/* Linked posts - single unified section */}
       <div className="space-y-2">
-        <SidebarRow icon={<DocumentTextIcon className="h-4 w-4" />} label="Linked posts">
+        <SidebarRow
+          icon={<DocumentTextIcon className="h-4 w-4" />}
+          label={intl.formatMessage({
+            id: 'admin.changelog.meta.linkedPosts',
+            defaultMessage: 'Linked posts',
+          })}
+        >
           <Popover open={postsOpen} onOpenChange={setPostsOpen}>
             <PopoverTrigger asChild>
               <button
@@ -357,14 +456,17 @@ export function ChangelogMetadataSidebarContent({
                 )}
               >
                 <PlusIcon className="h-2.5 w-2.5" />
-                Add
+                {intl.formatMessage({ id: 'common.add', defaultMessage: 'Add' })}
               </button>
             </PopoverTrigger>
             <PopoverContent className="w-72 p-0" align="end" sideOffset={4}>
               <div className="flex items-center border-b px-3">
                 <MagnifyingGlassIcon className="mr-2 h-4 w-4 shrink-0 opacity-50" />
                 <input
-                  placeholder="Search shipped posts..."
+                  placeholder={intl.formatMessage({
+                    id: 'admin.changelog.meta.searchPosts',
+                    defaultMessage: 'Search shipped posts...',
+                  })}
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   className="flex h-9 w-full border-0 bg-transparent text-sm outline-none placeholder:text-muted-foreground focus-visible:ring-0"
@@ -373,10 +475,23 @@ export function ChangelogMetadataSidebarContent({
               <ScrollArea className="h-[250px]">
                 <div className="p-1">
                   {postsLoading ? (
-                    <div className="py-6 text-center text-sm text-muted-foreground">Loading...</div>
+                    <div className="py-6 text-center text-sm text-muted-foreground">
+                      {intl.formatMessage({
+                        id: 'admin.changelog.meta.loadingPosts',
+                        defaultMessage: 'Loading...',
+                      })}
+                    </div>
                   ) : posts.length === 0 ? (
                     <div className="py-6 text-center text-sm text-muted-foreground">
-                      {search ? 'No shipped posts found.' : 'No shipped posts yet.'}
+                      {search
+                        ? intl.formatMessage({
+                            id: 'admin.changelog.meta.noPostsFound',
+                            defaultMessage: 'No shipped posts found.',
+                          })
+                        : intl.formatMessage({
+                            id: 'admin.changelog.meta.noPostsYet',
+                            defaultMessage: 'No shipped posts yet.',
+                          })}
                     </div>
                   ) : (
                     posts.map((post) => {
@@ -427,7 +542,11 @@ export function ChangelogMetadataSidebarContent({
                 <div className="min-w-0 flex-1 pr-5">
                   <p className="truncate text-xs font-medium leading-snug">{post.title}</p>
                   <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                    {post.authorName || 'Anonymous'}
+                    {post.authorName ||
+                      intl.formatMessage({
+                        id: 'admin.changelog.meta.anonymous',
+                        defaultMessage: 'Anonymous',
+                      })}
                     <span className="px-1 text-muted-foreground/50">·</span>
                     {post.boardSlug}
                     <span className="px-1 text-muted-foreground/50">·</span>
@@ -437,14 +556,25 @@ export function ChangelogMetadataSidebarContent({
                 <div className="absolute right-1 top-1 opacity-0 transition-opacity group-hover:opacity-100">
                   <ListItemRemoveButton
                     onClick={() => handleRemovePost(post.id)}
-                    label={`Remove ${post.title}`}
+                    label={intl.formatMessage(
+                      {
+                        id: 'admin.changelog.meta.removePost',
+                        defaultMessage: 'Remove {title}',
+                      },
+                      { title: post.title }
+                    )}
                   />
                 </div>
               </div>
             ))}
           </div>
         ) : (
-          <p className="text-xs text-muted-foreground/60 italic pl-6">No posts linked yet</p>
+          <p className="text-xs text-muted-foreground/60 italic pl-6">
+            {intl.formatMessage({
+              id: 'admin.changelog.meta.noPostsLinked',
+              defaultMessage: 'No posts linked yet',
+            })}
+          </p>
         )}
       </div>
     </div>

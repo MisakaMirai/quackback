@@ -1,7 +1,7 @@
 /**
  * Each workspace and data page in the settings nav checks a permission when
  * it opens. The nav offers a page only to a viewer who holds it, so a role
- * that may see the members list is not shown General, Portal, Widget or
+ * that may see the members list is not shown General, Portal or
  * Developers only to land on Access denied.
  */
 import { describe, expect, it } from 'vitest'
@@ -21,7 +21,7 @@ const labels = (sections: Sections, section: string) =>
 describe('navSectionsFor', () => {
   it('shows a member.view role only the workspace pages it can open', () => {
     const sections = navSectionsFor(
-      buildNavSections({}, false),
+      buildNavSections({}),
       new Set<PermissionKey>([PERMISSIONS.MEMBER_VIEW])
     )
 
@@ -32,27 +32,19 @@ describe('navSectionsFor', () => {
 
   it('gates each page on the permission it checks', () => {
     const only = (permission: PermissionKey) =>
-      navSectionsFor(buildNavSections({ supportInbox: true }, true), new Set([permission]))
+      navSectionsFor(buildNavSections({ supportInbox: true }), new Set([permission]))
 
     expect(labels(only(PERMISSIONS.SETTINGS_MANAGE), 'Workspace')).toEqual([
       'General',
-      'Domains',
       'Email',
       'Notifications',
-      'Widget',
-      'Labs',
     ])
     expect(labels(only(PERMISSIONS.SETTINGS_MANAGE), 'Data')).toEqual(['Imports & exports'])
     expect(labels(only(PERMISSIONS.SETTINGS_BRANDING), 'Workspace')).toEqual([
       'Notifications',
       'Portal',
     ])
-    expect(labels(only(PERMISSIONS.SETTINGS_CUSTOM_DOMAIN), 'Workspace')).toEqual([
-      'Domains',
-      'Notifications',
-    ])
     expect(labels(only(PERMISSIONS.AUTH_MANAGE), 'Workspace')).toEqual([
-      'Domains',
       'Notifications',
       'Access & Security',
     ])
@@ -64,60 +56,24 @@ describe('navSectionsFor', () => {
       'Notifications',
       'Integrations',
     ])
-    expect(labels(only(PERMISSIONS.BILLING_MANAGE), 'Workspace')).toEqual([
-      'Notifications',
-      'Plan & billing',
-    ])
     expect(labels(only(PERMISSIONS.USER_ATTRIBUTE_VIEW), 'Data')).toEqual(['Users'])
-    expect(labels(only(PERMISSIONS.COMPANY_VIEW), 'Data')).toEqual(['Companies'])
     expect(labels(only(PERMISSIONS.CONVERSATION_MANAGE), 'Data')).toEqual(['Conversations'])
   })
 
-  it('offers the AI & Automation pages by the permission each one checks', () => {
-    const only = (permission: PermissionKey) =>
-      navSectionsFor(buildNavSections({ supportInbox: true }, true), new Set([permission]))
-
-    expect(labels(only(PERMISSIONS.AI_CUSTOMER_MANAGE), 'AI & Automation')).toEqual([
-      'Agent',
-      'Skills',
-      'Connectors',
-    ])
-    expect(labels(only(PERMISSIONS.AI_TEAMMATE_MANAGE), 'AI & Automation')).toEqual([
-      'Copilot',
-      'Skills',
-      'Connectors',
-    ])
-    expect(labels(only(PERMISSIONS.WORKFLOW_MANAGE), 'AI & Automation')).toEqual(['Workflows'])
-    expect(labels(only(PERMISSIONS.MEMBER_VIEW), 'AI & Automation')).toBeNull()
-  })
-
-  it('leaves the AI & Automation heading out when no row is visible', () => {
-    // Workflows needs the inbox; with it off a workflow manager has no row.
-    const sections = navSectionsFor(
-      buildNavSections({ supportInbox: false }, false),
-      new Set<PermissionKey>([PERMISSIONS.WORKFLOW_MANAGE])
-    )
-    expect(sections.map((s) => s.label)).not.toContain('AI & Automation')
-  })
-
   it('shows an owner every page', () => {
-    const sections = buildNavSections({ supportInbox: true }, true)
+    const sections = buildNavSections({ supportInbox: true })
     expect(navSectionsFor(sections, new Set(SYSTEM_ROLE_PERMISSIONS.owner))).toEqual(sections)
   })
 
-  it('leaves Plan & billing out for an admin, who cannot manage billing', () => {
-    const sections = navSectionsFor(
-      buildNavSections({}, true),
-      new Set(SYSTEM_ROLE_PERMISSIONS.admin)
-    )
-    expect(labels(sections, 'Workspace')).not.toContain('Plan & billing')
+  it('shows an admin every workspace page', () => {
+    const sections = navSectionsFor(buildNavSections({}), new Set(SYSTEM_ROLE_PERMISSIONS.admin))
     expect(labels(sections, 'Workspace')).toContain('General')
   })
 
   it('shows a module only the pages the viewer can open', () => {
     const flags = { supportInbox: true, supportTickets: true }
     const sections = navSectionsFor(
-      buildNavSections(flags, false),
+      buildNavSections(flags),
       new Set<PermissionKey>([PERMISSIONS.OFFICE_HOURS_MANAGE])
     )
     const modules = sections.find((s) => s.label === 'Modules')!.items
@@ -128,7 +84,7 @@ describe('navSectionsFor', () => {
 
   it('drops a module with no openable pages', () => {
     const sections = navSectionsFor(
-      buildNavSections({ supportInbox: true }, false),
+      buildNavSections({ supportInbox: true }),
       new Set<PermissionKey>([PERMISSIONS.MEMBER_VIEW])
     )
     expect(labels(sections, 'Modules')).toBeNull()
@@ -136,23 +92,17 @@ describe('navSectionsFor', () => {
 })
 
 describe('canOpenSettings', () => {
-  const sections = buildNavSections({ supportInbox: true }, false)
+  const sections = buildNavSections({ supportInbox: true })
   const can = (...permissions: PermissionKey[]) => canOpenSettings(sections, new Set(permissions))
 
   it('is true for a holder of any page permission, however small', () => {
-    expect(can(PERMISSIONS.AI_CUSTOMER_MANAGE)).toBe(true)
-    expect(can(PERMISSIONS.WORKFLOW_MANAGE)).toBe(true)
     expect(can(PERMISSIONS.MEMBER_VIEW)).toBe(true)
+    expect(can(PERMISSIONS.USER_ATTRIBUTE_VIEW)).toBe(true)
   })
 
   it('is false when nothing but the personal Notifications page is open', () => {
     expect(can()).toBe(false)
     expect(can(PERMISSIONS.POST_CREATE)).toBe(false)
-  })
-
-  it('follows the flags: a workflow manager has no page while the inbox is off', () => {
-    const off = buildNavSections({ supportInbox: false }, false)
-    expect(canOpenSettings(off, new Set([PERMISSIONS.WORKFLOW_MANAGE]))).toBe(false)
   })
 })
 
@@ -160,7 +110,7 @@ describe('firstSettingsPath', () => {
   const preset = (role: 'owner' | 'manager' | 'contributor') =>
     new Set<PermissionKey>(SYSTEM_ROLE_PERMISSIONS[role])
   const flags = { supportInbox: true }
-  const sections = buildNavSections(flags, false)
+  const sections = buildNavSections(flags)
   const first = (permissions: Set<PermissionKey>, s = sections) => firstSettingsPath(s, permissions)
 
   it('opens General for a viewer who holds settings.manage', () => {
@@ -181,15 +131,7 @@ describe('firstSettingsPath', () => {
     expect(first(contributor)).toBe('/admin/settings/members')
   })
 
-  it('opens Agent for a role with only ai.customer.manage', () => {
-    expect(first(new Set([PERMISSIONS.AI_CUSTOMER_MANAGE]))).toBe('/admin/settings/agent')
-  })
-
-  it('opens Workflows for a workflow manager while the inbox is on', () => {
-    expect(first(new Set([PERMISSIONS.WORKFLOW_MANAGE]))).toBe('/admin/settings/workflows')
-  })
-
-  it('never lands on the Domains overview; a domain owner opens their own page', () => {
+  it('lands on the first page the viewer can open', () => {
     expect(first(new Set([PERMISSIONS.AUTH_MANAGE]))).toBe(
       '/admin/settings/security/authentication'
     )
@@ -197,19 +139,15 @@ describe('firstSettingsPath', () => {
     expect(first(new Set([PERMISSIONS.CHANNEL_ACCOUNT_MANAGE]))).toBe(
       '/admin/settings/notifications'
     )
-    const email = buildNavSections({ supportTickets: true }, false)
+    const email = buildNavSections({ supportTickets: true })
     expect(first(new Set([PERMISSIONS.CHANNEL_ACCOUNT_MANAGE]), email)).toBe(
       '/admin/settings/channels/email'
     )
-    // Domains holds web address setup, which this permission owns: it lands there.
-    expect(first(new Set([PERMISSIONS.SETTINGS_CUSTOM_DOMAIN]))).toBe('/admin/settings/domains')
-    // A viewer who only reaches Domains through another page's permission does not.
-    expect(first(new Set([PERMISSIONS.AUTH_MANAGE]))).not.toBe('/admin/settings/domains')
   })
 
   it('opens Notifications for a viewer with no settings permission', () => {
     expect(first(new Set())).toBe('/admin/settings/notifications')
-    expect(first(new Set([PERMISSIONS.WORKFLOW_MANAGE]), buildNavSections({}, false))).toBe(
+    expect(first(new Set([PERMISSIONS.TICKET_VIEW]), buildNavSections({}))).toBe(
       '/admin/settings/notifications'
     )
   })

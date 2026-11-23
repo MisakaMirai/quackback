@@ -22,7 +22,6 @@ const mockConfig = {
   s3ForcePathStyle: true,
   s3PublicUrl: undefined as string | undefined,
   baseUrl: 'https://feedback.example.com',
-  isPooledTenancy: false,
 }
 vi.mock('@/lib/server/config', () => ({ config: mockConfig }))
 
@@ -177,7 +176,6 @@ const {
   RECONCILE_GRACE_MS,
 } = await import('../legacy-relocation')
 const { withWorkspace, workspaceIdFor } = await import('@/lib/server/__tests__/workspace-scope')
-const { openLegacyRelocationBucket, LegacyRelocationRefused } = await import('../s3')
 
 const copies = () => sent.filter((c) => c.kind === 'CopyObject')
 
@@ -190,7 +188,6 @@ beforeEach(() => {
   afterCommand = undefined
   lockHeldElsewhere = false
   kvReadFailures = 0
-  mockConfig.isPooledTenancy = false
   mockConfig.s3Bucket = BUCKET
   mockConfig.s3Region = 'us-east-1'
   vi.unstubAllEnvs()
@@ -443,26 +440,6 @@ describe('single-workspace relocation', () => {
     expect(outcome).toEqual({ status: 'not-applicable', reason: 'no-storage' })
     expect(sent).toHaveLength(0)
     expect(kv.has(LEGACY_RELOCATION_MARKER_KEY)).toBe(false)
-  })
-})
-
-describe('pooled tenancy', () => {
-  it('never relocates anything', async () => {
-    mockConfig.isPooledTenancy = true
-    vi.stubEnv('QUACKBACK_TENANCY', 'pooled')
-    put('logos/a.png', 'a')
-
-    const outcome = await runLegacyStorageRelocation()
-
-    expect(outcome).toEqual({ status: 'not-applicable', reason: 'pooled' })
-    expect(sent).toHaveLength(0)
-    expect([...bucket.keys()]).toEqual(['logos/a.png'])
-  })
-
-  it('refuses to open the bucket root even when asked directly', async () => {
-    vi.stubEnv('QUACKBACK_TENANCY', 'pooled')
-    await expect(openLegacyRelocationBucket()).rejects.toBeInstanceOf(LegacyRelocationRefused)
-    expect(sent).toHaveLength(0)
   })
 })
 

@@ -54,13 +54,13 @@ it('returns the relative key while writing exact bytes to the current workspace 
   expect(result).toEqual({ key: expected, url: '/api/storage/' + expected })
   expect(captures.commands).toEqual([
     {
-      Bucket: 'acme-branding-bucket',
+      Bucket: 'env-bucket',
       Key: 'w/' + workspaceIdFor('acme-branding') + '/' + expected,
       Body: bytes,
       ContentType: 'image/png',
     },
   ])
-  expect(captures.credentials[0].accessKeyId).toBe('AK-acme-branding')
+  expect(captures.credentials[0].accessKeyId).toBe('env-key')
   const otherBytes = Buffer.concat([bytes, Buffer.from('different')])
   const other = await withWorkspace('acme-branding-second', () =>
     uploadImageBuffer(otherBytes, 'image/png', 'logos', { contentAddressed: true })

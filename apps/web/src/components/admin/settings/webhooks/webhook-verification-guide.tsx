@@ -1,10 +1,7 @@
 import { INLINE_LINK } from '@/components/admin/settings/inline-link'
 import { useState, useMemo } from 'react'
 import { ClipboardDocumentIcon, CheckIcon } from '@heroicons/react/24/solid'
-import {
-  HighlightedCode,
-  type SyntaxLang,
-} from '@/components/admin/settings/widget/highlighted-code'
+import { HighlightedCode, type SyntaxLang } from '@/components/admin/settings/highlighted-code'
 import {
   NodeJsIcon,
   PythonIcon,
@@ -13,6 +10,7 @@ import {
   PHPIcon,
 } from '@/components/admin/settings/lang-icons'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { cn } from '@/lib/shared/utils'
 import { useCopyToClipboard } from '@/lib/client/hooks/use-copy-to-clipboard'
 
@@ -202,16 +200,46 @@ const FRAMEWORK_ICONS: Record<string, (props: { className?: string }) => React.R
 }
 
 const WEBHOOK_EVENTS = [
-  { id: 'post.created', label: 'New post' },
-  { id: 'post.status_changed', label: 'Status changed' },
-  { id: 'comment.created', label: 'New comment' },
-  { id: 'changelog.published', label: 'Changelog published' },
+  {
+    id: 'post.created',
+    message: { id: 'admin.webhooks.verify.events.newPost', defaultMessage: 'New post' },
+  },
+  {
+    id: 'post.status_changed',
+    message: { id: 'admin.webhooks.verify.events.statusChanged', defaultMessage: 'Status changed' },
+  },
+  {
+    id: 'comment.created',
+    message: { id: 'admin.webhooks.verify.events.newComment', defaultMessage: 'New comment' },
+  },
+  {
+    id: 'changelog.published',
+    message: {
+      id: 'admin.webhooks.verify.events.changelogPublished',
+      defaultMessage: 'Changelog published',
+    },
+  },
 ] as const
 
 const WEBHOOK_HEADERS = [
-  { name: 'X-Quackback-Signature', desc: 'HMAC-SHA256 signature' },
-  { name: 'X-Quackback-Timestamp', desc: 'Unix epoch seconds' },
-  { name: 'X-Quackback-Event', desc: 'Event type' },
+  {
+    name: 'X-Quackback-Signature',
+    message: {
+      id: 'admin.webhooks.verify.headers.signature',
+      defaultMessage: 'HMAC-SHA256 signature',
+    },
+  },
+  {
+    name: 'X-Quackback-Timestamp',
+    message: {
+      id: 'admin.webhooks.verify.headers.timestamp',
+      defaultMessage: 'Unix epoch seconds',
+    },
+  },
+  {
+    name: 'X-Quackback-Event',
+    message: { id: 'admin.webhooks.verify.headers.event', defaultMessage: 'Event type' },
+  },
 ] as const
 
 // ——————————————————————————————————————————————————
@@ -220,10 +248,14 @@ const WEBHOOK_HEADERS = [
 
 /** The guide is documentation: a quiet link opens it, so it never competes with the list. */
 export function WebhookVerificationGuide() {
+  const intl = useOptionalIntl()
   return (
     <Collapsible>
       <CollapsibleTrigger className={`${INLINE_LINK} text-[13px]`}>
-        How to verify signatures
+        {intl.formatMessage({
+          id: 'admin.webhooks.verify.trigger',
+          defaultMessage: 'How to verify signatures',
+        })}
       </CollapsibleTrigger>
       <CollapsibleContent>
         <div className="pt-3">
@@ -235,6 +267,7 @@ export function WebhookVerificationGuide() {
 }
 
 function VerificationCard() {
+  const intl = useOptionalIntl()
   const [selectedFramework, setSelectedFramework] = useState('node')
   const { copied: copiedCode, copy: copyCode } = useCopyToClipboard()
 
@@ -256,9 +289,17 @@ function VerificationCard() {
         <div className="flex flex-col border-b border-border divide-y divide-border">
           {/* Header */}
           <div className="p-5">
-            <h3 className="text-sm font-semibold text-foreground">Signature verification</h3>
+            <h3 className="text-sm font-semibold text-foreground">
+              {intl.formatMessage({
+                id: 'admin.webhooks.verify.title',
+                defaultMessage: 'Signature verification',
+              })}
+            </h3>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Verify webhook deliveries are authentic
+              {intl.formatMessage({
+                id: 'admin.webhooks.verify.subtitle',
+                defaultMessage: 'Verify webhook deliveries are authentic',
+              })}
             </p>
           </div>
 
@@ -268,12 +309,20 @@ function VerificationCard() {
               <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary/10 text-primary text-[11px] font-bold shrink-0">
                 1
               </span>
-              <span className="text-xs font-medium text-foreground">How it works</span>
+              <span className="text-xs font-medium text-foreground">
+                {intl.formatMessage({
+                  id: 'admin.webhooks.verify.howItWorks',
+                  defaultMessage: 'How it works',
+                })}
+              </span>
             </div>
             <div className="ml-7 space-y-2">
               <p className="text-[11px] text-muted-foreground">
-                Each delivery includes an HMAC-SHA256 signature computed from your signing secret.
-                Verify the signature and check the timestamp to prevent replay attacks.
+                {intl.formatMessage({
+                  id: 'admin.webhooks.verify.howItWorksBody',
+                  defaultMessage:
+                    'Each delivery includes an HMAC-SHA256 signature computed from your signing secret. Verify the signature and check the timestamp to prevent replay attacks.',
+                })}
               </p>
               <div className="space-y-1">
                 {WEBHOOK_HEADERS.map((header) => (
@@ -284,7 +333,9 @@ function VerificationCard() {
                     <code className="text-xs font-mono text-foreground bg-muted/30 border border-border/50 rounded px-1.5 py-0.5 shrink-0">
                       {header.name}
                     </code>
-                    <span className="text-xs text-muted-foreground">{header.desc}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {intl.formatMessage(header.message)}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -297,7 +348,12 @@ function VerificationCard() {
               <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary/10 text-primary text-[11px] font-bold shrink-0">
                 2
               </span>
-              <span className="text-xs font-medium text-foreground">Events</span>
+              <span className="text-xs font-medium text-foreground">
+                {intl.formatMessage({
+                  id: 'admin.webhooks.verify.eventsTitle',
+                  defaultMessage: 'Events',
+                })}
+              </span>
             </div>
             <div className="ml-7 flex flex-wrap gap-1">
               {WEBHOOK_EVENTS.map((event) => (
@@ -306,7 +362,7 @@ function VerificationCard() {
                   className="text-xs font-mono bg-muted/50 text-muted-foreground px-1.5 py-0.5 rounded"
                   title={event.id}
                 >
-                  {event.label}
+                  {intl.formatMessage(event.message)}
                 </span>
               ))}
             </div>
@@ -319,8 +375,18 @@ function VerificationCard() {
                 3
               </span>
               <div>
-                <span className="text-xs font-medium text-foreground">Choose your framework</span>
-                <p className="text-[11px] text-muted-foreground">Copy the verification function</p>
+                <span className="text-xs font-medium text-foreground">
+                  {intl.formatMessage({
+                    id: 'admin.webhooks.verify.chooseFramework',
+                    defaultMessage: 'Choose your framework',
+                  })}
+                </span>
+                <p className="text-[11px] text-muted-foreground">
+                  {intl.formatMessage({
+                    id: 'admin.webhooks.verify.copyFunction',
+                    defaultMessage: 'Copy the verification function',
+                  })}
+                </p>
               </div>
             </div>
 
@@ -351,14 +417,27 @@ function VerificationCard() {
 
           {/* Payload format note */}
           <div className="p-5 space-y-1.5">
-            <span className="text-xs font-medium text-foreground">Payload format</span>
+            <span className="text-xs font-medium text-foreground">
+              {intl.formatMessage({
+                id: 'admin.webhooks.verify.payloadFormat',
+                defaultMessage: 'Payload format',
+              })}
+            </span>
             <p className="text-[11px] text-muted-foreground">
-              Deliveries are JSON with{' '}
-              <code className="text-xs bg-muted/50 px-1 py-0.5 rounded font-mono">id</code>,{' '}
-              <code className="text-xs bg-muted/50 px-1 py-0.5 rounded font-mono">type</code>,{' '}
-              <code className="text-xs bg-muted/50 px-1 py-0.5 rounded font-mono">createdAt</code>,
-              and <code className="text-xs bg-muted/50 px-1 py-0.5 rounded font-mono">data</code>{' '}
-              fields. Your endpoint must respond with a 2xx status within 5 seconds.
+              {intl.formatMessage(
+                {
+                  id: 'admin.webhooks.verify.payloadFormatBody',
+                  defaultMessage:
+                    'Deliveries are JSON with <code>id</code>, <code>type</code>, <code>createdAt</code>, and <code>data</code> fields. Your endpoint must respond with a 2xx status within 5 seconds.',
+                },
+                {
+                  code: (chunks) => (
+                    <code className="text-xs bg-muted/50 px-1 py-0.5 rounded font-mono">
+                      {chunks}
+                    </code>
+                  ),
+                }
+              )}
             </p>
           </div>
         </div>
@@ -383,12 +462,22 @@ function VerificationCard() {
               {copiedCode ? (
                 <>
                   <CheckIcon className="h-3 w-3 text-success" />
-                  <span className="text-success">Copied</span>
+                  <span className="text-success">
+                    {intl.formatMessage({
+                      id: 'admin.webhooks.verify.copied',
+                      defaultMessage: 'Copied',
+                    })}
+                  </span>
                 </>
               ) : (
                 <>
                   <ClipboardDocumentIcon className="h-3 w-3" />
-                  <span>Copy</span>
+                  <span>
+                    {intl.formatMessage({
+                      id: 'admin.webhooks.verify.copy',
+                      defaultMessage: 'Copy',
+                    })}
+                  </span>
                 </>
               )}
             </button>

@@ -24,13 +24,11 @@ vi.mock('@/components/admin/inbox/ticket-controls', () => ({
   TicketWatchControl: () => null,
 }))
 vi.mock('@/components/admin/inbox/ticket-links', () => ({ TicketLinks: () => null }))
-vi.mock('@/components/admin/conversation/company-card', () => ({ CompanyCard: () => null }))
 vi.mock('@/components/admin/users/block-person-control', () => ({
   usePersonBlockStatus: () => ({ blocked: false, isLoading: false }),
 }))
 vi.mock('@/lib/server/functions/conversation', () => ({
   listConversationsForUserFn: vi.fn().mockResolvedValue({ conversations: [], hasMore: false }),
-  getConversationAssistantActivityFn: vi.fn().mockResolvedValue(null),
 }))
 vi.mock('@/lib/server/functions/admin', () => ({
   getPortalUserFn: vi.fn().mockResolvedValue(null),
@@ -64,7 +62,6 @@ const ticket = {
   priority: 'high',
   requester: null,
   assignee: { principalId: null, displayName: null, teamId: null, teamName: null },
-  company: null,
   firstResponseAt: null,
   dueAt: null,
   resolvedAt: null,
@@ -111,7 +108,7 @@ describe('InboxDetailPanel ticket date field', () => {
             onSelectItem={() => {}}
             onTrackAsFeedback={() => {}}
             onCreateTicket={() => {}}
-            onInsertFromCopilot={() => {}}
+
             visible
           />
         </QueryClientProvider>

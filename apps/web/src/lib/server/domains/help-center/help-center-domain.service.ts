@@ -121,10 +121,6 @@ export async function setHelpCenterDomain(
   // Cloud identity owns custom hostnames. The local reverse-proxy writer is
   // self-host only — even when the plan grants customDomain.
   await refuseCloudLocalWriter()
-  // Plan gate. No-op on any install without a cloud config, which is every
-  // self-hosted one — see domains/settings/cloud/entitlements.ts.
-  const { requireEntitlement } = await import('@/lib/server/domains/settings/cloud/entitlements')
-  await requireEntitlement('customDomain')
   const normalized = normalizeDomain(domainInput)
   if (!normalized) {
     throw new ValidationError('HC_DOMAIN_INVALID', 'Must be a public FQDN (e.g. "help.acme.com")')
@@ -132,11 +128,6 @@ export async function setHelpCenterDomain(
   const updated = await updateHelpCenterConfig({
     domain: { domain: normalized, verifiedAt: null },
   })
-  // The same domain on Settings > Domains, made in this one step; never a
-  // reason to report the help center's own write as failed.
-  const { ensureDomainForCustomDomain } =
-    await import('@/lib/server/domains/domain-proof/ensure-domain')
-  await ensureDomainForCustomDomain(normalized)
   return updated.domain
 }
 

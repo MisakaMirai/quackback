@@ -11,7 +11,7 @@ function mount(overrides: Partial<AskComposerProps> = {}) {
     query: 'messenger',
     onQueryChange: vi.fn(),
     onNavigate: vi.fn(),
-    results: [{ id: 'messenger', title: 'Messenger', href: '/admin/settings/widget' }],
+    results: [{ id: 'messenger', title: 'Messenger', href: '/admin/settings/channels/messenger' }],
     ...overrides,
   }
   render(
@@ -37,13 +37,13 @@ describe('the separate search palette', () => {
   it('navigates to a chosen destination with the keyboard', () => {
     const props = mount()
     fireEvent.keyDown(screen.getByRole('combobox'), { key: 'Enter' })
-    expect(props.onNavigate).toHaveBeenCalledExactlyOnceWith('/admin/settings/widget')
+    expect(props.onNavigate).toHaveBeenCalledExactlyOnceWith('/admin/settings/channels/messenger')
   })
 
   it('navigates to the selected result rather than always the first', () => {
     const props = mount({
       results: [
-        { id: 'messenger', title: 'Messenger', href: '/admin/settings/widget' },
+        { id: 'messenger', title: 'Messenger', href: '/admin/settings/channels/messenger' },
         { id: 'branding', title: 'Branding', href: '/admin/settings/theme' },
       ],
     })

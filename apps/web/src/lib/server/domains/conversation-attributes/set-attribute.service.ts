@@ -80,19 +80,15 @@ export function validateAttributeValue(
 }
 
 /** The conversation.attribute_changed event actor, derived from `src` alone.
- *  AI writes use the configured V2 assistant identity.
+ *  Historical AI-sourced rows render as the workspace automation identity.
  *  Consumers of this event's actor (e.g. the notification handler's
- *  `event.actor.displayName`) show it verbatim to a human, so a renamed
- *  assistant must actually carry through here, not merely omit the field.
+ *  `event.actor.displayName`) show it verbatim to a human.
  *  Teammate and customer writes are 'user' actors, matching how
  *  conversation.webhooks.ts's toEventActor treats every non-service principal
  *  (including anonymous visitors) as 'user'. */
 async function attributeChangeActor(src: ConversationAttributeSource): Promise<EventActor> {
   if (src !== 'ai') return { type: 'user' }
-  const { getAssistantRuntimeConfig } =
-    await import('@/lib/server/domains/settings/settings.assistant')
-  const assistant = await getAssistantRuntimeConfig()
-  return { type: 'service', displayName: assistant.config.identity.name }
+  return { type: 'service', displayName: 'Automation' }
 }
 
 /** The visible refusal thrown when a customer-sourced write loses the

@@ -31,14 +31,6 @@ const PrincipalCardSchema = z.object({
   joinedAt: TimestampSchema,
 })
 
-const UsageSchema = z.object({
-  aiTokensThisMonth: z.number().int(),
-  postCount: z.number().int().meta({ description: 'Posts that are not deleted' }),
-  boardCount: z.number().int().meta({ description: 'Boards that are not deleted' }),
-  teamSeatCount: z.number().int(),
-  pendingInviteCount: z.number().int(),
-})
-
 const sessionForbidden = {
   description: 'No signed-in session, or the session belongs to an anonymous or service principal',
   content: {
@@ -113,29 +105,6 @@ registerPath('/users/{principalId}/card', {
           'application/json': { schema: z.object({ error: z.literal('Not Found') }) },
         },
       },
-    },
-  },
-})
-
-registerPath('/admin/usage', {
-  get: {
-    tags: ['Workspace'],
-    summary: 'Get workspace usage counters',
-    description:
-      'Usage counters for external billing meters. Authenticated with the operator token set in the ADMIN_API_TOKEN environment variable, sent as a bearer token; API keys are not accepted. Responds 404 when that variable is not set.',
-    security: [{ adminToken: [] }],
-    responses: {
-      200: {
-        description: 'Usage counters',
-        content: { 'application/json': { schema: UsageSchema } },
-      },
-      401: {
-        description: 'Missing or wrong operator token',
-        content: {
-          'application/json': { schema: z.object({ error: z.literal('unauthenticated') }) },
-        },
-      },
-      404: { description: 'Operator token is not configured' },
     },
   },
 })

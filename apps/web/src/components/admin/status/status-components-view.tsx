@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import {
@@ -82,11 +82,8 @@ import {
   useSetStatusComponentStatus,
   useUpdateStatusComponent,
 } from '@/lib/client/mutations/status'
-import {
-  COMPONENT_STATUS_COLORS,
-  COMPONENT_STATUS_OPTIONS,
-  type StatusComponentStatus,
-} from './status-admin-colors'
+import { COMPONENT_STATUS_COLORS, type StatusComponentStatus } from './status-admin-colors'
+import { useComponentStatusOptions } from './status-incident-fields'
 import { FormattedMessage, useIntl } from 'react-intl'
 import type { StatusUptimeDay } from '@/lib/client/queries/status'
 import { toastError } from '@/lib/client/error-notice'
@@ -161,6 +158,7 @@ export function StatusComponentsView() {
   const [deleteComponent, setDeleteComponent] = useState<StatusComponentAdmin | null>(null)
   const [deleteGroup, setDeleteGroup] = useState<StatusComponentGroupAdmin | null>(null)
 
+  const dndId = useId()
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
@@ -254,7 +252,12 @@ export function StatusComponentsView() {
       try {
         await reorderGroups.mutateAsync(reordered.map((g) => g.id))
       } catch {
-        toast.error('Failed to reorder groups')
+        toast.error(
+          intl.formatMessage({
+            id: 'admin.status.components.toastReorderGroups',
+            defaultMessage: 'Failed to reorder groups',
+          })
+        )
         if (data) setGroups(data.groups)
       }
       return
@@ -350,7 +353,12 @@ export function StatusComponentsView() {
       }
       await reorderComponents.mutateAsync(ordered.map((c) => c.id))
     } catch {
-      toast.error('Failed to move service')
+      toast.error(
+        intl.formatMessage({
+          id: 'admin.status.components.toastMoveService',
+          defaultMessage: 'Failed to move service',
+        })
+      )
       resetFromServer()
     } finally {
       commitInFlight.current = false
@@ -361,7 +369,12 @@ export function StatusComponentsView() {
     try {
       await setStatusMutation.mutateAsync({ id: componentId, status })
     } catch {
-      toast.error('Failed to update status')
+      toast.error(
+        intl.formatMessage({
+          id: 'admin.status.components.toastUpdateStatus',
+          defaultMessage: 'Failed to update status',
+        })
+      )
     }
   }
 
@@ -369,7 +382,12 @@ export function StatusComponentsView() {
     try {
       await updateComponentMutation.mutateAsync({ id: component.id, showUptime: checked })
     } catch {
-      toast.error('Failed to update service')
+      toast.error(
+        intl.formatMessage({
+          id: 'admin.status.components.toastUpdateService',
+          defaultMessage: 'Failed to update service',
+        })
+      )
     }
   }
 
@@ -378,7 +396,13 @@ export function StatusComponentsView() {
     try {
       await deleteComponentMutation.mutateAsync(deleteComponent.id)
     } catch (error) {
-      toastError(error, 'Failed to delete service')
+      toastError(
+        error,
+        intl.formatMessage({
+          id: 'admin.status.components.toastDeleteService',
+          defaultMessage: 'Failed to delete service',
+        })
+      )
     } finally {
       setDeleteComponent(null)
     }
@@ -389,7 +413,13 @@ export function StatusComponentsView() {
     try {
       await deleteGroupMutation.mutateAsync(deleteGroup.id)
     } catch (error) {
-      toastError(error, 'Failed to delete group')
+      toastError(
+        error,
+        intl.formatMessage({
+          id: 'admin.status.components.toastDeleteGroup',
+          defaultMessage: 'Failed to delete group',
+        })
+      )
     } finally {
       setDeleteGroup(null)
     }
@@ -400,12 +430,18 @@ export function StatusComponentsView() {
       <AdminListHeader
         searchValue={search}
         onSearchChange={setSearch}
-        searchPlaceholder="Search services..."
+        searchPlaceholder={intl.formatMessage({
+          id: 'admin.status.components.searchPlaceholder',
+          defaultMessage: 'Search services...',
+        })}
         action={
           <>
             <Button variant="outline" size="sm" onClick={() => setCreateGroupDialogOpen(true)}>
               <PlusIcon className="h-4 w-4" />
-              New group
+              {intl.formatMessage({
+                id: 'admin.status.components.newGroup',
+                defaultMessage: 'New group',
+              })}
             </Button>
             <NewButton noun="service" onClick={() => setCreateGroupId(null)} />
           </>
@@ -428,6 +464,7 @@ export function StatusComponentsView() {
       ) : (
         <div className="p-3 space-y-4">
           <DndContext
+            id={dndId}
             sensors={sensors}
             collisionDetection={closestCorners}
             onDragStart={handleDragStart}
@@ -547,9 +584,18 @@ export function StatusComponentsView() {
           <ConfirmDialog
             open={!!deleteComponent}
             onOpenChange={(o) => !o && setDeleteComponent(null)}
-            title="Delete service?"
-            description={`Are you sure you want to delete "${deleteComponent?.name}"? This cannot be undone.`}
-            confirmLabel="Delete"
+            title={intl.formatMessage({
+              id: 'admin.status.components.deleteServiceTitle',
+              defaultMessage: 'Delete service?',
+            })}
+            description={intl.formatMessage(
+              {
+                id: 'admin.status.confirm.deleteDescription',
+                defaultMessage: 'Are you sure you want to delete "{name}"? This cannot be undone.',
+              },
+              { name: deleteComponent?.name }
+            )}
+            confirmLabel={intl.formatMessage({ id: 'common.delete', defaultMessage: 'Delete' })}
             variant="destructive"
             isPending={deleteComponentMutation.isPending}
             onConfirm={confirmDeleteComponent}
@@ -558,9 +604,19 @@ export function StatusComponentsView() {
           <ConfirmDialog
             open={!!deleteGroup}
             onOpenChange={(o) => !o && setDeleteGroup(null)}
-            title="Delete group?"
-            description={`Are you sure you want to delete "${deleteGroup?.name}"? Components in this group will become ungrouped.`}
-            confirmLabel="Delete"
+            title={intl.formatMessage({
+              id: 'admin.status.components.deleteGroupTitle',
+              defaultMessage: 'Delete group?',
+            })}
+            description={intl.formatMessage(
+              {
+                id: 'admin.status.components.deleteGroupDescription',
+                defaultMessage:
+                  'Are you sure you want to delete "{name}"? Components in this group will become ungrouped.',
+              },
+              { name: deleteGroup?.name }
+            )}
+            confirmLabel={intl.formatMessage({ id: 'common.delete', defaultMessage: 'Delete' })}
             variant="destructive"
             isPending={deleteGroupMutation.isPending}
             onConfirm={confirmDeleteGroup}
@@ -574,6 +630,7 @@ export function StatusComponentsView() {
 /** Drop target for pulling a service out of every group when the ungrouped
  *  section has no rows to drop onto. Only rendered mid-drag. */
 function UngroupedDropZone() {
+  const intl = useIntl()
   const { setNodeRef, isOver } = useDroppable({ id: '__ungrouped__' })
   return (
     <div
@@ -584,7 +641,10 @@ function UngroupedDropZone() {
           : 'border-border/60 text-muted-foreground'
       }`}
     >
-      Drop here to remove from its group
+      {intl.formatMessage({
+        id: 'admin.status.components.dropZone',
+        defaultMessage: 'Drop here to remove from its group',
+      })}
     </div>
   )
 }
@@ -600,6 +660,7 @@ function SortableGroupHeader({
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging, isOver } =
     useSortable({ id: group.id })
+  const intl = useIntl()
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
@@ -628,7 +689,10 @@ function SortableGroupHeader({
           size="icon"
           className="h-7 w-7"
           onClick={onAddComponent}
-          title="Add service"
+          title={intl.formatMessage({
+            id: 'admin.status.components.addServiceTitle',
+            defaultMessage: 'Add service',
+          })}
         >
           <PlusIcon className="h-3.5 w-3.5" />
         </Button>
@@ -637,7 +701,10 @@ function SortableGroupHeader({
           size="icon"
           className="h-7 w-7 text-muted-foreground hover:text-destructive"
           onClick={onDelete}
-          title="Delete group"
+          title={intl.formatMessage({
+            id: 'admin.status.components.deleteGroupAction',
+            defaultMessage: 'Delete group',
+          })}
         >
           <TrashIcon className="h-3.5 w-3.5" />
         </Button>
@@ -649,12 +716,19 @@ function SortableGroupHeader({
 /** Compact 90-day uptime readout: the same data the public page renders,
  *  trimmed to the last 45 day-bars plus the window average. */
 function UptimeStrip({ days }: { days: StatusUptimeDay[] }) {
+  const intl = useIntl()
   const shown = days.slice(-45)
   const avg = days.length > 0 ? days.reduce((sum, d) => sum + d.uptimePct, 0) / days.length : 100
   return (
     <div
       className="hidden md:flex items-center gap-1.5 shrink-0"
-      title={`${avg.toFixed(2)}% uptime over ${days.length} days`}
+      title={intl.formatMessage(
+        {
+          id: 'admin.status.components.uptimeTooltip',
+          defaultMessage: '{percent}% uptime over {days} days',
+        },
+        { percent: avg.toFixed(2), days: days.length }
+      )}
     >
       <div className="flex items-end gap-px h-3.5">
         {shown.map((d) => (
@@ -692,6 +766,8 @@ function SortableComponentRow({
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: component.id,
   })
+  const intl = useIntl()
+  const statusOptions = useComponentStatusOptions()
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
@@ -719,7 +795,13 @@ function SortableComponentRow({
           {component.segmentIds.length > 0 && (
             <span className="inline-flex items-center gap-1 rounded-full bg-violet-500/10 text-violet-600 dark:text-violet-400 px-2 py-0.5 text-[11px] font-medium">
               <UsersIcon className="h-2.5 w-2.5" />
-              {component.segmentIds.length} segment{component.segmentIds.length === 1 ? '' : 's'}
+              {intl.formatMessage(
+                {
+                  id: 'admin.status.components.segmentCount',
+                  defaultMessage: '{count, plural, =1 {1 segment} other {# segments}}',
+                },
+                { count: component.segmentIds.length }
+              )}
             </span>
           )}
         </div>
@@ -734,27 +816,41 @@ function SortableComponentRow({
 
       <StatusSelect
         value={component.status}
-        options={COMPONENT_STATUS_OPTIONS}
+        options={statusOptions}
         onChange={(v) => onStatusChange(component.id, v as StatusComponentStatus)}
       />
 
       <div className="opacity-0 group-hover:opacity-100 transition-opacity">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-7 w-7" title="Service actions">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              title={intl.formatMessage({
+                id: 'admin.status.components.serviceActions',
+                defaultMessage: 'Service actions',
+              })}
+            >
               <EllipsisHorizontalIcon className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem onClick={onEdit}>
               <PencilSquareIcon className="mr-2 h-4 w-4" />
-              Edit service
+              {intl.formatMessage({
+                id: 'admin.status.components.editService',
+                defaultMessage: 'Edit service',
+              })}
             </DropdownMenuItem>
             <DropdownMenuCheckboxItem
               checked={component.showUptime}
               onCheckedChange={(c) => onUptimeToggle(component, c === true)}
             >
-              Show uptime bar
+              {intl.formatMessage({
+                id: 'admin.status.components.showUptimeBar',
+                defaultMessage: 'Show uptime bar',
+              })}
             </DropdownMenuCheckboxItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
@@ -762,7 +858,10 @@ function SortableComponentRow({
               className="text-destructive focus:text-destructive"
             >
               <TrashIcon className="mr-2 h-4 w-4" />
-              Delete service
+              {intl.formatMessage({
+                id: 'admin.status.components.deleteService',
+                defaultMessage: 'Delete service',
+              })}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -778,6 +877,7 @@ function CreateGroupDialog({
   open: boolean
   onOpenChange: (open: boolean) => void
 }) {
+  const intl = useIntl()
   const [name, setName] = useState('')
   const createGroup = useCreateStatusGroup()
 
@@ -792,7 +892,13 @@ function CreateGroupDialog({
       await createGroup.mutateAsync({ name: name.trim() })
       onOpenChange(false)
     } catch (error) {
-      toastError(error, 'Failed to create group')
+      toastError(
+        error,
+        intl.formatMessage({
+          id: 'admin.status.components.toastCreateGroup',
+          defaultMessage: 'Failed to create group',
+        })
+      )
     }
   }
 
@@ -800,29 +906,50 @@ function CreateGroupDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>New group</DialogTitle>
+          <DialogTitle>
+            {intl.formatMessage({
+              id: 'admin.status.components.newGroup',
+              defaultMessage: 'New group',
+            })}
+          </DialogTitle>
           <DialogDescription>
-            Groups organize related services on the status page.
+            {intl.formatMessage({
+              id: 'admin.status.components.newGroupDescription',
+              defaultMessage: 'Groups organize related services on the status page.',
+            })}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="group-name">Name</Label>
+            <Label htmlFor="group-name">
+              {intl.formatMessage({ id: 'admin.status.field.name', defaultMessage: 'Name' })}
+            </Label>
             <Input
               id="group-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g., Infrastructure"
+              placeholder={intl.formatMessage({
+                id: 'admin.status.components.groupNamePlaceholder',
+                defaultMessage: 'e.g., Infrastructure',
+              })}
               required
               autoFocus
             />
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
+              {intl.formatMessage({ id: 'common.cancel', defaultMessage: 'Cancel' })}
             </Button>
             <Button type="submit" disabled={!name.trim() || createGroup.isPending}>
-              {createGroup.isPending ? 'Creating…' : 'Create group'}
+              {createGroup.isPending
+                ? intl.formatMessage({
+                    id: 'admin.status.action.creating',
+                    defaultMessage: 'Creating…',
+                  })
+                : intl.formatMessage({
+                    id: 'admin.status.components.createGroup',
+                    defaultMessage: 'Create group',
+                  })}
             </Button>
           </DialogFooter>
         </form>
@@ -846,6 +973,7 @@ function ComponentFormDialog({
   component?: StatusComponentAdmin | null
   defaultGroupId?: string | null
 }) {
+  const intl = useIntl()
   const [values, setValues] = useState<ComponentFormValues>(EMPTY_FORM)
   const segmentsQuery = useSegments()
   const createComponent = useCreateStatusComponent()
@@ -891,7 +1019,13 @@ function ComponentFormDialog({
       }
       onOpenChange(false)
     } catch (error) {
-      toastError(error, 'Failed to save service')
+      toastError(
+        error,
+        intl.formatMessage({
+          id: 'admin.status.components.toastSaveService',
+          defaultMessage: 'Failed to save service',
+        })
+      )
     }
   }
 
@@ -899,33 +1033,58 @@ function ComponentFormDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>{mode === 'edit' ? 'Edit service' : 'New service'}</DialogTitle>
+          <DialogTitle>
+            {mode === 'edit'
+              ? intl.formatMessage({
+                  id: 'admin.status.components.editService',
+                  defaultMessage: 'Edit service',
+                })
+              : intl.formatMessage({
+                  id: 'admin.status.components.newService',
+                  defaultMessage: 'New service',
+                })}
+          </DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="component-name">Name</Label>
+            <Label htmlFor="component-name">
+              {intl.formatMessage({ id: 'admin.status.field.name', defaultMessage: 'Name' })}
+            </Label>
             <Input
               id="component-name"
               value={values.name}
               onChange={(e) => setValues((v) => ({ ...v, name: e.target.value }))}
-              placeholder="e.g., API"
+              placeholder={intl.formatMessage({
+                id: 'admin.status.components.namePlaceholder',
+                defaultMessage: 'e.g., API',
+              })}
               required
               autoFocus
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="component-description">Description</Label>
+            <Label htmlFor="component-description">
+              {intl.formatMessage({
+                id: 'admin.status.field.description',
+                defaultMessage: 'Description',
+              })}
+            </Label>
             <Textarea
               id="component-description"
               value={values.description}
               onChange={(e) => setValues((v) => ({ ...v, description: e.target.value }))}
-              placeholder="Optional, shown as a tooltip on the public page"
+              placeholder={intl.formatMessage({
+                id: 'admin.status.components.descriptionPlaceholder',
+                defaultMessage: 'Optional, shown as a tooltip on the public page',
+              })}
             />
           </div>
 
           <div className="space-y-2">
-            <Label>Group</Label>
+            <Label>
+              {intl.formatMessage({ id: 'admin.status.field.group', defaultMessage: 'Group' })}
+            </Label>
             <Select
               value={values.groupId ?? '__none__'}
               onValueChange={(v) =>
@@ -936,7 +1095,12 @@ function ComponentFormDialog({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="__none__">No group</SelectItem>
+                <SelectItem value="__none__">
+                  {intl.formatMessage({
+                    id: 'admin.status.components.noGroup',
+                    defaultMessage: 'No group',
+                  })}
+                </SelectItem>
                 {groups.map((g) => (
                   <SelectItem key={g.id} value={g.id}>
                     {g.name}
@@ -947,7 +1111,12 @@ function ComponentFormDialog({
           </div>
 
           <div className="flex items-center justify-between">
-            <Label>Show uptime bar</Label>
+            <Label>
+              {intl.formatMessage({
+                id: 'admin.status.components.showUptimeBar',
+                defaultMessage: 'Show uptime bar',
+              })}
+            </Label>
             <Switch
               checked={values.showUptime}
               onCheckedChange={(c) => setValues((v) => ({ ...v, showUptime: c }))}
@@ -955,12 +1124,26 @@ function ComponentFormDialog({
           </div>
 
           <div className="space-y-2">
-            <Label>Restrict to segments</Label>
+            <Label>
+              {intl.formatMessage({
+                id: 'admin.status.components.restrictSegments',
+                defaultMessage: 'Restrict to segments',
+              })}
+            </Label>
             <p className="text-xs text-muted-foreground">
-              Leave empty to show this service to everyone who can view the status page.
+              {intl.formatMessage({
+                id: 'admin.status.components.restrictSegmentsHint',
+                defaultMessage:
+                  'Leave empty to show this service to everyone who can view the status page.',
+              })}
             </p>
             {segmentsQuery.isLoading ? (
-              <p className="text-xs text-muted-foreground">Loading segments…</p>
+              <p className="text-xs text-muted-foreground">
+                {intl.formatMessage({
+                  id: 'admin.status.components.loadingSegments',
+                  defaultMessage: 'Loading segments…',
+                })}
+              </p>
             ) : (
               <SegmentMultiSelect
                 segments={segmentsQuery.data ?? []}
@@ -972,10 +1155,23 @@ function ComponentFormDialog({
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
+              {intl.formatMessage({ id: 'common.cancel', defaultMessage: 'Cancel' })}
             </Button>
             <Button type="submit" disabled={!values.name.trim() || isPending}>
-              {isPending ? 'Saving…' : mode === 'edit' ? 'Save changes' : 'Create service'}
+              {isPending
+                ? intl.formatMessage({
+                    id: 'admin.status.action.saving',
+                    defaultMessage: 'Saving…',
+                  })
+                : mode === 'edit'
+                  ? intl.formatMessage({
+                      id: 'admin.status.action.saveChanges',
+                      defaultMessage: 'Save changes',
+                    })
+                  : intl.formatMessage({
+                      id: 'admin.status.components.createService',
+                      defaultMessage: 'Create service',
+                    })}
             </Button>
           </DialogFooter>
         </form>

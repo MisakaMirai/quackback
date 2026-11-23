@@ -35,8 +35,10 @@ import {
   ExclamationTriangleIcon,
   MinusCircleIcon,
 } from '@heroicons/react/24/solid'
+import type { IntlShape, MessageDescriptor } from 'react-intl'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import {
   Dialog,
@@ -113,6 +115,7 @@ export function SsoTestSignInProvider({ children }: { children: ReactNode }) {
   const startTest = useServerFn(startSsoTestFn)
   const pollResult = useServerFn(getSsoTestResultFn)
   const queryClient = useQueryClient()
+  const intl = useOptionalIntl()
   const [state, dispatch] = useReducer(ssoTestReducer, initialSsoTestState)
   const [applying, setApplying] = useState(false)
   const [lastSuccess, setLastSuccess] = useState<SsoTestCapture | null>(null)
@@ -150,7 +153,10 @@ export function SsoTestSignInProvider({ children }: { children: ReactNode }) {
       clearPoll()
       dispatch({
         type: 'failed',
-        error: 'You closed the popup before sign-in finished. Try again.',
+        error: intl.formatMessage({
+          id: 'admin.settings.security.ssoTest.popupClosed',
+          defaultMessage: 'You closed the popup before sign-in finished. Try again.',
+        }),
       })
     },
   })
@@ -169,13 +175,19 @@ export function SsoTestSignInProvider({ children }: { children: ReactNode }) {
     } catch (err) {
       dispatch({
         type: 'failed',
-        error: err instanceof Error ? err.message : 'Could not apply the change.',
+        error:
+          err instanceof Error
+            ? err.message
+            : intl.formatMessage({
+                id: 'admin.settings.security.ssoTest.applyFailed',
+                defaultMessage: 'Could not apply the change.',
+              }),
       })
     } finally {
       setApplying(false)
       onSuccessRef.current = null
     }
-  }, [])
+  }, [intl])
 
   // Shared resolution path for the postMessage and poll routes: stop the
   // trackers, record the result, and kick off the gate's auto-apply.
@@ -262,12 +274,18 @@ export function SsoTestSignInProvider({ children }: { children: ReactNode }) {
     } catch (err) {
       dispatch({
         type: 'failed',
-        error: err instanceof Error ? err.message : 'Could not apply the change.',
+        error:
+          err instanceof Error
+            ? err.message
+            : intl.formatMessage({
+                id: 'admin.settings.security.ssoTest.applyFailed',
+                defaultMessage: 'Could not apply the change.',
+              }),
       })
     } finally {
       setApplying(false)
     }
-  }, [successAction])
+  }, [successAction, intl])
 
   const handleStart = useCallback(async () => {
     dispatch({ type: 'start' })
@@ -277,19 +295,28 @@ export function SsoTestSignInProvider({ children }: { children: ReactNode }) {
     } catch (err) {
       dispatch({
         type: 'failed',
-        error: err instanceof Error ? err.message : "Couldn't start the test.",
+        error:
+          err instanceof Error
+            ? err.message
+            : intl.formatMessage({
+                id: 'admin.settings.security.ssoTest.startFailed',
+                defaultMessage: "Couldn't start the test.",
+              }),
       })
       return
     }
     if ('error' in r) {
-      dispatch({ type: 'failed', error: friendlyStartError(r.error) })
+      dispatch({ type: 'failed', error: friendlyStartError(intl, r.error) })
       return
     }
     const popup = openAuthPopup(r.authorizeUrl)
     if (!popup) {
       dispatch({
         type: 'failed',
-        error: 'Your browser blocked the popup. Allow popups and try again.',
+        error: intl.formatMessage({
+          id: 'admin.settings.security.ssoTest.popupBlocked',
+          defaultMessage: 'Your browser blocked the popup. Allow popups and try again.',
+        }),
       })
       return
     }
@@ -303,7 +330,11 @@ export function SsoTestSignInProvider({ children }: { children: ReactNode }) {
         clearPopup()
         dispatch({
           type: 'failed',
-          error: "Sign-in didn't finish in time. Try again, or check your IdP's redirect URI.",
+          error: intl.formatMessage({
+            id: 'admin.settings.security.ssoTest.timeout',
+            defaultMessage:
+              "Sign-in didn't finish in time. Try again, or check your IdP's redirect URI.",
+          }),
         })
         return
       }
@@ -322,7 +353,7 @@ export function SsoTestSignInProvider({ children }: { children: ReactNode }) {
         // Transient poll error — the popup may still postMessage.
       }
     }, POLL_INTERVAL_MS)
-  }, [startTest, pollResult, trackPopup, clearPoll, clearPopup, resolveTest])
+  }, [startTest, pollResult, trackPopup, clearPoll, clearPopup, resolveTest, intl])
 
   return (
     <SsoTestSignInContext.Provider value={{ open, lastSuccess, lastCapture }}>
@@ -355,6 +386,7 @@ function SsoTestSignInModal({
   onClose: () => void
 }) {
   const { phase, reason, result, error, identityMatched, appliedMessage } = state
+  const intl = useOptionalIntl()
   return (
     <Dialog
       open={phase !== 'closed'}
@@ -367,8 +399,13 @@ function SsoTestSignInModal({
     >
       <DialogContent className="flex max-h-[calc(100dvh-2rem)] flex-col gap-0 p-0 sm:max-w-lg">
         <DialogHeader className="shrink-0 px-6 pt-6 pb-2">
-          <DialogTitle>Test sign-in</DialogTitle>
-          <DialogDescription>{describeModalState(state, applying)}</DialogDescription>
+          <DialogTitle>
+            {intl.formatMessage({
+              id: 'admin.settings.security.idp.testSignIn',
+              defaultMessage: 'Test sign-in',
+            })}
+          </DialogTitle>
+          <DialogDescription>{describeModalState(intl, state, applying)}</DialogDescription>
         </DialogHeader>
         <div className="flex-1 overflow-y-auto px-6 pb-2">
           <ModalBody
@@ -460,14 +497,18 @@ function ModalFooter({
   onStart: () => void
   onClose: () => void
 }) {
+  const intl = useOptionalIntl()
   if (phase === 'prompt') {
     return (
       <>
         <Button variant="outline" size="sm" onClick={onClose}>
-          Cancel
+          {intl.formatMessage({ id: 'common.cancel', defaultMessage: 'Cancel' })}
         </Button>
         <Button size="sm" onClick={onStart}>
-          Start test sign-in
+          {intl.formatMessage({
+            id: 'admin.settings.security.ssoTest.startButton',
+            defaultMessage: 'Start test sign-in',
+          })}
         </Button>
       </>
     )
@@ -475,23 +516,31 @@ function ModalFooter({
   if (phase === 'testing') {
     return (
       <Button variant="outline" size="sm" onClick={onClose}>
-        Cancel
+        {intl.formatMessage({ id: 'common.cancel', defaultMessage: 'Cancel' })}
       </Button>
     )
   }
   return (
     <>
       <Button variant="outline" size="sm" onClick={onClose} disabled={applying}>
-        Close
+        {intl.formatMessage({ id: 'ui.close', defaultMessage: 'Close' })}
       </Button>
       {hasResultOrError && !applying && !applied && (
         <Button size="sm" variant={successAction ? 'outline' : 'default'} onClick={onStart}>
-          Try again
+          {intl.formatMessage({
+            id: 'common.tryAgain',
+            defaultMessage: 'Try again',
+          })}
         </Button>
       )}
       {successAction && !applied && (
         <Button size="sm" onClick={onSuccessAction} disabled={applying}>
-          {applying ? 'Applying…' : successAction.label}
+          {applying
+            ? intl.formatMessage({
+                id: 'admin.settings.security.ssoTest.applying',
+                defaultMessage: 'Applying…',
+              })
+            : successAction.label}
         </Button>
       )}
     </>
@@ -499,6 +548,7 @@ function ModalFooter({
 }
 
 function PromptState({ reason }: { reason: string | null }) {
+  const intl = useOptionalIntl()
   return (
     <div className="space-y-3 py-2">
       {reason ? (
@@ -508,62 +558,145 @@ function PromptState({ reason }: { reason: string | null }) {
         </Alert>
       ) : null}
       <p className="text-sm text-muted-foreground">
-        We&apos;ll open your IdP in a popup. Nothing changes until the test passes.
+        {intl.formatMessage({
+          id: 'admin.settings.security.ssoTest.promptBody',
+          defaultMessage: "We'll open your IdP in a popup. Nothing changes until the test passes.",
+        })}
       </p>
     </div>
   )
 }
 
 function WaitingState() {
+  const intl = useOptionalIntl()
   return (
     <div className="flex flex-col items-center gap-3 py-10 text-center">
       <ArrowPathIcon className="h-6 w-6 animate-spin text-muted-foreground" />
       <div className="space-y-1">
-        <p className="text-sm font-medium">Waiting for sign-in</p>
-        <p className="text-xs text-muted-foreground">Finish signing in in the popup.</p>
+        <p className="text-sm font-medium">
+          {intl.formatMessage({
+            id: 'admin.settings.security.ssoTest.waiting.title',
+            defaultMessage: 'Waiting for sign-in',
+          })}
+        </p>
+        <p className="text-xs text-muted-foreground">
+          {intl.formatMessage({
+            id: 'admin.settings.security.ssoTest.finishInPopup',
+            defaultMessage: 'Finish signing in in the popup.',
+          })}
+        </p>
       </div>
     </div>
   )
 }
 
 /** Modal description copy for the current phase. */
-function describeModalState(state: ReturnType<typeof ssoTestReducer>, applying: boolean): string {
-  if (applying) return 'Sign-in works. Applying…'
+function describeModalState(
+  intl: IntlShape,
+  state: ReturnType<typeof ssoTestReducer>,
+  applying: boolean
+): string {
+  if (applying) {
+    return intl.formatMessage({
+      id: 'admin.settings.security.ssoTest.applyingDescription',
+      defaultMessage: 'Sign-in works. Applying…',
+    })
+  }
   if (state.phase === 'prompt') {
     return state.reason
-      ? 'Verify your SSO connection first.'
-      : 'Check that your SSO connection works.'
+      ? intl.formatMessage({
+          id: 'admin.settings.security.ssoTest.verifyFirst',
+          defaultMessage: 'Verify your SSO connection first.',
+        })
+      : intl.formatMessage({
+          id: 'admin.settings.security.ssoTest.checkConnection',
+          defaultMessage: 'Check that your SSO connection works.',
+        })
   }
-  if (state.phase === 'testing') return 'Finish signing in in the popup.'
+  if (state.phase === 'testing') {
+    return intl.formatMessage({
+      id: 'admin.settings.security.ssoTest.finishInPopup',
+      defaultMessage: 'Finish signing in in the popup.',
+    })
+  }
   if (state.result) {
-    return state.result.ok ? 'Your SSO connection works.' : "Sign-in didn't complete."
+    return state.result.ok
+      ? intl.formatMessage({
+          id: 'admin.settings.security.ssoTest.worksDescription',
+          defaultMessage: 'Your SSO connection works.',
+        })
+      : intl.formatMessage({
+          id: 'admin.settings.security.ssoTest.incompleteDescription',
+          defaultMessage: "Sign-in didn't complete.",
+        })
   }
-  if (state.error) return 'Sign-in failed.'
-  return 'Check that your SSO connection works.'
+  if (state.error) {
+    return intl.formatMessage({
+      id: 'admin.settings.security.ssoTest.failedDescription',
+      defaultMessage: 'Sign-in failed.',
+    })
+  }
+  return intl.formatMessage({
+    id: 'admin.settings.security.ssoTest.checkConnection',
+    defaultMessage: 'Check that your SSO connection works.',
+  })
 }
 
-function friendlyStartError(error: string): string {
+function friendlyStartError(intl: IntlShape, error: string): string {
   switch (error) {
     case 'sso-not-configured':
-      return 'Add your discovery URL and client ID first.'
+      return intl.formatMessage({
+        id: 'admin.settings.security.ssoTest.startError.noConfig',
+        defaultMessage: 'Add your discovery URL and client ID first.',
+      })
     case 'no-secret':
-      return 'Add your client secret first.'
+      return intl.formatMessage({
+        id: 'admin.settings.security.ssoTest.startError.noSecret',
+        defaultMessage: 'Add your client secret first.',
+      })
     case 'discovery-unreachable':
-      return "We couldn't reach your IdP. Check that your discovery URL is correct."
+      return intl.formatMessage({
+        id: 'admin.settings.security.ssoTest.startError.discoveryUnreachable',
+        defaultMessage: "We couldn't reach your IdP. Check that your discovery URL is correct.",
+      })
     default:
       return error
   }
 }
 
-const STAGE_LABELS: Record<string, string> = {
-  'state-validation': 'State validation',
-  'idp-authorize': 'IdP authorize',
-  'discovery-fetch': 'Discovery fetch',
-  'token-exchange': 'Token exchange',
-  'id-token-decode': 'ID token decode',
-  'signature-verify': 'Signature verify',
-  'claim-check': 'Claim check',
-  userinfo: 'Userinfo',
+const STAGE_MESSAGES: Record<string, MessageDescriptor> = {
+  'state-validation': {
+    id: 'admin.settings.security.ssoTest.stage.stateValidation',
+    defaultMessage: 'State validation',
+  },
+  'idp-authorize': {
+    id: 'admin.settings.security.ssoTest.stage.idpAuthorize',
+    defaultMessage: 'IdP authorize',
+  },
+  'discovery-fetch': {
+    id: 'admin.settings.security.ssoTest.stage.discoveryFetch',
+    defaultMessage: 'Discovery fetch',
+  },
+  'token-exchange': {
+    id: 'admin.settings.security.ssoTest.stage.tokenExchange',
+    defaultMessage: 'Token exchange',
+  },
+  'id-token-decode': {
+    id: 'admin.settings.security.ssoTest.stage.idTokenDecode',
+    defaultMessage: 'ID token decode',
+  },
+  'signature-verify': {
+    id: 'admin.settings.security.ssoTest.stage.signatureVerify',
+    defaultMessage: 'Signature verify',
+  },
+  'claim-check': {
+    id: 'admin.settings.security.ssoTest.stage.claimCheck',
+    defaultMessage: 'Claim check',
+  },
+  userinfo: {
+    id: 'admin.settings.security.ssoTest.stage.userinfo',
+    defaultMessage: 'Userinfo',
+  },
 }
 
 function StepList({ steps }: { steps: WireResult['steps'] }) {
@@ -596,12 +729,16 @@ function TestResultPanel({
   result: WireResult
   identityMatched: boolean | undefined
 }) {
+  const intl = useOptionalIntl()
   if (result.ok) {
     return (
       <div className="rounded-md border border-success/30 bg-success/5 p-3 space-y-2">
         <div className="flex items-center gap-2 text-sm font-medium text-success">
           <CheckCircleIcon className="h-4 w-4" />
-          Sign-in works
+          {intl.formatMessage({
+            id: 'admin.settings.security.ssoTest.result.works',
+            defaultMessage: 'Sign-in works',
+          })}
         </div>
         <StepList steps={result.steps} />
         {/* Identity is informational only — it doesn't gate anything.
@@ -609,8 +746,14 @@ function TestResultPanel({
          *  wrong account, but the SSO connection itself is verified. */}
         {identityMatched === false && result.claims.email ? (
           <div className="rounded border border-muted bg-muted/30 p-2 text-xs text-muted-foreground">
-            Tested as {result.claims.email}, a different account than yours. The connection still
-            works.
+            {intl.formatMessage(
+              {
+                id: 'admin.settings.security.ssoTest.result.otherAccount',
+                defaultMessage:
+                  'Tested as {email}, a different account than yours. The connection still works.',
+              },
+              { email: result.claims.email }
+            )}
           </div>
         ) : null}
         <ClaimList
@@ -629,7 +772,17 @@ function TestResultPanel({
     <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 space-y-2">
       <div className="flex items-center gap-2 text-sm font-medium text-destructive">
         <ExclamationTriangleIcon className="h-4 w-4" />
-        Stopped at: {STAGE_LABELS[result.stage] ?? result.stage}
+        {intl.formatMessage(
+          {
+            id: 'admin.settings.security.ssoTest.result.stoppedAt',
+            defaultMessage: 'Stopped at: {stage}',
+          },
+          {
+            stage: STAGE_MESSAGES[result.stage]
+              ? intl.formatMessage(STAGE_MESSAGES[result.stage])
+              : result.stage,
+          }
+        )}
         {result.errorCode && (
           <code className="ml-1 text-[11px] text-muted-foreground">({result.errorCode})</code>
         )}
@@ -661,10 +814,20 @@ function ClaimList({
   tokenInfo: Record<string, unknown>
   bound: { sub?: string; email?: string; name?: string }
 }) {
-  const boundFor = (key: string, value: unknown): string | null => {
-    if (key === 'sub' || value === bound.sub) return 'Account ID'
-    if (bound.email !== undefined && value === bound.email) return 'Email'
-    if (bound.name !== undefined && value === bound.name) return 'Name'
+  const intl = useOptionalIntl()
+  const boundFor = (key: string, value: unknown): MessageDescriptor | null => {
+    if (key === 'sub' || value === bound.sub) {
+      return {
+        id: 'admin.settings.security.ssoTest.claim.accountId',
+        defaultMessage: 'Account ID',
+      }
+    }
+    if (bound.email !== undefined && value === bound.email) {
+      return { id: 'admin.settings.security.ssoTest.claim.email', defaultMessage: 'Email' }
+    }
+    if (bound.name !== undefined && value === bound.name) {
+      return { id: 'admin.settings.security.ssoTest.claim.name', defaultMessage: 'Name' }
+    }
     return null
   }
 
@@ -673,7 +836,14 @@ function ClaimList({
   return (
     <details className="text-xs">
       <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
-        Show the {entries.length} claims your IdP returned
+        {intl.formatMessage(
+          {
+            id: 'admin.settings.security.ssoTest.claims.show',
+            defaultMessage:
+              'Show the {count, plural, one {# claim} other {# claims}} your IdP returned',
+          },
+          { count: entries.length }
+        )}
       </summary>
       <div className="mt-2 space-y-1">
         {entries.map(([key, value]) => {
@@ -689,7 +859,7 @@ function ClaimList({
               </span>
               {role && (
                 <Badge variant="outline" size="sm" className="shrink-0">
-                  {role}
+                  {intl.formatMessage(role)}
                 </Badge>
               )}
             </div>

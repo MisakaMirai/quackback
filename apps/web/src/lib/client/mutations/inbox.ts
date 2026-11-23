@@ -82,7 +82,6 @@ export function useCreateTicket() {
           assigneePrincipalId: input.assigneePrincipalId ?? undefined,
           conversationId: input.sourceConversationId ?? undefined,
           priority: input.priority,
-          companyId: input.companyId ?? undefined,
           customAttributes: input.customAttributes,
         },
       }),

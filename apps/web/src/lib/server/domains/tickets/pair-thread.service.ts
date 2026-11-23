@@ -57,14 +57,6 @@
  * no-requester/soft-deleted legacy edge. Agent-view
  * enrichment (reactions/flags) stays layered in ticket-message.service's
  * `listTicketMessagesForAgent`.
- *
- * PHASE 2 — assistant-turn flagging. `isAssistant` resolves here exactly the
- * way the conversation view does (`listMessages`): the shared memoized
- * assistant-principal lookup (messages/assistant-principal) is passed to
- * `toMessageDTO`, so Quinn's turns carry the AI flag on BOTH parents of the
- * pair — a Quinn reply read through the ticket-side union renders identically
- * to the same row in the conversation view (agent pair view, and the
- * requester surfaces that already render the flag).
  */
 import {
   db,
@@ -83,7 +75,6 @@ import {
 import type { ConversationId, ConversationMessageId, TicketId } from '@quackback/ids'
 import type { ConversationMessageDTO } from '@/lib/shared/conversation/types'
 import { toMessageDTO } from '@/lib/server/messages/message-core'
-import { assistantPrincipalIdOnce } from '@/lib/server/messages/assistant-principal'
 import { loadAuthors, fallbackAuthor } from '../principals/principal-display'
 
 /** Same page size as the pre-convergence ticket thread (ticket-message.service). */
@@ -265,25 +256,19 @@ function compareNewestFirst(a: ConversationMessage, b: ConversationMessage): num
   return a.id > b.id ? -1 : a.id < b.id ? 1 : 0
 }
 
-/** Map merged rows to DTOs, tagging each with its parent's provenance. Quinn's
- *  turns are flagged (`isAssistant`) via the shared memoized assistant id —
- *  the same resolution `listMessages` applies on the conversation side. */
+/** Map merged rows to DTOs, tagging each with its parent's provenance. */
 async function toPairDtos(
   sourced: Array<{ row: ConversationMessage; source: PairThreadMessageSource }>,
   preferAccountName: boolean
 ): Promise<PairThreadMessageDTO[]> {
-  const [authors, assistantPrincipalId] = await Promise.all([
-    loadAuthors(
-      sourced.map((s) => s.row.principalId),
-      { preferAccountName }
-    ),
-    assistantPrincipalIdOnce(),
-  ])
+  const authors = await loadAuthors(
+    sourced.map((s) => s.row.principalId),
+    { preferAccountName }
+  )
   return sourced.map(({ row, source }) => ({
     ...toMessageDTO(
       row,
-      row.principalId ? (authors.get(row.principalId) ?? fallbackAuthor(row.principalId)) : null,
-      assistantPrincipalId
+      row.principalId ? (authors.get(row.principalId) ?? fallbackAuthor(row.principalId)) : null
     ),
     source,
   }))

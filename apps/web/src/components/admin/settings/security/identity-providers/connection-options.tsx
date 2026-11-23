@@ -20,6 +20,7 @@ import { useServerFn } from '@tanstack/react-start'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { WarningBox } from '@/components/shared/warning-box'
 import {
   Select,
@@ -82,6 +83,7 @@ export function ConnectionOptions({
   children?: React.ReactNode
 }) {
   const hasManual = kind === 'other' && Object.values(manual).some((v) => v.trim() !== '')
+  const intl = useOptionalIntl()
   const [open, setOpen] = useState(
     () =>
       normalizeScopesInput(scopes) !== null ||
@@ -124,7 +126,10 @@ export function ConnectionOptions({
 
   return (
     <Disclosure
-      title="Connection options"
+      title={intl.formatMessage({
+        id: 'admin.settings.security.idp.options.title',
+        defaultMessage: 'Connection options',
+      })}
       open={open}
       onOpenChange={setOpen}
       testId="connection-options"
@@ -133,7 +138,12 @@ export function ConnectionOptions({
         {children}
 
         <div className="space-y-2">
-          <Label>Scopes</Label>
+          <Label>
+            {intl.formatMessage({
+              id: 'admin.settings.security.idp.options.scopes',
+              defaultMessage: 'Scopes',
+            })}
+          </Label>
           <div className="flex flex-wrap items-center gap-1.5">
             {scopes.map((scope) => (
               <span
@@ -143,11 +153,22 @@ export function ConnectionOptions({
               >
                 {scope}
                 {scope === REQUIRED_OIDC_SCOPE ? (
-                  <span className="text-[11px] text-muted-foreground">required</span>
+                  <span className="text-[11px] text-muted-foreground">
+                    {intl.formatMessage({
+                      id: 'admin.settings.security.idp.options.required',
+                      defaultMessage: 'required',
+                    })}
+                  </span>
                 ) : (
                   <button
                     type="button"
-                    aria-label={`Remove scope ${scope}`}
+                    aria-label={intl.formatMessage(
+                      {
+                        id: 'admin.settings.security.idp.options.removeScopeAria',
+                        defaultMessage: 'Remove scope {scope}',
+                      },
+                      { scope }
+                    )}
                     disabled={disabled}
                     onClick={() => onScopesChange(scopes.filter((s) => s !== scope))}
                     className="text-muted-foreground hover:text-destructive"
@@ -162,30 +183,49 @@ export function ConnectionOptions({
             <Input
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
-              placeholder="Add a scope"
-              aria-label="Add a scope"
+              placeholder={intl.formatMessage({
+                id: 'admin.settings.security.idp.options.addScope',
+                defaultMessage: 'Add a scope',
+              })}
+              aria-label={intl.formatMessage({
+                id: 'admin.settings.security.idp.options.addScope',
+                defaultMessage: 'Add a scope',
+              })}
               disabled={disabled}
               className="h-8 max-w-56 text-xs"
             />
             <Button type="submit" size="sm" variant="outline" disabled={disabled}>
-              Add
+              {intl.formatMessage({ id: 'common.add', defaultMessage: 'Add' })}
             </Button>
           </form>
           <p className="text-sm text-muted-foreground">
-            Custom claims can require additional scopes.
+            {intl.formatMessage({
+              id: 'admin.settings.security.idp.options.customClaimsNote',
+              defaultMessage: 'Custom claims can require additional scopes.',
+            })}
           </p>
           {unsupported.length > 0 && (
             <div data-testid="scope-mismatch-warning" className="space-y-2">
               <WarningBox
                 variant="warning"
-                title={`Your provider does not advertise ${unsupported.join(', ')}`}
-                description={
-                  <>
-                    Its discovery document lists{' '}
-                    <span className="font-mono">{(supported ?? []).join(' ')}</span>. Sign-in may be
-                    rejected until these are removed.
-                  </>
-                }
+                title={intl.formatMessage(
+                  {
+                    id: 'admin.settings.security.idp.options.unsupportedTitle',
+                    defaultMessage: 'Your provider does not advertise {scopes}',
+                  },
+                  { scopes: unsupported.join(', ') }
+                )}
+                description={intl.formatMessage(
+                  {
+                    id: 'admin.settings.security.idp.options.unsupportedBody',
+                    defaultMessage:
+                      'Its discovery document lists <code>{scopes}</code>. Sign-in may be rejected until these are removed.',
+                  },
+                  {
+                    code: (chunks) => <span className="font-mono">{chunks}</span>,
+                    scopes: (supported ?? []).join(' '),
+                  }
+                )}
               />
               <Button
                 type="button"
@@ -194,16 +234,31 @@ export function ConnectionOptions({
                 disabled={disabled}
                 onClick={() => onScopesChange(supportedSubset(scopes, supported))}
               >
-                Use advertised scopes
+                {intl.formatMessage({
+                  id: 'admin.settings.security.idp.options.useAdvertised',
+                  defaultMessage: 'Use advertised scopes',
+                })}
               </Button>
             </div>
           )}
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="idp-prompt">Sign-in prompt</Label>
+          <Label htmlFor="idp-prompt">
+            {intl.formatMessage({
+              id: 'admin.settings.security.idp.options.prompt',
+              defaultMessage: 'Sign-in prompt',
+            })}
+          </Label>
           <Select value={prompt} onValueChange={onPromptChange} disabled={disabled}>
-            <SelectTrigger id="idp-prompt" size="sm" aria-label="Sign-in prompt">
+            <SelectTrigger
+              id="idp-prompt"
+              size="sm"
+              aria-label={intl.formatMessage({
+                id: 'admin.settings.security.idp.options.prompt',
+                defaultMessage: 'Sign-in prompt',
+              })}
+            >
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -215,15 +270,33 @@ export function ConnectionOptions({
             </SelectContent>
           </Select>
           <p className="text-sm text-muted-foreground">
-            <strong>Don&apos;t send a prompt</strong> lets your provider behave normally.{' '}
-            <strong>Silent</strong> fails when nobody is signed in.
+            {intl.formatMessage(
+              {
+                id: 'admin.settings.security.idp.options.promptNote',
+                defaultMessage:
+                  "<b>Don't send a prompt</b> lets your provider behave normally. <b>Silent</b> fails when nobody is signed in.",
+              },
+              { b: (chunks) => <strong>{chunks}</strong> }
+            )}
           </p>
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="idp-token-auth">Client authentication</Label>
+          <Label htmlFor="idp-token-auth">
+            {intl.formatMessage({
+              id: 'admin.settings.security.idp.options.clientAuth',
+              defaultMessage: 'Client authentication',
+            })}
+          </Label>
           <Select value={tokenAuth} onValueChange={onTokenAuthChange} disabled={disabled}>
-            <SelectTrigger id="idp-token-auth" size="sm" aria-label="Client authentication">
+            <SelectTrigger
+              id="idp-token-auth"
+              size="sm"
+              aria-label={intl.formatMessage({
+                id: 'admin.settings.security.idp.options.clientAuth',
+                defaultMessage: 'Client authentication',
+              })}
+            >
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -235,14 +308,29 @@ export function ConnectionOptions({
             </SelectContent>
           </Select>
           <p className="text-sm text-muted-foreground">
-            Change this only if your provider rejects the token request.
+            {intl.formatMessage({
+              id: 'admin.settings.security.idp.options.clientAuthNote',
+              defaultMessage: 'Change this only if your provider rejects the token request.',
+            })}
           </p>
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="idp-id-token-nonce">ID token nonce</Label>
+          <Label htmlFor="idp-id-token-nonce">
+            {intl.formatMessage({
+              id: 'admin.settings.security.idp.options.idTokenNonce',
+              defaultMessage: 'ID token nonce',
+            })}
+          </Label>
           <Select value={idTokenNonce} onValueChange={onIdTokenNonceChange} disabled={disabled}>
-            <SelectTrigger id="idp-id-token-nonce" size="sm" aria-label="ID token nonce">
+            <SelectTrigger
+              id="idp-id-token-nonce"
+              size="sm"
+              aria-label={intl.formatMessage({
+                id: 'admin.settings.security.idp.options.idTokenNonce',
+                defaultMessage: 'ID token nonce',
+              })}
+            >
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -254,17 +342,28 @@ export function ConnectionOptions({
             </SelectContent>
           </Select>
           <p className="text-sm text-muted-foreground">
-            The connection test sets this when it can verify the ID token.
+            {intl.formatMessage({
+              id: 'admin.settings.security.idp.options.idTokenNonceNote',
+              defaultMessage: 'The connection test sets this when it can verify the ID token.',
+            })}
           </p>
         </div>
 
         {kind === 'other' && (
           <div className="space-y-3 border-t border-border/40 pt-4">
             <div>
-              <Label>Manual endpoints</Label>
+              <Label>
+                {intl.formatMessage({
+                  id: 'admin.settings.security.idp.options.manualEndpoints',
+                  defaultMessage: 'Manual endpoints',
+                })}
+              </Label>
               <p className="mt-1 text-sm text-muted-foreground">
-                Only for a provider with no discovery document. Authorization and token URLs are
-                enough to sign in; add the JWKS URI and issuer so the test can verify ID tokens.
+                {intl.formatMessage({
+                  id: 'admin.settings.security.idp.options.manualNote',
+                  defaultMessage:
+                    'Only for a provider with no discovery document. Authorization and token URLs are enough to sign in; add the JWKS URI and issuer so the test can verify ID tokens.',
+                })}
               </p>
             </div>
             <ManualEndpointsFields values={manual} disabled={disabled} onChange={onManualChange} />

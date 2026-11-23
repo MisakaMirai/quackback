@@ -10,7 +10,7 @@ import type { Actor } from '@/lib/server/policy/types'
 import { PERMISSIONS } from '@/lib/shared/permissions'
 import { z } from 'zod'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
-import type { TicketId, TicketTypeId, PrincipalId, CompanyId } from '@quackback/ids'
+import type { TicketId, TicketTypeId, PrincipalId } from '@quackback/ids'
 import type {
   TicketType,
   TicketStatusCategory,
@@ -82,18 +82,16 @@ export function registerTicketTools(server: McpServer, auth: McpAuthContext) {
     statusCategory?: TicketStatusCategory
     stage?: TicketStage
     requesterPrincipalId?: string
-    companyId?: string
     sort?: TicketSort
     limit?: number
   }>(server, auth, {
     name: 'list_tickets',
     permissions: [PERMISSIONS.TICKET_VIEW],
-    description: `List support tickets. Filter by type, registry ticket-type, internal status category, customer-facing stage, requester, or company; sort and cap with limit. A service key sees every ticket; a human caller sees the tickets their role can view.
+    description: `List support tickets. Filter by type, registry ticket-type, internal status category, customer-facing stage, or requester; sort and cap with limit. A service key sees every ticket; a human caller sees the tickets their role can view.
 
 Examples:
 - Open customer tickets: list_tickets({ type: "customer", statusCategory: "open" })
-- Tickets of one registry type: list_tickets({ ticketTypeId: "ticket_type_01abc..." })
-- A company's tickets: list_tickets({ companyId: "company_01abc..." })`,
+- Tickets of one registry type: list_tickets({ ticketTypeId: "ticket_type_01abc..." })`,
     schema: {
       type: z.enum(TICKET_TYPES).optional().describe('Filter by ticket type'),
       ticketTypeId: z
@@ -109,7 +107,6 @@ Examples:
         .string()
         .optional()
         .describe('Filter to a requester (principal TypeID)'),
-      companyId: z.string().optional().describe('Filter to a company (company TypeID)'),
       sort: z.enum(TICKET_SORTS).optional().describe('Sort order (default recent)'),
       limit: z.number().int().min(1).max(100).optional().describe('Max results (default 20)'),
     },
@@ -127,7 +124,6 @@ Examples:
           statusCategory: args.statusCategory,
           stage: args.stage,
           requesterPrincipalId: args.requesterPrincipalId as PrincipalId | undefined,
-          companyId: args.companyId as CompanyId | undefined,
           sort: args.sort,
           limit: args.limit ?? 20,
         },
@@ -216,7 +212,6 @@ Example: get_ticket({ ticketId: "ticket_01abc...", includeInternal: true })`,
           requesterPrincipalId: dto.requester?.principalId ?? null,
           assigneePrincipalId: dto.assignee.principalId,
           assigneeTeamId: dto.assignee.teamId,
-          companyId: dto.company?.id ?? null,
           firstResponseAt: dto.firstResponseAt,
           dueAt: dto.dueAt,
           resolvedAt: dto.resolvedAt,
@@ -252,7 +247,6 @@ Example: get_ticket({ ticketId: "ticket_01abc...", includeInternal: true })`,
     description?: string
     priority?: 'none' | 'low' | 'medium' | 'high' | 'urgent'
     requesterPrincipalId?: string
-    companyId?: string
   }>(server, auth, {
     name: 'create_ticket',
     permissions: [PERMISSIONS.TICKET_CREATE],
@@ -279,7 +273,6 @@ Example: create_ticket({ type: "customer", title: "Refund not received", descrip
         .string()
         .optional()
         .describe('The requester principal TypeID (optional)'),
-      companyId: z.string().optional().describe('Associated company TypeID (optional)'),
     },
     annotations: WRITE,
     scope: 'write:chat',
@@ -301,7 +294,6 @@ Example: create_ticket({ type: "customer", title: "Refund not received", descrip
           descriptionJson,
           priority: args.priority,
           requesterPrincipalId: args.requesterPrincipalId as PrincipalId | undefined,
-          companyId: args.companyId as CompanyId | undefined,
           // CONVERGENCE PHASE 1b: a customer-intake path — a CUSTOMER ticket
           // created WITH a requester gets its backing conversation + link in
           // the same transaction (createTicketCore's doc carries the

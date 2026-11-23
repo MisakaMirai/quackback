@@ -1,18 +1,17 @@
 /**
- * Cloud web → worker job-wake publisher.
+ * Web → worker job-wake publisher.
  *
- * After-commit on ROLE=web POSTs `{ workspaceKey, jobIds }` to the worker
- * private URL. Subscribes only when both the origin and
- * `QUACKBACK_FLEET_INTERNAL_TOKEN` are present. Fail-open: unset/rejected URL,
- * missing token, or POST still failing after retries, leaves the row until a
- * later wake or an activity refresh that starts the loop. Never awaited from
- * `handleAppHook`.
+ * In a split deployment (`ROLE=web` plus a separate worker) after-commit on the
+ * web process POSTs `{ jobIds }` to the worker's private URL. Subscribes only
+ * when both the origin and `QUACKBACK_FLEET_INTERNAL_TOKEN` are present.
+ * Fail-open: unset/rejected URL, missing token, or a POST still failing after
+ * retries leaves the row until a later wake or an activity refresh that starts
+ * the loop. Never awaited from `handleAppHook`.
  */
 import { getProcessRole } from '@/lib/server/process-role'
 import { logger } from '@/lib/server/logger'
-import { onDurableWorkCommitted, type DurableWork } from '@/lib/server/workspaces/after-commit'
-import { getCurrentWorkspace } from '@/lib/server/workspaces/workspace-context'
-import { FLEET_INTERNAL_TOKEN_ENV } from '@/lib/server/fleet/internal-auth'
+import { onDurableWorkCommitted, type DurableWork } from '@/lib/server/jobs/after-commit'
+import { FLEET_INTERNAL_TOKEN_ENV } from '@/lib/server/jobs/internal-auth'
 import type { JobWakeAbort, JobWakeRequest } from './worker'
 
 const log = logger.child({ component: 'job-wake' })
@@ -30,13 +29,12 @@ function delay(ms: number): Promise<void> {
 }
 
 interface PendingWake {
-  workspaceKey: string
   jobIds: Set<string>
   abort?: JobWakeAbort
   timer?: ReturnType<typeof setTimeout>
 }
 
-const pending = new Map<string, PendingWake>()
+let pending: PendingWake | null = null
 let unsubscribe: (() => void) | null = null
 
 type JobWorkerUrlParse =
@@ -78,7 +76,6 @@ async function postWake(body: JobWakeRequest): Promise<void> {
   log.info(
     {
       event: 'job.wake_sent',
-      workspace_key: body.workspaceKey,
       job_ids: body.jobIds?.length ?? 0,
       abort: Boolean(body.abort),
     },
@@ -110,46 +107,43 @@ async function postWake(body: JobWakeRequest): Promise<void> {
     if (backoff !== undefined) await delay(backoff)
   }
   log.warn(
-    { err: lastErr, workspace_key: body.workspaceKey, status: lastStatus, attempts: WAKE_ATTEMPTS },
+    { err: lastErr, status: lastStatus, attempts: WAKE_ATTEMPTS },
     'job-wake POST failed after retries; a later wake or an activity refresh that starts the loop will claim'
   )
 }
 
-function flush(workspaceKey: string): void {
-  const entry = pending.get(workspaceKey)
+function flush(): void {
+  const entry = pending
   if (!entry) return
-  pending.delete(workspaceKey)
+  pending = null
   if (entry.timer) clearTimeout(entry.timer)
   void postWake({
-    workspaceKey,
     jobIds: [...entry.jobIds],
     abort: entry.abort,
   })
 }
 
 function schedule(work: DurableWork, abort?: JobWakeAbort, immediate = false): void {
-  let entry = pending.get(work.workspaceKey)
+  let entry = pending
   if (!entry) {
-    entry = { workspaceKey: work.workspaceKey, jobIds: new Set() }
-    pending.set(work.workspaceKey, entry)
+    entry = { jobIds: new Set() }
+    pending = entry
   }
   for (const id of work.jobIds) entry.jobIds.add(id)
   if (abort) entry.abort = abort
   if (immediate) {
-    flush(work.workspaceKey)
+    flush()
     return
   }
   if (entry.timer) clearTimeout(entry.timer)
-  entry.timer = setTimeout(() => flush(work.workspaceKey), COALESCE_MS)
+  entry.timer = setTimeout(flush, COALESCE_MS)
   entry.timer.unref?.()
 }
 
 /** Abort payloads bypass debounce so a later after-commit wake cannot drop them. */
 export function postJobWakeAbort(abort: JobWakeAbort): void {
   if (getProcessRole() !== 'web' || !canPublishJobWake()) return
-  const workspaceKey = getCurrentWorkspace()?.workspaceKey
-  if (!workspaceKey) return
-  schedule({ workspaceKey, jobIds: [] }, abort, true)
+  schedule({ jobIds: [] }, abort, true)
 }
 
 export function startJobWakePublisher(): void {
@@ -177,10 +171,8 @@ export function startJobWakePublisher(): void {
 export function stopJobWakePublisher(): void {
   unsubscribe?.()
   unsubscribe = null
-  for (const entry of pending.values()) {
-    if (entry.timer) clearTimeout(entry.timer)
-  }
-  pending.clear()
+  if (pending?.timer) clearTimeout(pending.timer)
+  pending = null
 }
 
 /** Test seam. */

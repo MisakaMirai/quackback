@@ -21,7 +21,6 @@ import {
   fetchAuthProviderCredentialsMaskedFn,
 } from '@/lib/server/functions/auth-provider-credentials'
 import { listAuditEventsFn } from '@/lib/server/functions/audit-log'
-import { listCompanyAttributesFn } from '@/lib/server/functions/company-attributes'
 import { listRecoveryCodesFn } from '@/lib/server/functions/recovery-codes'
 import { getModerationStatus } from '@/lib/server/functions/moderation'
 import { fetchApiKeys } from '@/lib/server/functions/api-keys'
@@ -31,7 +30,6 @@ import { fetchPostWithDetails, fetchPostVotersFn } from '@/lib/server/functions/
 import { fetchMergePreviewFn } from '@/lib/server/functions/post-merge'
 import { fetchPublicStatuses } from '@/lib/server/functions/portal'
 import type { PortalUserListParams } from '@/lib/shared/types'
-import { mergeSuggestionQueries } from '@/lib/client/queries/signals'
 import { postOwnerQueries } from '@/lib/client/queries/post-owner'
 import { postExternalLinksQuery } from '@/lib/client/hooks/use-post-external-links-query'
 import { customerContextQuery } from '@/lib/client/queries/customer-context'
@@ -46,7 +44,6 @@ import { readsToLoad, seedReads } from '@/lib/client/queries/read-batch'
 function postPanelQueries(postId: PostId, authorEmail: string | null | undefined) {
   return {
     voters: adminQueries.postVoters(postId),
-    mergeSuggestions: mergeSuggestionQueries.forPost(postId),
     externalLinks: postExternalLinksQuery(postId),
     ownerCandidates: postOwnerQueries.candidates(),
     customerContext: authorEmail ? customerContextQuery(authorEmail) : null,
@@ -305,7 +302,6 @@ export const adminQueries = {
           updatedAt: new Date(data.updatedAt),
           deletedAt: data.deletedAt ? new Date(data.deletedAt) : null,
           eta: data.eta ? new Date(data.eta) : null,
-          summaryUpdatedAt: data.summaryUpdatedAt ? new Date(data.summaryUpdatedAt) : null,
           comments: data.comments.map(deserializeComment),
           pinnedComment: data.pinnedComment
             ? { ...data.pinnedComment, createdAt: new Date(data.pinnedComment.createdAt) }
@@ -352,9 +348,6 @@ export const adminQueries = {
             createdAt: new Date(data.post.createdAt),
             updatedAt: new Date(data.post.updatedAt),
             deletedAt: data.post.deletedAt ? new Date(data.post.deletedAt) : null,
-            summaryUpdatedAt: data.post.summaryUpdatedAt
-              ? new Date(data.post.summaryUpdatedAt)
-              : null,
             comments: data.post.comments.map(deserializeComment),
             pinnedComment: data.post.pinnedComment
               ? {
@@ -435,16 +428,6 @@ export const adminQueries = {
     queryOptions({
       queryKey: ['admin', 'userAttributes'],
       queryFn: () => listUserAttributesFn(),
-      staleTime: 60 * 1000,
-    }),
-
-  /**
-   * List all company attribute definitions
-   */
-  companyAttributes: () =>
-    queryOptions({
-      queryKey: ['admin', 'companyAttributes'],
-      queryFn: () => listCompanyAttributesFn(),
       staleTime: 60 * 1000,
     }),
 

@@ -1,6 +1,8 @@
 import type { ComponentType } from 'react'
+import type { IntlShape } from 'react-intl'
 import { INTEGRATION_ICON_MAP } from '@/components/icons/integration-icons'
 import { INTEGRATION_UI } from '@/components/admin/settings/integrations/integration-ui'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { cn } from '@/lib/shared/utils'
 
 // Custom icons for non-integration source types
@@ -32,7 +34,7 @@ function EmailIcon({ className }: { className?: string }) {
 
 /** Source type → icon component (merges custom icons with existing integration icons) */
 const SOURCE_TYPE_ICONS: Record<string, ComponentType<{ className?: string }>> = {
-  // widget/quackback uses the logo image, not an SVG icon — handled separately in SourceTypeIcon
+  // quackback uses the logo image, not an SVG icon — handled separately in SourceTypeIcon
   api: ApiIcon,
   csv: CsvIcon,
   email: EmailIcon,
@@ -62,17 +64,27 @@ const SOURCE_TYPE_COLORS: Record<string, string> = {
 }
 
 /** Intrinsic source-type labels; provider labels are derived from the manifest. */
-const INTRINSIC_SOURCE_LABELS: Record<string, string> = {
-  quackback: 'Quackback',
-  api: 'API',
-  csv: 'CSV Import',
-  email: 'Email',
+const INTRINSIC_SOURCE_LABELS: Record<string, { id: string; defaultMessage: string }> = {
+  csv: { id: 'admin.feedback.sourceType.csvImport', defaultMessage: 'CSV Import' },
+  email: { id: 'admin.feedback.sourceType.email', defaultMessage: 'Email' },
 }
 
-/** Human-readable label for source types (intrinsic + manifest-derived providers). */
-export const SOURCE_TYPE_LABELS: Record<string, string> = {
-  ...INTRINSIC_SOURCE_LABELS,
-  ...Object.fromEntries(Object.entries(INTEGRATION_UI).map(([id, m]) => [id, m.displayName])),
+/** Labels shown exactly as written: the product name and the API acronym. */
+const RAW_SOURCE_LABELS: Record<string, string> = {
+  quackback: 'Quackback',
+  api: 'API',
+}
+
+/** Provider display names are brand names, so they are shown unchanged. */
+const PROVIDER_SOURCE_LABELS: Record<string, string> = Object.fromEntries(
+  Object.entries(INTEGRATION_UI).map(([id, m]) => [id, m.displayName])
+)
+
+/** Human-readable label for a source type, in the viewer's language. */
+export function sourceTypeLabel(intl: IntlShape, sourceType: string): string {
+  const intrinsic = INTRINSIC_SOURCE_LABELS[sourceType]
+  if (intrinsic) return intl.formatMessage(intrinsic)
+  return RAW_SOURCE_LABELS[sourceType] ?? PROVIDER_SOURCE_LABELS[sourceType] ?? sourceType
 }
 
 interface SourceTypeIconProps {
@@ -89,6 +101,7 @@ const SIZE_CLASSES = {
 
 /** Renders a source type as a colored icon badge */
 export function SourceTypeIcon({ sourceType, size = 'md', className }: SourceTypeIconProps) {
+  const intl = useOptionalIntl()
   const isLogo = LOGO_SOURCE_TYPES.has(sourceType)
   const Icon = SOURCE_TYPE_ICONS[sourceType]
   const colorClass = SOURCE_TYPE_COLORS[sourceType] ?? 'bg-muted text-muted-foreground'
@@ -103,7 +116,7 @@ export function SourceTypeIcon({ sourceType, size = 'md', className }: SourceTyp
         colorClass,
         className
       )}
-      title={SOURCE_TYPE_LABELS[sourceType] ?? sourceType}
+      title={sourceTypeLabel(intl, sourceType)}
     >
       {isLogo && <img src="/logo.png" alt="Quackback" className={cn('rounded-sm', s.logo)} />}
       {!isLogo && Icon && <Icon className={s.icon} />}

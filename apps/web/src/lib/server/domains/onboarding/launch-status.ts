@@ -21,16 +21,11 @@ import {
   principal,
   statusComponents,
 } from '@/lib/server/db'
-import { getWidgetConfig } from '@/lib/server/domains/settings/settings.widget'
 import { getSetupState } from '@/lib/shared/db-types'
 import { permissionsForLegacyRole } from '@/lib/server/policy/permissions'
 import { resolveFeatureFlags } from '@/lib/server/domains/settings/settings.types'
-import { getTierLimits } from '@/lib/server/domains/settings/tier-limits.service'
-import { hasEntitlement } from '@/lib/server/domains/settings/cloud/entitlements'
-import { isAssistantConfigured } from '@/lib/server/domains/assistant'
 import { detectFirstWin, internalWinScope, winOutcome } from '@/lib/server/activation-wins'
 import { isLaunchWindowOpen, launchWindowFor } from '@/lib/shared/launch-window'
-import { CURRENT_WIDGET_SDK_VERSION, widgetSdkNeedsUpdate } from '@/lib/shared/widget/sdk-version'
 import { PERMISSIONS, type PermissionKey } from '@/lib/shared/permissions'
 import type { Role } from '@/lib/shared/roles'
 import { logger } from '@/lib/server/logger'
@@ -49,13 +44,10 @@ export async function loadLaunchStatus(caller: LaunchStatusCaller) {
     orgBoards,
     humanMembers,
     orgSettings,
-    widgetConfig,
     connectedIntegration,
     helpArticle,
     publishedChangelog,
     statusComponent,
-    tierLimits,
-    assistantEntitled,
   ] = await Promise.all([
     db.query.boards.findMany({
       columns: { id: true, slug: true, access: true },
@@ -71,7 +63,6 @@ export async function loadLaunchStatus(caller: LaunchStatusCaller) {
       .from(principal)
       .where(and(eq(principal.type, 'user'), inArray(principal.role, ['admin', 'member']))),
     db.query.settings.findFirst(),
-    getWidgetConfig(),
     db.query.integrations.findFirst({
       columns: { id: true },
       where: eq(integrations.status, 'connected'),
@@ -89,8 +80,6 @@ export async function loadLaunchStatus(caller: LaunchStatusCaller) {
       columns: { id: true },
       where: isNull(statusComponents.deletedAt),
     }),
-    getTierLimits(),
-    hasEntitlement('aiAssistant'),
   ])
 
   const setupState = getSetupState(orgSettings?.setupState ?? null)
@@ -99,14 +88,8 @@ export async function loadLaunchStatus(caller: LaunchStatusCaller) {
   const flags = resolveFeatureFlags(orgSettings?.featureFlags)
   const permissions = permissionsForLegacyRole(caller.role)
   const hasBranding = Boolean(orgSettings?.logoKey)
-  const hasWidgetEnabled = widgetConfig.enabled === true
-  // Messenger is "live" when the widget is on and the Messages tab is shown.
-  const hasMessengerEnabled = hasWidgetEnabled && (widgetConfig.tabs?.messenger ?? true)
   const hasIntegration = Boolean(connectedIntegration)
-  // The Agent answers unless it is switched off or paused; both default to on.
-  const assistantDeployment = widgetConfig.messenger?.assistant
-  const hasAgentAnswering =
-    (assistantDeployment?.enabled ?? true) && (assistantDeployment?.respond ?? true)
+  const hasAgentAnswering = false
   const hasInternalBoard = orgBoards.some((board) => board.access.view === 'team')
   const publicBoard = orgBoards.find((board) => board.access.view === 'anonymous')
   const hasPublicBoard = Boolean(publicBoard)
@@ -123,8 +106,6 @@ export async function loadLaunchStatus(caller: LaunchStatusCaller) {
       has_boards: orgBoards.length > 0,
       member_count: humanMembers.length,
       has_branding: hasBranding,
-      has_widget: hasWidgetEnabled,
-      has_messenger: hasMessengerEnabled,
       has_help_article: Boolean(helpArticle),
       has_published_changelog: Boolean(publishedChangelog),
       has_status_component: Boolean(statusComponent),
@@ -145,18 +126,6 @@ export async function loadLaunchStatus(caller: LaunchStatusCaller) {
     memberCount: humanMembers.length,
     hasTeamInvite: humanMembers.some((member) => member.teamInvited),
     hasBranding,
-    hasWidgetInstalled: Boolean(orgSettings?.widgetInstalledFirstSeenAt),
-    widgetOriginHost: orgSettings?.widgetInstalledOriginHost ?? null,
-    widgetLastDetectedAt: orgSettings?.widgetInstalledLastSeenAt
-      ? orgSettings.widgetInstalledLastSeenAt.toISOString()
-      : null,
-    widgetSdkVersion: orgSettings?.widgetInstalledSdkVersion ?? null,
-    currentWidgetSdkVersion: CURRENT_WIDGET_SDK_VERSION,
-    widgetSdkNeedsUpdate:
-      Boolean(orgSettings?.widgetInstalledFirstSeenAt) &&
-      widgetSdkNeedsUpdate(orgSettings?.widgetInstalledSdkVersion, CURRENT_WIDGET_SDK_VERSION),
-    hasWidgetEnabled,
-    hasMessengerEnabled,
     hasAgentAnswering,
     hasHelpArticle: Boolean(helpArticle),
     hasPublishedChangelog: Boolean(publishedChangelog),
@@ -171,7 +140,6 @@ export async function loadLaunchStatus(caller: LaunchStatusCaller) {
     feedbackPrivate: setupState?.feedbackPrivate,
     taskResolutions: setupState?.taskResolutions ?? {},
     boardCount: orgBoards.length,
-    maxBoards: tierLimits.maxBoards,
     goalManaged: Boolean(
       orgSettings &&
       (orgSettings.managedFieldPaths as string[]).some(
@@ -185,16 +153,13 @@ export async function loadLaunchStatus(caller: LaunchStatusCaller) {
       brandingManage: permissions.has(PERMISSIONS.SETTINGS_BRANDING),
       integrationManage: permissions.has(PERMISSIONS.INTEGRATION_MANAGE),
       helpCenterManage: permissions.has(PERMISSIONS.HELP_CENTER_MANAGE),
-      assistantManage: permissions.has(PERMISSIONS.AI_CUSTOMER_MANAGE),
     },
     features: {
       supportInbox: flags.supportInbox,
       helpCenter: flags.helpCenter,
       statusPage: flags.statusPage,
       changelog: flags.changelog,
-      integrations: tierLimits.features.integrations,
-      // Quinn can answer only on a plan that includes it and with a model configured.
-      assistant: assistantEntitled && isAssistantConfigured(),
+      integrations: true,
     },
   }
 }

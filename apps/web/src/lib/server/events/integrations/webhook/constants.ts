@@ -158,31 +158,9 @@ export const WEBHOOK_EVENT_CONFIG = [
     description: 'When a visitor adds the optional comment to a satisfaction rating',
   },
   {
-    id: 'assistant.handed_off',
-    label: 'Assistant Handed Off',
-    description: 'When the AI assistant hands a conversation to the team',
-  },
-  {
-    id: 'assistant.resolved',
-    label: 'Assistant Resolved',
-    description: 'When the AI assistant settles a conversation without handing off',
-  },
-  {
     id: 'conversation.note_mentioned',
     label: 'Note Mention',
     description: 'When an internal note @-mentions a teammate (private content — opt-in)',
-  },
-  {
-    id: 'conversation.customer_unresponsive',
-    label: 'Customer Unresponsive',
-    description:
-      'When the customer has been silent for a workflow-configured time after the last teammate or AI reply',
-  },
-  {
-    id: 'conversation.teammate_unresponsive',
-    label: 'Teammate Unresponsive',
-    description:
-      "When no teammate has replied for a workflow-configured time after the customer's last message",
   },
   {
     id: 'sla.approaching_breach',

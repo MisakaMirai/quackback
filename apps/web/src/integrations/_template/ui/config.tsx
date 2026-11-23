@@ -12,6 +12,7 @@
  */
 import { useState } from 'react'
 import { Label } from '@/components/ui/label'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { DestinationPicker } from '@/components/admin/settings/integrations/shared/destination-picker'
 
 interface TemplateConfigProps {
@@ -22,13 +23,19 @@ interface TemplateConfigProps {
 }
 
 export function TemplateConfig({ initialConfig, enabled }: TemplateConfigProps) {
+  const intl = useOptionalIntl()
   const [projectId, setProjectId] = useState(initialConfig.projectId ?? '')
   const [issueTypeId, setIssueTypeId] = useState(initialConfig.issueTypeId ?? '')
 
   return (
     <div className="space-y-4">
       <div className="space-y-1.5">
-        <Label>Project</Label>
+        <Label>
+          {intl.formatMessage({
+            id: 'admin.integrations.config.project',
+            defaultMessage: 'Project',
+          })}
+        </Label>
         <DestinationPicker
           integrationType="template"
           kind="project"
@@ -42,7 +49,12 @@ export function TemplateConfig({ initialConfig, enabled }: TemplateConfigProps) 
       </div>
 
       <div className="space-y-1.5">
-        <Label>Issue type</Label>
+        <Label>
+          {intl.formatMessage({
+            id: 'admin.integrations.config.issueType',
+            defaultMessage: 'Issue type',
+          })}
+        </Label>
         <DestinationPicker
           integrationType="template"
           kind="issue-type"

@@ -22,8 +22,6 @@ import {
 import type { PrincipalId, StatusComponentId, StatusSubscriptionId } from '@quackback/ids'
 import { NotFoundError } from '@/lib/shared/errors'
 import { logger } from '@/lib/server/logger'
-import { getTierLimits } from '@/lib/server/domains/settings/tier-limits.service'
-import { TierLimitError } from '@/lib/server/errors/tier-limit-error'
 import type {
   StatusSubscriptionScope,
   StatusSubscriptionSource,
@@ -43,49 +41,6 @@ const log = logger.child({ component: 'status-subscriptions' })
  *  `subscribeUnlessOptedOut`, which never overrides an opt-out. */
 /** A transaction handle, or the shared client, for the subscriber writes below. */
 type StatusDb = Pick<typeof db, 'select' | 'execute' | 'insert'>
-
-/**
- * The page-wide active-subscriber budget for one transaction. The transaction
- * holds the slot lock, so the count read here is the count every admission in
- * the transaction sees. Only new active subscriptions take a slot.
- */
-interface SubscriberSlots {
-  limit: number | null
-  active: number
-}
-
-/** The plan's subscriber cap, read before a transaction opens: the read uses
- *  its own connection, which a transaction holding the only one would wait on. */
-async function subscriberLimit(): Promise<number | null> {
-  return (await getTierLimits()).maxStatusSubscribers
-}
-
-async function lockSubscriberSlots(exec: StatusDb, limit: number | null): Promise<SubscriberSlots> {
-  // No cap means nothing to count, so unlimited plans never serialize on the lock.
-  if (limit === null) return { limit, active: 0 }
-  await exec.execute(
-    sql`SELECT pg_advisory_xact_lock(hashtext('quackback:status_subscriber_slot'))`
-  )
-  const [row] = await exec
-    .select({ count: sql<number>`count(*)::int` })
-    .from(statusSubscriptions)
-    .where(isNull(statusSubscriptions.unsubscribedAt))
-  return { limit, active: row?.count ?? 0 }
-}
-
-/** Takes one slot for a new active subscription, or refuses once the plan's cap is full. */
-function admitNewSubscriber(slots: SubscriberSlots): void {
-  if (slots.limit === null) return
-  if (slots.active >= slots.limit) {
-    throw new TierLimitError({
-      limit: 'maxStatusSubscribers',
-      current: slots.active,
-      max: slots.limit,
-      message: `You've reached your plan's status subscribers limit (${slots.limit}). Upgrade to add more.`,
-    })
-  }
-  slots.active += 1
-}
 
 /** Whether the person has a row at all, and whether that row is active. */
 async function subscriptionState(
@@ -107,11 +62,7 @@ export async function subscribe(
   source: StatusSubscriptionSource
 ): Promise<void> {
   log.debug({ principal_id: principalId, scope, source }, 'status subscribe')
-  const limit = await subscriberLimit()
   await db.transaction(async (tx) => {
-    const slots = await lockSubscriberSlots(tx, limit)
-    const state = await subscriptionState(tx, principalId)
-    if (!state.active) admitNewSubscriber(slots)
     await tx
       .insert(statusSubscriptions)
       .values({ principalId, scope, componentIds, source, unsubscribedAt: null })
@@ -125,16 +76,12 @@ export async function subscribe(
 /** Admin-side subscribe (manual add, CSV import), page-wide. Someone who
  *  unsubscribed stays unsubscribed: the conflict update only applies to an
  *  active row, so an opted-out row returns nothing. Returns whether the
- *  person is now subscribed. A brand-new row takes a slot; an existing
- *  active or opted-out row does not. */
+ *  person is now subscribed. */
 async function subscribeUnlessOptedOut(
   exec: StatusDb,
   principalId: PrincipalId,
-  source: StatusSubscriptionSource,
-  slots: SubscriberSlots
+  source: StatusSubscriptionSource
 ): Promise<boolean> {
-  const state = await subscriptionState(exec, principalId)
-  if (!state.exists) admitNewSubscriber(slots)
   const rows = await exec
     .insert(statusSubscriptions)
     .values({ principalId, scope: 'page', componentIds: [], source, unsubscribedAt: null })
@@ -284,11 +231,8 @@ export async function addStatusSubscriberByEmail(email: string): Promise<{ subsc
     throw new NotFoundError('STATUS_SUBSCRIBER_NOT_FOUND', 'No matching user for that email')
   }
 
-  const limit = await subscriberLimit()
-
   return db.transaction(async (tx) => {
-    const slots = await lockSubscriberSlots(tx, limit)
-    return { subscribed: await subscribeUnlessOptedOut(tx, row.principalId, 'admin', slots) }
+    return { subscribed: await subscribeUnlessOptedOut(tx, row.principalId, 'admin') }
   })
 }
 
@@ -308,11 +252,8 @@ export async function importStatusSubscribersFromEmails(
     return { imported: 0, skipped: 0, optedOut: 0, total: 0 }
   }
 
-  // One transaction: a file that would take the workspace past its plan cap is
-  // refused whole, so an admin never sees a partial import.
-  const limit = await subscriberLimit()
+  // One transaction: an import either lands whole or not at all.
   return db.transaction(async (tx) => {
-    const slots = await lockSubscriberSlots(tx, limit)
     let imported = 0
     let optedOut = 0
     for (const email of normalized) {
@@ -326,7 +267,7 @@ export async function importStatusSubscribersFromEmails(
       const row = matched[0]
       if (!row) continue
 
-      if (await subscribeUnlessOptedOut(tx, row.principalId, 'csv_import', slots)) imported++
+      if (await subscribeUnlessOptedOut(tx, row.principalId, 'csv_import')) imported++
       else optedOut++
     }
 

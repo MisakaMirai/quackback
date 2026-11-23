@@ -49,13 +49,14 @@ const ALLOWLIST: Record<Rule, Record<string, string>> = {
       'Renders only in the incident editor, which opens in a dialog that mounts after hydration.',
     'components/conversation/snooze-natural-input.tsx':
       'The "Snoozes until" preview shows after the agent submits a phrase, in the custom snooze dialog.',
-    'components/ui/mention-hover-card-overlay.tsx':
-      'The "Joined" date is in a popover that opens when a mention is hovered.',
     'routes/admin/settings.office-hours.tsx':
       'Reads the zone in the enable toggle handler; the "opens" label renders once an effect sets now.',
   },
   'default-locale-number': {},
-  'unzoned-date': {},
+  'unzoned-date': {
+    'components/ui/mention-hover-card-overlay.tsx':
+      'The "Joined" date is in a popover that opens when a mention is hovered, after hydration.',
+  },
   'date-fns-format': {},
 }
 

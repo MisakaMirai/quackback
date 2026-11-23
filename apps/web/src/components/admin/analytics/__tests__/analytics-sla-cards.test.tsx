@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
 const hoisted = vi.hoisted(() => ({ support: vi.fn() }))
@@ -50,10 +50,6 @@ const REPORT = {
     resolution: miss(0, null),
     timeToResolve: miss(0, null),
   },
-  workflows: [
-    { workflowId: 'w1', started: 10, completed: 6, interrupted: 3, waiting: 1 },
-    { workflowId: 'w2', started: 5, completed: 5, interrupted: 0, waiting: 0 },
-  ],
 }
 
 function renderCards() {
@@ -96,18 +92,6 @@ describe('AnalyticsSlaCards', () => {
     const row = (await screen.findByText('Priority')).closest('tr')!
     expect(row.textContent).toContain('100%')
     expect(row.textContent).toContain('50%')
-  })
-
-  it('totals workflow runs by outcome', async () => {
-    hoisted.support.mockResolvedValue(REPORT)
-    renderCards()
-    const runs = (await screen.findByText('Workflow runs')).closest(
-      '[data-slot="card"]'
-    ) as HTMLElement
-    const rowOf = (label: string) => within(runs).getByText(label).closest('tr')!.textContent
-    expect(rowOf('Started')).toContain('15')
-    expect(rowOf('Completed')).toContain('11')
-    expect(rowOf('Interrupted')).toContain('3')
   })
 
   it('draws the breaches by hour and the time after a miss', async () => {

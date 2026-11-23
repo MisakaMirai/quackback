@@ -3,7 +3,7 @@
 `SAAS-HOSTING-STACK.md` §7.4. The ~20 non-queue Redis call sites — the generic
 cache, the rate-limit primitive and its consumers, pub/sub, presence, the daily
 visitor salt, the sign-in device tracker, the link-preview limiter and the SSO
-verify lock — run against the workspace's own Postgres database.
+verify lock — run against the install's own Postgres database.
 
 **Redis is gone entirely.** The queue half went to `jobs/` (`jobs/JOBS.md`), and
 §7.4's final cutover has since removed what was left: `ioredis` is no longer a
@@ -22,7 +22,7 @@ tree. Both are done; what follows describes the finished state.
 
 | Redis                                      | Here                                                                          |
 | ------------------------------------------ | ----------------------------------------------------------------------------- |
-| `GET` / `SET … EX` / `DEL`                 | `kv_store`, one row per (workspace, key), `expires_at` on every read          |
+| `GET` / `SET … EX` / `DEL`                 | `kv_store`, one row per key, `expires_at` on every read                       |
 | `SET … EX … NX`                            | the same upsert with `WHERE kv_store.expires_at <= now()` on the conflict arm |
 | `SET NX` then `GET` (the visitor salt)     | one `ON CONFLICT DO UPDATE … RETURNING value`                                 |
 | `INCR` + `EXPIRE … NX`                     | `rate_bucket`, an arithmetic upsert whose `CASE` arms are the fixed window    |
@@ -30,31 +30,20 @@ tree. Both are done; what follows describes the finished state.
 | two sorted sets + an `EVAL` (presence)     | `presence_stream`, one row per live stream, `is_agent` a column               |
 | `PUBLISH` / `SUBSCRIBE`                    | `pg_notify` on one channel per database, `LISTEN` on a direct connection      |
 
-## 2. The workspace is stated twice, and that is not decoration
+## 2. The key is the whole row
 
-Every table leads its primary key with `workspace_key`, written from
-`currentWorkspaceNamespace()` — **the same function that built the `t:<workspaceKey>:`
-prefix on the Redis wire key**. So the discriminator is not merely equivalent to
-what it replaces; it is the same value, moved from a string prefix into a key
-column. On a single-workspace install it is `'_'`, exactly as every key used to be
-prefixed `t:_:`.
+One install is one workspace, so a key names exactly one row: the tables have
+no tenant column, and the key is the primary key. That is the same identity the
+Redis wire key carried, minus the `t:<workspace>:` prefix that existed only to
+share one Redis between tenants.
 
-Under `QUACKBACK_TENANCY=pooled` the row is _additionally_ in the workspace's own
-database, so cross-workspace observation needs both barriers to fail at once.
-
-A key column is also strictly stronger than the prefix it replaces, for a reason
-`cache.ts` records: half the cache key names are built by concatenation at the
-call site, so a namespace applied by string building was always one
-`${'settings:workspace'}:extra` away from being bypassed. The worst a malformed key
-can do now is collide with another key of the same workspace.
-
-**Pub/sub is the case that proves the redundancy earns its keep.** Its first
-version keyed the in-process listener registry by `(workspace, channel)` and
-otherwise relied on the database boundary alone. `pubsub.db.test.ts` then
-delivered one workspace's inbox events to the other workspace's subscriber, because two
-scopes on one database is a configuration nothing else in the system defends
-against. The envelope now names its publishing workspace and `dispatch` refuses one
-that disagrees with the connection.
+**Pub/sub used to state the tenant twice.** When one database could be read by
+two scopes, keying the in-process listener registry by `(workspace, channel)`
+was not enough on its own and the envelope also named its publisher — measured
+by `pubsub.db.test.ts`, which delivered one workspace's inbox events to the
+other's subscriber. With one workspace there is nothing to disagree about, so
+the envelope carries only the logical channel and the process holds one
+connection.
 
 ## 3. Atomicity: one statement, except where one statement is not enough
 
@@ -71,7 +60,7 @@ closing at once **every** caller saw the other 23 rows still present and returne
 unanswered conversations would never have been re-queued — silently, and only
 under load. A single-threaded test cannot see this; 24 real connections can.
 
-The fix is a transaction-scoped advisory lock keyed on (workspace, principal).
+The fix is a transaction-scoped advisory lock keyed on the principal.
 `pg_advisory_xact_lock`, never the session-scoped form: a session-level advisory
 lock through a transaction-mode pooler fails open non-deterministically depending
 on which backend the pooler picks, and survives client disconnect. An xact lock is
@@ -97,12 +86,10 @@ pooled connection that delivers nothing and `false` on the direct one that
 delivers. Nothing in `pg-listener.ts` asks it, and nothing should. `verify()`
 sends a real NOTIFY from a _second_ connection and waits for it.
 
-`pubsub.ts` opens one such connection per workspace, lazily on that workspace's first
-SSE subscriber on this replica and closed when its last one leaves. §7.3 warns
-that a pooled process holding N permanent session connections purely to receive
-notifies inverts the reason for pooling; that warning is about a process that
-listens for _every_ workspace. The bound here is _workspaces with a live SSE stream on
-this replica_, which is already proportional to a long-lived resource.
+`pubsub.ts` opens one such connection per process, lazily on the first SSE
+subscriber and closed when the last one leaves. A process therefore holds one
+permanent session connection while it has live streams, which is the price of
+delivering across replicas through Postgres rather than a broker.
 
 **Seam with the job worker:** the queue polls; it does not LISTEN. The realtime
 bus is the only remaining session-mode listener.
@@ -132,16 +119,16 @@ are the record of that run.
 **What these would have shown had the hypothesis been false.** The hypothesis is
 that Postgres costs more per operation than Redis on these paths. A ratio ≤ 1 in
 (1), or a delta ≤ 0 in (2), is a real possible outcome — and one cell produced
-exactly that: the widget single-bucket delta came out at **−0.205 ms**, i.e. below
+exactly that: the anonymous-mint single-bucket delta came out at **−0.205 ms**, i.e. below
 the measurement floor. The scripts printed every ratio unconditionally and had no
 threshold to pass.
 
 ### Rate limiting — §7.4's first regression
 
-|                             | Redis (loopback) | Postgres (loopback) | ratio |
-| --------------------------- | ---------------- | ------------------- | ----- |
-| sign-in shape, 2 buckets    | **0.154 ms** p50 | 3.461 ms p50        | 22.5× |
-| widget mint shape, 1 bucket | **0.130 ms** p50 | 3.272 ms p50        | 25.2× |
+|                                | Redis (loopback) | Postgres (loopback) | ratio |
+| ------------------------------ | ---------------- | ------------------- | ----- |
+| sign-in shape, 2 buckets       | **0.154 ms** p50 | 3.461 ms p50        | 22.5× |
+| anonymous mint shape, 1 bucket | **0.130 ms** p50 | 3.272 ms p50        | 25.2× |
 
 Round trips are **1 in both** — Redis pipelined; Postgres uses one statement.
 
@@ -149,10 +136,10 @@ The loopback Postgres figure is dominated by a WAL fsync to a Docker volume, and
 that is **not** what a workspace database pays. On the dedicated compute, paired
 against `SELECT 1` on the same connection:
 
-|                             | delta over `SELECT 1`, p50   | p95      |
-| --------------------------- | ---------------------------- | -------- |
-| sign-in shape, 2 buckets    | **+0.545 ms**                | +13.2 ms |
-| widget mint shape, 1 bucket | **−0.205 ms** (at the floor) | +17.4 ms |
+|                                | delta over `SELECT 1`, p50   | p95      |
+| ------------------------------ | ---------------------------- | -------- |
+| sign-in shape, 2 buckets       | **+0.545 ms**                | +13.2 ms |
+| anonymous mint shape, 1 bucket | **−0.205 ms** (at the floor) | +17.4 ms |
 
 Server-side execution alone, timed in a PL/pgSQL loop with the network amortised
 away: **0.019 ms/op** for the bucket upsert against **0.0009 ms/op** for
@@ -162,11 +149,11 @@ away: **0.019 ms/op** for the bucket upsert against **0.0009 ms/op** for
 On the deployed pairing (Railway `us-east4` ↔ the workspace database `us-east-1`, measured at 0–3 ms
 RTT with a 7 ms tail over 217 samples), a rate-checked request pays roughly
 **1–4 ms p50** where a Railway-private Redis would have paid a few hundred
-microseconds. **Net: about 1–3 ms p50 added to the sign-in and widget hot paths,
+microseconds. **Net: about 1–3 ms p50 added to the sign-in and anonymous-mint hot paths,
 one round trip, unchanged in count.**
 
 That is a real cost and it is worth stating plainly rather than defending: it is
-per _rate-checked_ request, so it lands on sign-in and on the widget's
+per _rate-checked_ request, so it lands on sign-in and on the anonymous mint's
 unauthenticated entry points, not on ordinary page renders.
 
 ### Presence — §7.4's "most expensive item"
@@ -184,7 +171,7 @@ second sorted set both existed to keep two Redis keys consistent. There is no
 second key here — `is_agent` is a column, and "which agents are online" is derived
 rather than maintained — so the heartbeat is **one statement where Redis needed
 three commands**, and the routing read is one where Redis needed two. The volume
-is also small: S live streams cost S/20 writes per second per workspace, so 100
+is also small: S live streams cost S/20 writes per second, so 100
 concurrent agent streams is **5 writes/second**.
 
 The genuinely new cost is on the _disconnect_ path, not the heartbeat: a
@@ -211,8 +198,8 @@ The genuinely new cost is on the _disconnect_ path, not the heartbeat: a
 Two invariants were called out as the things a "cutover" diff must leave alone.
 Both hold:
 
-- **The workspace discriminator.** `kv_store`, `rate_bucket`, `kv_set_member`,
-  `presence_stream` and `realtime_overflow` still lead their primary key with
-  `workspace_key`, written from `currentWorkspaceNamespace()`. No migration was part of
-  removing Redis.
+- **One row per key.** `kv_store`, `rate_bucket`, `kv_set_member` and
+  `presence_stream` key on their natural columns, with no tenant component.
+  `realtime_overflow` is keyed by its identity id. Migration 0324 dropped the
+  tenant column that had been carried over from the shared Redis prefix.
 - **`pg-listener.ts` stays on the direct DSN**, for the reason in §5.

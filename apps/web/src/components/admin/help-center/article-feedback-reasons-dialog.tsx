@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { formatDistanceToNow } from 'date-fns'
+import { zhCN, zhTW } from 'date-fns/locale'
 import {
   Dialog,
   DialogContent,
@@ -9,10 +10,18 @@ import {
 } from '@/components/ui/dialog'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { MENU_LABEL } from '@/components/ui/menu'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { InlineSpinner } from '@/components/admin/settings/inline-spinner'
 import { cn } from '@/lib/shared/utils'
 import { helpCenterQueries } from '@/lib/client/queries/help-center'
 import type { KbArticleId } from '@quackback/ids'
+
+/** date-fns locale for a react-intl locale, so relative times read naturally. */
+function dateFnsLocale(locale: string) {
+  if (locale.startsWith('zh-TW') || locale.startsWith('zh-Hant')) return zhTW
+  if (locale.startsWith('zh')) return zhCN
+  return undefined
+}
 
 interface ArticleFeedbackReasonsDialogProps {
   articleId: KbArticleId
@@ -32,6 +41,7 @@ export function ArticleFeedbackReasonsDialog({
   open,
   onOpenChange,
 }: ArticleFeedbackReasonsDialogProps) {
+  const intl = useOptionalIntl()
   const { data: reasons, isLoading } = useQuery({
     ...helpCenterQueries.articleFeedbackReasons(articleId),
     enabled: open,
@@ -41,16 +51,28 @@ export function ArticleFeedbackReasonsDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Unhelpful feedback</DialogTitle>
+          <DialogTitle>
+            {intl.formatMessage({
+              id: 'admin.helpCenter.feedback.title',
+              defaultMessage: 'Unhelpful feedback',
+            })}
+          </DialogTitle>
           <DialogDescription>
-            What readers said was missing when they voted this article unhelpful.
+            {intl.formatMessage({
+              id: 'admin.helpCenter.feedback.description',
+              defaultMessage:
+                'What readers said was missing when they voted this article unhelpful.',
+            })}
           </DialogDescription>
         </DialogHeader>
 
         {isLoading ? (
           <div className="flex items-center gap-2 py-6 text-sm text-muted-foreground">
             <InlineSpinner visible />
-            Loading feedback…
+            {intl.formatMessage({
+              id: 'admin.helpCenter.feedback.loading',
+              defaultMessage: 'Loading feedback…',
+            })}
           </div>
         ) : reasons && reasons.length > 0 ? (
           <ScrollArea className="max-h-[60vh]">
@@ -65,7 +87,10 @@ export function ArticleFeedbackReasonsDialog({
                     {entry.reason}
                   </p>
                   <p className={cn(MENU_LABEL, 'mt-1')}>
-                    {formatDistanceToNow(new Date(entry.createdAt), { addSuffix: true })}
+                    {formatDistanceToNow(new Date(entry.createdAt), {
+                      addSuffix: true,
+                      locale: dateFnsLocale(intl.locale),
+                    })}
                   </p>
                 </li>
               ))}
@@ -73,7 +98,10 @@ export function ArticleFeedbackReasonsDialog({
           </ScrollArea>
         ) : (
           <p className="py-6 text-sm text-muted-foreground">
-            No one has explained an unhelpful vote on this article yet.
+            {intl.formatMessage({
+              id: 'admin.helpCenter.feedback.empty',
+              defaultMessage: 'No one has explained an unhelpful vote on this article yet.',
+            })}
           </p>
         )}
       </DialogContent>

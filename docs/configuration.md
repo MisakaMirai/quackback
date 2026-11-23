@@ -17,6 +17,7 @@ Production Compose supplies `DATABASE_URL` from its bundled service. You must se
 | `DB_IDLE_TIMEOUT`          |                   `20` | Seconds before an idle database connection is closed.                                                           |
 | `TRUSTED_PROXY_HOPS`       |                    `0` | Proxy hops permitted to supply client-IP headers. Keep `0` when directly exposed.                               |
 | `TRUSTED_CLIENT_IP_HEADER` |                  unset | Header your proxy sets to the client IP, e.g. `X-Real-IP`. Wins over `TRUSTED_PROXY_HOPS`.                      |
+| `TRUSTED_ORIGINS`          |                  unset | Extra comma-separated origins allowed to drive auth. `BASE_URL` is trusted automatically.                       |
 | `CHAT_TRANSPORT_MODE`      |                 `live` | Set `poll` only behind proxies that buffer SSE.                                                                 |
 | `SETUP_OWNER_EMAIL`        |                  unset | Hands an unfinished setup to this address. See [Recovering setup](#recovering-setup).                           |
 | `SETUP_TOKEN`              |                  unset | Lets you create the first admin over HTTP. See [Setting up without a browser](#setting-up-without-a-browser).   |
@@ -32,7 +33,7 @@ If your proxy sets one authoritative client-IP header, such as nginx with `proxy
 
 Use `/api/health/live` for process liveness and `/api/health/ready` for traffic readiness. Readiness checks PostgreSQL, the exact bundled migration ledger, and whether a worker-role process is actually running the job worker.
 
-For optional email, storage, AI, authentication, and integration settings, see [`.env.example`](../.env.example).
+For optional email, storage, authentication, and integration settings, see [`.env.example`](../.env.example).
 
 ## Setting up without a browser
 
@@ -59,18 +60,8 @@ The first account created on a new install owns its setup until setup is finishe
 
 Budget connections across every replica: `web replicas × web DB_POOL_MAX + worker replicas × worker DB_POOL_MAX` must remain below PostgreSQL's connection limit with headroom for migrations and operators. Split-role defaults are intentionally smaller than the combined-role default.
 
-Migrations create large search indexes with `CREATE INDEX CONCURRENTLY` after the transactional Drizzle ledger completes. This includes cosine HNSW indexes for every production embedding column, trigram inbox search indexes, and the partial page-view principal index. If a concurrent build is interrupted, rerun `bun run db:migrate`; every statement is idempotent. To roll one back without blocking writes, use `DROP INDEX CONCURRENTLY <index_name>` and rerun migrations when ready to rebuild it.
+Migrations create large search indexes with `CREATE INDEX CONCURRENTLY` after the transactional Drizzle ledger completes. This includes trigram inbox search indexes and the partial page-view principal index. If a concurrent build is interrupted, rerun `bun run db:migrate`; every statement is idempotent. To roll one back without blocking writes, use `DROP INDEX CONCURRENTLY <index_name>` and rerun migrations when ready to rebuild it.
 
-Validate representative workspaces with `EXPLAIN (ANALYZE, BUFFERS)`: nearest-neighbour queries should order by the bare cosine-distance operator ascending and select an HNSW index scan. Tune session-local `hnsw.ef_search` only after measuring recall against an exact scan; increasing it improves recall at the cost of latency.
+## Integration credentials
 
-## Integration gateway and Slack assistant
-
-Cloud fleets can set `INTEGRATION_OAUTH_GATEWAY_URL=https://app.quackback.io` to use a single OAuth callback origin for shared integration apps. Leave it unset for self-hosted installations. `INTEGRATION_GATEWAY_FORWARD_SECRET` authenticates app-level hooks forwarded by the control plane and is required for these hooks in pooled tenancy. Configure it on both fleet web and worker processes.
-
-On Cloud, set `QUACKBACK_JOB_WORKER_URL` on the **web** service to the worker's private origin (for example `http://${{worker.RAILWAY_PRIVATE_DOMAIN}}:3000`) so Slack and other on-demand jobs start by id instead of waiting for the worker poll. The publisher also requires `QUACKBACK_FLEET_INTERNAL_TOKEN` on web; without both it stays idle and the poll is the floor. Point the URL at the worker, not a web replica: a process that is not running workers returns 503 so the publisher retries. Leave the URL unset to keep poll-only behaviour. Self-host `QUACKBACK_ROLE=all` does not need the URL: after-commit claims in-process.
-
-For single-tenancy deployments with `PLATFORM_CREDENTIALS_SOURCE=env`, complete credentials for an individual provider are managed from environment variables; other providers fall back to database credentials. Slack uses `INTEGRATION_SLACK_CLIENT_ID`, `INTEGRATION_SLACK_CLIENT_SECRET`, and `INTEGRATION_SLACK_SIGNING_SECRET`. Existing tenant-registered resource webhooks retain their current routes and secrets.
-
-See [Slack setup](./integrations/slack-app.md) and [Cloud rollout gates](./integrations/integration-gateway-rollout.md).
-
-Cloud application settings (AI, email, shared OAuth apps) are ordinary Railway environment variables on the CP and fleet services. Self-hosted instances use `.env` / `PLATFORM_CREDENTIALS_SOURCE` as before.
+With `PLATFORM_CREDENTIALS_SOURCE=env`, complete credentials for an individual provider are managed from environment variables; other providers fall back to database credentials. Slack uses `INTEGRATION_SLACK_CLIENT_ID`, `INTEGRATION_SLACK_CLIENT_SECRET`, and `INTEGRATION_SLACK_SIGNING_SECRET`. Existing install-registered resource webhooks retain their current routes and secrets.

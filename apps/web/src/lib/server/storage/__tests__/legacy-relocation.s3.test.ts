@@ -67,7 +67,6 @@ vi.mock('@/lib/server/config', () => ({
     s3SecretAccessKey: secretAccessKey,
     s3ForcePathStyle: true,
     baseUrl: 'https://feedback.example.com',
-    isPooledTenancy: false,
   },
 }))
 vi.mock('@/lib/server/db', () => ({

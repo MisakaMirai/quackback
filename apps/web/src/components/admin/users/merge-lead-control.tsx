@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button'
 import { DropdownMenuItem } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
 import { Avatar } from '@/components/ui/avatar'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import {
   Dialog,
   DialogContent,
@@ -51,6 +52,7 @@ export function MergeLeadControl({
   onOpenChange,
 }: MergeLeadControlProps) {
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false)
+  const intl = useOptionalIntl()
   const open = openProp ?? uncontrolledOpen
   const setOpen = onOpenChange ?? setUncontrolledOpen
   const [search, setSearch] = useState('')
@@ -84,13 +86,24 @@ export function MergeLeadControl({
       { principalId, targetPrincipalId: targetId },
       {
         onSuccess: () => {
-          toast.success('Lead merged into user')
+          toast.success(
+            intl.formatMessage({
+              id: 'admin.people.merge.success',
+              defaultMessage: 'Lead merged into user',
+            })
+          )
           setOpen(false)
           reset()
           onMerged()
         },
         onError: (error) => {
-          toastError(error, 'Failed to merge lead')
+          toastError(
+            error,
+            intl.formatMessage({
+              id: 'admin.people.merge.failed',
+              defaultMessage: 'Failed to merge lead',
+            })
+          )
         },
       }
     )
@@ -103,7 +116,7 @@ export function MergeLeadControl({
       {mode === 'menu-item' ? (
         <DropdownMenuItem onClick={() => setOpen(true)}>
           <ArrowsRightLeftIcon className="h-4 w-4" />
-          Merge
+          {intl.formatMessage({ id: 'admin.people.merge.action', defaultMessage: 'Merge' })}
         </DropdownMenuItem>
       ) : mode === 'button' ? (
         <Button
@@ -111,10 +124,16 @@ export function MergeLeadControl({
           size="sm"
           className={className}
           onClick={() => setOpen(true)}
-          title="Fold this lead's activity into an identified user"
+          title={intl.formatMessage({
+            id: 'admin.people.merge.triggerTitle',
+            defaultMessage: "Fold this lead's activity into an identified user",
+          })}
         >
           <ArrowsRightLeftIcon className="h-4 w-4 mr-2" />
-          Merge into user…
+          {intl.formatMessage({
+            id: 'admin.people.merge.trigger',
+            defaultMessage: 'Merge into user…',
+          })}
         </Button>
       ) : null}
       <Dialog
@@ -126,10 +145,28 @@ export function MergeLeadControl({
       >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Merge {leadName || 'this lead'} into a user</DialogTitle>
+            <DialogTitle>
+              {intl.formatMessage(
+                {
+                  id: 'admin.people.merge.dialogTitle',
+                  defaultMessage: 'Merge {name} into a user',
+                },
+                {
+                  name:
+                    leadName ||
+                    intl.formatMessage({
+                      id: 'admin.people.merge.thisLead',
+                      defaultMessage: 'this lead',
+                    }),
+                }
+              )}
+            </DialogTitle>
             <DialogDescription>
-              The lead&rsquo;s conversations, posts, comments and votes move to the chosen user, and
-              the lead disappears from the directory. This cannot be undone.
+              {intl.formatMessage({
+                id: 'admin.people.merge.dialogBody',
+                defaultMessage:
+                  'The lead’s conversations, posts, comments and votes move to the chosen user, and the lead disappears from the directory. This cannot be undone.',
+              })}
             </DialogDescription>
           </DialogHeader>
           <div className="relative">
@@ -138,7 +175,10 @@ export function MergeLeadControl({
               autoFocus
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search users by name or email…"
+              placeholder={intl.formatMessage({
+                id: 'common.userPicker.searchPlaceholder',
+                defaultMessage: 'Search users by name or email…',
+              })}
               className="pl-8 text-sm"
             />
           </div>
@@ -148,7 +188,12 @@ export function MergeLeadControl({
                 <ArrowPathIcon className="h-4 w-4 animate-spin text-muted-foreground" />
               </div>
             ) : items.length === 0 ? (
-              <p className="py-6 text-center text-sm text-muted-foreground">No users found</p>
+              <p className="py-6 text-center text-sm text-muted-foreground">
+                {intl.formatMessage({
+                  id: 'admin.people.merge.noResults',
+                  defaultMessage: 'No users found',
+                })}
+              </p>
             ) : (
               <div className="divide-y divide-border/50 rounded-lg border border-border/50 overflow-hidden">
                 {items.map((item) => (
@@ -164,10 +209,18 @@ export function MergeLeadControl({
                     <Avatar src={item.image} name={item.name} className="h-7 w-7" />
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-sm text-foreground">
-                        {item.name || 'Unnamed user'}
+                        {item.name ||
+                          intl.formatMessage({
+                            id: 'common.userPicker.unnamed',
+                            defaultMessage: 'Unnamed user',
+                          })}
                       </span>
                       <span className="block truncate text-xs text-muted-foreground">
-                        {item.email ?? 'No email'}
+                        {item.email ??
+                          intl.formatMessage({
+                            id: 'common.userPicker.noEmail',
+                            defaultMessage: 'No email',
+                          })}
                       </span>
                     </span>
                   </button>
@@ -177,13 +230,13 @@ export function MergeLeadControl({
           </div>
           <DialogFooter>
             <Button variant="ghost" size="sm" onClick={() => setOpen(false)}>
-              Cancel
+              {intl.formatMessage({ id: 'common.cancel', defaultMessage: 'Cancel' })}
             </Button>
             <Button size="sm" onClick={confirm} disabled={!targetId || mergeLead.isPending}>
               {mergeLead.isPending ? (
                 <ArrowPathIcon className="h-3.5 w-3.5 animate-spin mr-1" />
               ) : null}
-              Merge
+              {intl.formatMessage({ id: 'admin.people.merge.action', defaultMessage: 'Merge' })}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -70,8 +70,6 @@ vi.mock('@/components/ui/rich-text-editor', () => ({
   },
 }))
 
-vi.mock('@/components/admin/upgrade', () => ({ UpgradeModal: () => null }))
-
 vi.mock('@/components/admin/settings/settings-card', () => ({
   SettingsCard: ({ title, children }: { title?: string; children?: ReactNode }) => {
     cardRenders.set(title ?? '', (cardRenders.get(title ?? '') ?? 0) + 1)

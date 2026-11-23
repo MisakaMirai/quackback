@@ -15,6 +15,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { adminQueries } from '@/lib/client/queries/admin'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import {
   useEnableStatusSync,
   useDisableStatusSync,
@@ -48,6 +49,7 @@ export function StatusSyncConfig({
   externalStatuses,
   isManual = false,
 }: StatusSyncConfigProps) {
+  const intl = useOptionalIntl()
   const statusSyncEnabled = (config.statusSyncEnabled as boolean) ?? false
   const existingMappings = (config.statusMappings ?? {}) as Record<string, string | null>
   const webhookSecret = config.webhookSecret as string | undefined
@@ -82,14 +84,25 @@ export function StatusSyncConfig({
     ? `${window.location.origin}/api/integrations/${integrationType}/webhook`
     : null
 
+  const platformName =
+    integrationType.charAt(0).toUpperCase() + integrationType.slice(1).replace('_', ' ')
+  const platformLabel = integrationType.replace('_', ' ')
+
   return (
     <div className="space-y-6 border-t border-border/50 pt-6">
       <SettingRow
-        label="Status sync"
+        label={intl.formatMessage({
+          id: 'admin.integrations.statusSync.title',
+          defaultMessage: 'Status sync',
+        })}
         htmlFor="status-sync-toggle"
-        description={`Apply verified status changes from ${
-          integrationType.charAt(0).toUpperCase() + integrationType.slice(1).replace('_', ' ')
-        } to linked posts.`}
+        description={intl.formatMessage(
+          {
+            id: 'admin.integrations.statusSync.description',
+            defaultMessage: 'Apply verified status changes from {platform} to linked posts.',
+          },
+          { platform: platformName }
+        )}
         control={
           <Switch
             id="status-sync-toggle"
@@ -103,17 +116,37 @@ export function StatusSyncConfig({
       {statusSyncEnabled && isManual && webhookUrl && (
         <div className="rounded-lg border border-border/50 bg-muted/30 p-4 space-y-4">
           <div className="space-y-2">
-            <p className="text-sm font-medium">Webhook URL</p>
+            <p className="text-sm font-medium">
+              {intl.formatMessage({
+                id: 'admin.integrations.statusSync.webhookUrl',
+                defaultMessage: 'Webhook URL',
+              })}
+            </p>
             <p className="text-xs text-muted-foreground">
-              Copy this URL into your {integrationType.replace('_', ' ')} webhook settings.
+              {intl.formatMessage(
+                {
+                  id: 'admin.integrations.statusSync.webhookUrlHint',
+                  defaultMessage: 'Copy this URL into your {name} webhook settings.',
+                },
+                { name: platformLabel }
+              )}
             </p>
             <CopyableValue value={webhookUrl} />
           </div>
           {webhookSecret && (
             <div className="space-y-2">
-              <p className="text-sm font-medium">Signing secret</p>
+              <p className="text-sm font-medium">
+                {intl.formatMessage({
+                  id: 'admin.webhooks.signingSecret',
+                  defaultMessage: 'Signing secret',
+                })}
+              </p>
               <p className="text-xs text-muted-foreground">
-                Paste this as the webhook payload secret so status updates can be verified.
+                {intl.formatMessage({
+                  id: 'admin.integrations.statusSync.signingSecretHint',
+                  defaultMessage:
+                    'Paste this as the webhook payload secret so status updates can be verified.',
+                })}
               </p>
               <CopyableValue value={webhookSecret} />
             </div>
@@ -124,9 +157,18 @@ export function StatusSyncConfig({
       {statusSyncEnabled && externalStatuses.length > 0 && (
         <div className="space-y-3">
           <div>
-            <Label className="text-base font-medium">Status mapping</Label>
+            <Label className="text-base font-medium">
+              {intl.formatMessage({
+                id: 'admin.integrations.statusSync.mappingTitle',
+                defaultMessage: 'Status mapping',
+              })}
+            </Label>
             <p className="text-xs text-muted-foreground">
-              Map external statuses to Quackback statuses. Unmapped statuses are ignored.
+              {intl.formatMessage({
+                id: 'admin.integrations.statusSync.mappingDescription',
+                defaultMessage:
+                  'Map external statuses to Quackback statuses. Unmapped statuses are ignored.',
+              })}
             </p>
           </div>
 
@@ -147,7 +189,12 @@ export function StatusSyncConfig({
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value={IGNORE_VALUE}>
-                      <span className="text-muted-foreground">Ignore</span>
+                      <span className="text-muted-foreground">
+                        {intl.formatMessage({
+                          id: 'admin.integrations.statusSync.ignore',
+                          defaultMessage: 'Ignore',
+                        })}
+                      </span>
                     </SelectItem>
                     {quackbackStatuses.map((status) => (
                       <SelectItem key={status.id} value={status.id}>
@@ -165,7 +212,12 @@ export function StatusSyncConfig({
       {saving && (
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <ArrowPathIcon className="h-4 w-4 animate-spin" />
-          <span>Saving...</span>
+          <span>
+            {intl.formatMessage({
+              id: 'admin.integrations.config.saving',
+              defaultMessage: 'Saving...',
+            })}
+          </span>
         </div>
       )}
 
@@ -174,7 +226,10 @@ export function StatusSyncConfig({
           {enableSync.error?.message ||
             disableSync.error?.message ||
             updateMappings.error?.message ||
-            'Failed to save changes'}
+            intl.formatMessage({
+              id: 'admin.integrations.config.saveFailed',
+              defaultMessage: 'Failed to save changes',
+            })}
         </div>
       )}
     </div>

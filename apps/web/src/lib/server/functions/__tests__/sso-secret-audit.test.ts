@@ -92,10 +92,6 @@ vi.mock('@/lib/server/auth/sso-secret', () => ({
   isSsoActuallyRegistered: vi.fn().mockResolvedValue(true),
 }))
 
-vi.mock('@/lib/server/domains/settings/tier-limits.service', () => ({
-  getTierLimits: vi.fn().mockResolvedValue({ features: { customOidcProvider: true } }),
-}))
-
 vi.mock('@quackback/email', () => ({
   isEmailConfigured: vi.fn().mockReturnValue(true),
 }))

@@ -14,7 +14,7 @@ import { createHash } from 'node:crypto'
 import { logger } from '@/lib/server/logger'
 import { kvSetNx } from '@/lib/server/kv/pg-kv'
 import type { JobHandler } from '@/lib/server/jobs/definitions'
-import { WorkspaceKeyedCache } from '@/lib/server/workspaces/workspace-keyed'
+import { BoundedCache } from '@/lib/server/bounded-cache'
 import {
   backfillWorkDone,
   DURABLE_KV_TTL_SECONDS,
@@ -50,7 +50,7 @@ function upgradeBuildKey(): string {
  * The build each workspace's upgrade work was last noted done for in this
  * process, so once it is noted no later check reads kv or the catalogue.
  */
-const notedBuild = new WorkspaceKeyedCache<string>(10_000)
+const notedBuild = new BoundedCache<string>(10_000)
 
 /**
  * Log `upgrade work done` if this workspace's upgrade work is finished and this

@@ -5,6 +5,7 @@
  * points at the detail panel's Attributes section.
  */
 import { memo } from 'react'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,22 +24,36 @@ export const RequiredAttributesDialog = memo(function RequiredAttributesDialog({
   messages: string[] | null
   onClose: () => void
 }) {
+  const intl = useOptionalIntl()
   return (
     <AlertDialog open={!!messages && messages.length > 0} onOpenChange={(o) => !o && onClose()}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Required attributes missing</AlertDialogTitle>
+          <AlertDialogTitle>
+            {intl.formatMessage({
+              id: 'inbox.requiredAttributes.title',
+              defaultMessage: 'Required attributes missing',
+            })}
+          </AlertDialogTitle>
           <AlertDialogDescription asChild>
             <div className="space-y-2">
               {(messages ?? []).map((m) => (
                 <p key={m}>{m}</p>
               ))}
-              <p>Fill them in the Attributes section of the conversation panel, then close.</p>
+              <p>
+                {intl.formatMessage({
+                  id: 'inbox.requiredAttributes.body',
+                  defaultMessage:
+                    'Fill them in the Attributes section of the conversation panel, then close.',
+                })}
+              </p>
             </div>
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogAction onClick={onClose}>OK</AlertDialogAction>
+          <AlertDialogAction onClick={onClose}>
+            {intl.formatMessage({ id: 'inbox.requiredAttributes.ok', defaultMessage: 'OK' })}
+          </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

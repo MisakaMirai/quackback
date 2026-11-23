@@ -207,12 +207,64 @@ export interface ReplayOverride {
  * migration is responsible, done. Removing one is not, and cannot be: see
  * property 3 on {@link ReplayOverride}.
  */
+/**
+ * Migrations whose objects were retired by a later destructive migration. A
+ * replay against the fully migrated database would recreate the dropped
+ * objects (the `IF NOT EXISTS` forms succeed rather than error), so they are
+ * outside the replay-safe set. The lineage still applies them once; only the
+ * second-application check skips them.
+ */
+export const REPLAY_RETIRED: ReadonlySet<string> = new Set([
+  '0230_post_tags_ai_prompt',
+  '0255_settings_cloud_tenant_id',
+  '0256_workspace_key_columns',
+  '0261_connectors',
+  '0275_slack_thread_sessions',
+  '0294_workspace_copilot',
+  '0296_validate_workspace_copilot_checks',
+  '0316_drop_quackback_ai',
+  // Retired by 0318_drop_widget: it drops the widget_config column, the widget
+  // session tables and the widget scope these files replay against.
+  '0269_messenger_ai_default_on',
+  '0271_widget_installed_sdk_version',
+  '0277_widget_chat_to_messenger',
+  '0280_widget_session_scope',
+  '0291_legacy_surface_switches',
+  // Retired by 0319_drop_retired_tables: it drops the workflow engine tables,
+  // the Labs experiment table and settings.state, so these replays would
+  // recreate objects the current schema no longer declares.
+  '0054_settings_state',
+  '0180_workflow_runs_started_at_idx',
+  '0184_workflow_run_graph_snapshot',
+  '0185_workflow_run_graph_backfill',
+  '0188_workflow_versions',
+  '0281_workspace_experiments',
+  '0282_refined_visual_theme_visible',
+  '0283_refined_visual_theme_default_on',
+  // Retired by 0322_drop_apps: its app-subscription UPDATE targets the apps
+  // table, which the lineage now drops, so a second application has no relation
+  // to update. Its webhook and notification cleanup still applies once.
+  '0308_remove_approvals_leftovers',
+])
+
 export const REPLAY_OVERRIDES: readonly ReplayOverride[] = [
   {
-    tag: '0269_messenger_ai_default_on',
-    verdict: 'mutates',
-    why: '0274_slack_agent_gateway upgrades the assistant_config default to version 4. Replaying 0269 succeeds but downgrades that default to version 3, losing workspace assistant defaults for new settings rows.',
-    stillFailsWith: /catalogue changed/,
+    tag: '0051_ai_usage_log_month_index',
+    verdict: 'errors',
+    why: '0316_drop_quackback_ai drops ai_usage_log, so the index statement has no relation to target on a replay of the migrated database.',
+    stillFailsWith: /ai_usage_log/,
+  },
+  {
+    tag: '0274_slack_agent_gateway',
+    verdict: 'errors',
+    why: '0316_drop_quackback_ai drops assistant_pending_actions, so the Slack agent gateway replay has no relation to alter.',
+    stillFailsWith: /assistant_pending_actions/,
+  },
+  {
+    tag: '0302_approvals_foundation',
+    verdict: 'errors',
+    why: '0316_drop_quackback_ai drops assistant_pending_actions, so the approvals-foundation replay has no relation to alter.',
+    stillFailsWith: /assistant_pending_actions/,
   },
   {
     tag: '0091_drop_conversation_tags',
@@ -236,7 +288,7 @@ export const REPLAY_OVERRIDES: readonly ReplayOverride[] = [
       'the gap heal treats the two differently and only mutates is refused in both populations: ' +
       'an errors verdict here would still let a heal delete the ledger rows and then fail on ' +
       'every replay forever, with nothing able to write them back.',
-    stillFailsWith: /pipeline_log/,
+    stillFailsWith: /pipeline_log|assistant_events|workflow_runs|workflow_run_events/,
   },
 ]
 

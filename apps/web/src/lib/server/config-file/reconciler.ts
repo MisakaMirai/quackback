@@ -14,7 +14,6 @@ export interface SettingsRow {
   name: string
   slug: string
   setupState: string | null
-  tierLimits: string | null
   managedFieldPaths: string[]
 }
 
@@ -36,7 +35,6 @@ export interface SettingsInsert {
   name: string
   slug: string
   setupState?: string
-  tierLimits?: string
   managedFieldPaths: string[]
 }
 
@@ -49,12 +47,7 @@ export interface ReconcileDeps {
    *  seed-workspace path removed, the file is the sole seed channel
    *  when no settings row exists yet. */
   createSettings: (insert: SettingsInsert) => Promise<void>
-  /**
-   * Apply the file's `tierLimits` block through `writeTierLimits`.
-   */
-  applyTierLimits: (limits: Record<string, unknown> | null) => Promise<boolean>
   invalidateSettingsCache: () => Promise<void>
-  invalidateTierLimitsCache: () => Promise<void>
   /** Post-reconcile status reporter. Optional so unit tests don't have
    *  to stub it; production wiring (`makeReconcileDeps`) populates it
    *  with a fetch to the operator's status endpoint. A silent no-op
@@ -90,11 +83,9 @@ export async function reconcileFileIntoDb(
       name: spec.workspace.name,
       slug: spec.workspace.slug,
       setupState,
-      tierLimits: spec.tierLimits !== undefined ? JSON.stringify(spec.tierLimits) : undefined,
       managedFieldPaths: computeManagedPaths(spec),
     })
     await deps.invalidateSettingsCache()
-    await deps.invalidateTierLimitsCache()
     return
   }
 
@@ -114,28 +105,13 @@ export async function reconcileFileIntoDb(
     if (serialized !== current.setupState) update.setupWorkspace = spec.workspace
   }
 
-  // Like the cloud block, tier limits travel their own locked seam; the check
-  // here is only a fast path so a steady-state tick opens no transaction.
-  let tierLimitsChanged = false
-  if (spec.tierLimits !== undefined) {
-    const serialized = JSON.stringify(spec.tierLimits)
-    if (serialized !== current.tierLimits) {
-      tierLimitsChanged = await deps.applyTierLimits(spec.tierLimits)
-    }
-  }
-
   const pathsChanged = !arrayEquals(newPaths, current.managedFieldPaths)
   const hasFieldUpdates = Object.keys(update).length > 1 // > 1 because managedFieldPaths is always set
-
-  // Both seams invalidate their own caches when they write, so a reconcile
-  // that touched only those columns is already fully applied.
-  void tierLimitsChanged
 
   if (!pathsChanged && !hasFieldUpdates) return
 
   await deps.updateSettings(update)
   await deps.invalidateSettingsCache()
-  await deps.invalidateTierLimitsCache()
 }
 
 export function mergeSetupState(

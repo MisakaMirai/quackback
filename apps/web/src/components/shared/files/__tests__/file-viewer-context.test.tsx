@@ -7,6 +7,7 @@ import { act, fireEvent, render as rtlRender, screen, waitFor } from '@testing-l
 import { IntlProvider } from 'react-intl'
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { loadViewerMessages } from '@/lib/shared/i18n'
+import zhCn from '@/locales/zh-cn.json'
 import { FileViewerProvider, useFileViewer } from '../file-viewer-context'
 import type { ViewerFile } from '../types'
 
@@ -64,7 +65,7 @@ function Opener({ files, index }: { files: ViewerFile[]; index: number }) {
 // first open in a busy run is not timed against the module transform.
 beforeAll(async () => {
   await import('../file-viewer')
-  await Promise.all([loadViewerMessages('en'), loadViewerMessages('de')])
+  await Promise.all([loadViewerMessages('en'), loadViewerMessages('zh-cn')])
 })
 
 beforeEach(() => {
@@ -141,10 +142,12 @@ describe('FileViewerProvider', () => {
       <FileViewerProvider>
         <Opener files={[deck]} index={0} />
       </FileViewerProvider>,
-      { locale: 'de', messages: { 'files.download': 'Herunterladen' } }
+      { locale: 'zh-cn', messages: { 'files.download': zhCn['files.download'] } }
     )
     await clickToOpen(screen.getByRole('button', { name: 'Open files' }))
-    expect(await screen.findByRole('button', { name: 'Schließen' })).toBeInTheDocument()
+    expect(
+      await screen.findByRole('button', { name: zhCn['files.viewer.close'] })
+    ).toBeInTheDocument()
   })
 
   it("keeps the page's own viewer strings when its catalog has them", async () => {
@@ -152,11 +155,11 @@ describe('FileViewerProvider', () => {
       <FileViewerProvider>
         <Opener files={[deck]} index={0} />
       </FileViewerProvider>,
-      { locale: 'de', messages: { 'files.viewer.close': 'Zu' } }
+      { locale: 'zh-cn', messages: { 'files.viewer.close': '关闭窗口' } }
     )
     await clickToOpen(screen.getByRole('button', { name: 'Open files' }))
-    expect(await screen.findByRole('button', { name: 'Zu' })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Schließen' })).toBeNull()
+    expect(await screen.findByRole('button', { name: '关闭窗口' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: zhCn['files.viewer.close'] })).toBeNull()
   })
 
   it('ignores an empty gallery', async () => {

@@ -8,9 +8,8 @@
  * whose Host (or forwarded host) names the user-content host reaches only
  * GET, HEAD and OPTIONS under /api/storage/; anything else is a 404.
  *
- * Under pooled tenancy the setting is ignored (the config getter returns
- * nothing), and so is this. The config is imported on first use: `start.ts`
- * is a client entry as well as a server one.
+ * The config is imported on first use: `start.ts` is a client entry as well as
+ * a server one.
  */
 import { createMiddleware } from '@tanstack/react-start'
 

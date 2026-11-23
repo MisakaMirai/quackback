@@ -183,10 +183,10 @@ describe('policyActorFromAuth', () => {
 
   it('preserves custom permissions supplied by auth instead of expanding the legacy role', async () => {
     const actor = await policyActorFromAuth(
-      buildAuth({ principalRole: 'member', permissions: [PERMISSIONS.BILLING_MANAGE] })
+      buildAuth({ principalRole: 'member', permissions: [PERMISSIONS.AUDIT_VIEW] })
     )
 
-    expect(actor.permissions).toEqual(new Set([PERMISSIONS.BILLING_MANAGE]))
+    expect(actor.permissions).toEqual(new Set([PERMISSIONS.AUDIT_VIEW]))
     expect(actor.permissions?.has(PERMISSIONS.CONVERSATION_VIEW)).toBe(false)
   })
 

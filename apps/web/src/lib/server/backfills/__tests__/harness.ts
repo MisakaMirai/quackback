@@ -55,6 +55,7 @@ export async function createOwnDatabase(own: OwnDatabase): Promise<void> {
   await onShared(own, `CREATE DATABASE ${own.name}`)
   await new Promise<void>((resolve, reject) => {
     const child = spawn('bun', ['src/migrate.ts'], {
+      shell: process.platform === 'win32',
       cwd: path.resolve(__dirname, '../../../../../../../packages/db'),
       env: { ...process.env, DATABASE_URL: own.url },
       stdio: ['ignore', 'pipe', 'pipe'],

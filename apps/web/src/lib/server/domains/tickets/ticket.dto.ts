@@ -1,7 +1,7 @@
 /**
  * Ticket wire-DTO mapping (support platform §4.2). Owns the row → DTO transform
- * and the batched reference lookups (statuses, principals, teams, companies,
- * stage labels) that back it — one query per table, no N+1. Kept separate from
+ * and the batched reference lookups (statuses, principals, teams, stage
+ * labels) that back it — one query per table, no N+1. Kept separate from
  * ticket.service so the mutation logic and the read-shape stay at their own
  * altitudes.
  */
@@ -17,20 +17,12 @@ import {
   ticketStatuses,
   ticketTypes,
   teams,
-  companies,
   conversationMessages,
   type Ticket,
   type TicketStatusEntity,
   type TicketTypeEntity,
 } from '@/lib/server/db'
-import type {
-  TicketId,
-  TicketStatusId,
-  TicketTypeId,
-  PrincipalId,
-  TeamId,
-  CompanyId,
-} from '@quackback/ids'
+import type { TicketId, TicketStatusId, TicketTypeId, PrincipalId, TeamId } from '@quackback/ids'
 import type { ConversationId } from '@quackback/ids'
 import type { TicketStatusCategory } from '@/lib/shared/db-types'
 import type { JsonValue } from '@/lib/shared/json'
@@ -58,7 +50,6 @@ interface TicketDTOContext {
     { publicAuthor: TicketPrincipalRef; supportAuthor: TicketPrincipalRef }
   >
   teams: Map<TeamId, string>
-  companies: Map<CompanyId, string>
   stageLabels: TicketStageLabels
   activity: Map<TicketId, TicketActivity>
 }
@@ -294,9 +285,8 @@ export async function buildTicketContext(rows: Ticket[]): Promise<TicketDTOConte
   const statusIds = uniqueIds(rows.map((r) => r.statusId))
   const ticketTypeIds = uniqueIds(rows.map((r) => r.ticketTypeId))
   const teamIds = uniqueIds(rows.map((r) => r.assigneeTeamId))
-  const companyIds = uniqueIds(rows.map((r) => r.companyId))
 
-  const [statusRows, ticketTypeRows, principals, teamRows, companyRows, stageLabels, activity] =
+  const [statusRows, ticketTypeRows, principals, teamRows, stageLabels, activity] =
     await Promise.all([
       statusIds.length
         ? db.select().from(ticketStatuses).where(inArray(ticketStatuses.id, statusIds))
@@ -318,12 +308,6 @@ export async function buildTicketContext(rows: Ticket[]): Promise<TicketDTOConte
             .from(teams)
             .where(inArray(teams.id, teamIds))
         : Promise.resolve([] as Array<{ id: TeamId; name: string }>),
-      companyIds.length
-        ? db
-            .select({ id: companies.id, name: companies.name })
-            .from(companies)
-            .where(inArray(companies.id, companyIds))
-        : Promise.resolve([] as Array<{ id: CompanyId; name: string }>),
       getStageLabels(),
       loadTicketActivity(rows),
     ])
@@ -333,7 +317,6 @@ export async function buildTicketContext(rows: Ticket[]): Promise<TicketDTOConte
     ticketTypes: new Map(ticketTypeRows.map((t) => [t.id, t])),
     principals,
     teams: new Map(teamRows.map((t) => [t.id, t.name])),
-    companies: new Map(companyRows.map((c) => [c.id, c.name])),
     stageLabels,
     activity,
   }
@@ -398,9 +381,6 @@ export function ticketToDTO(
       teamId: row.assigneeTeamId ?? null,
       teamName: row.assigneeTeamId ? (ctx.teams.get(row.assigneeTeamId) ?? null) : null,
     },
-    company: row.companyId
-      ? { id: row.companyId, name: ctx.companies.get(row.companyId) ?? 'Unknown' }
-      : null,
     firstResponseAt: row.firstResponseAt?.toISOString() ?? null,
     dueAt: row.dueAt?.toISOString() ?? null,
     resolvedAt: row.resolvedAt?.toISOString() ?? null,

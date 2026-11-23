@@ -1,13 +1,14 @@
 import { useSessionContext, useWorkspaceSettings } from '@/lib/client/hooks/use-root-context'
 import { realEmail } from '@/lib/shared/anonymous-email'
 import { useEffect, useState } from 'react'
+import { FormattedMessage, useIntl, type IntlShape } from 'react-intl'
 import { createFileRoute } from '@tanstack/react-router'
 import { z } from 'zod'
 import { DomainAccessPicker } from '@/components/domain-access-picker'
 import { PortalIntlProvider } from '@/components/portal-intl-provider'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
-import { DEFAULT_LOCALE } from '@/lib/shared/i18n'
+import { DEFAULT_LOCALE, loadPortalMessages } from '@/lib/shared/i18n'
 import {
   ACCESS_DOMAINS,
   domainAccessLevels,
@@ -43,13 +44,20 @@ const searchSchema = z.object({
 
 export const Route = createFileRoute('/oauth/consent')({
   validateSearch: searchSchema,
+  loader: async ({ context }) => {
+    const locale = context.acceptLanguageLocale ?? DEFAULT_LOCALE
+    return { locale, messages: await loadPortalMessages(locale) }
+  },
   component: ConsentRoute,
 })
 
 function ConsentRoute() {
-  // This standalone route uses English copy and sits outside the portal/admin providers.
+  // This standalone route sits outside the portal/admin providers, so it
+  // supplies its own IntlProvider with the request's locale.
+  const { locale, messages } = Route.useLoaderData()
+
   return (
-    <PortalIntlProvider locale={DEFAULT_LOCALE}>
+    <PortalIntlProvider locale={locale} messages={messages}>
       <ConsentPage />
     </PortalIntlProvider>
   )
@@ -87,33 +95,80 @@ function useClientInfo(clientId: string) {
   return client
 }
 
-function joinWords(words: string[]): string {
-  if (words.length <= 1) return words.join('')
-  return `${words.slice(0, -1).join(', ')} and ${words[words.length - 1]}`
-}
-
 /** One sentence saying what the current selection lets the client do. */
 function accessSummary(
+  intl: IntlShape,
   clientName: string,
   preset: ConsentPreset,
   levels: DomainAccessLevels
 ): string {
   if (preset === 'full') {
-    return `${clientName} can read and make changes across your workspace, including settings, up to what your role allows.`
+    return intl.formatMessage(
+      {
+        id: 'portal.auth.consent.summary.full',
+        defaultMessage:
+          '{client} can read and make changes across your workspace, including settings, up to what your role allows.',
+      },
+      { client: clientName }
+    )
   }
   if (preset === 'read') {
-    return `${clientName} can search and read. It cannot post, reply, publish or change settings.`
+    return intl.formatMessage(
+      {
+        id: 'portal.auth.consent.summary.read',
+        defaultMessage:
+          '{client} can search and read. It cannot post, reply, publish or change settings.',
+      },
+      { client: clientName }
+    )
   }
   const writes = ACCESS_DOMAINS.filter((d) => ['read_write', 'write'].includes(levels[d.domain]))
   const reads = ACCESS_DOMAINS.filter((d) => levels[d.domain] === 'read')
-  if (writes.length + reads.length === 0) return 'Select at least one area to continue.'
+  if (writes.length + reads.length === 0) {
+    return intl.formatMessage({
+      id: 'portal.auth.consent.summary.selectArea',
+      defaultMessage: 'Select at least one area to continue.',
+    })
+  }
   const parts: string[] = []
   if (writes.length > 0) {
-    parts.push(`${clientName} can change ${joinWords(writes.map((d) => d.label))}.`)
+    parts.push(
+      intl.formatMessage(
+        {
+          id: 'portal.auth.consent.summary.writes',
+          defaultMessage: '{client} can change {areas}.',
+        },
+        {
+          client: clientName,
+          areas: intl.formatList(
+            writes.map((d) => d.label),
+            { type: 'conjunction' }
+          ),
+        }
+      )
+    )
   }
   if (reads.length > 0) {
+    const areas = intl.formatList(
+      reads.map((d) => d.label),
+      { type: 'conjunction' }
+    )
     parts.push(
-      `${writes.length > 0 ? 'It' : clientName} can only read ${joinWords(reads.map((d) => d.label))}.`
+      writes.length > 0
+        ? intl.formatMessage(
+            {
+              id: 'portal.auth.consent.summary.readsAfterWrites',
+              defaultMessage: 'It can only read {areas}.',
+            },
+            { areas }
+          )
+        : intl.formatMessage(
+            {
+              id: 'portal.auth.consent.summary.readsOnly',
+              defaultMessage: '{client} can only read {areas}.',
+            },
+            { client: clientName, areas }
+          )
     )
   }
   return parts.join(' ')
@@ -158,7 +213,9 @@ function AccessChoice({
         <span className="flex items-center gap-2 text-sm font-medium">
           {title}
           {recommended && (
-            <span className="text-[11px] font-medium text-muted-foreground">Recommended</span>
+            <span className="text-[11px] font-medium text-muted-foreground">
+              <FormattedMessage id="portal.auth.consent.recommended" defaultMessage="Recommended" />
+            </span>
           )}
         </span>
         <span className="block text-xs text-muted-foreground">{description}</span>
@@ -168,6 +225,7 @@ function AccessChoice({
 }
 
 function ConsentPage() {
+  const intl = useIntl()
   const search = Route.useSearch()
   const session = useSessionContext()
   const settings = useWorkspaceSettings()
@@ -189,7 +247,12 @@ function ConsentPage() {
   const [submitting, setSubmitting] = useState<'accept' | 'deny' | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  const clientName = client?.client_name || 'An application'
+  const clientName =
+    client?.client_name ||
+    intl.formatMessage({
+      id: 'portal.auth.consent.clientFallback',
+      defaultMessage: 'An application',
+    })
   const clientDomain = (() => {
     if (!client?.client_uri || !isSafeUrl(client.client_uri)) return null
     try {
@@ -235,7 +298,12 @@ function ConsentPage() {
       }
     } catch {
       setSubmitting(null)
-      setError('Something went wrong. Please try again.')
+      setError(
+        intl.formatMessage({
+          id: 'portal.auth.error.generic',
+          defaultMessage: 'Something went wrong. Please try again.',
+        })
+      )
     }
   }
 
@@ -272,7 +340,20 @@ function ConsentPage() {
           <h1 className="text-xl font-semibold">{clientName}</h1>
 
           <p className="text-sm text-muted-foreground">
-            wants to access {workspaceName ?? 'your account'}
+            {intl.formatMessage(
+              {
+                id: 'portal.auth.consent.wantsAccess',
+                defaultMessage: 'wants to access {workspace}',
+              },
+              {
+                workspace:
+                  workspaceName ??
+                  intl.formatMessage({
+                    id: 'portal.auth.consent.yourAccount',
+                    defaultMessage: 'your account',
+                  }),
+              }
+            )}
           </p>
 
           {clientDomain && (
@@ -295,12 +376,25 @@ function ConsentPage() {
         </div>
 
         <div className="space-y-3">
-          <div role="radiogroup" aria-label="Access level" className="space-y-2">
+          <div
+            role="radiogroup"
+            aria-label={intl.formatMessage({
+              id: 'portal.auth.consent.accessLevel',
+              defaultMessage: 'Access level',
+            })}
+            className="space-y-2"
+          >
             <AccessChoice
               value="full"
               selected={preset === 'full'}
-              title="Full access"
-              description="Read and make changes, up to what your role allows"
+              title={intl.formatMessage({
+                id: 'portal.auth.consent.full.title',
+                defaultMessage: 'Full access',
+              })}
+              description={intl.formatMessage({
+                id: 'portal.auth.consent.full.description',
+                defaultMessage: 'Read and make changes, up to what your role allows',
+              })}
               recommended
               disabled={submitting !== null}
               onSelect={() => setLevels(consentPresetLevels('full'))}
@@ -308,8 +402,14 @@ function ConsentPage() {
             <AccessChoice
               value="read"
               selected={preset === 'read'}
-              title="Read only"
-              description="Search and look things up. No changes."
+              title={intl.formatMessage({
+                id: 'portal.auth.consent.read.title',
+                defaultMessage: 'Read only',
+              })}
+              description={intl.formatMessage({
+                id: 'portal.auth.consent.read.description',
+                defaultMessage: 'Search and look things up. No changes.',
+              })}
               disabled={submitting !== null}
               onSelect={() => setLevels(consentPresetLevels('read'))}
             />
@@ -317,8 +417,14 @@ function ConsentPage() {
               <AccessChoice
                 value="custom"
                 selected
-                title="Custom"
-                description="Your own selection below"
+                title={intl.formatMessage({
+                  id: 'portal.auth.consent.custom.title',
+                  defaultMessage: 'Custom',
+                })}
+                description={intl.formatMessage({
+                  id: 'portal.auth.consent.custom.description',
+                  defaultMessage: 'Your own selection below',
+                })}
                 disabled={submitting !== null}
                 onSelect={() => {}}
               />
@@ -336,7 +442,13 @@ function ConsentPage() {
               className={cn('h-3.5 w-3.5 transition-transform', showDetail && 'rotate-90')}
               aria-hidden
             />
-            Choose what {clientName} can access
+            {intl.formatMessage(
+              {
+                id: 'portal.auth.consent.chooseAccess',
+                defaultMessage: 'Choose what {client} can access',
+              },
+              { client: clientName }
+            )}
           </button>
 
           {showDetail && (
@@ -352,23 +464,37 @@ function ConsentPage() {
               />
               <div className="flex items-center justify-between px-4 py-3 border-t border-border/30">
                 <div className="min-w-0 pr-4">
-                  <p className="text-sm font-medium">Stay signed in</p>
+                  <p className="text-sm font-medium">
+                    <FormattedMessage
+                      id="portal.auth.consent.staySignedIn"
+                      defaultMessage="Stay signed in"
+                    />
+                  </p>
                   <p className="text-xs text-muted-foreground">
-                    Let {clientName} refresh access without asking again
+                    {intl.formatMessage(
+                      {
+                        id: 'portal.auth.consent.staySignedInBody',
+                        defaultMessage: 'Let {client} refresh access without asking again',
+                      },
+                      { client: clientName }
+                    )}
                   </p>
                 </div>
                 <Switch
                   checked={offlineAccess}
                   onCheckedChange={setOfflineAccess}
                   disabled={submitting !== null}
-                  aria-label="Stay signed in"
+                  aria-label={intl.formatMessage({
+                    id: 'portal.auth.consent.staySignedIn',
+                    defaultMessage: 'Stay signed in',
+                  })}
                 />
               </div>
             </div>
           )}
 
           <p className="text-xs text-muted-foreground px-1" aria-live="polite">
-            {accessSummary(clientName, preset, levels)}
+            {accessSummary(intl, clientName, preset, levels)}
           </p>
         </div>
 
@@ -387,7 +513,11 @@ function ConsentPage() {
               disabled={submitting !== null}
               onClick={() => handleConsent(false)}
             >
-              {submitting === 'deny' ? 'Denying...' : 'Deny'}
+              {submitting === 'deny' ? (
+                <FormattedMessage id="portal.auth.consent.denying" defaultMessage="Denying..." />
+              ) : (
+                <FormattedMessage id="portal.auth.consent.deny" defaultMessage="Deny" />
+              )}
             </Button>
             <Button
               size="lg"
@@ -395,14 +525,33 @@ function ConsentPage() {
               disabled={submitting !== null || !canAuthorize}
               onClick={() => handleConsent(true)}
             >
-              {submitting === 'accept' ? 'Authorizing...' : 'Authorize'}
+              {submitting === 'accept' ? (
+                <FormattedMessage
+                  id="portal.auth.consent.authorizing"
+                  defaultMessage="Authorizing..."
+                />
+              ) : (
+                <FormattedMessage id="portal.auth.consent.authorize" defaultMessage="Authorize" />
+              )}
             </Button>
           </div>
 
           <div className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground/60">
             <ShieldCheck className="h-3.5 w-3.5 shrink-0" />
             <p>
-              {signedInAs ? `Signed in as ${signedInAs}. ` : ''}Revoke any time in account settings
+              {signedInAs
+                ? `${intl.formatMessage(
+                    {
+                      id: 'portal.auth.consent.signedInAs',
+                      defaultMessage: 'Signed in as {email}.',
+                    },
+                    { email: signedInAs }
+                  )} `
+                : ''}
+              <FormattedMessage
+                id="portal.auth.consent.revoke"
+                defaultMessage="Revoke any time in account settings"
+              />
             </p>
           </div>
 
@@ -412,29 +561,68 @@ function ConsentPage() {
             if (!hasTos && !hasPolicy) return null
             return (
               <p className="text-center text-xs text-muted-foreground/60">
-                {'By authorizing, you agree to '}
-                {hasTos && (
-                  <a
-                    href={client.tos_uri!}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="underline hover:text-muted-foreground transition-colors"
-                  >
-                    Terms of Service
-                  </a>
+                {hasTos && hasPolicy ? (
+                  <FormattedMessage
+                    id="portal.auth.consent.legal.both"
+                    defaultMessage="By authorizing, you agree to <tos>Terms of Service</tos> and <policy>Privacy Policy</policy>."
+                    values={{
+                      tos: (chunks) => (
+                        <a
+                          href={client.tos_uri!}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="underline hover:text-muted-foreground transition-colors"
+                        >
+                          {chunks}
+                        </a>
+                      ),
+                      policy: (chunks) => (
+                        <a
+                          href={client.policy_uri!}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="underline hover:text-muted-foreground transition-colors"
+                        >
+                          {chunks}
+                        </a>
+                      ),
+                    }}
+                  />
+                ) : hasTos ? (
+                  <FormattedMessage
+                    id="portal.auth.consent.legal.tos"
+                    defaultMessage="By authorizing, you agree to <tos>Terms of Service</tos>."
+                    values={{
+                      tos: (chunks) => (
+                        <a
+                          href={client.tos_uri!}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="underline hover:text-muted-foreground transition-colors"
+                        >
+                          {chunks}
+                        </a>
+                      ),
+                    }}
+                  />
+                ) : (
+                  <FormattedMessage
+                    id="portal.auth.consent.legal.policy"
+                    defaultMessage="By authorizing, you agree to <policy>Privacy Policy</policy>."
+                    values={{
+                      policy: (chunks) => (
+                        <a
+                          href={client.policy_uri!}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="underline hover:text-muted-foreground transition-colors"
+                        >
+                          {chunks}
+                        </a>
+                      ),
+                    }}
+                  />
                 )}
-                {hasTos && hasPolicy && ' and '}
-                {hasPolicy && (
-                  <a
-                    href={client.policy_uri!}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="underline hover:text-muted-foreground transition-colors"
-                  >
-                    Privacy Policy
-                  </a>
-                )}
-                .
               </p>
             )
           })()}

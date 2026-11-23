@@ -5,7 +5,7 @@
  * the copy rules forbid.
  */
 import { describe, expect, it } from 'vitest'
-import { SUPPORTED_LOCALES } from '@/lib/shared/i18n'
+import { SUPPORTED_LOCALES, isRtlLocale } from '@/lib/shared/i18n'
 import {
   invitationEmailCopy,
   nudgeEmailCopy,
@@ -19,10 +19,10 @@ const SHARE_STEP = {
   title: 'Share your board',
   url: `${BASE}/admin?open=share`,
 }
-const MESSENGER_STEP = {
-  id: 'connect-messenger',
-  title: 'Put Messenger on your site',
-  url: `${BASE}/admin/settings/widget/install`,
+const BOARD_STEP = {
+  id: 'create-board',
+  title: 'Create a feedback board',
+  url: `${BASE}/admin/settings/boards`,
 }
 
 function ready(locale: (typeof SUPPORTED_LOCALES)[number], trial = true) {
@@ -40,8 +40,10 @@ function ready(locale: (typeof SUPPORTED_LOCALES)[number], trial = true) {
 
 describe('recipientLocale', () => {
   it('takes the first supported language, else English', () => {
-    expect(recipientLocale(null, 'de-DE', 'fr')).toBe('de')
-    expect(recipientLocale('xx', undefined, 'pt-BR')).toBe('pt-br')
+    expect(recipientLocale(null, 'zh-CN', 'fr')).toBe('zh-cn')
+    expect(recipientLocale('xx', undefined, 'zh-TW')).toBe('zh-tw')
+    expect(recipientLocale(null, 'de-DE', 'zh-CN')).toBe('zh-cn')
+    expect(recipientLocale(null, 'de-DE')).toBe('en')
     expect(recipientLocale(null, 'klingon')).toBe('en')
   })
 })
@@ -72,19 +74,20 @@ describe('readyEmailCopy', () => {
     expect(copy.paragraphs.join(' ')).not.toMatch(/trial/)
   })
 
-  it('is written in German for a German recipient', async () => {
-    const copy = await ready('de')
-    expect(copy.lang).toBe('de')
+  it('is written in Chinese for a Chinese recipient', async () => {
+    const copy = await ready('zh-cn')
+    expect(copy.lang).toBe('zh-CN')
+    expect(copy.dir).toBe('ltr')
     expect(copy.subject).not.toBe('Acme is ready, Sam')
     expect(copy.subject).toContain('Acme')
     expect(copy.paragraphs[0]).toContain('acme.quackback.test')
   })
 
-  it('is right to left in Arabic', async () => {
-    const copy = await ready('ar')
-    expect(copy.lang).toBe('ar')
-    expect(copy.dir).toBe('rtl')
-    expect(copy.heading).not.toBe('Acme is ready')
+  it('keeps right-to-left languages right to left, though none ships a catalog now', () => {
+    expect(isRtlLocale('ar')).toBe(true)
+    expect(isRtlLocale('he')).toBe(true)
+    expect(isRtlLocale('zh-cn')).toBe(false)
+    expect(isRtlLocale('zh-tw')).toBe(false)
   })
 
   it('names the help center and status page links for those goals', async () => {
@@ -141,25 +144,25 @@ describe('nudgeEmailCopy', () => {
       workspaceName: 'Acme',
       goal: 'customer_support',
       base: BASE,
-      nextStep: MESSENGER_STEP,
+      nextStep: BOARD_STEP,
     })
     expect(copy.subject).toBe('Your next step in Acme')
     expect(copy.share).toBeNull()
     expect(copy.paragraphs[0]).toBe('No customer has started a conversation yet.')
-    expect(copy.cta).toEqual({ label: 'Put Messenger on your site', url: MESSENGER_STEP.url })
+    expect(copy.cta).toEqual({ label: 'Create a feedback board', url: BOARD_STEP.url })
     expect(copy.secondary).toBeNull()
   })
 
   it('translates the step title from the plan catalogue', async () => {
     const copy = await nudgeEmailCopy({
-      locale: 'de',
+      locale: 'zh-cn',
       name: 'Sam',
       workspaceName: 'Acme',
       goal: 'customer_support',
       base: BASE,
-      nextStep: MESSENGER_STEP,
+      nextStep: BOARD_STEP,
     })
-    expect(copy.cta.label).not.toBe('Put Messenger on your site')
+    expect(copy.cta.label).not.toBe('Create a feedback board')
     expect(copy.subject).not.toBe('Your next step in Acme')
   })
 })

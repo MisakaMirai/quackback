@@ -2,14 +2,27 @@ import { Link } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import { ShieldCheckIcon } from '@heroicons/react/24/solid'
 import { ArrowRightIcon } from '@heroicons/react/24/outline'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { adminQueries } from '@/lib/client/queries/admin'
 
+/**
+ * The moderation backlog banner on the Feedback inbox. Every string goes
+ * through the catalog: this is the first place an agent sees the queue, so an
+ * untranslated link here leaves the whole affordance half-English.
+ */
 export function ModerationPendingBanner() {
+  const intl = useOptionalIntl()
   const { data } = useQuery(adminQueries.moderationStatus())
   const pendingCount = data?.pendingCount ?? 0
   if (pendingCount <= 0) return null
 
-  const label = `${pendingCount} ${pendingCount === 1 ? 'item is' : 'items are'} pending moderation`
+  const label = intl.formatMessage(
+    {
+      id: 'admin.feedback.moderation.pending',
+      defaultMessage: '{count, plural, one {# item is} other {# items are}} pending moderation',
+    },
+    { count: pendingCount }
+  )
 
   return (
     <div className="max-w-5xl w-full px-3 pt-3">
@@ -20,7 +33,10 @@ export function ModerationPendingBanner() {
           to="/admin/feedback/moderation"
           className="ml-auto inline-flex items-center gap-1 text-primary hover:underline font-medium"
         >
-          Review
+          {intl.formatMessage({
+            id: 'admin.feedback.moderation.review',
+            defaultMessage: 'Review',
+          })}
           <ArrowRightIcon className="h-3.5 w-3.5" />
         </Link>
       </div>

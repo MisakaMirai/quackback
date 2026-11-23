@@ -5,7 +5,6 @@ import { FormattedMessage, useIntl, type MessageDescriptor } from 'react-intl'
 import { adminOverviewQueries } from '@/lib/client/queries/admin-overview'
 import {
   overviewMetricGridClass,
-  publishStatusLabel,
   type AdminEntity,
   type AdminOverviewData,
   type OverviewAttentionItem,
@@ -29,8 +28,13 @@ import { useWorkspaceSettings } from '@/lib/client/hooks/use-root-context'
 
 export function useWorkspaceHomeTitle(): string {
   const settings = useWorkspaceSettings()
+  const intl = useIntl()
   const branding = (settings as { brandingData?: { name?: string } } | undefined)?.brandingData
-  return branding?.name ?? settings?.name ?? 'Home'
+  return (
+    branding?.name ??
+    settings?.name ??
+    intl.formatMessage({ id: 'admin.nav.home', defaultMessage: 'Home' })
+  )
 }
 
 type Filter = OverviewAttentionKind | 'all'
@@ -54,6 +58,7 @@ export function OverviewDashboard({
    */
   emptyStates?: boolean
 }) {
+  const intl = useIntl()
   const overview = useQuery(adminOverviewQueries.get())
   const [filter, setFilter] = useState<Filter>('all')
   const data = overview.data
@@ -65,11 +70,30 @@ export function OverviewDashboard({
   }, [data?.attention, filter])
 
   const filters = useMemo(() => {
-    const kinds: Array<{ id: Filter; label: string }> = [{ id: 'all', label: 'All' }]
-    if (data?.sections.support.enabled) kinds.push({ id: 'support', label: 'Support' })
-    if (data?.sections.feedback.enabled) kinds.push({ id: 'feedback', label: 'Feedback' })
+    const kinds: Array<{ id: Filter; label: string }> = [
+      {
+        id: 'all',
+        label: intl.formatMessage({ id: 'admin.overview.filter.all', defaultMessage: 'All' }),
+      },
+    ]
+    if (data?.sections.support.enabled)
+      kinds.push({
+        id: 'support',
+        label: intl.formatMessage({
+          id: 'admin.overview.filter.support',
+          defaultMessage: 'Support',
+        }),
+      })
+    if (data?.sections.feedback.enabled)
+      kinds.push({
+        id: 'feedback',
+        label: intl.formatMessage({
+          id: 'admin.overview.filter.feedback',
+          defaultMessage: 'Feedback',
+        }),
+      })
     return kinds
-  }, [data?.sections])
+  }, [data?.sections, intl])
 
   const momentum = data?.momentum ?? []
   const changelog = data?.changelog ?? []
@@ -92,7 +116,10 @@ export function OverviewDashboard({
           {actions ? <div className="flex shrink-0 items-center gap-2">{actions}</div> : null}
         </div>
       ) : (
-        <PageHeader title="Home" actions={actions} />
+        <PageHeader
+          title={intl.formatMessage({ id: 'admin.nav.home', defaultMessage: 'Home' })}
+          actions={actions}
+        />
       )}
 
       {banner}
@@ -100,8 +127,13 @@ export function OverviewDashboard({
       {overview.isError ? (
         <SettingsCard flush>
           <Quiet>
-            Couldn’t load this page.{' '}
-            <RetryButton onClick={() => void overview.refetch()}>Try again</RetryButton>
+            <FormattedMessage
+              id="admin.overview.loadFailed"
+              defaultMessage="Couldn’t load this page."
+            />{' '}
+            <RetryButton onClick={() => void overview.refetch()}>
+              <FormattedMessage id="common.tryAgain" defaultMessage="Try again" />
+            </RetryButton>
           </Quiet>
         </SettingsCard>
       ) : data?.hasRealData === false ? (
@@ -149,7 +181,9 @@ export function OverviewDashboard({
                   {feedError && attention.length > 0 ? (
                     <p className="border-b border-border px-3 py-2.5 text-sm text-muted-foreground sm:px-4">
                       {feedError}{' '}
-                      <RetryButton onClick={() => void overview.refetch()}>Try again</RetryButton>
+                      <RetryButton onClick={() => void overview.refetch()}>
+                        <FormattedMessage id="common.tryAgain" defaultMessage="Try again" />
+                      </RetryButton>
                     </p>
                   ) : null}
                   {attention.length > 0 ? (
@@ -161,10 +195,17 @@ export function OverviewDashboard({
                   ) : feedError ? (
                     <Quiet>
                       {feedError}{' '}
-                      <RetryButton onClick={() => void overview.refetch()}>Try again</RetryButton>
+                      <RetryButton onClick={() => void overview.refetch()}>
+                        <FormattedMessage id="common.tryAgain" defaultMessage="Try again" />
+                      </RetryButton>
                     </Quiet>
                   ) : (
-                    <Quiet>Nothing to review</Quiet>
+                    <Quiet>
+                      <FormattedMessage
+                        id="inbox.empty.allClear.title"
+                        defaultMessage="Nothing to review"
+                      />
+                    </Quiet>
                   )}
                 </>
               )}
@@ -174,11 +215,20 @@ export function OverviewDashboard({
               <Skeleton className="hidden h-40 rounded-xl lg:block" />
             ) : hasAside ? (
               <aside className="min-w-0 space-y-6">
-                <ModuleCard title="Feedback" items={momentum}>
+                <ModuleCard
+                  title={intl.formatMessage({
+                    id: 'admin.nav.feedback',
+                    defaultMessage: 'Feedback',
+                  })}
+                  items={momentum}
+                >
                   {(item) => <MomentumRow key={item.postId} item={item} />}
                 </ModuleCard>
                 <ModuleCard
-                  title="Changelog"
+                  title={intl.formatMessage({
+                    id: 'admin.nav.changelog',
+                    defaultMessage: 'Changelog',
+                  })}
                   items={changelog}
                   error={changelogError}
                   onRetry={() => void overview.refetch()}
@@ -186,7 +236,10 @@ export function OverviewDashboard({
                   {(item) => <DeskRow key={item.id} item={item} />}
                 </ModuleCard>
                 <ModuleCard
-                  title="Help center"
+                  title={intl.formatMessage({
+                    id: 'admin.nav.helpCenter',
+                    defaultMessage: 'Help center',
+                  })}
                   items={helpCenter}
                   error={helpError}
                   onRetry={() => void overview.refetch()}
@@ -419,12 +472,17 @@ function MomentumRow({ item }: { item: OverviewMomentumItem }) {
 }
 
 function DeskRow({ item }: { item: OverviewPublishItem }) {
+  const intl = useIntl()
   return (
     <OverviewEntityRow
       link={item.link}
       entity={item.entity}
       title={item.title}
-      badge={publishStatusLabel(item.status)}
+      badge={intl.formatMessage(
+        item.status === 'scheduled'
+          ? { id: 'admin.changelog.status.scheduled', defaultMessage: 'Scheduled' }
+          : { id: 'admin.changelog.status.draft', defaultMessage: 'Draft' }
+      )}
       meta={item.meta}
     />
   )
@@ -447,7 +505,12 @@ function ModuleCard<T>({
     return (
       <SettingsCard title={title} flush>
         <Quiet>
-          {error} {onRetry ? <RetryButton onClick={onRetry}>Try again</RetryButton> : null}
+          {error}{' '}
+          {onRetry ? (
+            <RetryButton onClick={onRetry}>
+              <FormattedMessage id="common.tryAgain" defaultMessage="Try again" />
+            </RetryButton>
+          ) : null}
         </Quiet>
       </SettingsCard>
     )

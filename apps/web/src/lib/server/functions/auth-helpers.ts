@@ -43,7 +43,7 @@ export function hasSessionCookie(): boolean {
 /**
  * Check if the request has any form of authentication (cookie or Bearer token).
  * Use this instead of hasSessionCookie() when the endpoint should support
- * both portal (cookie) and widget (Bearer token) authentication.
+ * both portal cookies and a Bearer token.
  */
 export function hasAuthCredentials(): boolean {
   const headers = getRequestHeaders()
@@ -114,8 +114,7 @@ export interface AuthContext {
 }
 
 /**
- * Site authentication (dashboard + portal cookies). Widget Bearers are denied;
- * widget surfaces use `requireWidgetAuth` instead.
+ * Site authentication (dashboard + portal).
  *
  * `{ permission }` is dashboard-only (unchanged).
  */
@@ -127,9 +126,6 @@ export async function requireAuth(options?: RequireAuthOptions): Promise<AuthCon
   }
   const userId = session.user.id as UserId
   const scope = toSessionScope(session.session.scope)
-  if (scope === 'widget') {
-    throw new Error('Access denied: Widget sessions cannot access this resource')
-  }
 
   const appSettings = await getAuthSettings()
   if (!appSettings) {
@@ -188,7 +184,7 @@ export async function requireAuth(options?: RequireAuthOptions): Promise<AuthCon
 // vocabulary and its matcher still travel together for existing importers.
 export { isAuthDenialError } from './auth-errors'
 
-/** Cloud/admin lifecycle mutations: widget and portal sessions cannot act as owner. */
+/** Cloud/admin lifecycle mutations: portal sessions cannot act as owner. */
 export function assertDashboardScope(auth: Pick<AuthContext, 'scope'>): void {
   if (auth.scope !== 'dashboard') {
     throw new Error('Access denied: Requires a dashboard session')
@@ -254,9 +250,6 @@ export async function getOptionalAuth(): Promise<AuthContext | null> {
   }
   const userId = session.user.id as UserId
   const scope = toSessionScope(session.session.scope)
-  if (scope === 'widget') {
-    return null
-  }
 
   const appSettings = await getAuthSettings()
   if (!appSettings) {

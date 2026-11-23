@@ -25,7 +25,6 @@ const { getPublicUrlOrNull } = await import('../s3')
 const { attachmentForClient } = await import('@/lib/server/messages/message-core')
 const { toUploadedFile, attachmentFromFile } =
   await import('@/lib/server/domains/files/files.service')
-const { withWorkspace } = await import('@/lib/server/__tests__/workspace-scope')
 
 const FILES_HOST = 'https://files.example.com'
 const FILE_KEY = 'files/2026/10/0b5c3f43-8d0a-4c4e-9a59-2f1d1f6c1a11-report.pdf'
@@ -91,12 +90,6 @@ describe('toUserContentUrl', () => {
     ]) {
       expect(toUserContentUrl(url), url).toBe(url)
     }
-  })
-
-  it('does nothing under a workspace scope, where one host cannot serve every workspace', () => {
-    mockConfig.userContentUrl = FILES_HOST
-    const url = '/api/storage/files/a.pdf?read=x&exp=1'
-    expect(withWorkspace('workspace-alpha', () => toUserContentUrl(url))).toBe(url)
   })
 })
 

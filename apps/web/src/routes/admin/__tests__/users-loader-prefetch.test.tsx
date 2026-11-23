@@ -2,13 +2,13 @@
 /**
  * The people page's route loader warms every read the page makes on load, so
  * the server-rendered page is complete and the browser has nothing left to
- * fetch after hydration: the list, the filters' reference data, the lifecycle
- * nav counts and the companies directory. The reads mounted here are the
- * page's own hooks, so a key the loader and a hook disagree on shows up as a
- * fetch after the warm-up.
+ * fetch after hydration: the list, the filters' reference data and the
+ * lifecycle nav counts. The reads mounted here are the page's own hooks, so a
+ * key the loader and a hook disagree on shows up as a fetch after the
+ * warm-up.
  */
 import type { ReactNode } from 'react'
-import { QueryClient, QueryClientProvider, useInfiniteQuery, useQuery } from '@tanstack/react-query'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -28,15 +28,6 @@ vi.mock('@/lib/server/functions/admin', async (importOriginal) => ({
   listUserAttributesFn: stub('userAttributes', []),
   listUserTagsFn: stub('userTags', []),
 }))
-vi.mock('@/lib/server/functions/company-attributes', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/lib/server/functions/company-attributes')>()),
-  listCompanyAttributesFn: stub('companyAttributes', []),
-}))
-vi.mock('@/lib/server/functions/companies', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/lib/server/functions/companies')>()),
-  listCompaniesPageFn: stub('companies', { items: [], hasMore: false, nextCursor: null }),
-  countCompaniesFn: stub('companyCount', 0),
-}))
 vi.mock('@/lib/server/functions/portal-invites', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/server/functions/portal-invites')>()),
   fetchPortalInvitesFn: stub('invites', []),
@@ -46,10 +37,8 @@ const { Route } = await import('@/routes/admin/users')
 const { usePortalUsers, useTotalUserCount } = await import('@/lib/client/hooks/use-users-queries')
 const { useSegments } = await import('@/lib/client/hooks/use-segments-queries')
 const { useUserAttributes } = await import('@/lib/client/hooks/use-user-attributes-queries')
-const { useCompanyAttributes } = await import('@/lib/client/hooks/use-company-attributes-queries')
 const { useUserTags } = await import('@/lib/client/hooks/use-user-tags')
 const { usePortalInvites } = await import('@/components/admin/users/use-portal-invites')
-const { companiesDirectoryQueries } = await import('@/lib/client/queries/users-page')
 
 type LoaderFn = (ctx: {
   context: { principal: { role: string }; queryClient: QueryClient }
@@ -58,20 +47,13 @@ const loader = (Route as unknown as { options: { loader: LoaderFn } }).options.l
 
 /** The page's reads on load, as UsersContainer and UsersList make them. */
 function usePageReads(role: string) {
-  const companies = role === 'admin' || role === 'member'
   usePortalUsers({ filters: { sort: 'newest' } })
   useTotalUserCount()
   useTotalUserCount('leads')
   useSegments()
   useUserAttributes()
-  useCompanyAttributes()
   useUserTags()
   usePortalInvites({ enabled: role === 'admin' })
-  useInfiniteQuery({
-    ...companiesDirectoryQueries.page(undefined, undefined),
-    enabled: companies,
-  })
-  useQuery({ ...companiesDirectoryQueries.count(), enabled: companies })
 }
 
 let client: QueryClient
@@ -106,11 +88,8 @@ describe('/admin/users loader', () => {
         'people:leads',
         'segments',
         'userAttributes',
-        'companyAttributes',
         'userTags',
         'invites',
-        'companies',
-        'companyCount',
       ].sort()
     )
   })
@@ -119,6 +98,5 @@ describe('/admin/users loader', () => {
     const { warmed, afterMount } = await mountAfterLoader('member')
     expect(afterMount).toEqual([])
     expect(warmed).not.toContain('invites')
-    expect(warmed).toContain('companies')
   })
 })

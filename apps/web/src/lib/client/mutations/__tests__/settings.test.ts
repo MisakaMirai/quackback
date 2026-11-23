@@ -50,24 +50,13 @@ describe('settings config mutations cache invalidation', () => {
     expect(result).toBeInstanceOf(Promise)
   })
 
-  it('useUpdateWidgetConfig.onSuccess awaits invalidation of the widgetConfig query', async () => {
-    const { useUpdateWidgetConfig } = await import('../settings')
-    const mutation = useUpdateWidgetConfig() as { onSuccess?: () => unknown }
+  it('useUpdateMessengerConfig.onSuccess awaits invalidation of the messengerConfig query', async () => {
+    const { useUpdateMessengerConfig } = await import('../settings')
+    const mutation = useUpdateMessengerConfig() as { onSuccess?: () => unknown }
 
     const result = mutation.onSuccess?.()
 
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['settings', 'widgetConfig'] })
-    expect(result).toBeInstanceOf(Promise)
-  })
-
-  it('useRegenerateWidgetSecret.onSuccess writes the new secret then awaits invalidation', async () => {
-    const { useRegenerateWidgetSecret } = await import('../settings')
-    const mutation = useRegenerateWidgetSecret() as { onSuccess?: (secret: string) => unknown }
-
-    const result = mutation.onSuccess?.('wgt_new')
-
-    expect(setQueryData).toHaveBeenCalledWith(['settings', 'widgetSecret'], 'wgt_new')
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['settings', 'widgetSecret'] })
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['settings', 'messengerConfig'] })
     expect(result).toBeInstanceOf(Promise)
   })
 
@@ -81,15 +70,13 @@ describe('settings config mutations cache invalidation', () => {
     expect(result).toBeInstanceOf(Promise)
   })
 
-  it('useSaveBrandingTheme leaves plan refusals to the page and names other reasons', async () => {
+  it('useSaveBrandingTheme names server refusals in the shared toast', async () => {
     const { useSaveBrandingTheme } = await import('../settings')
     const { meta } = useSaveBrandingTheme() as unknown as {
       meta: { autosave?: boolean; showServerMessage?: boolean; ownsError?: (e: unknown) => boolean }
     }
     expect(meta.autosave).toBe(true)
     expect(meta.showServerMessage).toBe(true)
-    expect(meta.ownsError?.(Object.assign(new Error('x'), { statusCode: 402 }))).toBe(true)
-    expect(meta.ownsError?.(new Error('Custom CSS is too long.'))).toBe(false)
   })
 
   it('useSaveBrandingTheme persist/clear/rewrite customCss writes', async () => {

@@ -19,11 +19,11 @@ import type { ClaimedJob } from './job-queue'
 export type JobHandler = (job: ClaimedJob) => Promise<void>
 
 /**
- * A schedule this queue derives from the workspace's own database at tick time.
+ * A schedule this queue derives from the database at tick time.
  *
- * `segment-evaluation` is the case that needs it: a workspace's dynamic
- * segments each carry their own cron pattern in a `segments` row, so the set of
- * schedules is per workspace and changes while the process runs. Under BullMQ that
+ * `segment-evaluation` is the case that needs it: dynamic segments each carry
+ * their own cron pattern in a `segments` row, so the set of schedules changes
+ * while the process runs. Under BullMQ that
  * was a repeatable job registered into Redis, which then had to be *restored*
  * at boot because Redis could have been cleared. Deriving it per tick removes
  * the restore step and the class of bug it existed for: there is no scheduler
@@ -79,13 +79,12 @@ export interface JobDefinition {
    */
   concurrency?: number
   /**
-   * How many jobs from this queue may run at once across every workspace loop
-   * in this process. Unset means no cap beyond `concurrency` per loop.
+   * How many jobs from this queue may run at once in this process. Unset means
+   * no cap beyond `concurrency`.
    *
-   * `concurrency` binds per workspace, so a pooled process can run
-   * `concurrency` times the fleet. A queue whose work is heavy on the shared
-   * database sets this so the fleet's runs cannot all land at once. Jobs over
-   * the cap stay `pending`, unclaimed, until a slot frees.
+   * A queue whose work is heavy on the database sets this so a process start or
+   * a database restart cannot land all of its runs at once. Jobs over the cap
+   * stay `pending`, unclaimed, until a slot frees.
    */
   fleetConcurrency?: number
   /** How long succeeded rows are kept. Defaults to the process-wide setting. */
@@ -106,8 +105,7 @@ export interface JobDefinition {
    * handler returning early, which would fill the table with no-ops.
    *
    * Resolve it through the same module the handler comes from: priming has
-   * already imported that module outside any workspace scope, so the `import()`
-   * here is a registry hit rather than a module executing under one workspace.
+   * already imported that module, so the `import()` here is a registry hit.
    */
   cronEnabled?: () => Promise<boolean>
   /** Schedules read from the workspace's database at tick time. */
@@ -200,17 +198,6 @@ export const JOB_DEFINITIONS: readonly JobDefinition[] = [
       (await import('@/lib/server/integrations/deliveries-sweep-queue')).runDeliveriesSweep,
   },
   {
-    name: 'integration-install-cleanup',
-    concurrency: 1,
-    handler: async () =>
-      (await import('@/lib/server/integrations/install-cleanup-queue')).runInstallCleanup,
-  },
-  {
-    name: 'integration-installs-backfill',
-    handler: async () =>
-      (await import('@/lib/server/integrations/installs-backfill-queue')).runInstallsBackfill,
-  },
-  {
     name: 'anon-sweep',
     cron: '0 3 * * *',
     maxAttempts: 3,
@@ -254,22 +241,6 @@ export const JOB_DEFINITIONS: readonly JobDefinition[] = [
     cronEnabled: () =>
       import('@/lib/server/domains/conversation/snooze-sweep-queue').then((m) =>
         m.isSnoozeSweepDue()
-      ),
-  },
-  {
-    name: 'workflow-sweep',
-    cron: '*/5 * * * *',
-    maxAttempts: 3,
-    handler: () =>
-      import('@/lib/server/domains/workflows/workflow-sweep-queue').then((m) => m.runWorkflowSweep),
-  },
-  {
-    name: 'workflow-retention',
-    cron: '0 4 * * *',
-    maxAttempts: 3,
-    handler: () =>
-      import('@/lib/server/domains/workflows/workflow-retention-queue').then(
-        (m) => m.runWorkflowRetention
       ),
   },
   {
@@ -340,30 +311,12 @@ export const JOB_DEFINITIONS: readonly JobDefinition[] = [
       ),
   },
   {
-    // The daily check that each verified domain added by name still holds its
-    // ownership record: a miss starts a grace period with a warning, and a
-    // record still missing after it demotes the domain and the sign-in domains
-    // that rested on it. Returns after two reads (the verified domains and the
-    // marker of lapsed ones still to judge) in a workspace with neither, which
-    // is nearly all of them. Its own minute, away from
-    // the sending-domain re-check, and capped across the fleet because each
-    // domain costs DNS lookups.
-    name: 'domain-ownership-watch',
-    cron: '50 6 * * *',
-    fleetConcurrency: 4,
-    maxAttempts: 3,
-    handler: () =>
-      import('@/lib/server/domains/domain-proof/domain-ownership-watch-queue').then(
-        (m) => m.runDomainOwnershipWatch
-      ),
-  },
-  {
-    // The workspace's mail provider tenant, when the operator isolates sending
-    // reputation per workspace. Hourly, but each tick returns after one row
-    // read unless the workspace has never been reconciled, is not ready, or
-    // was last reconciled a day ago; adding, verifying or removing a sending
-    // domain enqueues one on demand. Capped across the fleet because each run
-    // makes several provider management calls.
+    // The install's mail provider tenant, when the operator isolates sending
+    // reputation per install. Hourly, but each tick returns after one row read
+    // unless the tenant has never been reconciled, is not ready, or was last
+    // reconciled a day ago; adding, verifying or removing a sending domain
+    // enqueues one on demand. Capped in the process because each run makes
+    // several provider management calls.
     name: 'ses-tenant-reconcile',
     cron: '41 * * * *',
     cronEnabled: () =>
@@ -544,17 +497,6 @@ export const JOB_DEFINITIONS: readonly JobDefinition[] = [
       import('@/lib/server/events/event-reactions-queue').then((m) => m.runEventReactions),
   },
   {
-    // The close summaries, queued next to event-reactions. Slow AI calls that
-    // do not depend on order, so they run concurrently off the serial queue.
-    name: 'event-summaries',
-    concurrency: 2,
-    maxAttempts: 3,
-    retentionMs: DAY_MS,
-    failedRetentionMs: 30 * DAY_MS,
-    handler: () =>
-      import('@/lib/server/events/event-summaries-queue').then((m) => m.runEventSummaries),
-  },
-  {
     // Was `{segment-evaluation}`. Its schedules are rows in the workspace's own
     // `segments` table, so they are derived per tick rather than registered.
     name: 'segment-evaluation',
@@ -592,39 +534,6 @@ export const JOB_DEFINITIONS: readonly JobDefinition[] = [
   },
   {
     // Was `{help-center-translate}`. The 120s lease is the case §7.2 was built
-    // for, and the reason this tier runs a bounded pool instead of one serial
-    // drain — see runner.ts.
-    name: 'help-center-translate',
-    concurrency: 1,
-    maxAttempts: 3,
-    retryBackoffMs: 5_000,
-    leaseMs: 120_000,
-    retentionMs: DAY_MS,
-    failedRetentionMs: 14 * DAY_MS,
-    handler: () =>
-      import('@/lib/server/domains/help-center/help-center-translate-queue').then(
-        (m) => m.runHelpCenterTranslate
-      ),
-  },
-  {
-    // Releases auto-translations parked at the AI allowance once allowance is
-    // available again (an upgrade mid-window). Parked rows run on their own at
-    // the window's end; this only brings them forward. Inert while nothing is
-    // parked.
-    name: 'help-center-translate-resume',
-    cron: '25 * * * *',
-    maxAttempts: 1,
-    cronEnabled: () =>
-      import('@/lib/server/domains/help-center/help-center-translate-resume').then((m) =>
-        m.hasPausedTranslations()
-      ),
-    handler: () =>
-      import('@/lib/server/domains/help-center/help-center-translate-resume').then(
-        (m) => m.runHelpCenterTranslateResume
-      ),
-  },
-  {
-    // Was `{email-imap}`, a 60s repeatable poll. `cronEnabled` keeps the
     // schedule inert unless an IMAP mailbox is actually configured, which is
     // what the reference achieved by never constructing the worker.
     name: 'email-imap',
@@ -641,35 +550,6 @@ export const JOB_DEFINITIONS: readonly JobDefinition[] = [
       import('@/lib/server/domains/conversation/conversation.email-imap-queue').then(
         (m) => m.runEmailImapPoll
       ),
-  },
-  {
-    // Was `{workflow-dispatch}`. `concurrency: 1` is deliberate, not a
-    // throughput default: two events on one conversation (a reply then a
-    // close) are two jobs, and only a serial queue keeps their dispatch in
-    // enqueue order. That order holds per worker process (see
-    // workflow-dispatch-queue.ts for its limits).
-    name: 'workflow-dispatch',
-    concurrency: 1,
-    maxAttempts: 3,
-    retryBackoffMs: 1_000,
-    retentionMs: DAY_MS,
-    failedRetentionMs: 30 * DAY_MS,
-    handler: () =>
-      import('@/lib/server/domains/workflows/workflow-dispatch-queue').then(
-        (m) => m.runWorkflowDispatch
-      ),
-  },
-  {
-    // Was `{workflow-wait}`. Delayed by construction: the row's `run_at` is the
-    // wait's fire time, so a parked run costs one row rather than a live timer.
-    name: 'workflow-wait',
-    concurrency: 4,
-    maxAttempts: 3,
-    retryBackoffMs: 5_000,
-    retentionMs: 7 * DAY_MS,
-    failedRetentionMs: 7 * DAY_MS,
-    handler: () =>
-      import('@/lib/server/domains/workflows/workflow-wait-queue').then((m) => m.runWorkflowWait),
   },
   {
     // Was `{import}`. One attempt, deliberately: a retry re-runs the whole
@@ -694,49 +574,6 @@ export const JOB_DEFINITIONS: readonly JobDefinition[] = [
     failedRetentionMs: 14 * DAY_MS,
     handler: () =>
       import('@/lib/server/domains/export/export-queue').then((m) => m.runWorkspaceExport),
-  },
-  {
-    // Pushes this workspace's team seats to the control plane. Cloud-only
-    // work: the handler is a successful no-op without QUACKBACK_CONTROL_PLANE_URL.
-    // Roster writes enqueue under a stable key (in-flight coalesces; a spent
-    // row is cancelled first). The 15-minute cron is the missed-enqueue
-    // backstop and stays inert without a control-plane URL.
-    name: 'membership-sync',
-    cron: '*/15 * * * *',
-    concurrency: 1,
-    maxAttempts: 10,
-    retryBackoffMs: 15 * 60_000,
-    cronEnabled: () =>
-      import('@/lib/server/domains/principals/membership-sync-queue').then((m) =>
-        m.isControlPlaneConfigured()
-      ),
-    handler: () =>
-      import('@/lib/server/domains/principals/membership-sync-queue').then(
-        (m) => m.runMembershipSync
-      ),
-  },
-  {
-    // Monthly usage snapshot for hosted billing. Self-host without a hosted
-    // URL is a successful no-op. Hourly cron is the catch-up writer: the
-    // handler reports previousUtcMonth() of now (UTC), and a per-month dedupe
-    // key means the snapshot POSTs at most once. The first tick after a UTC
-    // month boundary, or after downtime, lands the missed close.
-    name: 'usage-report',
-    cron: '10 * * * *',
-    concurrency: 1,
-    maxAttempts: 10,
-    retryBackoffMs: 15 * 60_000,
-    // Hourly catch-up reuses `usage-report:<month>` for the whole previous
-    // month. Keep the succeeded row past that window so prune cannot reopen
-    // the month and POST the snapshot again.
-    retentionMs: 45 * DAY_MS,
-    failedRetentionMs: 45 * DAY_MS,
-    cronEnabled: () =>
-      import('@/lib/server/domains/billing/usage-report-queue').then((m) =>
-        m.isHostedBillingConfigured()
-      ),
-    handler: () =>
-      import('@/lib/server/domains/billing/usage-report-queue').then((m) => m.runUsageReport),
   },
 ]
 

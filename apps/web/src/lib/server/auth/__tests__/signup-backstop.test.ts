@@ -53,7 +53,7 @@ vi.mock('@/lib/server/domains/principals/bootstrap-admin', () => ({
 }))
 
 // The anonymous-email predicate stays REAL. It is the exemption that decides
-// whether the widget keeps working, and a stub for it could not tell a
+// whether the anonymous mint keeps working, and a stub for it could not tell a
 // placeholder from a person.
 const { guardBetterAuthUserCreation } = await import('../signup-policy')
 const { ANON_EMAIL_DOMAIN } = await import('@/lib/shared/anonymous-email')
@@ -93,10 +93,10 @@ describe('guardBetterAuthUserCreation', () => {
     expect(await guardBetterAuthUserCreation({ email: 'first@acme.example' })).toBeUndefined()
   })
 
-  // The widget's lazy anonymous session. Blocking these would take the widget
+  // The lazy anonymous session. Blocking these would take the anonymous
   // down on every workspace that closed sign-ups, so the exemption is checked
   // before the policy is consulted at all.
-  it('never blocks the anonymous placeholder the widget mints', async () => {
+  it('never blocks the anonymous placeholder the mint creates', async () => {
     const placeholder = `temp-abc123@${ANON_EMAIL_DOMAIN}`
 
     expect(await guardBetterAuthUserCreation({ email: placeholder })).toBeUndefined()

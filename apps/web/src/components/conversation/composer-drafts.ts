@@ -7,7 +7,9 @@ import {
 } from '@/lib/client/value-store'
 import { isEmptyTiptapDoc } from '@/lib/shared/utils/is-empty-tiptap-doc'
 import { EMPTY_DRAFT, type ComposerDraft } from './composer-draft'
-import type { ComposerMode } from './composer-ai-actions'
+
+/** The two composer modes: a customer-facing reply, or an internal note. */
+export type ComposerMode = 'reply' | 'note'
 
 /**
  * The reply and note drafts of one thread's composer, held outside React

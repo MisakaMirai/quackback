@@ -50,7 +50,6 @@ const hoisted = vi.hoisted(() => ({
   checkVerificationOTP: vi.fn().mockResolvedValue({ success: true }),
   deleteVerificationByIdentifier: vi.fn().mockResolvedValue(undefined),
   checkRateLimit: vi.fn().mockResolvedValue({ allowed: true }),
-  enqueueMembershipSync: vi.fn(async (..._args: unknown[]) => {}),
   providers: [] as unknown[],
   accountFindFirst: vi.fn(),
 }))
@@ -116,10 +115,6 @@ vi.mock('@/lib/server/auth/signin-rate-limit', () => ({
 vi.mock('@/lib/server/logger', () => ({
   logger: { child: () => ({ warn: vi.fn(), info: vi.fn(), error: vi.fn() }) },
 }))
-vi.mock('@/lib/server/domains/principals/membership-sync', () => ({
-  enqueueMembershipSync: (...args: unknown[]) => hoisted.enqueueMembershipSync(...args),
-}))
-
 import {
   sendCurrentAddressCodeFn,
   requestEmailChangeFn,
@@ -305,28 +300,6 @@ describe('confirmEmailChangeFn', () => {
     })
 
     expect(res).toEqual({ ok: false, reason: 'invalid_or_taken' })
-    expect(hoisted.enqueueMembershipSync).not.toHaveBeenCalled()
-  })
-
-  it('enqueues membership-sync when a teammate confirms a new address', async () => {
-    hoisted.requireAuth.mockResolvedValue({
-      user: { id: 'usr_1' },
-      principal: { type: 'user', role: 'member' },
-      scope: 'dashboard',
-    })
-    confirmingFrom('old@example.com')
-
-    await call(confirmEmailChangeFn, { email: REAL, code: '123456' })
-
-    expect(hoisted.enqueueMembershipSync).toHaveBeenCalled()
-  })
-
-  it('does not enqueue membership-sync for an end-user address change', async () => {
-    confirmingFrom('old@example.com')
-
-    await call(confirmEmailChangeFn, { email: REAL, code: '123456' })
-
-    expect(hoisted.enqueueMembershipSync).not.toHaveBeenCalled()
   })
 })
 

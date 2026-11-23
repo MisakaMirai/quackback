@@ -37,8 +37,8 @@ export function buildHelpCenterSitemapUrls(
 ): SitemapUrl[] {
   const urls: SitemapUrl[] = []
 
-  // Landing page
-  urls.push({ loc: `${baseUrl}/hc` })
+  // Landing page (always locale-prefixed, like every other canonical page)
+  urls.push({ loc: `${baseUrl}${localizedHcPath(locale, '/hc')}` })
 
   // Collection pages
   for (const cat of categories) {

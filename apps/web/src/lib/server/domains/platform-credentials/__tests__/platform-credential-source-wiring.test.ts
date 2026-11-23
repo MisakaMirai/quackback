@@ -216,46 +216,6 @@ describe('platform credential source wiring — env (managed cloud)', () => {
   })
 })
 
-describe('Cloud CP credential authority', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    vi.stubEnv('QUACKBACK_TENANCY', 'pooled')
-    mockFindMany.mockResolvedValue([])
-  })
-  afterEach(() => vi.unstubAllEnvs())
-  it('locks Cloud providers even when absent and never falls back to tenant credentials', async () => {
-    vi.stubEnv('INTEGRATION_SLACK_CLIENT_ID', '')
-    const service = await import('../platform-credential.service')
-    expect(await service.arePlatformCredentialsManaged('slack')).toBe(true)
-    expect(await service.getPlatformCredentials('slack')).toBeNull()
-    expect(mockFindFirst).not.toHaveBeenCalled()
-    await expect(
-      service.savePlatformCredentials({
-        integrationType: 'slack',
-        credentials: {},
-        principalId: 'principal_1' as PrincipalId,
-      })
-    ).rejects.toThrow('managed')
-    await expect(service.deletePlatformCredentials('slack')).rejects.toThrow('managed')
-  })
-  it('excludes stale tenant shared-app credentials from discovery, preserving SSO and local-token integrations', async () => {
-    vi.stubEnv('INTEGRATION_SLACK_CLIENT_ID', 'id')
-    vi.stubEnv('INTEGRATION_SLACK_CLIENT_SECRET', 'secret')
-    vi.stubEnv('INTEGRATION_SLACK_SIGNING_SECRET', 'signing')
-    mockFindMany.mockResolvedValue([
-      { integrationType: 'github' },
-      { integrationType: 'auth_sso' },
-      { integrationType: 'ntfy' },
-    ])
-    const service = await import('../platform-credential.service')
-    expect(await service.getConfiguredIntegrationTypes()).toEqual(
-      new Set(['slack', 'auth_sso', 'ntfy'])
-    )
-    expect(await service.arePlatformCredentialsManaged('auth_sso')).toBe(false)
-    expect(await service.arePlatformCredentialsManaged('ntfy')).toBe(false)
-  })
-})
-
 it('uses complete GitLab env credentials when the optional instance URL is absent', async () => {
   vi.stubEnv('PLATFORM_CREDENTIALS_SOURCE', 'env')
   vi.stubEnv('INTEGRATION_GITLAB_CLIENT_ID', 'gitlab-id')

@@ -22,120 +22,8 @@ import { sql } from 'drizzle-orm'
 import { typeIdWithDefault, typeIdColumn, typeIdColumnNullable } from '@quackback/ids/drizzle'
 import { apiKeys } from './api-keys'
 import { integrations } from './integrations'
-import { companies } from './companies'
 import { roles } from './rbac'
 
-export interface StoredAssistantVoice {
-  tone: string
-  responseLength: string
-  additionalInstructions: string
-}
-
-/**
- * Structural twin of `AssistantConfig` (z.infer of `assistantConfigSchema` in
- * apps/web `lib/shared/assistant/config.ts`). packages/db can't import apps/web,
- * so this hand-written interface mirrors that schema's shape with widened
- * primitives (string/number instead of the enum/literal types). A drift tripwire
- * in apps/web (`lib/shared/assistant/__tests__/config.test.ts`) asserts the two
- * stay structurally identical — edit both sides together.
- */
-export interface StoredAssistantConfig {
-  version: number
-  identity: { name: string; avatarUrl: string | null }
-  agents: {
-    workspace: {
-      capabilities: { qa: boolean }
-      knowledge: StoredAssistantConfig['agents']['copilot']['knowledge']
-      toolRules: Record<string, string>
-      instructions: string
-      slack: { enabled: boolean; respondTo: string; allowUnlinkedPublicQa: boolean }
-    }
-    agent: {
-      voice: StoredAssistantVoice
-      knowledge: {
-        helpCenter: boolean
-        posts: boolean
-        changelog: boolean
-        documents: boolean
-        status: boolean
-      }
-      toolRules: Record<string, string>
-    }
-    copilot: {
-      capabilities: { qa: boolean }
-      knowledge: {
-        helpCenter: boolean
-        posts: boolean
-        pastConversations: boolean
-        internalNotes: boolean
-        tickets: boolean
-        changelog: boolean
-        documents: boolean
-        status: boolean
-      }
-      toolRules: Record<string, string>
-    }
-  }
-}
-
-/** Storage-only shape for the narrow control-plane projection. A NULL cloud
- * column is the default for every self-hosted workspace. */
-export interface StoredProjectedLimits {
-  maxBoards: number | null
-  maxPosts: number | null
-  maxTeamSeats: number | null
-  maxStatusComponents: number | null
-  maxCustomRoles: number | null
-  maxSendingDomains: number | null
-  aiTokensPerMonth: number | null
-  apiRequestsPerMonth: number | null
-  apiRequestsPerMinute: number | null
-}
-
-/** Commercial state safe to project from the control plane into a workspace. */
-export interface StoredBillingProjection {
-  version: number
-  effectivePlan: string
-  trialStartedAt: string | null
-  trialExpiresAt: string | null
-  subscriptionStatus: string | null
-  entitlements: Record<string, boolean>
-  freeLimits: StoredProjectedLimits
-  planLimits: StoredProjectedLimits
-  planLimitsExpireAt: string | null
-  canUpgrade: boolean
-  canManageBilling: boolean
-  renewalAt: string | null
-  cancellationAt: string | null
-}
-
-export interface StoredCloudConfig {
-  enabled: boolean
-  /** Signed, monotonic commercial state projected by the control plane. */
-  projection?: StoredBillingProjection | null
-}
-
-export interface StoredCloudCustomDomain {
-  hostname: string
-  readiness: 'pending' | 'ready' | 'failed'
-  isPrimary: boolean
-  updatedAt: string
-}
-
-/** Customer-safe cloud identity; provider ids and validation secrets never cross. */
-export interface StoredCloudIdentityProjection {
-  version: number
-  displayName: string
-  canonicalOrigin: string
-  /** Friendly Quackback hostname, null until the owner chooses one. */
-  platformHostname: string | null
-  customDomains: StoredCloudCustomDomain[]
-  updatedAt: string
-}
-
-/**
- * User table - User identities for the application
- */
 export const user = pgTable(
   'user',
   {
@@ -169,7 +57,7 @@ export const user = pgTable(
     // X-Country-Code) on session creation. NULL when no header is
     // present — local dev or deployments without a geo-aware proxy.
     country: text('country'),
-    // Stable external identity for widget-identified visitors: the verified JWT
+    // Stable external identity for identified portal visitors: the verified JWT
     // `sub` (the host app's durable user id). Set ONLY on the verified ssoToken
     // identify path so a visitor is recognized on a new device even after an
     // email change. Null for team accounts and unverified identifies.
@@ -188,7 +76,7 @@ export const user = pgTable(
       .where(sql`email IS NOT NULL`),
     // Functional index on LOWER(email) — backs the case-insensitive
     // lookups in recovery-codes-consume.ts, segment.evaluation.ts, and
-    // routes/api/widget/identify.ts. Without it those queries seq-scan.
+    // /api/v1/users/identify. Without it those queries seq-scan.
     index('user_email_lower_idx')
       .on(sql`LOWER(${table.email})`)
       .where(sql`email IS NOT NULL`),
@@ -268,7 +156,7 @@ export const session = pgTable(
       .notNull(),
     ipAddress: text('ip_address'),
     userAgent: text('user_agent'),
-    // Session audience: dashboard | widget | portal. Only dashboard may satisfy team/permission gates.
+    // Session audience: dashboard | portal. Only dashboard may satisfy team/permission gates.
     scope: text('scope').notNull().default('dashboard'),
     userId: typeIdColumn('user')('user_id')
       .notNull()
@@ -439,79 +327,9 @@ export const settings = pgTable('settings', {
    */
   setupState: text('setup_state'),
   /**
-   * Versioned AI-agent identity and behavior configuration. The application
-   * validates this JSONB value with the client-safe V3 schema before use.
+   * Messenger configuration (JSON): { messenger, translations }.
    */
-  assistantConfig: jsonb('assistant_config')
-    .$type<StoredAssistantConfig>()
-    .notNull()
-    .default({
-      version: 4,
-      identity: { name: 'Quinn', avatarUrl: null },
-      agents: {
-        workspace: {
-          capabilities: { qa: true },
-          knowledge: {
-            helpCenter: true,
-            posts: true,
-            pastConversations: true,
-            internalNotes: true,
-            tickets: true,
-            changelog: true,
-            documents: true,
-            status: true,
-          },
-          toolRules: {},
-          instructions: '',
-          slack: { enabled: false, respondTo: 'mentions_and_dms', allowUnlinkedPublicQa: false },
-        },
-        agent: {
-          voice: { tone: 'balanced', responseLength: 'balanced', additionalInstructions: '' },
-          knowledge: {
-            helpCenter: true,
-            posts: false,
-            changelog: false,
-            documents: true,
-            status: false,
-          },
-          toolRules: {},
-        },
-        copilot: {
-          capabilities: { qa: true },
-          knowledge: {
-            helpCenter: true,
-            posts: true,
-            pastConversations: true,
-            internalNotes: true,
-            tickets: true,
-            changelog: true,
-            documents: true,
-            status: true,
-          },
-          toolRules: {},
-        },
-      },
-    }),
-  /** Optimistic-concurrency token incremented with every assistant config write. */
-  assistantConfigRevision: integer('assistant_config_revision').notNull().default(1),
-  /**
-   * Widget configuration (JSON)
-   * Structure: { enabled, defaultBoard?, position?, buttonText?, identifyVerification? }
-   */
-  widgetConfig: text('widget_config'),
-  /**
-   * Widget HMAC verification secret (separate column — NOT in JSON config)
-   * Format: 'wgt_' + 64 hex chars
-   */
-  widgetSecret: text('widget_secret'),
-  /** First externally embedded widget configuration observation. */
-  widgetInstalledFirstSeenAt: timestamp('widget_installed_first_seen_at', { withTimezone: true }),
-  /** Most recent external observation, write-throttled by the public endpoint. */
-  widgetInstalledLastSeenAt: timestamp('widget_installed_last_seen_at', { withTimezone: true }),
-  /** Normalized external Origin hostname only (no path, query, port, or scheme). */
-  widgetInstalledOriginHost: text('widget_installed_origin_host'),
-  /** Last SDK version reported on an install ping (`?sdk=` or instance-served sdk.js). */
-  widgetInstalledSdkVersion: text('widget_installed_sdk_version'),
+  messengerConfig: text('messenger_config'),
   /** Feature flags for experimental features (JSON) */
   featureFlags: text('feature_flags'),
   /**
@@ -528,36 +346,6 @@ export const settings = pgTable('settings', {
    */
   helpCenterConfig: text('help_center_config'),
   /**
-   * Optional per-workspace tier limits (JSON-encoded TierLimits).
-   * Written via /api/v1/admin/tier-limits (capability scope
-   * `internal:tier-limits`) by operators who want to impose caps.
-   * Null/absent means defaults (everything unlimited, all features
-   * on).
-   */
-  tierLimits: text('tier_limits'),
-  /**
-   * Optional cloud configuration block (see {@link StoredCloudConfig}):
-   * A signed, versioned billing projection from the control plane. It contains
-   * only customer-safe UI and enforcement state, never provider references.
-   *
-   * NULL — the default, and the only value a self-hosted install ever has —
-   * means no cloud config, which resolves to `enabled: false`: no plan, no
-   * entitlement gating, no upsell.
-   *
-   * `tierLimits` above remains the persisted numeric baseline. Projected limits
-   * are overlaid at read time and are never written into that baseline.
-   */
-  cloud: jsonb('cloud').$type<StoredCloudConfig>(),
-  /**
-   * Local change token incremented whenever a newer projection is accepted.
-   * Projection monotonicity itself is enforced by `projection.version`.
-   */
-  cloudRevision: integer('cloud_revision').notNull().default(0),
-  /** Signed cloud identity projection. NULL on self-hosted installs. */
-  cloudIdentity: jsonb('cloud_identity').$type<StoredCloudIdentityProjection>(),
-  /** Local write token, deliberately separate from cloudRevision/billing. */
-  cloudIdentityRevision: integer('cloud_identity_revision').notNull().default(0),
-  /**
    * JSON array of dot-paths whose values are managed by the
    * declarative config file (`/etc/quackback/config.yaml`). When a
    * path is in this list, the in-app UI mutator for that field
@@ -565,20 +353,12 @@ export const settings = pgTable('settings', {
    * is rebuilt from scratch on every file reconcile, so removing a
    * key from the file unlocks the UI on the next reconcile tick.
    *
-   * Example: ["workspace.name", "tierLimits", "features.helpCenter"].
+   * Example: ["workspace.name", "workspace.slug"].
    *
    * Whole-block lock: a managed path with no dots locks the entire
-   * subtree (e.g. "tierLimits" locks "tierLimits.maxBoards" too).
+   * subtree (e.g. "workspace" locks "workspace.name" too).
    */
   managedFieldPaths: jsonb('managed_field_paths').$type<string[]>().notNull().default([]),
-  /**
-   * Workspace state. INERT: app-level suspension enforcement was removed —
-   * dormant workspaces are now scaled to 0 by the control plane and a
-   * gateway catch-all serves their hostnames, so the OSS pod no longer
-   * reads or acts on this column. Retained (no DROP migration) for
-   * back-compat; safe to remove in a future migration.
-   */
-  state: text('state').$type<'active' | 'suspended' | 'deleting'>().notNull().default('active'),
   /**
    * Monotonic version bumped on every auth-instance-affecting write
    * (authConfig, ssoOidc, oauth toggles, platform credentials, tier
@@ -906,13 +686,6 @@ export const principal = pgTable(
     chatAvailability: text('chat_availability', { enum: ['online', 'away'] })
       .notNull()
       .default('online'),
-    // The B2B company this person belongs to (support platform §4.4). Soft-owned
-    // FK: set null on company delete so people are never orphaned. Filled on
-    // anonymous-to-identified merge via the contact_email rule (user wins,
-    // source only fills a gap).
-    companyId: typeIdColumnNullable('company')('company_id').references(() => companies.id, {
-      onDelete: 'set null',
-    }),
     testOwnerPrincipalId: typeIdColumnNullable('principal')('test_owner_principal_id'),
     // Blocking (support platform §4.6). `blocked_at` = when the person was
     // blocked (null = not blocked, the enforcement flag); `blocked_by_principal_id`
@@ -964,10 +737,6 @@ export const principal = pgTable(
     index('principal_display_name_trgm_idx')
       .using('gin', sql`${table.displayName} gin_trgm_ops`)
       .where(sql`${table.displayName} IS NOT NULL`),
-    // Company -> people lookups (sidebar roster, member counts).
-    index('principal_company_id_idx')
-      .on(table.companyId)
-      .where(sql`"company_id" IS NOT NULL`),
   ]
 )
 
@@ -1320,10 +1089,6 @@ export const principalRelations = relations(principal, ({ one, many }) => ({
     fields: [principal.userId],
     references: [user.id],
   }),
-  company: one(companies, {
-    fields: [principal.companyId],
-    references: [companies.id],
-  }),
   createdApiKeys: many(apiKeys, { relationName: 'apiKeyCreator' }),
   apiKey: many(apiKeys, { relationName: 'apiKeyPrincipal' }),
   connectedIntegrations: many(integrations, { relationName: 'integrationConnector' }),
@@ -1408,53 +1173,3 @@ export const oauthConsentRelations = relations(oauthConsent, ({ one }) => ({
     references: [user.id],
   }),
 }))
-
-/**
- * Widget origin session marker table.
- *
- * Records sessions that were created via the widget OTT handoff route
- * (`/auth/widget-handoff?ott=...`). The portal access evaluator requires
- * a row here before granting the `widget` reason — prevents any
- * self-registered portal user from sneaking in via that grant branch.
- *
- * PK on session_id is the lookup key (one row per session at most).
- * Index on user_id supports cleanup of orphaned rows when a user's
- * sessions expire.
- */
-export const widgetOriginSession = pgTable(
-  'widget_origin_session',
-  {
-    sessionId: text('session_id').primaryKey(),
-    userId: text('user_id').notNull(),
-    markedAt: timestamp('marked_at', { withTimezone: true }).defaultNow().notNull(),
-  },
-  (table) => [index('widget_origin_session_user_id_idx').on(table.userId)]
-)
-
-/**
- * Widget identification provenance table.
- *
- * Records, for each session minted by `/api/widget/identify`, whether
- * the identity claim was HMAC-verified (verified-token path) or
- * unverified (email-capture path). The handoff route reads this to
- * decide whether to insert a `widget_origin_session` marker — only
- * HMAC-verified sessions are allowed to upgrade into the widget
- * portal-access grant.
- *
- * Without this row, the portal gate would only know the workspace's
- * *current* `identifyVerificationEnabled` setting, not whether the
- * specific session was ever HMAC-verified — letting a session created
- * during an unverified window keep portal access after the admin turns
- * verification on, and letting any BA session that minted a generic
- * OTT walk through the handoff.
- *
- * Upsert semantics: re-identifying the same session demotes (or
- * promotes) hmac_verified to reflect the latest identify path. A
- * session that loses HMAC verification on re-identify must lose the
- * trust it carries.
- */
-export const widgetIdentifiedSession = pgTable('widget_identified_session', {
-  sessionId: text('session_id').primaryKey(),
-  hmacVerified: boolean('hmac_verified').notNull(),
-  identifiedAt: timestamp('identified_at', { withTimezone: true }).defaultNow().notNull(),
-})

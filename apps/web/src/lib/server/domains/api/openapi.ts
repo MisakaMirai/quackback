@@ -146,7 +146,6 @@ Example: \`post_01h455vb4pex5vsknk084sn02q\`
       { name: 'Webhooks', description: 'Manage webhook endpoints and signing secrets' },
       { name: 'Help Center', description: 'Manage help center categories and articles' },
       { name: 'Segments', description: 'Manage segment membership' },
-      { name: 'Apps', description: 'Endpoints for apps embedded in external help desks' },
       {
         name: 'Workspace',
         description: 'Mention lookups and usage counters, authenticated without an API key',

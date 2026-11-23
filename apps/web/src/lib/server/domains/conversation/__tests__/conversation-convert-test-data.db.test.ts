@@ -100,8 +100,8 @@ beforeEach(async () => {
   })
   mutations.createPost.mockImplementation(async (...[input, author]: CreatePostArgs) => {
     expect(input).toMatchObject({ boardId, title: 'Acme', content: 'A test idea' })
-    expect(input.widgetMetadata).toMatchObject({ source: 'live_chat' })
-    expect(input.widgetMetadata?.conversationId).toBeDefined()
+    expect(input.clientMetadata).toMatchObject({ source: 'live_chat' })
+    expect(input.clientMetadata?.conversationId).toBeDefined()
     expect(author.actor).toEqual(actor)
     await expectSeededPrincipal(author.principalId)
     const stored = await testDb.query.posts.findFirst({ where: eq(posts.id, postId) })
@@ -242,7 +242,7 @@ it.each(['create', 'upvote'] as const)(
         expect.objectContaining({
           boardId,
           title: 'Acme',
-          widgetMetadata: { source: 'live_chat', conversationId },
+          clientMetadata: { source: 'live_chat', conversationId },
         }),
         { principalId: ordinary, actor }
       )

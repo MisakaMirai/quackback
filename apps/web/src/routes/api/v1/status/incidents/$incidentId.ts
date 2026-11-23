@@ -3,6 +3,7 @@ import { withApiKeyAuth } from '@/lib/server/domains/api/auth'
 import { successResponse, handleDomainError } from '@/lib/server/domains/api/responses'
 import { parseTypeId } from '@/lib/server/domains/api/validation'
 import { serializeIncidentDetails } from '../-serialize'
+import { deleteStatusIncidentHandler } from '../-incident-handlers'
 import type { StatusIncidentId } from '@quackback/ids'
 
 export const Route = createFileRoute('/api/v1/status/incidents/$incidentId')({
@@ -31,6 +32,12 @@ export const Route = createFileRoute('/api/v1/status/incidents/$incidentId')({
           return handleDomainError(error)
         }
       },
+
+      /**
+       * DELETE /api/v1/status/incidents/:incidentId
+       */
+      DELETE: async ({ request, params }) =>
+        deleteStatusIncidentHandler({ request, id: params.incidentId }),
     },
   },
 })

@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useRouter } from '@tanstack/react-router'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { SecretRevealDialog } from '@/components/shared/secret-reveal-dialog'
 import { Button } from '@/components/ui/button'
 import { CheckboxGroup } from '@/components/ui/checkbox-group'
@@ -17,21 +18,16 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { createWebhookFn } from '@/lib/server/functions/webhooks'
-import { isPlanRefusal } from '@/lib/shared/describe-upgrade'
 import { WEBHOOK_EVENTS, WEBHOOK_EVENT_CONFIG } from '@/lib/shared/webhook-events'
 import { errorText } from '@/lib/client/error-text'
 
 interface CreateWebhookDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onPlanRefusal?: () => void
 }
 
-export function CreateWebhookDialog({
-  open,
-  onOpenChange,
-  onPlanRefusal,
-}: CreateWebhookDialogProps) {
+export function CreateWebhookDialog({ open, onOpenChange }: CreateWebhookDialogProps) {
+  const intl = useOptionalIntl()
   const router = useRouter()
   const queryClient = useQueryClient()
   const [isPending, startTransition] = useTransition()
@@ -49,7 +45,12 @@ export function CreateWebhookDialog({
     setError(null)
 
     if (selectedEvents.length === 0) {
-      setError('Select at least one event')
+      setError(
+        intl.formatMessage({
+          id: 'admin.webhooks.selectEventError',
+          defaultMessage: 'Select at least one event',
+        })
+      )
       return
     }
 
@@ -69,11 +70,15 @@ export function CreateWebhookDialog({
       // Show secret reveal
       setCreatedSecret(result.secret)
     } catch (err) {
-      if (isPlanRefusal(err)) {
-        onPlanRefusal?.()
-        return
-      }
-      setError(errorText(err, 'Failed to create webhook'))
+      setError(
+        errorText(
+          err,
+          intl.formatMessage({
+            id: 'admin.webhooks.create.failed',
+            defaultMessage: 'Failed to create webhook',
+          })
+        )
+      )
     }
   }
 
@@ -97,21 +102,50 @@ export function CreateWebhookDialog({
       <SecretRevealDialog
         open={open}
         onOpenChange={handleClose}
-        title="Webhook created"
-        description="Save your signing secret now. You won't be able to see it again."
-        secretLabel="Signing secret"
+        title={intl.formatMessage({
+          id: 'admin.webhooks.create.secretTitle',
+          defaultMessage: 'Webhook created',
+        })}
+        description={intl.formatMessage({
+          id: 'admin.webhooks.create.secretDescription',
+          defaultMessage: "Save your signing secret now. You won't be able to see it again.",
+        })}
+        secretLabel={intl.formatMessage({
+          id: 'admin.webhooks.signingSecret',
+          defaultMessage: 'Signing secret',
+        })}
         secretValue={createdSecret}
-        confirmLabel="I've saved my secret"
+        confirmLabel={intl.formatMessage({
+          id: 'admin.webhooks.create.secretConfirm',
+          defaultMessage: "I've saved my secret",
+        })}
       >
         <div className="text-xs text-muted-foreground space-y-1">
           <p>
-            <strong>Verification:</strong> Each webhook includes an{' '}
-            <code className="bg-muted px-1 rounded">X-Quackback-Signature</code> header.
+            <strong>
+              {intl.formatMessage({
+                id: 'admin.webhooks.create.verificationLabel',
+                defaultMessage: 'Verification:',
+              })}
+            </strong>{' '}
+            {intl.formatMessage(
+              {
+                id: 'admin.webhooks.create.signatureHeader',
+                defaultMessage:
+                  'Each webhook includes an <code>X-Quackback-Signature</code> header.',
+              },
+              { code: (chunks) => <code className="bg-muted px-1 rounded">{chunks}</code> }
+            )}
           </p>
           <p>
-            Compute{' '}
-            <code className="bg-muted px-1 rounded">HMAC-SHA256(timestamp.payload, secret)</code>{' '}
-            and compare with the signature.
+            {intl.formatMessage(
+              {
+                id: 'admin.webhooks.create.hmacNote',
+                defaultMessage:
+                  'Compute <code>HMAC-SHA256(timestamp.payload, secret)</code> and compare with the signature.',
+              },
+              { code: (chunks) => <code className="bg-muted px-1 rounded">{chunks}</code> }
+            )}
           </p>
         </div>
       </SecretRevealDialog>
@@ -123,16 +157,29 @@ export function CreateWebhookDialog({
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Create webhook</DialogTitle>
+          <DialogTitle>
+            {intl.formatMessage({
+              id: 'admin.webhooks.create.title',
+              defaultMessage: 'Create webhook',
+            })}
+          </DialogTitle>
           <DialogDescription>
-            Configure an endpoint to receive event notifications.
+            {intl.formatMessage({
+              id: 'admin.webhooks.create.description',
+              defaultMessage: 'Configure an endpoint to receive event notifications.',
+            })}
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit}>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="url">Endpoint URL</Label>
+              <Label htmlFor="url">
+                {intl.formatMessage({
+                  id: 'admin.webhooks.endpointUrl',
+                  defaultMessage: 'Endpoint URL',
+                })}
+              </Label>
               <Input
                 id="url"
                 type="url"
@@ -142,18 +189,34 @@ export function CreateWebhookDialog({
                 disabled={isPending}
                 required
               />
-              <p className="text-xs text-muted-foreground">Must be HTTPS in production</p>
+              <p className="text-xs text-muted-foreground">
+                {intl.formatMessage({
+                  id: 'admin.webhooks.create.httpsNote',
+                  defaultMessage: 'Must be HTTPS in production',
+                })}
+              </p>
             </div>
 
             <div className="space-y-2">
-              <Label>Events</Label>
+              <Label>
+                {intl.formatMessage({
+                  id: 'admin.webhooks.events',
+                  defaultMessage: 'Events',
+                })}
+              </Label>
               <CheckboxGroup
                 className="space-y-2"
                 items={WEBHOOK_EVENT_CONFIG.map((event) => ({
                   value: event.id,
                   label: event.label,
                   description: event.description,
-                  ariaLabel: `Subscribe to ${event.label} events`,
+                  ariaLabel: intl.formatMessage(
+                    {
+                      id: 'admin.webhooks.subscribeToEventsAria',
+                      defaultMessage: 'Subscribe to {event} events',
+                    },
+                    { event: event.label }
+                  ),
                 }))}
                 selected={selectedEvents}
                 onToggle={toggleEvent}
@@ -166,10 +229,18 @@ export function CreateWebhookDialog({
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={handleClose} disabled={isPending}>
-              Cancel
+              {intl.formatMessage({ id: 'common.cancel', defaultMessage: 'Cancel' })}
             </Button>
             <Button type="submit" disabled={isPending || !url || selectedEvents.length === 0}>
-              {isPending ? 'Creating...' : 'Create webhook'}
+              {isPending
+                ? intl.formatMessage({
+                    id: 'admin.webhooks.create.creating',
+                    defaultMessage: 'Creating...',
+                  })
+                : intl.formatMessage({
+                    id: 'admin.webhooks.create.title',
+                    defaultMessage: 'Create webhook',
+                  })}
             </Button>
           </DialogFooter>
         </form>

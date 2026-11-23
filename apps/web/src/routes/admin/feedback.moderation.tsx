@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
+import { FormattedMessage, useIntl } from 'react-intl'
 import { ShieldCheckIcon } from '@heroicons/react/24/outline'
 import { toast } from 'sonner'
 import {
@@ -27,7 +28,7 @@ import { warmQuery } from '@/lib/client/queries/warm-query'
 import { adminPageHead } from '@/lib/client/admin-head'
 
 export const Route = createFileRoute('/admin/feedback/moderation')({
-  head: adminPageHead('Moderation'),
+  head: adminPageHead('Moderation', 'admin.pageTitle.moderation'),
   // The parent `/admin` guard admits team members; the queue needs the
   // permission its server functions check, so a teammate without it is turned
   // away instead of seeing an empty queue.
@@ -61,6 +62,7 @@ export const Route = createFileRoute('/admin/feedback/moderation')({
 })
 
 function ModerationPage() {
+  const intl = useIntl()
   const queryClient = useQueryClient()
   const [pendingId, setPendingId] = useState<string | null>(null)
 
@@ -82,7 +84,12 @@ function ModerationPage() {
   }
 
   const onError = () => {
-    toast.error('This item was already handled. Refreshing the queue.')
+    toast.error(
+      intl.formatMessage({
+        id: 'admin.moderation.alreadyHandled',
+        defaultMessage: 'This item was already handled. Refreshing the queue.',
+      })
+    )
     invalidateAfterDecision()
   }
 
@@ -117,7 +124,10 @@ function ModerationPage() {
 
   return (
     <InboxLayout
-      headerTitle="Feedback"
+      headerTitle={intl.formatMessage({
+        id: 'admin.pageTitle.feedback',
+        defaultMessage: 'Feedback',
+      })}
       filters={
         <InboxFiltersPanel
           filters={filters}
@@ -131,7 +141,12 @@ function ModerationPage() {
       }
     >
       <div className="max-w-5xl w-full px-3 pt-3.5 pb-6 space-y-6">
-        <PageHeader title="Moderation" />
+        <PageHeader
+          title={intl.formatMessage({
+            id: 'admin.pageTitle.moderation',
+            defaultMessage: 'Moderation',
+          })}
+        />
 
         {loading ? (
           <div className="flex justify-center py-12">
@@ -141,8 +156,14 @@ function ModerationPage() {
           <div className="rounded-xl border border-border/50 bg-card">
             <EmptyState
               icon={ShieldCheckIcon}
-              title="Nothing to review"
-              description="Posts and comments held for approval appear here."
+              title={intl.formatMessage({
+                id: 'admin.moderation.emptyTitle',
+                defaultMessage: 'Nothing to review',
+              })}
+              description={intl.formatMessage({
+                id: 'admin.moderation.emptyDescription',
+                defaultMessage: 'Posts and comments held for approval appear here.',
+              })}
               size="compact"
             />
           </div>
@@ -151,7 +172,13 @@ function ModerationPage() {
             {posts.length > 0 && (
               <section>
                 <h2 className="text-sm font-medium text-muted-foreground mb-3">
-                  Pending posts ({posts.length})
+                  {intl.formatMessage(
+                    {
+                      id: 'admin.moderation.pendingPosts',
+                      defaultMessage: 'Pending posts ({count})',
+                    },
+                    { count: posts.length }
+                  )}
                 </h2>
                 <ul className="space-y-3">
                   {posts.map((post) => (
@@ -170,7 +197,19 @@ function ModerationPage() {
                           </Link>
                         </p>
                         <p className="mt-0.5 text-xs text-muted-foreground">
-                          by {post.authorName ?? 'Anonymous'} in {post.boardName}
+                          <FormattedMessage
+                            id="admin.moderation.byAuthorInBoard"
+                            defaultMessage="by {author} in {board}"
+                            values={{
+                              author:
+                                post.authorName ??
+                                intl.formatMessage({
+                                  id: 'admin.moderation.anonymous',
+                                  defaultMessage: 'Anonymous',
+                                }),
+                              board: post.boardName,
+                            }}
+                          />
                         </p>
                         <p className="mt-1 text-sm text-muted-foreground line-clamp-2">
                           {post.content}
@@ -185,7 +224,10 @@ function ModerationPage() {
                           }}
                           disabled={pendingId === post.id}
                         >
-                          Approve
+                          {intl.formatMessage({
+                            id: 'common.moderation.approve',
+                            defaultMessage: 'Approve',
+                          })}
                         </Button>
                         <Button
                           size="sm"
@@ -196,7 +238,10 @@ function ModerationPage() {
                           }}
                           disabled={pendingId === post.id}
                         >
-                          Reject
+                          {intl.formatMessage({
+                            id: 'common.moderation.reject',
+                            defaultMessage: 'Reject',
+                          })}
                         </Button>
                       </div>
                     </li>
@@ -208,7 +253,13 @@ function ModerationPage() {
             {comments.length > 0 && (
               <section>
                 <h2 className="text-sm font-medium text-muted-foreground mb-3">
-                  Pending comments ({comments.length})
+                  {intl.formatMessage(
+                    {
+                      id: 'admin.moderation.pendingComments',
+                      defaultMessage: 'Pending comments ({count})',
+                    },
+                    { count: comments.length }
+                  )}
                 </h2>
                 <ul className="space-y-3">
                   {comments.map((comment) => (
@@ -218,19 +269,37 @@ function ModerationPage() {
                     >
                       <div className="min-w-0 flex-1">
                         <p className="text-sm text-muted-foreground">
-                          on{' '}
-                          <Link
-                            to="/admin/feedback"
-                            search={{ post: comment.postId as string }}
-                            hash={`comment-${comment.id}`}
-                            className="font-medium text-foreground hover:underline"
-                          >
-                            {comment.postTitle}
-                          </Link>{' '}
-                          in {comment.boardName}
+                          <FormattedMessage
+                            id="admin.moderation.commentOn"
+                            defaultMessage="on {post} in {board}"
+                            values={{
+                              post: (
+                                <Link
+                                  to="/admin/feedback"
+                                  search={{ post: comment.postId as string }}
+                                  hash={`comment-${comment.id}`}
+                                  className="font-medium text-foreground hover:underline"
+                                >
+                                  {comment.postTitle}
+                                </Link>
+                              ),
+                              board: comment.boardName,
+                            }}
+                          />
                         </p>
                         <p className="mt-0.5 text-xs text-muted-foreground">
-                          by {comment.authorName ?? 'Anonymous'}
+                          <FormattedMessage
+                            id="admin.moderation.byAuthor"
+                            defaultMessage="by {author}"
+                            values={{
+                              author:
+                                comment.authorName ??
+                                intl.formatMessage({
+                                  id: 'admin.moderation.anonymous',
+                                  defaultMessage: 'Anonymous',
+                                }),
+                            }}
+                          />
                         </p>
                         <div className="mt-1 text-sm text-foreground line-clamp-3">
                           <CommentContent
@@ -248,7 +317,10 @@ function ModerationPage() {
                           }}
                           disabled={pendingId === comment.id}
                         >
-                          Approve
+                          {intl.formatMessage({
+                            id: 'common.moderation.approve',
+                            defaultMessage: 'Approve',
+                          })}
                         </Button>
                         <Button
                           size="sm"
@@ -259,7 +331,10 @@ function ModerationPage() {
                           }}
                           disabled={pendingId === comment.id}
                         >
-                          Reject
+                          {intl.formatMessage({
+                            id: 'common.moderation.reject',
+                            defaultMessage: 'Reject',
+                          })}
                         </Button>
                       </div>
                     </li>

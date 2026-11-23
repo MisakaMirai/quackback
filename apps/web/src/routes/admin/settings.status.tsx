@@ -18,7 +18,7 @@ import { isProductEnabled } from '@/lib/shared/types/settings'
 import { adminPageHead } from '@/lib/client/admin-head'
 
 export const Route = createFileRoute('/admin/settings/status')({
-  head: adminPageHead('Status settings'),
+  head: adminPageHead('Status settings', 'admin.pageTitle.statusSettings'),
   beforeLoad: ({ context }) => {
     if (!isProductEnabled(context.settings?.featureFlags, 'status')) {
       throw redirect({ to: '/admin/settings/general' })

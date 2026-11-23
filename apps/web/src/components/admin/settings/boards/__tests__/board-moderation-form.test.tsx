@@ -73,7 +73,6 @@ vi.mock('@/lib/client/queries/settings', () => ({
         access: {
           visibility: 'public' as const,
           allowedDomains: [],
-          widgetSignIn: false,
           allowedSegmentIds: [],
         },
       }),

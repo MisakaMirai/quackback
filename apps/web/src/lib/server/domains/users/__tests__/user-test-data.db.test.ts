@@ -48,7 +48,7 @@ async function post(by: PrincipalId, metadata: Record<string, unknown> | null = 
     principalId: by,
     title: 'Acme idea',
     content: 'Please add this.',
-    widgetMetadata: metadata as Record<string, string> | null,
+    clientMetadata: metadata as Record<string, string> | null,
   })
   return id
 }

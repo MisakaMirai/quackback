@@ -133,8 +133,6 @@ export type UnsubTokenId = TypeId<'unsub_token'>
 /** In-app notification ID - e.g., notification_01h455vb4pex5vsknk084sn02q */
 export type NotificationId = TypeId<'notification'>
 
-export type PushDeviceId = TypeId<'push_device'>
-
 /** Post edit history ID - e.g., post_edit_01h455vb4pex5vsknk084sn02q */
 export type PostEditId = TypeId<'post_edit'>
 
@@ -155,9 +153,6 @@ export type UserAttributeId = TypeId<'user_attr'>
 
 /** User tag ID - e.g., user_tag_01h455vb4pex5vsknk084sn02q */
 export type UserTagId = TypeId<'user_tag'>
-
-/** Company attribute definition ID - e.g., company_attr_01h455vb4pex5vsknk084sn02q */
-export type CompanyAttributeId = TypeId<'company_attr'>
 
 /** Billing provider webhook event ID - e.g., billing_event_01h455vb4pex5vsknk084sn02q */
 export type BillingEventId = TypeId<'billing_event'>
@@ -192,9 +187,6 @@ export type PostActivityId = TypeId<'post_activity'>
 
 /** Visitor analytics pageview ID - e.g., pv_01h455vb4pex5vsknk084sn02q */
 export type PageViewId = TypeId<'pv'>
-
-/** Company (B2B customer account) ID - e.g., company_01h455vb4pex5vsknk084sn02q */
-export type CompanyId = TypeId<'company'>
 
 /** Assistant involvement ID - e.g., assistant_involvement_01h455vb4pex5vsknk084sn02q */
 export type AssistantInvolvementId = TypeId<'assistant_involvement'>
@@ -255,9 +247,6 @@ export type ChannelThreadId = TypeId<'channel_thread'>
 
 /** Sending domain ID (§4.8) - e.g., sending_domain_01h455vb4pex5vsknk084sn02q */
 export type SendingDomainId = TypeId<'sending_domain'>
-
-/** Workspace domain ID - e.g., workspace_domain_01h455vb4pex5vsknk084sn02q */
-export type WorkspaceDomainId = TypeId<'workspace_domain'>
 
 /** Office-hours schedule ID (§4.6) - e.g., office_hours_01h455vb4pex5vsknk084sn02q */
 export type OfficeHoursId = TypeId<'office_hours'>
@@ -437,7 +426,6 @@ export interface EntityIdMap {
   segment: SegmentId
   user_attr: UserAttributeId
   user_tag: UserTagId
-  company_attr: CompanyAttributeId
   role: RoleId
   permission: PermissionId
   role_permission: RolePermissionId
@@ -450,7 +438,6 @@ export interface EntityIdMap {
   page_view: PageViewId
   billing_event: BillingEventId
   billing_usage: BillingUsageId
-  company: CompanyId
   assistant_involvement: AssistantInvolvementId
   assistant_guidance: AssistantGuidanceRuleId
   assistant_action: AssistantPendingActionId
@@ -471,7 +458,6 @@ export interface EntityIdMap {
   channel_account: ChannelAccountId
   channel_thread: ChannelThreadId
   sending_domain: SendingDomainId
-  workspace_domain: WorkspaceDomainId
   office_hours: OfficeHoursId
   sla_policy: SlaPolicyId
   sla_event: SlaEventId
@@ -522,7 +508,6 @@ export interface EntityIdMap {
   notif_pref: NotifPrefId
   unsub_token: UnsubTokenId
   notification: NotificationId
-  push_device: PushDeviceId
   workspace: WorkspaceId
   user: UserId
   principal: PrincipalId

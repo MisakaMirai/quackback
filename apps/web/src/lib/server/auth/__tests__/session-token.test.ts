@@ -6,7 +6,7 @@ describe('rawSessionToken', () => {
     expect(rawSessionToken('abc123XYZ')).toBe('abc123XYZ')
   })
 
-  it('returns a UUID-style widget token unchanged', () => {
+  it('returns a UUID-style opaque token unchanged', () => {
     expect(rawSessionToken('550e8400-e29b-41d4-a716-446655440000')).toBe(
       '550e8400-e29b-41d4-a716-446655440000'
     )

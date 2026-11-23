@@ -6,7 +6,7 @@ import { ConflictError, NotFoundError } from '@/lib/shared/errors'
 import { settingsReceiptIdSchema, type SettingsArea } from '@/lib/shared/settings-registry'
 import { recordAuditEventInTransaction } from '@/lib/server/audit/log'
 import { invalidateSettingsCache } from '@/lib/server/domains/settings/settings.helpers'
-import type { SettingsApplyReceipt } from '@/lib/server/domains/assistant/settings-proposals.storage'
+import type { SettingsApplyReceipt } from './settings-change.storage'
 import { getSettingsArea } from './registry'
 import { auditActor, type SettingsCaller } from './service'
 

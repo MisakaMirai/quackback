@@ -5,7 +5,7 @@ import {
   mcpDcrRegistrationBody,
   restoreMcpDcrRegisteredRedirectUris,
 } from '@/lib/server/auth/mcp-dcr-scopes'
-import { WorkspaceKeyedCache } from '@/lib/server/workspaces/workspace-keyed'
+import { BoundedCache } from '@/lib/server/bounded-cache'
 import { getClientIp } from '@/lib/server/domains/api/rate-limit'
 
 /**
@@ -19,7 +19,7 @@ import { getClientIp } from '@/lib/server/domains/api/rate-limit'
  * one address exhaust every workspace's registration allowance at once, and
  * lets a legitimate registration be refused because of traffic aimed elsewhere.
  */
-const registrationAttempts = new WorkspaceKeyedCache<{ count: number; windowStart: number }>()
+const registrationAttempts = new BoundedCache<{ count: number; windowStart: number }>()
 const REG_WINDOW_MS = 60 * 60 * 1000 // 1 hour
 export const REG_MAX = 100
 
@@ -107,9 +107,13 @@ export const Route = createFileRoute('/api/auth/$')({
           if (contentType.includes('application/json')) {
             const body = (await request.json()) as Record<string, unknown>
             restoreRedirectUris = mcpDcrRedirectUrisToRestore(body)
+            // The body is rewritten, so the original Content-Length is stale;
+            // forwarding it can truncate the request at a proxy.
+            const headers = new Headers(request.headers)
+            headers.delete('content-length')
             request = new Request(request.url, {
               method: request.method,
-              headers: request.headers,
+              headers,
               body: JSON.stringify(mcpDcrRegistrationBody(body)),
             })
           }
@@ -138,9 +142,11 @@ export const Route = createFileRoute('/api/auth/$')({
               const { config } = await import('@/lib/server/config')
               params.set('resource', `${config.baseUrl}/api/mcp`)
             }
+            const headers = new Headers(request.headers)
+            headers.delete('content-length')
             request = new Request(request.url, {
               method: request.method,
-              headers: request.headers,
+              headers,
               body: params.toString(),
             })
           }

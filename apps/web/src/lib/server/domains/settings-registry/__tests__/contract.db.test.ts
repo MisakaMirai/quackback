@@ -57,7 +57,7 @@ beforeEach(async () => {
     slug: `acme-${createId('workspace')}`,
     createdAt: new Date(),
     brandingConfig: '{}',
-    widgetConfig: '{}',
+    messengerConfig: '{}',
     metadata: '{}',
     featureFlags: '{}',
     portalConfig: '{}',
@@ -251,7 +251,7 @@ describe('every settings area keeps one contract', () => {
           .set(
             area === 'portal'
               ? { name: 'Written meanwhile' }
-              : { widgetConfig: JSON.stringify({ messenger: { welcomeMessage: 'meanwhile' } }) }
+              : { messengerConfig: JSON.stringify({ messenger: { welcomeMessage: 'meanwhile' } }) }
           )
           .then(() => undefined)
         return original(row)

@@ -1,8 +1,7 @@
 import type { UserAttributeType, CurrencyCode } from '@/lib/server/db'
 
 /**
- * Shared shape of user and company attribute definition rows. The two tables
- * differ only in their TypeID prefix (`user_attr_*` vs `company_attr_*`).
+ * Shape of a user attribute definition row.
  */
 export interface AttributeDefinitionRecord<TId extends string = string> {
   id: TId

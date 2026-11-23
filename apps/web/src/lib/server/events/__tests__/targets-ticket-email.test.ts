@@ -9,7 +9,6 @@
  * lookups return exactly what each case wants.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { mailSlugFor, withWorkspace } from '@/lib/server/__tests__/workspace-scope'
 import { SELF_HOSTED_MAIL_SLUG } from '@/lib/server/domains/conversation/conversation.mail-slug'
 import type { EventData } from '../types'
 import type { HookContext } from '../hook-context'
@@ -134,7 +133,6 @@ const createdTicket = {
   stage: 'received',
   requesterPrincipalId: 'principal_requester',
   assignedTeamId: null,
-  companyId: null,
   createdAt: '2026-01-01T00:00:00Z',
   updatedAt: '2026-01-01T00:00:00Z',
   resolvedAt: null,
@@ -243,16 +241,6 @@ describe('getTicketCreatedEmailTargets', () => {
       from: 'support@team.example',
       fromDisplayName: 'Team Support',
     })
-  })
-
-  it('mints the reply-to under the active workspace’s mail slug', async () => {
-    // The address has to name a workspace before a shared inbound front door can
-    // route it anywhere, and the ticket id alone does not: ticket ids live in
-    // per-workspace databases. Passing no slug is what the pre-registry code did
-    // and it mints nothing at all.
-    queueSelect([{ id: 'principal_requester', email: 'req@example.com', contactEmail: null }])
-    await withWorkspace('ws-t2', () => getTicketCreatedEmailTargets(createdEvent(), context))
-    expect(inboundTicketReplyToAddress).toHaveBeenCalledWith('ticket_1', mailSlugFor('ws-t2'))
   })
 
   it('mints under the self-hosted label when no workspace scope is open', async () => {

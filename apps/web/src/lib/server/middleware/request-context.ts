@@ -13,8 +13,8 @@
  *     with QUACKBACK_SERVER_TIMING=1 the same numbers go out as a
  *     Server-Timing header for the browser's network panel.
  *
- * Downstream code enriches the context with workspace_key / user_id via
- * setLogContext() once auth resolves.
+ * Downstream code enriches the context with user_id via setLogContext() once
+ * auth resolves.
  */
 import type { AppLogger } from '@quackback/logger'
 import { createMiddleware } from '@tanstack/react-start'

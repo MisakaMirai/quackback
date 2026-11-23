@@ -106,7 +106,6 @@ beforeEach(() => {
   hoisted.mockRequireAuth.mockResolvedValue({})
   hoisted.mockGetProfileTeamContext.mockResolvedValue({
     email: 'alice@acme.com',
-    company: null,
     segments: [],
     lastSeenAt: new Date('2026-04-01T12:00:00Z'),
     emailVerified: true,
@@ -183,7 +182,6 @@ describe('getProfileTeamContextFn', () => {
     const result = await teamContextHandler({ data: { principalId: VALID_ID } })
     expect(result).toEqual({
       email: 'alice@acme.com',
-      company: null,
       segments: [],
       lastSeenAt: '2026-04-01T12:00:00.000Z',
       emailVerified: true,

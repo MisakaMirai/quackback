@@ -29,16 +29,16 @@ export type {
   PublicPortalConfig,
   DeveloperConfig,
   UpdateDeveloperConfigInput,
-  WidgetConfig,
-  PublicWidgetConfig,
-  UpdateWidgetConfigInput,
+  MessengerConfig,
+  PublicMessengerConfig,
+  MessengerSettings,
+  UpdateMessengerConfigInput,
   HelpCenterConfig,
   HelpCenterHeaderLink,
   HelpCenterSeoConfig,
   HelpCenterDomainConfig,
   HelpCenterLocalesConfig,
   HelpCenterLocaleChromeStrings,
-  HelpCenterAutoTranslateConfig,
 } from './settings.types'
 
 // Welcome card constants (no DB dependency)
@@ -49,7 +49,7 @@ export {
   DEFAULT_AUTH_CONFIG,
   DEFAULT_PORTAL_CONFIG,
   DEFAULT_DEVELOPER_CONFIG,
-  DEFAULT_WIDGET_CONFIG,
+  DEFAULT_MESSENGER_CONFIG,
   DEFAULT_HELP_CENTER_CONFIG,
   DEFAULT_HELP_CENTER_SEO_CONFIG,
 } from './settings.types'
@@ -59,36 +59,3 @@ export type { WorkspaceSettings, SettingsBrandingData } from './settings.types'
 
 // Verified-domain type — no DB dependency, safe for client-side consumption
 export type { VerifiedDomain } from './settings.types'
-
-// Tier limits — type + OSS defaults are barrel-safe (no DB dep).
-// The resolver service (tier-limits.service.ts) must NOT be exported here;
-// import it directly in server-only code to avoid leaking DB into the client bundle.
-export type { TierLimits, TierLimit, TierFeatureFlags } from './tier-limits.types'
-export { OSS_TIER_LIMITS } from './tier-limits.types'
-
-// Cloud config — plans and entitlements. Types, catalogues and the disabled
-// default are pure data with no DB dependency, so they are barrel-safe. The
-// resolver (cloud.service.ts) and the gate (entitlements.ts) must NOT be
-// exported here; import them directly in server-only code.
-export type {
-  CloudConfig,
-  BillingStatus,
-  PlanId,
-  PlanIdAlias,
-  PlanDefinition,
-  EntitlementKey,
-  EntitlementDefinition,
-} from './cloud/cloud.types'
-export {
-  PLAN_IDS,
-  PLAN_ID_ALIASES,
-  PLAN_CATALOGUE,
-  PLAN_DEFINITIONS,
-  ENTITLEMENTS,
-  ENTITLEMENT_KEYS,
-  DISABLED_CLOUD_CONFIG,
-  minimumPlanFor,
-  isPlanId,
-  canonicalPlanId,
-  isEntitlementKey,
-} from './cloud/cloud.types'

@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { IntlProvider } from 'react-intl'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-const updateWidget = vi.fn()
+const updateMessenger = vi.fn()
 let prevent = false
 let assistant: Record<string, unknown> | undefined
 
@@ -27,10 +27,9 @@ vi.mock('@tanstack/react-query', async () => {
   return {
     ...actual,
     useSuspenseQuery: (opts: { queryKey: string[] }) => {
-      if (opts.queryKey.includes('widgetConfig')) {
+      if (opts.queryKey.includes('messengerConfig')) {
         return {
           data: {
-            tabs: { messenger: true },
             messenger: {
               welcomeMessage: 'Hi',
               offlineMessage: 'Away',
@@ -49,13 +48,13 @@ vi.mock('@tanstack/react-query', async () => {
 
 vi.mock('@/lib/client/queries/settings', () => ({
   settingsQueries: {
-    widgetConfig: () => ({ queryKey: ['settings', 'widgetConfig'] }),
+    messengerConfig: () => ({ queryKey: ['settings', 'messengerConfig'] }),
     portalConfig: () => ({ queryKey: ['settings', 'portalConfig'] }),
   },
 }))
 
 vi.mock('@/lib/client/mutations/settings', () => ({
-  useUpdateWidgetConfig: () => ({ mutateAsync: updateWidget }),
+  useUpdateMessengerConfig: () => ({ mutateAsync: updateMessenger }),
   useUpdatePortalConfig: () => ({ mutateAsync: vi.fn() }),
 }))
 
@@ -72,28 +71,25 @@ function renderPage() {
 }
 
 beforeEach(() => {
-  updateWidget.mockReset()
-  updateWidget.mockResolvedValue({})
+  updateMessenger.mockReset()
+  updateMessenger.mockResolvedValue({})
   prevent = false
   assistant = undefined
 })
 afterEach(cleanup)
 
 describe('Messenger Surfaces', () => {
-  it('owns Widget and Portal chats switches', () => {
+  it('owns the Portal chats switch', () => {
     renderPage()
 
     expect(screen.getByRole('heading', { name: 'Surfaces' })).toBeInTheDocument()
-    expect(screen.getByRole('switch', { name: 'Widget' })).toBeInTheDocument()
+    expect(screen.queryByRole('switch', { name: 'Widget' })).not.toBeInTheDocument()
     expect(screen.getByRole('switch', { name: 'Portal chats' })).toBeInTheDocument()
-    expect(screen.getByText('Show the Messages tab in the widget.')).toBeInTheDocument()
     expect(
       screen.getByText(
         "Let signed-in customers start new conversations from the portal's Support tab."
       )
     ).toBeInTheDocument()
-    expect(screen.queryByText('Widget settings')).not.toBeInTheDocument()
-    expect(screen.queryByText('Portal Support')).not.toBeInTheDocument()
     expect(screen.getByText('Translations')).toBeInTheDocument()
   })
 
@@ -128,7 +124,9 @@ describe('Closed conversations reopen switch', () => {
     renderPage()
     fireEvent.click(screen.getByRole('switch', { name: 'Reopen when a visitor replies' }))
     await waitFor(() =>
-      expect(updateWidget).toHaveBeenCalledWith({ messenger: { preventRepliesWhenClosed: true } })
+      expect(updateMessenger).toHaveBeenCalledWith({
+        messenger: { preventRepliesWhenClosed: true },
+      })
     )
   })
 
@@ -137,36 +135,15 @@ describe('Closed conversations reopen switch', () => {
     renderPage()
     fireEvent.click(screen.getByRole('switch', { name: 'Reopen when a visitor replies' }))
     await waitFor(() =>
-      expect(updateWidget).toHaveBeenCalledWith({ messenger: { preventRepliesWhenClosed: false } })
+      expect(updateMessenger).toHaveBeenCalledWith({
+        messenger: { preventRepliesWhenClosed: false },
+      })
     )
   })
 
   it('says email replies always reopen', () => {
     renderPage()
     expect(screen.getByText(/Email replies always reopen/)).toBeInTheDocument()
-  })
-})
-
-describe('AI agent row', () => {
-  it('reads "The AI agent answers first" with a Configure link', () => {
-    assistant = { enabled: true, respond: true }
-    renderPage()
-    expect(screen.getByText('The AI agent answers first')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Configure' }).getAttribute('href')).toBe(
-      '/admin/settings/agent'
-    )
-    expect(screen.queryByText(/Fronting conversations/)).toBeNull()
-  })
-
-  it('reads "The AI agent is off" when answering is off or unset', () => {
-    for (const value of [{ enabled: true, respond: false }, { enabled: true }]) {
-      assistant = value
-      const { unmount } = renderPage()
-      expect(screen.getByText('The AI agent is off')).toBeInTheDocument()
-      expect(screen.queryByText('The AI agent answers first')).toBeNull()
-      expect(screen.queryByText('Answering is off.')).toBeNull()
-      unmount()
-    }
   })
 })
 

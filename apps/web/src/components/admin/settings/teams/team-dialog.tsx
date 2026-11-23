@@ -33,11 +33,21 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { toastError } from '@/lib/client/error-notice'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 
-const METHOD_LABELS: Record<TeamAssignmentMethod, string> = {
-  manual: 'Manual (assign the team only)',
-  round_robin: 'Round robin (rotate over online members)',
-  balanced: 'Balanced (least busy online member)',
+const METHOD_LABELS: Record<TeamAssignmentMethod, { id: string; defaultMessage: string }> = {
+  manual: {
+    id: 'admin.settings.teams.dialog.methodManual',
+    defaultMessage: 'Manual (assign the team only)',
+  },
+  round_robin: {
+    id: 'admin.settings.teams.dialog.methodRoundRobin',
+    defaultMessage: 'Round robin (rotate over online members)',
+  },
+  balanced: {
+    id: 'admin.settings.teams.dialog.methodBalanced',
+    defaultMessage: 'Balanced (least busy online member)',
+  },
 }
 
 interface TeamDialogProps {
@@ -55,6 +65,7 @@ export function TeamDialog({
   team,
   showAssignmentMethod = true,
 }: TeamDialogProps) {
+  const intl = useOptionalIntl()
   const queryClient = useQueryClient()
   const isEdit = !!team
 
@@ -102,7 +113,12 @@ export function TeamDialog({
   const handleSave = async () => {
     const trimmed = name.trim()
     if (!trimmed) {
-      toast.error('Team name is required')
+      toast.error(
+        intl.formatMessage({
+          id: 'admin.settings.teams.dialog.nameRequired',
+          defaultMessage: 'Team name is required',
+        })
+      )
       return
     }
     setSaving(true)
@@ -127,10 +143,26 @@ export function TeamDialog({
         await setTeamMembersFn({ data: { teamId: saved.id, principalIds: [...memberIds] } })
       }
       await queryClient.invalidateQueries({ queryKey: ['settings', 'teams'] })
-      toast.success(isEdit ? 'Team updated' : 'Team created')
+      toast.success(
+        isEdit
+          ? intl.formatMessage({
+              id: 'admin.settings.teams.dialog.updatedToast',
+              defaultMessage: 'Team updated',
+            })
+          : intl.formatMessage({
+              id: 'admin.settings.teams.dialog.createdToast',
+              defaultMessage: 'Team created',
+            })
+      )
       onOpenChange(false)
     } catch (err) {
-      toastError(err, 'Failed to save team')
+      toastError(
+        err,
+        intl.formatMessage({
+          id: 'admin.settings.teams.dialog.saveFailed',
+          defaultMessage: 'Failed to save team',
+        })
+      )
     } finally {
       setSaving(false)
     }
@@ -142,25 +174,52 @@ export function TeamDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>{isEdit ? 'Edit team' : 'New team'}</DialogTitle>
+          <DialogTitle>
+            {isEdit
+              ? intl.formatMessage({
+                  id: 'admin.settings.teams.dialog.editTitle',
+                  defaultMessage: 'Edit team',
+                })
+              : intl.formatMessage({
+                  id: 'admin.settings.teams.dialog.newTitle',
+                  defaultMessage: 'New team',
+                })}
+          </DialogTitle>
           <DialogDescription>
-            Teams group teammates so conversations can be assigned to a whole team.
+            {intl.formatMessage({
+              id: 'admin.settings.teams.dialog.description',
+              defaultMessage:
+                'Teams group teammates so conversations can be assigned to a whole team.',
+            })}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
           <div className="grid grid-cols-[1fr_auto] gap-3">
             <div className="space-y-1.5">
-              <Label htmlFor="team-name">Name</Label>
+              <Label htmlFor="team-name">
+                {intl.formatMessage({
+                  id: 'admin.people.new.nameLabel',
+                  defaultMessage: 'Name',
+                })}
+              </Label>
               <Input
                 id="team-name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Support"
+                placeholder={intl.formatMessage({
+                  id: 'admin.settings.teams.dialog.namePlaceholder',
+                  defaultMessage: 'Support',
+                })}
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="team-icon">Icon</Label>
+              <Label htmlFor="team-icon">
+                {intl.formatMessage({
+                  id: 'admin.roadmap.form.iconPlaceholder',
+                  defaultMessage: 'Icon',
+                })}
+              </Label>
               <Input
                 id="team-icon"
                 value={icon}
@@ -173,24 +232,42 @@ export function TeamDialog({
           </div>
 
           <div className="space-y-1.5">
-            <Label>Color</Label>
+            <Label>
+              {intl.formatMessage({
+                id: 'admin.settings.teams.dialog.color',
+                defaultMessage: 'Color',
+              })}
+            </Label>
             <ColorSwatches value={color || DEFAULT_TAG_COLOR} onChange={setColor} />
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="team-description">Description</Label>
+            <Label htmlFor="team-description">
+              {intl.formatMessage({
+                id: 'admin.roadmap.form.description',
+                defaultMessage: 'Description',
+              })}
+            </Label>
             <Textarea
               id="team-description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="What this team handles"
+              placeholder={intl.formatMessage({
+                id: 'admin.settings.teams.dialog.descriptionPlaceholder',
+                defaultMessage: 'What this team handles',
+              })}
               rows={2}
             />
           </div>
 
           {showAssignmentMethod && (
             <div className="space-y-1.5">
-              <Label htmlFor="team-method">Assignment method</Label>
+              <Label htmlFor="team-method">
+                {intl.formatMessage({
+                  id: 'admin.settings.teams.dialog.assignmentMethod',
+                  defaultMessage: 'Assignment method',
+                })}
+              </Label>
               <Select
                 value={assignmentMethod}
                 onValueChange={(v) => setAssignmentMethod(v as TeamAssignmentMethod)}
@@ -201,7 +278,7 @@ export function TeamDialog({
                 <SelectContent>
                   {TEAM_ASSIGNMENT_METHODS.map((m) => (
                     <SelectItem key={m} value={m}>
-                      {METHOD_LABELS[m]}
+                      {intl.formatMessage(METHOD_LABELS[m])}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -210,10 +287,20 @@ export function TeamDialog({
           )}
 
           <div className="space-y-1.5">
-            <Label>Members</Label>
+            <Label>
+              {intl.formatMessage({
+                id: 'admin.settings.members.tabMembers',
+                defaultMessage: 'Members',
+              })}
+            </Label>
             <div className="max-h-52 overflow-y-auto rounded-md border border-border/50 divide-y divide-border/50">
               {teammates.length === 0 ? (
-                <p className="p-3 text-sm text-muted-foreground">No teammates to add.</p>
+                <p className="p-3 text-sm text-muted-foreground">
+                  {intl.formatMessage({
+                    id: 'admin.settings.teams.dialog.noTeammates',
+                    defaultMessage: 'No teammates to add.',
+                  })}
+                </p>
               ) : (
                 teammates.map((t) => (
                   <label
@@ -227,7 +314,12 @@ export function TeamDialog({
                     />
                     <span className="min-w-0">
                       <span className="block text-sm font-medium truncate">
-                        {t.name ?? t.email ?? 'Unnamed'}
+                        {t.name ??
+                          t.email ??
+                          intl.formatMessage({
+                            id: 'common.authorSelector.unnamed',
+                            defaultMessage: 'Unnamed',
+                          })}
                       </span>
                       {t.email && (
                         <span className="block text-xs text-muted-foreground truncate">
@@ -244,10 +336,23 @@ export function TeamDialog({
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
-            Cancel
+            {intl.formatMessage({ id: 'common.cancel', defaultMessage: 'Cancel' })}
           </Button>
           <Button onClick={handleSave} disabled={saving}>
-            {saving ? 'Saving...' : isEdit ? 'Save changes' : 'Create team'}
+            {saving
+              ? intl.formatMessage({
+                  id: 'admin.settings.teams.dialog.saving',
+                  defaultMessage: 'Saving...',
+                })
+              : isEdit
+                ? intl.formatMessage({
+                    id: 'admin.settings.teams.dialog.saveChanges',
+                    defaultMessage: 'Save changes',
+                  })
+                : intl.formatMessage({
+                    id: 'admin.settings.teams.dialog.createTeam',
+                    defaultMessage: 'Create team',
+                  })}
           </Button>
         </DialogFooter>
       </DialogContent>

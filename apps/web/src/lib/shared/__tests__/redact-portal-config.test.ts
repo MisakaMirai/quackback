@@ -10,7 +10,6 @@ import type { PortalConfig } from '@/lib/server/domains/settings/settings.types'
 const ACCESS_POLICY = {
   visibility: 'private' as const,
   allowedDomains: ['acme.example', 'beta.example'],
-  widgetSignIn: true,
   allowedSegmentIds: [],
 }
 
@@ -26,13 +25,12 @@ const FULL_PORTAL_CONFIG: PortalConfig = {
 }
 
 describe('redactSettingsForClient — parsed object portalConfig', () => {
-  it('strips allowedDomains and widgetSignIn, keeps visibility', () => {
+  it('strips allowedDomains, keeps visibility', () => {
     const row = { portalConfig: FULL_PORTAL_CONFIG, name: 'Acme' }
     const result = redactSettingsForClient(row)
 
     expect(result.portalConfig.access).toEqual({ visibility: 'private' })
     expect(result.portalConfig.access).not.toHaveProperty('allowedDomains')
-    expect(result.portalConfig.access).not.toHaveProperty('widgetSignIn')
   })
 
   it('leaves features and moderationDefault intact', () => {
@@ -67,7 +65,7 @@ describe('redactSettingsForClient — parsed object portalConfig', () => {
 })
 
 describe('redactSettingsForClient — JSON-string portalConfig (raw DB row)', () => {
-  it('strips allowedDomains and widgetSignIn from the JSON string', () => {
+  it('strips allowedDomains from the JSON string', () => {
     const row = {
       name: 'Acme',
       portalConfig: JSON.stringify(FULL_PORTAL_CONFIG),
@@ -77,7 +75,6 @@ describe('redactSettingsForClient — JSON-string portalConfig (raw DB row)', ()
     const parsed = JSON.parse(result.portalConfig as string) as PortalConfig
     expect(parsed.access).toEqual({ visibility: 'private' })
     expect(parsed.access).not.toHaveProperty('allowedDomains')
-    expect(parsed.access).not.toHaveProperty('widgetSignIn')
   })
 
   it('leaves the rest of the JSON string intact when redacting', () => {
@@ -117,7 +114,6 @@ describe('redactSettingsForClient — allowedSegmentIds redaction', () => {
         access: {
           visibility: 'private' as const,
           allowedDomains: ['acme.com'],
-          widgetSignIn: false,
           allowedSegmentIds: ['seg_1', 'seg_2'],
         },
       },
@@ -133,7 +129,6 @@ describe('redactSettingsForClient — allowedSegmentIds redaction', () => {
         access: {
           visibility: 'private',
           allowedDomains: ['acme.com'],
-          widgetSignIn: false,
           allowedSegmentIds: ['seg_1'],
         },
       }),
@@ -147,19 +142,15 @@ describe('redactSettingsForClient — allowedSegmentIds redaction', () => {
 describe('redactSettingsForClient — server-only settings columns', () => {
   const RAW_ROW = {
     name: 'Acme',
-    widgetSecret: 'wgt_' + 'a'.repeat(64),
     metadata: JSON.stringify({ officeHours: {} }),
-    tierLimits: JSON.stringify({ maxBoards: 3 }),
     setupState: JSON.stringify({ step: 'done' }),
     portalConfig: JSON.stringify(FULL_PORTAL_CONFIG),
   }
 
-  it('strips widgetSecret, metadata, tierLimits, and setupState from a raw row', () => {
+  it('strips metadata and setupState from a raw row', () => {
     const result = redactSettingsForClient(RAW_ROW)
 
-    expect(result).not.toHaveProperty('widgetSecret')
     expect(result).not.toHaveProperty('metadata')
-    expect(result).not.toHaveProperty('tierLimits')
     expect(result).not.toHaveProperty('setupState')
     expect(result.name).toBe('Acme')
   })
@@ -172,7 +163,6 @@ describe('redactSettingsForClient — server-only settings columns', () => {
     }
     const result = redactSettingsForClient(workspaceShaped)
 
-    expect(result.settings).not.toHaveProperty('widgetSecret')
     expect(result.portalConfig.access).toEqual({ visibility: 'private' })
     const nestedPortalConfig = JSON.parse(
       (result.settings as { portalConfig: string }).portalConfig
@@ -180,24 +170,10 @@ describe('redactSettingsForClient — server-only settings columns', () => {
     expect(nestedPortalConfig.access).toEqual({ visibility: 'private' })
   })
 
-  it('never leaks a wgt_ secret into the serialized payload', () => {
-    const workspaceShaped = {
-      name: 'Acme',
-      portalConfig: FULL_PORTAL_CONFIG,
-      settings: { ...RAW_ROW },
-    }
-    const payload = JSON.stringify(redactSettingsForClient(workspaceShaped))
-
-    expect(payload).not.toContain('wgt_')
-    expect(payload).not.toContain('widgetSecret')
-    expect(payload).not.toContain('tierLimits')
-  })
-
   it('does not mutate the input row', () => {
     const input = { ...RAW_ROW }
     redactSettingsForClient(input)
 
-    expect(input.widgetSecret).toBe(RAW_ROW.widgetSecret)
     expect(input.metadata).toBe(RAW_ROW.metadata)
   })
 
@@ -292,7 +268,6 @@ describe('redactSettingsForClient — SSR payload invariants', () => {
 
     expect(payload).not.toContain('allowedDomains')
     expect(payload).not.toContain('acme.example')
-    expect(payload).not.toContain('widgetSignIn')
   })
 
   it('the SSR payload string does not contain allowedDomains after redaction (string form)', () => {
@@ -302,6 +277,5 @@ describe('redactSettingsForClient — SSR payload invariants', () => {
 
     expect(payload).not.toContain('allowedDomains')
     expect(payload).not.toContain('acme.example')
-    expect(payload).not.toContain('widgetSignIn')
   })
 })

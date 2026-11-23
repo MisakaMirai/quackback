@@ -41,7 +41,14 @@ export function BlockTicketForm({
     mutationFn: (vars: { title: string; description?: string; email?: string }) =>
       rpc.createMyTicket({ data: vars, headers: getAuthHeaders() }),
     onSuccess: () => setFiled(true),
-    onError: (error) => toastError(error, 'Failed to create ticket'),
+    onError: (error) =>
+      toastError(
+        error,
+        intl.formatMessage({
+          id: 'widget.tickets.new.failed',
+          defaultMessage: 'Failed to create ticket',
+        })
+      ),
   })
 
   if (filed) {

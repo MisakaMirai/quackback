@@ -12,7 +12,6 @@
 
 import { z } from 'zod'
 import { logger } from '@/lib/server/logger'
-import { getCurrentWorkspace } from '@/lib/server/workspaces/workspace-context'
 import { MAIL_DOMAIN_RE } from '@/lib/server/utils/mail-domain'
 
 const log = logger.child({ component: 'config' })
@@ -121,57 +120,11 @@ const configSchema = z
 
     // Database
     //
-    // Optional because a pooled fleet has no fleet-wide database: the workspace
-    // middleware resolves one per request from the Host header. `config.databaseUrl`
-    // throws rather than returning undefined so the ~5 single-workspace callers keep
-    // their `string` type and a pooled misuse is loud.
+    // Optional in the schema so a test fixture can load config without one;
+    // `config.databaseUrl` throws rather than returning undefined.
     databaseUrl: z.string().min(1).optional(),
     dbPoolMax: envInt.pipe(z.number().int().min(1).max(100)).optional(),
     dbIdleTimeout: envInt.pipe(z.number().int().min(1).max(3600)).default(20),
-
-    // Tenancy (SAAS-HOSTING-STACK.md §6)
-    //
-    // `single` is byte-for-byte today's behaviour: one process, one DATABASE_URL.
-    // `pooled` makes the `db` proxy resolve per request and refuse to serve
-    // without an explicit workspace scope.
-    tenancyMode: z.enum(['single', 'pooled']).default('single'),
-    /** Control-plane Postgres holding cp_workspace_registry / cp_workspace_hostnames. */
-    controlDatabaseUrl: z.string().min(1).optional(),
-    /**
-     * Connections per workspace pool. Small on purpose: a pooled instance holds N
-     * workspace pools, and the fleet pooler multiplexes anyway.
-     */
-    workspacePoolMax: envInt.pipe(z.number().int().min(1).max(20)).default(3),
-    /**
-     * Seconds a workspace pool may sit idle before it is closed. Must stay below
-     * BOTH the database suspend timeout (300s default) and Railway's 10-minute
-     * outbound-traffic sleep window, or an idle workspace costs compute forever.
-     */
-    workspacePoolIdleSeconds: envInt.pipe(z.number().int().min(5).max(600)).default(45),
-    /** LRU cap on live workspace pools per instance. */
-    workspacePoolMaxEntries: envInt.pipe(z.number().int().min(1).max(500)).default(50),
-    /** TTL for the in-process hostname → workspace record cache, milliseconds. */
-    workspaceRegistryTtlMs: envInt.pipe(z.number().int().min(0).max(600_000)).default(30_000),
-    /**
-     * Hours without an HTTP request before a pooled workspace is dormant: no job
-     * loop, no fleet sweeps, until the next request wakes it. `0` disables the
-     * policy (every active registry workspace gets a loop, the pre-policy shape).
-     * See `workspaces/activity.ts`.
-     */
-    workspaceDormantAfterHours: envInt.pipe(z.number().int().min(0).max(8_760)).default(168),
-    /**
-     * The fleet root from which every workspace's `SECRET_KEY` is derived and every
-     * workspace's storage credential is sealed (`tenancy/vendor/fleet-secrets.ts`).
-     *
-     * Belongs in a sealed platform variable, never in a workspace record. The 32-char
-     * floor is enforced here as well as in the crypto because HKDF will stretch a
-     * short root into something indistinguishable from a real key, so nothing
-     * downstream can tell — the check has to happen where the value enters.
-     */
-    fleetRootKey: z
-      .string()
-      .min(32, 'QUACKBACK_FLEET_ROOT_KEY must be at least 32 characters')
-      .optional(),
 
     // Auth
     secretKey: z.string().min(32, 'SECRET_KEY must be at least 32 characters'),
@@ -239,8 +192,8 @@ const configSchema = z
     emailSesIdentityAccessKeyId: z.string().optional(),
     emailSesIdentitySecretAccessKey: z.string().optional(),
     /**
-     * Send each workspace's mail under a provider tenant of its own, so the
-     * provider tracks bounces and complaints per workspace and pauses only the
+     * Send each install's mail under a provider tenant of its own, so the
+     * provider tracks bounces and complaints per install and pauses only the
      * one at fault. Off by default. Needs the configuration set (a tenant sends
      * only with one associated) and the identity credential (which manages the
      * tenants); boot refuses it without either. Read by `sesTenantsEnabled` in
@@ -250,7 +203,7 @@ const configSchema = z
     /**
      * Domain the operator serves bounce records under (a wildcard MX to the
      * provider's feedback host and a wildcard SPF TXT). Set, a new sending
-     * domain's return path is one CNAME to `<workspace label>.<this domain>`
+     * domain's return path is one CNAME to `<install label>.<this domain>`
      * instead of an MX and a TXT. Read by `sesReturnPathDomain` in
      * @quackback/email; validated here so a malformed value stops boot rather
      * than quietly reading as unset.
@@ -281,45 +234,8 @@ const configSchema = z
      * A separate origin user files are served from, e.g. `https://files.example.com`
      * pointed at this app. Attachment links handed to browsers load from there,
      * so a file opened in a tab runs nowhere near the app's cookies and storage.
-     * Single-workspace installs only; see the getter.
      */
     userContentUrl: z.string().optional(),
-
-    // AI (optional)
-    openaiApiKey: z.string().optional(),
-    openaiBaseUrl: z.string().optional(),
-    aiChatModel: z.string().optional(),
-    aiEmbeddingModel: z.string().optional(),
-    aiSummaryModel: z.string().optional(),
-    aiSentimentModel: z.string().optional(),
-    aiExtractionModel: z.string().optional(),
-    aiQualityGateModel: z.string().optional(),
-    aiInterpretationModel: z.string().optional(),
-    aiMergeModel: z.string().optional(),
-    aiHelpCenterModel: z.string().optional(),
-    aiHelpCenterTranslateModel: z.string().optional(),
-    aiAssistantModel: z.string().optional(),
-    aiAssistantVision: z.string().optional(),
-    aiInboxTranslationModel: z.string().optional(),
-    aiClassificationModel: z.string().optional(),
-    aiRequireParameters: envBoolean,
-    aiReasoningExclude: envBoolean,
-    aiReasoningEffort: z.string().optional(),
-    aiCombinedToolsAndSchema: envBoolean,
-
-    // Telemetry (optional)
-    disableTelemetry: envBoolean,
-
-    // Automatic website branding for new workspaces (optional)
-    disableAutomaticBranding: envBoolean,
-
-    // Product analytics for the admin app (optional, off unless a key is set)
-    posthogKey: z.preprocess(emptyToUndefined, z.string().optional()),
-    posthogHost: z.preprocess(emptyToUndefined, z.string().url().optional()),
-    posthogUiHost: z.preprocess(emptyToUndefined, z.string().url().optional()),
-    posthogSessionRecording: envBoolean,
-    posthogSessionRecordingMaskText: envBoolean,
-    posthogSessionRecordingMaskInputs: envBoolean,
   })
   .superRefine((cfg, ctx) => {
     // A wildcard is a routing pattern, never an origin. Refused in every mode:
@@ -332,9 +248,7 @@ const configSchema = z
         path: ['baseUrl'],
         message:
           `BASE_URL is ${cfg.baseUrl}, which is a wildcard pattern rather than an origin. ` +
-          'Once a wildcard custom domain is attached, RAILWAY_PUBLIC_DOMAIN becomes ' +
-          '`*.example.com`; under QUACKBACK_TENANCY=pooled the per-request origin comes ' +
-          'from the workspace record, so set BASE_URL to a real fleet hostname.',
+          'Set BASE_URL to the exact hostname this install is served from.',
       })
     }
 
@@ -380,28 +294,9 @@ const configSchema = z
       }
     }
 
-    // Exactly one database story per mode. A pooled fleet with a stray
-    // DATABASE_URL is the dangerous shape — a missing workspace scope would
-    // silently connect somewhere real — so pooled mode refuses to boot with one.
-    if (cfg.tenancyMode === 'single' && !cfg.databaseUrl) {
+    // One process serves one database.
+    if (!cfg.databaseUrl) {
       ctx.addIssue({ code: 'custom', path: ['databaseUrl'], message: 'DATABASE_URL is required' })
-    }
-    if (cfg.tenancyMode === 'pooled') {
-      if (!cfg.controlDatabaseUrl) {
-        ctx.addIssue({
-          code: 'custom',
-          path: ['controlDatabaseUrl'],
-          message: 'QUACKBACK_CONTROL_DATABASE_URL is required when QUACKBACK_TENANCY=pooled',
-        })
-      }
-      if (cfg.databaseUrl) {
-        ctx.addIssue({
-          code: 'custom',
-          path: ['databaseUrl'],
-          message:
-            'DATABASE_URL must be unset when QUACKBACK_TENANCY=pooled — the database is resolved per request',
-        })
-      }
     }
   })
 
@@ -425,16 +320,6 @@ function buildConfigFromEnv(): unknown {
     databaseUrl: env('DATABASE_URL'),
     dbPoolMax: env('DB_POOL_MAX'),
     dbIdleTimeout: env('DB_IDLE_TIMEOUT'),
-
-    // Tenancy
-    tenancyMode: env('QUACKBACK_TENANCY'),
-    controlDatabaseUrl: env('QUACKBACK_CONTROL_DATABASE_URL'),
-    workspacePoolMax: env('WORKSPACE_POOL_MAX'),
-    workspacePoolIdleSeconds: env('WORKSPACE_POOL_IDLE_SECONDS'),
-    workspacePoolMaxEntries: env('WORKSPACE_POOL_MAX_ENTRIES'),
-    workspaceRegistryTtlMs: env('WORKSPACE_REGISTRY_TTL_MS'),
-    workspaceDormantAfterHours: env('WORKSPACE_DORMANT_AFTER_HOURS'),
-    fleetRootKey: env('QUACKBACK_FLEET_ROOT_KEY'),
 
     // Auth
     secretKey: process.env.SECRET_KEY,
@@ -471,42 +356,6 @@ function buildConfigFromEnv(): unknown {
     s3PublicUrl: env('S3_PUBLIC_URL'),
     s3Proxy: env('S3_PROXY'),
     userContentUrl: env('USER_CONTENT_URL'),
-
-    // AI
-    openaiApiKey: env('OPENAI_API_KEY'),
-    openaiBaseUrl: env('OPENAI_BASE_URL'),
-    aiChatModel: env('AI_CHAT_MODEL'),
-    aiEmbeddingModel: env('AI_EMBEDDING_MODEL'),
-    aiSummaryModel: env('AI_SUMMARY_MODEL'),
-    aiSentimentModel: env('AI_SENTIMENT_MODEL'),
-    aiExtractionModel: env('AI_EXTRACTION_MODEL'),
-    aiQualityGateModel: env('AI_QUALITY_GATE_MODEL'),
-    aiInterpretationModel: env('AI_INTERPRETATION_MODEL'),
-    aiMergeModel: env('AI_MERGE_MODEL'),
-    aiHelpCenterModel: env('AI_HELP_CENTER_MODEL'),
-    aiHelpCenterTranslateModel: env('AI_HELP_CENTER_TRANSLATE_MODEL'),
-    aiAssistantModel: env('AI_ASSISTANT_MODEL'),
-    aiAssistantVision: env('AI_ASSISTANT_VISION'),
-    aiInboxTranslationModel: env('AI_INBOX_TRANSLATION_MODEL'),
-    aiClassificationModel: env('AI_CLASSIFICATION_MODEL'),
-    aiRequireParameters: env('AI_REQUIRE_PARAMETERS'),
-    aiReasoningExclude: env('AI_REASONING_EXCLUDE'),
-    aiReasoningEffort: env('AI_REASONING_EFFORT'),
-    aiCombinedToolsAndSchema: env('AI_COMBINED_TOOLS_AND_SCHEMA'),
-
-    // Telemetry
-    disableTelemetry: env('DISABLE_TELEMETRY'),
-
-    // Automatic website branding
-    disableAutomaticBranding: env('DISABLE_AUTOMATIC_BRANDING'),
-
-    // Product analytics
-    posthogKey: env('POSTHOG_KEY'),
-    posthogHost: env('POSTHOG_HOST'),
-    posthogUiHost: env('POSTHOG_UI_HOST'),
-    posthogSessionRecording: env('POSTHOG_SESSION_RECORDING'),
-    posthogSessionRecordingMaskText: env('POSTHOG_SESSION_RECORDING_MASK_TEXT'),
-    posthogSessionRecordingMaskInputs: env('POSTHOG_SESSION_RECORDING_MASK_INPUTS'),
   }
 }
 
@@ -539,14 +388,6 @@ function loadConfig(): Config {
   }
 
   _config = result.data
-  if (_config.tenancyMode === 'pooled' && _config.userContentUrl) {
-    // Logged here because this runs once per process.
-    log.warn(
-      { userContentUrl: _config.userContentUrl },
-      'USER_CONTENT_URL is ignored under QUACKBACK_TENANCY=pooled: the storage route resolves ' +
-        'the workspace from the Host header, so one shared host cannot serve every workspace'
-    )
-  }
   return _config
 }
 
@@ -569,71 +410,25 @@ export const config = {
     return loadConfig().nodeEnv
   },
   /**
-   * The origin this request belongs to.
+   * The origin this install is served from.
    *
-   * Under pooled tenancy the fleet has no single origin: one process serves
-   * many hostnames, and `BASE_URL` is the platform's own domain. Every absolute
-   * URL the app produces resolves from here — email links, asset URLs,
-   * `__QUACKBACK_URL__` in the widget SDK, OAuth callbacks, the MCP resource
-   * metadata — as do better-auth's `trustedOrigins` and the cookie `secure`
-   * flag. So a fleet-wide value means **every workspace emails links to another
-   * workspace's hostname** (SAAS-HOSTING-STACK.md §9).
-   *
-   * The workspace record's `routing.baseUrl` is the answer, and it is already
-   * pinned to the workspace's primary hostname and validated to carry no path,
-   * query or wildcard. Resolving it here rather than at ~56 call sites is
-   * deliberate: a per-call-site fix is a list that goes stale on the next
-   * absolute URL anyone writes.
-   *
-   * Outside a workspace scope (single-workspace installs, boot, fleet paths) this is
-   * `BASE_URL` exactly as before.
+   * Every absolute URL the app produces resolves from here — email links, asset
+   * URLs, OAuth callbacks, the MCP resource metadata — as do better-auth's
+   * `trustedOrigins` and the cookie `secure` flag.
    */
   get baseUrl() {
-    return getCurrentWorkspace()?.routing.baseUrl ?? loadConfig().baseUrl
+    return loadConfig().baseUrl
   },
   get port() {
     return loadConfig().port
   },
-  /**
-   * The fleet-wide database. Throws under pooled tenancy, where there is no
-   * such thing — every caller must go through the request's workspace scope.
-   */
+  /** The install's database. */
   get databaseUrl() {
     const url = loadConfig().databaseUrl
     if (!url) {
-      throw new Error(
-        'DATABASE_URL is not configured. Under QUACKBACK_TENANCY=pooled the database is ' +
-          'resolved per request from the workspace registry; use the workspace scope instead.'
-      )
+      throw new Error('DATABASE_URL is not configured.')
     }
     return url
-  },
-  get tenancyMode() {
-    return loadConfig().tenancyMode
-  },
-  get isPooledTenancy() {
-    return loadConfig().tenancyMode === 'pooled'
-  },
-  get controlDatabaseUrl() {
-    return loadConfig().controlDatabaseUrl
-  },
-  get workspacePoolMax() {
-    return loadConfig().workspacePoolMax
-  },
-  get workspacePoolIdleSeconds() {
-    return loadConfig().workspacePoolIdleSeconds
-  },
-  get workspacePoolMaxEntries() {
-    return loadConfig().workspacePoolMaxEntries
-  },
-  get workspaceDormantAfterHours() {
-    return loadConfig().workspaceDormantAfterHours
-  },
-  get workspaceRegistryTtlMs() {
-    return loadConfig().workspaceRegistryTtlMs
-  },
-  get fleetRootKey() {
-    return loadConfig().fleetRootKey
   },
   get dbPoolMax() {
     const configured = loadConfig().dbPoolMax
@@ -734,125 +529,12 @@ export const config = {
   },
   /**
    * The origin user files are served from, or undefined to serve them from the
-   * app's own origin. Always undefined under pooled tenancy, where the storage
-   * route resolves the workspace from the Host header and a shared host would
-   * name no workspace.
+   * app's own origin.
    */
   get userContentUrl(): string | undefined {
     const cfg = loadConfig()
-    if (cfg.tenancyMode === 'pooled' || !cfg.userContentUrl) return undefined
+    if (!cfg.userContentUrl) return undefined
     return parseUserContentOrigin(cfg.userContentUrl) ?? undefined
-  },
-
-  // AI
-  get openaiApiKey() {
-    return loadConfig().openaiApiKey
-  },
-  get openaiBaseUrl() {
-    return loadConfig().openaiBaseUrl
-  },
-  get aiChatModel() {
-    return loadConfig().aiChatModel
-  },
-  get aiEmbeddingModel() {
-    return loadConfig().aiEmbeddingModel
-  },
-  get aiSummaryModel() {
-    return loadConfig().aiSummaryModel
-  },
-  get aiSentimentModel() {
-    return loadConfig().aiSentimentModel
-  },
-  get aiExtractionModel() {
-    return loadConfig().aiExtractionModel
-  },
-  get aiQualityGateModel() {
-    return loadConfig().aiQualityGateModel
-  },
-  get aiInterpretationModel() {
-    return loadConfig().aiInterpretationModel
-  },
-  get aiMergeModel() {
-    return loadConfig().aiMergeModel
-  },
-  get aiHelpCenterModel() {
-    return loadConfig().aiHelpCenterModel
-  },
-  get aiHelpCenterTranslateModel() {
-    return loadConfig().aiHelpCenterTranslateModel
-  },
-  get aiAssistantModel() {
-    return loadConfig().aiAssistantModel
-  },
-  get aiAssistantVision() {
-    return loadConfig().aiAssistantVision
-  },
-  get aiInboxTranslationModel() {
-    return loadConfig().aiInboxTranslationModel
-  },
-  get aiClassificationModel() {
-    return loadConfig().aiClassificationModel
-  },
-  get aiRequireParameters() {
-    return loadConfig().aiRequireParameters
-  },
-  get aiReasoningExclude() {
-    return loadConfig().aiReasoningExclude
-  },
-  get aiReasoningEffort() {
-    return loadConfig().aiReasoningEffort
-  },
-  get aiCombinedToolsAndSchema() {
-    return loadConfig().aiCombinedToolsAndSchema
-  },
-
-  // Telemetry
-  get disableTelemetry() {
-    return loadConfig().disableTelemetry
-  },
-
-  // Automatic website branding: true stops the first-run lookup of the
-  // administrator's company website.
-  get disableAutomaticBranding() {
-    return loadConfig().disableAutomaticBranding
-  },
-
-  /**
-   * Browser product analytics for signed-in team members in the admin app,
-   * or null when `POSTHOG_KEY` is unset. The key is a project API key, which
-   * can only write events, so it is safe to hand to the browser.
-   *
-   * `host` is where the browser sends: PostHog itself, or a reverse proxy on
-   * a domain content blockers do not list. `uiHost` is the PostHog app the
-   * toolbar links to; it follows from a PostHog host and must be given as
-   * `POSTHOG_UI_HOST` behind a proxy.
-   *
-   * `maskText` hides every text node in a replay and `maskInputs` every
-   * input value. Both are on unless `POSTHOG_SESSION_RECORDING_MASK_TEXT` or
-   * `POSTHOG_SESSION_RECORDING_MASK_INPUTS` is `false`, since admin screens
-   * show the workspace's customers. Password fields are masked either way.
-   */
-  get productAnalytics(): {
-    key: string
-    host: string
-    uiHost: string | null
-    sessionRecording: boolean
-    maskText: boolean
-    maskInputs: boolean
-  } | null {
-    const cfg = loadConfig()
-    if (!cfg.posthogKey) return null
-    const host = (cfg.posthogHost ?? 'https://us.i.posthog.com').replace(/\/+$/, '')
-    const region = new URL(host).hostname.match(/^([a-z]+)\.i\.posthog\.com$/)?.[1]
-    return {
-      key: cfg.posthogKey,
-      host,
-      uiHost:
-        cfg.posthogUiHost?.replace(/\/+$/, '') ?? (region ? `https://${region}.posthog.com` : null),
-      sessionRecording: cfg.posthogSessionRecording ?? true,
-      maskText: cfg.posthogSessionRecordingMaskText ?? true,
-      maskInputs: cfg.posthogSessionRecordingMaskInputs ?? true,
-    }
   },
 
   // Help center
@@ -861,26 +543,16 @@ export const config = {
   },
 
   // Platform (OAuth-app) credential source.
-  //   'control-plane' — pooled Cloud: shared app settings managed by CP.
   //   'db'  (default) — self-host: the integration_platform_credentials table + admin UI.
-  //   'env' — optional single-tenancy: app creds from INTEGRATION_<PROVIDER>_<FIELD> env
+  //   'env' — credentials from INTEGRATION_<PROVIDER>_<FIELD> environment variables
   //           supplied by the deployment environment.
-  // Direct process.env read (like helpCenterDev) so it works without a full config load.
-  get integrationOAuthGatewayUrl(): string | undefined {
-    return process.env.INTEGRATION_OAUTH_GATEWAY_URL
-  },
-  get integrationGatewayForwardSecret(): string | undefined {
-    return process.env.INTEGRATION_GATEWAY_FORWARD_SECRET
-  },
-
-  get platformCredentialsSource(): 'db' | 'env' | 'control-plane' {
-    if (process.env.QUACKBACK_TENANCY === 'pooled') return 'control-plane'
+  get platformCredentialsSource(): 'db' | 'env' {
     return process.env.PLATFORM_CREDENTIALS_SOURCE === 'env' ? 'env' : 'db'
   },
 
-  // Realtime chat transport, surfaced to clients via getWidgetCapabilitiesFn.
+  // Realtime chat transport, surfaced to clients via getConversationCapabilitiesFn.
   //   'live' (default) — SSE stream at /api/chat/stream.
-  //   'poll' — force the widget/portal onto the polling fallback for a
+  //   'poll' — force the portal onto the polling fallback for a
   //            deployment behind a proxy that buffers or drops event streams.
   // Direct process.env read (like helpCenterDev) so it works without a full config load.
   get chatTransportMode(): 'live' | 'poll' {

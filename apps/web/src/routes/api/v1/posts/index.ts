@@ -106,7 +106,6 @@ export const Route = createFileRoute('/api/v1/posts/')({
               authorName: post.authorName ?? null,
               ownerId: post.ownerPrincipalId,
               tags: post.tags?.map((t) => ({ id: t.id, name: t.name, color: t.color })) ?? [],
-              summaryJson: post.summaryJson ?? null,
               canonicalPostId: post.canonicalPostId ?? null,
               mergedAt: post.mergedAt?.toISOString() ?? null,
               isCommentsLocked: post.isCommentsLocked,

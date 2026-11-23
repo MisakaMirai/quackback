@@ -9,7 +9,7 @@
    only the workspace's chosen family — via src/lib/shared/theme/font-loader.ts
    (dynamic `import()`, which Vite code-splits into its own stylesheet). This
    keeps this render-blocking stylesheet (served to every page, including the
-   third-party-embedded widget iframe) from shipping 15 unused families'
+   third-party-embedded iframe) from shipping 15 unused families'
    @font-face rules. Never emit a fonts.googleapis.com <link> — an edge
    optimizer (e.g. Cloudflare Fonts) rewrites such a link into inline
    @font-face and breaks SSR hydration; self-host everything instead, and keep
@@ -142,7 +142,7 @@
     /* Dark mode */
     --background: #0a0a0a;
     --foreground: #fafafa;
-    /* Cards sit a step above the page and controls on them a step higher, so portal and widget surfaces read as raised. */
+    /* Cards sit a step above the page and controls on them a step higher, so portal surfaces read as raised. */
     --card: #0f0f0f;
     --card-foreground: #fafafa;
     --popover: #101010;
@@ -619,7 +619,7 @@ a svg,
 /*
  * Dark mode raises the admin page into a sheet. Overlays portal to the body, outside the canvas,
  * so the same surfaces are set at the document level while an admin shell is mounted. The
- * public portal and the widget have no admin shell and keep the document-level dark tokens above.
+ * public portal has no admin shell and keeps the document-level dark tokens above.
  */
 .dark:has([data-admin-shell]),
 .dark [data-admin-canvas] {

@@ -35,11 +35,11 @@ vi.mock('@/lib/server/functions/ask-search', () => ({
         data.query === 'refund'
           ? [
               {
-                id: 'company_refund',
-                kind: 'company',
-                title: 'Refund Co',
-                subtitle: 'refund.co',
-                href: '/admin/users?lifecycle=companies&company=company_refund',
+                id: 'person_refund',
+                kind: 'person',
+                title: 'Refund Person',
+                subtitle: 'refund@example.com',
+                href: '/admin/users?selected=person_refund',
                 score: 2,
               },
               {
@@ -82,17 +82,17 @@ beforeEach(() => {
 })
 afterEach(cleanup)
 
-it('searches pages and records of every kind with no AI and never asks Copilot', async () => {
+it('searches pages and records with no AI and never asks Copilot', async () => {
   mount()
   fireEvent.keyDown(window, { key: 'k', ctrlKey: true })
   const input = await screen.findByRole('combobox', { name: 'Search Quackback' })
   fireEvent.change(input, { target: { value: 'refund' } })
-  const company = await screen.findByRole('option', { name: /Refund Co/ })
+  const person = await screen.findByRole('option', { name: /Refund Person/ })
   const post = screen.getByRole('option', { name: /Refund policy idea/ })
-  expect(company.textContent).toContain('Company')
+  expect(person.textContent).toContain('Person')
   expect(post.textContent).toContain('Post')
   // One list in the server's order, not one block per kind.
-  expect(company.compareDocumentPosition(post) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  expect(person.compareDocumentPosition(post) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   fireEvent.click(post)
   expect(state.navigations).toEqual(['/admin/feedback?post=refund'])
   expect(state.searches).toEqual(['refund'])

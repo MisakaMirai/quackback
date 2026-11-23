@@ -64,6 +64,7 @@ import {
 import { cn } from '@/lib/shared/utils'
 import { resolveVideoMimeType, VIDEO_FILE_ACCEPT } from '@/lib/shared/storage-config'
 import { resizableImageInsertAttrs } from '@/lib/client/resizable-image-insert-attrs'
+import { useOptionalIntl } from './use-optional-intl'
 // The emoji dataset + shortcode lookup live in their own module, which the
 // emoji node loads when an editor first needs it (see ./emoji-node).
 import type { EmojiItem } from '@/lib/shared/content-emoji'
@@ -121,13 +122,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from './dropdown-menu'
-import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuSeparator,
-  ContextMenuTrigger,
-} from './context-menu'
 import { ScrollArea } from './scroll-area'
 
 // Curated grammar set instead of lowlight's `common` (~37 languages): the
@@ -171,6 +165,13 @@ lowlight.registerAlias({
 // Extension builder (exported for testing)
 // ============================================================================
 
+/** Formats one of the editor's own strings. Without a provider (or in tests)
+ *  it words the default, which is the English; the component always supplies
+ *  the surrounding intl. */
+type EditorMessage = (descriptor: { id: string; defaultMessage: string }) => string
+
+const defaultEditorMessage: EditorMessage = ({ defaultMessage }) => defaultMessage
+
 /**
  * Build the TipTap extension list for a given feature set.
  * Extracted as a pure function so it can be memoized with useMemo
@@ -186,9 +187,17 @@ export function buildExtensions(
     onVideoUpload?: (file: File) => Promise<string>
     /** When set, Enter submits (chat-send) instead of splitting the block. */
     onSubmit?: () => void
+    /** Words the editor's own popovers and toasts; English defaults without it. */
+    formatMessage?: EditorMessage
   }
 ) {
-  const { placeholder, onImageUpload, onVideoUpload, onSubmit } = options
+  const {
+    placeholder,
+    onImageUpload,
+    onVideoUpload,
+    onSubmit,
+    formatMessage = defaultEditorMessage,
+  } = options
   return [
     StarterKit.configure({
       heading: features.headings ? { levels: [1, 2, 3] } : false,
@@ -303,7 +312,7 @@ export function buildExtensions(
         ]
       : []),
     ...(features.slashMenu !== false
-      ? [createSlashCommands(features, onImageUpload, onVideoUpload)]
+      ? [createSlashCommands(features, formatMessage, onImageUpload, onVideoUpload)]
       : []),
     ...(features.emojiPicker !== false ? [createEmojiExtension()] : []),
     // Enter-key bindings, highest precedence first. createSubmitOnEnter registers
@@ -611,14 +620,18 @@ interface SlashMenuItem {
 
 function getSlashMenuItems(
   features: EditorFeatures,
+  formatMessage: EditorMessage,
   onImageUpload?: (file: File) => Promise<string>,
   onVideoUpload?: (file: File) => Promise<string>
 ): SlashMenuItem[] {
   const items: SlashMenuItem[] = [
     // Text group - always available
     {
-      title: 'Text',
-      description: 'Plain paragraph text',
+      title: formatMessage({ id: 'ui.editor.slash.text', defaultMessage: 'Text' }),
+      description: formatMessage({
+        id: 'ui.editor.slash.textDescription',
+        defaultMessage: 'Plain paragraph text',
+      }),
       icon: <Type className="size-4" />,
       command: ({ editor, range }) => {
         editor.chain().focus().deleteRange(range).setParagraph().run()
@@ -632,8 +645,11 @@ function getSlashMenuItems(
   if (features.headings) {
     items.push(
       {
-        title: 'Heading 1',
-        description: 'Large section heading',
+        title: formatMessage({ id: 'ui.editor.slash.heading1', defaultMessage: 'Heading 1' }),
+        description: formatMessage({
+          id: 'ui.editor.slash.heading1Description',
+          defaultMessage: 'Large section heading',
+        }),
         icon: <Heading1 className="size-4" />,
         command: ({ editor, range }) => {
           editor.chain().focus().deleteRange(range).setHeading({ level: 1 }).run()
@@ -642,8 +658,11 @@ function getSlashMenuItems(
         group: 'text',
       },
       {
-        title: 'Heading 2',
-        description: 'Medium section heading',
+        title: formatMessage({ id: 'ui.editor.slash.heading2', defaultMessage: 'Heading 2' }),
+        description: formatMessage({
+          id: 'ui.editor.slash.heading2Description',
+          defaultMessage: 'Medium section heading',
+        }),
         icon: <Heading2 className="size-4" />,
         command: ({ editor, range }) => {
           editor.chain().focus().deleteRange(range).setHeading({ level: 2 }).run()
@@ -652,8 +671,11 @@ function getSlashMenuItems(
         group: 'text',
       },
       {
-        title: 'Heading 3',
-        description: 'Small section heading',
+        title: formatMessage({ id: 'ui.editor.slash.heading3', defaultMessage: 'Heading 3' }),
+        description: formatMessage({
+          id: 'ui.editor.slash.heading3Description',
+          defaultMessage: 'Small section heading',
+        }),
         icon: <Heading3 className="size-4" />,
         command: ({ editor, range }) => {
           editor.chain().focus().deleteRange(range).setHeading({ level: 3 }).run()
@@ -667,8 +689,11 @@ function getSlashMenuItems(
   // Lists - always available (part of StarterKit)
   items.push(
     {
-      title: 'Bullet List',
-      description: 'Unordered list',
+      title: formatMessage({ id: 'ui.editor.slash.bulletList', defaultMessage: 'Bullet List' }),
+      description: formatMessage({
+        id: 'ui.editor.slash.bulletListDescription',
+        defaultMessage: 'Unordered list',
+      }),
       icon: <ListBulletIcon className="size-4" />,
       command: ({ editor, range }) => {
         editor.chain().focus().deleteRange(range).toggleBulletList().run()
@@ -677,8 +702,11 @@ function getSlashMenuItems(
       group: 'lists',
     },
     {
-      title: 'Numbered List',
-      description: 'Ordered list',
+      title: formatMessage({ id: 'ui.editor.slash.numberedList', defaultMessage: 'Numbered List' }),
+      description: formatMessage({
+        id: 'ui.editor.slash.numberedListDescription',
+        defaultMessage: 'Ordered list',
+      }),
       icon: <ListOrdered className="size-4" />,
       command: ({ editor, range }) => {
         editor.chain().focus().deleteRange(range).toggleOrderedList().run()
@@ -691,8 +719,11 @@ function getSlashMenuItems(
   // Task list - conditional
   if (features.taskLists) {
     items.push({
-      title: 'Checklist',
-      description: 'Task list with checkboxes',
+      title: formatMessage({ id: 'ui.editor.slash.checklist', defaultMessage: 'Checklist' }),
+      description: formatMessage({
+        id: 'ui.editor.slash.checklistDescription',
+        defaultMessage: 'Task list with checkboxes',
+      }),
       icon: <CheckSquare className="size-4" />,
       command: ({ editor, range }) => {
         editor.chain().focus().deleteRange(range).toggleTaskList().run()
@@ -705,8 +736,11 @@ function getSlashMenuItems(
   // Blockquote - conditional
   if (features.blockquotes) {
     items.push({
-      title: 'Quote',
-      description: 'Blockquote for citations',
+      title: formatMessage({ id: 'ui.editor.slash.quote', defaultMessage: 'Quote' }),
+      description: formatMessage({
+        id: 'ui.editor.slash.quoteDescription',
+        defaultMessage: 'Blockquote for citations',
+      }),
       icon: <Quote className="size-4" />,
       command: ({ editor, range }) => {
         editor.chain().focus().deleteRange(range).toggleBlockquote().run()
@@ -719,8 +753,11 @@ function getSlashMenuItems(
   // Horizontal divider - conditional
   if (features.dividers) {
     items.push({
-      title: 'Divider',
-      description: 'Horizontal line separator',
+      title: formatMessage({ id: 'ui.editor.slash.divider', defaultMessage: 'Divider' }),
+      description: formatMessage({
+        id: 'ui.editor.slash.dividerDescription',
+        defaultMessage: 'Horizontal line separator',
+      }),
       icon: <Minus className="size-4" />,
       command: ({ editor, range }) => {
         editor.chain().focus().deleteRange(range).setHorizontalRule().run()
@@ -733,8 +770,11 @@ function getSlashMenuItems(
   // Code blocks - conditional
   if (features.codeBlocks) {
     items.push({
-      title: 'Code Block',
-      description: 'Syntax highlighted code',
+      title: formatMessage({ id: 'ui.editor.slash.codeBlock', defaultMessage: 'Code Block' }),
+      description: formatMessage({
+        id: 'ui.editor.slash.codeBlockDescription',
+        defaultMessage: 'Syntax highlighted code',
+      }),
       icon: <Code2 className="size-4" />,
       command: ({ editor, range }) => {
         editor.chain().focus().deleteRange(range).toggleCodeBlock().run()
@@ -747,8 +787,11 @@ function getSlashMenuItems(
   // Images - conditional
   if (features.images && onImageUpload) {
     items.push({
-      title: 'Image',
-      description: 'Upload an image',
+      title: formatMessage({ id: 'ui.editor.slash.image', defaultMessage: 'Image' }),
+      description: formatMessage({
+        id: 'ui.editor.slash.imageDescription',
+        defaultMessage: 'Upload an image',
+      }),
       icon: <ImagePlus className="size-4" />,
       command: ({ editor, range }) => {
         editor.chain().focus().deleteRange(range).run()
@@ -765,7 +808,12 @@ function getSlashMenuItems(
           } catch (error) {
             console.error('Failed to upload image:', error)
             const { toast } = await import('sonner')
-            toast.error("Couldn't upload image. Try again.")
+            toast.error(
+              formatMessage({
+                id: 'ui.editor.uploadImageFailed',
+                defaultMessage: "Couldn't upload image. Try again.",
+              })
+            )
           }
         }
         input.click()
@@ -777,8 +825,11 @@ function getSlashMenuItems(
 
   if (features.videos && onVideoUpload) {
     items.push({
-      title: 'Video',
-      description: 'Upload an MP4, WebM, MOV, or M4V video',
+      title: formatMessage({ id: 'ui.editor.slash.video', defaultMessage: 'Video' }),
+      description: formatMessage({
+        id: 'ui.editor.slash.videoDescription',
+        defaultMessage: 'Upload an MP4, WebM, MOV, or M4V video',
+      }),
       icon: <VideoIcon className="size-4" />,
       command: ({ editor, range }) => {
         editor.chain().focus().deleteRange(range).run()
@@ -805,7 +856,12 @@ function getSlashMenuItems(
           } catch (error) {
             console.error('Failed to upload video:', error)
             const { toast } = await import('sonner')
-            toast.error("Couldn't upload video. Try again.")
+            toast.error(
+              formatMessage({
+                id: 'ui.editor.uploadVideoFailed',
+                defaultMessage: "Couldn't upload video. Try again.",
+              })
+            )
           }
         }
         input.click()
@@ -818,8 +874,11 @@ function getSlashMenuItems(
   // Table - conditional
   if (features.tables) {
     items.push({
-      title: 'Table',
-      description: 'Insert a table',
+      title: formatMessage({ id: 'ui.editor.slash.table', defaultMessage: 'Table' }),
+      description: formatMessage({
+        id: 'ui.editor.slash.tableDescription',
+        defaultMessage: 'Insert a table',
+      }),
       icon: <TableIcon className="size-4" />,
       command: ({ editor, range }) => {
         editor
@@ -838,11 +897,19 @@ function getSlashMenuItems(
   if (features.embeds) {
     items.push({
       title: 'YouTube',
-      description: 'Embed a YouTube video',
+      description: formatMessage({
+        id: 'ui.editor.slash.youtubeDescription',
+        defaultMessage: 'Embed a YouTube video',
+      }),
       icon: <YoutubeIcon className="size-4" />,
       command: ({ editor, range }) => {
         editor.chain().focus().deleteRange(range).run()
-        const url = window.prompt('Paste YouTube video URL:')
+        const url = window.prompt(
+          formatMessage({
+            id: 'ui.editor.youtubeUrlPrompt',
+            defaultMessage: 'Paste YouTube video URL:',
+          })
+        )
         if (url && url.trim()) {
           editor.commands.setYoutubeVideo({
             src: url.trim(),
@@ -896,6 +963,7 @@ interface SlashMenuListProps {
 
 export const SlashMenuList = forwardRef<SlashMenuListRef, SlashMenuListProps>(
   ({ items, command, query = '' }, ref) => {
+    const intl = useOptionalIntl()
     const [selectedIndex, setSelectedIndex] = useState(0)
     const containerRef = useRef<HTMLDivElement>(null)
     const selectedRef = useRef(0)
@@ -952,7 +1020,10 @@ export const SlashMenuList = forwardRef<SlashMenuListRef, SlashMenuListProps>(
       return (
         <div className="z-50 w-52 rounded-lg border bg-popover p-2 shadow-lg">
           <div className="px-2 py-3 text-center text-xs text-muted-foreground">
-            No matching commands
+            {intl.formatMessage({
+              id: 'ui.editor.slash.noResults',
+              defaultMessage: 'No matching commands',
+            })}
           </div>
         </div>
       )
@@ -960,10 +1031,10 @@ export const SlashMenuList = forwardRef<SlashMenuListRef, SlashMenuListProps>(
 
     const groupedItems = groupSlashItems(items)
     const groupLabels: Record<string, string> = {
-      text: 'Text',
-      lists: 'Lists',
-      blocks: 'Blocks',
-      advanced: 'Advanced',
+      text: intl.formatMessage({ id: 'ui.editor.slash.text', defaultMessage: 'Text' }),
+      lists: intl.formatMessage({ id: 'ui.editor.group.lists', defaultMessage: 'Lists' }),
+      blocks: intl.formatMessage({ id: 'ui.editor.group.blocks', defaultMessage: 'Blocks' }),
+      advanced: intl.formatMessage({ id: 'ui.editor.group.advanced', defaultMessage: 'Advanced' }),
     }
 
     // Calculate global index for selection tracking
@@ -1026,13 +1097,14 @@ SlashMenuList.displayName = 'SlashMenuList'
 // Create the slash commands extension
 function createSlashCommands(
   features: EditorFeatures,
+  formatMessage: EditorMessage,
   onImageUpload?: (file: File) => Promise<string>,
   onVideoUpload?: (file: File) => Promise<string>
 ) {
   // Compute once per extension instance. Since buildExtensions() is wrapped in
   // useMemo, this only re-runs when features or onImageUpload actually changes —
   // NOT on every keystroke.
-  const allItems = getSlashMenuItems(features, onImageUpload, onVideoUpload)
+  const allItems = getSlashMenuItems(features, formatMessage, onImageUpload, onVideoUpload)
 
   return Extension.create({
     name: 'slashCommands',
@@ -1178,6 +1250,7 @@ function emojiSuggestionProps(props: SuggestionProps<EmojiItem>): EmojiSuggestio
 
 export const EmojiSuggestionList = forwardRef<EmojiSuggestionListRef, EmojiSuggestionListProps>(
   ({ items, command, recentCount = 0, query = '' }, ref) => {
+    const intl = useOptionalIntl()
     const [selectedIndex, setSelectedIndex] = useState(0)
     const containerRef = useRef<HTMLDivElement>(null)
     const selectedRef = useRef(0)
@@ -1242,10 +1315,14 @@ export const EmojiSuggestionList = forwardRef<EmojiSuggestionListRef, EmojiSugge
             return (
               <div key={item.name}>
                 {recentCount > 0 && index === 0 && (
-                  <div className="px-2 py-1 text-xs font-medium text-muted-foreground">Recent</div>
+                  <div className="px-2 py-1 text-xs font-medium text-muted-foreground">
+                    {intl.formatMessage({ id: 'common.emoji.recent', defaultMessage: 'Recent' })}
+                  </div>
                 )}
                 {recentCount > 0 && index === recentCount && (
-                  <div className="px-2 py-1 text-xs font-medium text-muted-foreground">Popular</div>
+                  <div className="px-2 py-1 text-xs font-medium text-muted-foreground">
+                    {intl.formatMessage({ id: 'common.emoji.popular', defaultMessage: 'Popular' })}
+                  </div>
                 )}
                 <button
                   type="button"
@@ -1411,7 +1488,7 @@ interface RichTextEditorProps {
 function RichTextEditorBase({
   value,
   onDocumentChange,
-  placeholder = 'Write something...',
+  placeholder,
   className,
   disabled = false,
   minHeight = '120px',
@@ -1425,13 +1502,28 @@ function RichTextEditorBase({
   onSubmit,
   editorRef,
 }: RichTextEditorProps) {
+  const intl = useOptionalIntl()
+  const resolvedPlaceholder =
+    placeholder ??
+    intl.formatMessage({ id: 'ui.editor.placeholder', defaultMessage: 'Write something...' })
+  const formatMessage = useCallback<EditorMessage>(
+    (descriptor) => intl.formatMessage(descriptor),
+    [intl]
+  )
   // Memoize extensions keyed on individual feature flags.
   // TipTap v3's useEditor calls editor.setOptions() whenever the extensions
   // array reference changes (uses reference equality via compareOptions).
   // Rebuilding the array on every render causes setOptions→transaction→onUpdate
   // on every keystroke, resulting in 300–400 ms input violations.
   const extensions = useMemo(
-    () => buildExtensions(features, { placeholder, onImageUpload, onVideoUpload, onSubmit }),
+    () =>
+      buildExtensions(features, {
+        placeholder: resolvedPlaceholder,
+        onImageUpload,
+        onVideoUpload,
+        onSubmit,
+        formatMessage,
+      }),
 
     [
       features.headings,
@@ -1451,7 +1543,8 @@ function RichTextEditorBase({
       onImageUpload,
       onVideoUpload,
       onSubmit,
-      placeholder,
+      resolvedPlaceholder,
+      formatMessage,
     ]
   )
 
@@ -1471,14 +1564,16 @@ function RichTextEditorBase({
         (features.images && onImageUpload) || (features.videos && onVideoUpload)
           ? handleMediaDrop(
               features.images ? onImageUpload : undefined,
-              features.videos ? onVideoUpload : undefined
+              features.videos ? onVideoUpload : undefined,
+              formatMessage
             )
           : undefined,
       handlePaste:
         (features.images && onImageUpload) || (features.videos && onVideoUpload)
           ? handleMediaPaste(
               features.images ? onImageUpload : undefined,
-              features.videos ? onVideoUpload : undefined
+              features.videos ? onVideoUpload : undefined,
+              formatMessage
             )
           : undefined,
       handleDOMEvents: {
@@ -1487,7 +1582,15 @@ function RichTextEditorBase({
       },
     }),
 
-    [features.images, features.videos, onImageUpload, onVideoUpload, borderless, minHeight]
+    [
+      features.images,
+      features.videos,
+      onImageUpload,
+      onVideoUpload,
+      borderless,
+      minHeight,
+      formatMessage,
+    ]
   )
 
   // Stores the last JSON emitted by onUpdate so the value-sync useEffect can
@@ -1632,7 +1735,7 @@ function RichTextEditorBase({
     // immediatelyRender=false preserves SSR safety.
     return (
       <RichTextEditorEmptyState
-        placeholder={placeholder}
+        placeholder={resolvedPlaceholder}
         className={className}
         disabled={disabled}
         minHeight={minHeight}
@@ -1674,8 +1777,9 @@ const showFormattingBubble: BubbleMenuProps['shouldShow'] = ({ editor, state }) 
 
 const showTableBubble: BubbleMenuProps['shouldShow'] = ({ editor }) => editor.isActive('table')
 
-const showImageBubble: BubbleMenuProps['shouldShow'] = ({ editor }) =>
-  editor.isActive('resizableImage')
+// The resizable-image extension registers its node as `image` (not
+// `resizableImage`), so this is the name both the schema and the selection use.
+const showImageBubble: BubbleMenuProps['shouldShow'] = ({ editor }) => editor.isActive('image')
 
 interface EditorChromeProps {
   editor: Editor
@@ -1690,8 +1794,8 @@ interface EditorChromeProps {
 }
 
 /**
- * The writing surface and everything around it: the toolbar, the bubble menus
- * and the image context menu. None of it takes the document as a prop, so a
+ * The writing surface and everything around it: the toolbar and the bubble
+ * menus. None of it takes the document as a prop, so a
  * controlled host that re-renders on every keystroke (a new value and often a
  * new onDocumentChange) stops at RichTextEditorBase. The toolbar and menus follow the
  * selection through their own useEditorState subscriptions instead.
@@ -1707,38 +1811,6 @@ const EditorChrome = memo(function EditorChrome({
   onImageUpload,
   onVideoUpload,
 }: EditorChromeProps) {
-  // Image context menu state - stores the src of the right-clicked image
-  const [contextMenuImageSrc, setContextMenuImageSrc] = useState<string | null>(null)
-
-  // Handle right-click - check if it's on an image and store the src
-  const handleContextMenu = useCallback(
-    (e: React.MouseEvent) => {
-      if (!features.images) {
-        setContextMenuImageSrc(null)
-        return
-      }
-
-      // Check if right-clicked on an image
-      const target = e.target as HTMLElement
-      const imageWrapper = target.closest('.resizable-image-wrapper')
-      const img = imageWrapper?.querySelector('img') || (target.tagName === 'IMG' ? target : null)
-
-      if (img && img instanceof HTMLImageElement) {
-        setContextMenuImageSrc(img.src)
-      } else {
-        // Not an image - prevent Radix context menu from opening
-        setContextMenuImageSrc(null)
-      }
-    },
-    [features.images]
-  )
-
-  // Use shared image actions hook for context menu
-  const contextMenuActions = useImageActions({
-    src: contextMenuImageSrc ?? undefined,
-    editor,
-  })
-
   // Ref for finding the nearest dialog content to append bubble menus to.
   // Appending to the dialog (instead of document.body) keeps the menu inside
   // Radix's focus-trap so clicks still work, while escaping ScrollArea overflow.
@@ -1755,77 +1827,44 @@ const EditorChrome = memo(function EditorChrome({
   }, [])
 
   return (
-    <ContextMenu>
-      {/* No `disabled` here: Base UI disables pointer events for the whole
-          trigger subtree, which would make the editor itself unclickable.
-          The image menu can't open without images anyway — handleContextMenu
-          clears the src unless features.images is on. */}
-      <ContextMenuTrigger asChild>
-        <div
-          ref={containerRef}
-          className={cn(
-            !borderless && 'overflow-hidden rounded-md border border-input bg-background',
-            disabled && 'opacity-50 cursor-not-allowed',
-            fill && 'flex h-full min-h-0 flex-col',
-            className
-          )}
-          onContextMenu={handleContextMenu}
-        >
-          {toolbarPosition === 'top' && (
-            <MenuBar
-              editor={editor}
-              disabled={disabled}
-              features={features}
-              onImageUpload={onImageUpload}
-              onVideoUpload={onVideoUpload}
-              variant="top"
-            />
-          )}
-
-          <EditorContent
+    <>
+      <div
+        ref={containerRef}
+        className={cn(
+          !borderless && 'overflow-hidden rounded-md border border-input bg-background',
+          disabled && 'opacity-50 cursor-not-allowed',
+          fill && 'flex h-full min-h-0 flex-col',
+          className
+        )}
+      >
+        {toolbarPosition === 'top' && (
+          <MenuBar
             editor={editor}
-            className={cn(fill && 'min-h-0 flex-1 overflow-y-auto [&_.tiptap]:min-h-full')}
+            disabled={disabled}
+            features={features}
+            onImageUpload={onImageUpload}
+            onVideoUpload={onVideoUpload}
+            variant="top"
           />
+        )}
 
-          {toolbarPosition === 'bottom' && (
-            <MenuBar
-              editor={editor}
-              disabled={disabled}
-              features={features}
-              onImageUpload={onImageUpload}
-              onVideoUpload={onVideoUpload}
-              variant="bottom"
-              borderless={borderless}
-            />
-          )}
-        </div>
-      </ContextMenuTrigger>
+        <EditorContent
+          editor={editor}
+          className={cn(fill && 'min-h-0 flex-1 overflow-y-auto [&_.tiptap]:min-h-full')}
+        />
 
-      {contextMenuImageSrc && (
-        <ContextMenuContent className="min-w-[180px]">
-          <ContextMenuItem onClick={contextMenuActions.viewImage}>
-            <Expand className="mr-3 size-4 text-muted-foreground" />
-            View image
-          </ContextMenuItem>
-          <ContextMenuItem onClick={contextMenuActions.downloadImage}>
-            <Download className="mr-3 size-4 text-muted-foreground" />
-            Download
-          </ContextMenuItem>
-          <ContextMenuItem onClick={contextMenuActions.copyImage}>
-            <Copy className="mr-3 size-4 text-muted-foreground" />
-            Copy to clipboard
-          </ContextMenuItem>
-          <ContextMenuItem onClick={contextMenuActions.copyLink}>
-            <Link2 className="mr-3 size-4 text-muted-foreground" />
-            Copy link
-          </ContextMenuItem>
-          <ContextMenuSeparator />
-          <ContextMenuItem onClick={contextMenuActions.deleteImage}>
-            <Trash2 className="mr-3 size-4 text-muted-foreground" />
-            Delete
-          </ContextMenuItem>
-        </ContextMenuContent>
-      )}
+        {toolbarPosition === 'bottom' && (
+          <MenuBar
+            editor={editor}
+            disabled={disabled}
+            features={features}
+            onImageUpload={onImageUpload}
+            onVideoUpload={onVideoUpload}
+            variant="bottom"
+            borderless={borderless}
+          />
+        )}
+      </div>
 
       {features.bubbleMenu !== false && (
         <BubbleMenu
@@ -1862,7 +1901,7 @@ const EditorChrome = memo(function EditorChrome({
           <ImageToolbar editor={editor} disabled={disabled} />
         </BubbleMenu>
       )}
-    </ContextMenu>
+    </>
   )
 }, sameChromeProps)
 
@@ -1955,7 +1994,8 @@ export function resolveEditorMediaKind(
  */
 function handleMediaDrop(
   onImageUpload?: (file: File) => Promise<string>,
-  onVideoUpload?: (file: File) => Promise<string>
+  onVideoUpload?: (file: File) => Promise<string>,
+  formatMessage: EditorMessage = defaultEditorMessage
 ): (
   view: import('@tiptap/pm/view').EditorView,
   event: DragEvent,
@@ -2008,7 +2048,19 @@ function handleMediaDrop(
         .catch((err) => {
           console.error('[RichTextEditor] Media drop upload failed:', err)
           void import('sonner').then(({ toast }) =>
-            toast.error(`Couldn't upload ${isVideo ? 'video' : 'image'}. Try again.`)
+            toast.error(
+              formatMessage(
+                isVideo
+                  ? {
+                      id: 'ui.editor.uploadVideoFailed',
+                      defaultMessage: "Couldn't upload video. Try again.",
+                    }
+                  : {
+                      id: 'ui.editor.uploadImageFailed',
+                      defaultMessage: "Couldn't upload image. Try again.",
+                    }
+              )
+            )
           )
         })
     })
@@ -2022,7 +2074,8 @@ function handleMediaDrop(
  */
 function handleMediaPaste(
   onImageUpload?: (file: File) => Promise<string>,
-  onVideoUpload?: (file: File) => Promise<string>
+  onVideoUpload?: (file: File) => Promise<string>,
+  formatMessage: EditorMessage = defaultEditorMessage
 ): (view: import('@tiptap/pm/view').EditorView, event: ClipboardEvent, slice: unknown) => boolean {
   return (view, event) => {
     const media = Array.from(event.clipboardData?.items ?? [])
@@ -2067,7 +2120,19 @@ function handleMediaPaste(
         .catch((err) => {
           console.error('[RichTextEditor] Media paste upload failed:', err)
           void import('sonner').then(({ toast }) =>
-            toast.error(`Couldn't upload ${isVideo ? 'video' : 'image'}. Try again.`)
+            toast.error(
+              formatMessage(
+                isVideo
+                  ? {
+                      id: 'ui.editor.uploadVideoFailed',
+                      defaultMessage: "Couldn't upload video. Try again.",
+                    }
+                  : {
+                      id: 'ui.editor.uploadImageFailed',
+                      defaultMessage: "Couldn't upload image. Try again.",
+                    }
+              )
+            )
           )
         })
     })
@@ -2179,6 +2244,7 @@ function useToolbarCommands(editor: Editor) {
 }
 
 function BubbleMenuContent({ editor, disabled }: BubbleMenuContentProps) {
+  const intl = useOptionalIntl()
   // Same subscription as MenuBar: re-renders only when a mark it shows flips.
   const active = useEditorState({ editor, selector: selectBubbleMarks })
   const commands = useToolbarCommands(editor)
@@ -2189,28 +2255,40 @@ function BubbleMenuContent({ editor, disabled }: BubbleMenuContentProps) {
         onClick={commands.bold}
         disabled={disabled}
         isActive={active.bold}
-        title="Bold (Cmd+B)"
+        title={intl.formatMessage({
+          id: 'ui.editor.boldWithShortcut',
+          defaultMessage: 'Bold (Cmd+B)',
+        })}
       />
       <ToolbarButton
         icon={Italic}
         onClick={commands.italic}
         disabled={disabled}
         isActive={active.italic}
-        title="Italic (Cmd+I)"
+        title={intl.formatMessage({
+          id: 'ui.editor.italicWithShortcut',
+          defaultMessage: 'Italic (Cmd+I)',
+        })}
       />
       <ToolbarButton
         icon={UnderlineIcon}
         onClick={commands.underline}
         disabled={disabled}
         isActive={active.underline}
-        title="Underline (Cmd+U)"
+        title={intl.formatMessage({
+          id: 'ui.editor.underlineWithShortcut',
+          defaultMessage: 'Underline (Cmd+U)',
+        })}
       />
       <ToolbarButton
         icon={Strikethrough}
         onClick={commands.strike}
         disabled={disabled}
         isActive={active.strike}
-        title="Strikethrough (Cmd+Shift+S)"
+        title={intl.formatMessage({
+          id: 'ui.editor.strikeWithShortcut',
+          defaultMessage: 'Strikethrough (Cmd+Shift+S)',
+        })}
       />
       <ToolbarDivider />
       <ToolbarButton
@@ -2218,7 +2296,10 @@ function BubbleMenuContent({ editor, disabled }: BubbleMenuContentProps) {
         onClick={commands.code}
         disabled={disabled}
         isActive={active.code}
-        title="Inline Code (Cmd+E)"
+        title={intl.formatMessage({
+          id: 'ui.editor.inlineCodeWithShortcut',
+          defaultMessage: 'Inline Code (Cmd+E)',
+        })}
       />
       <LinkButton editor={editor} disabled={disabled} isActive={active.link} />
       <ToolbarDivider />
@@ -2236,6 +2317,7 @@ function LinkButton({
   disabled: boolean
   isActive: boolean
 }) {
+  const intl = useOptionalIntl()
   const [isOpen, setIsOpen] = useState(false)
   const [url, setUrl] = useState('')
 
@@ -2262,7 +2344,7 @@ function LinkButton({
             setUrl((editor.getAttributes('link').href as string | undefined) || '')
             setIsOpen(true)
           }}
-          title="Insert Link"
+          title={intl.formatMessage({ id: 'ui.editor.insertLink', defaultMessage: 'Insert Link' })}
         >
           <LinkIcon className="size-4" />
         </Button>
@@ -2283,7 +2365,9 @@ function LinkButton({
             autoFocus
           />
           <Button size="sm" className="h-8" onClick={applyLink}>
-            {isActive ? 'Update' : 'Add'}
+            {isActive
+              ? intl.formatMessage({ id: 'ui.editor.linkUpdate', defaultMessage: 'Update' })
+              : intl.formatMessage({ id: 'common.add', defaultMessage: 'Add' })}
           </Button>
         </div>
         {isActive && (
@@ -2297,7 +2381,7 @@ function LinkButton({
               setIsOpen(false)
             }}
           >
-            Remove link
+            {intl.formatMessage({ id: 'ui.editor.removeLink', defaultMessage: 'Remove link' })}
           </Button>
         )}
       </PopoverContent>
@@ -2314,13 +2398,34 @@ const selectBlockType = ({ editor: e }: { editor: Editor }) => {
 }
 
 function HeadingDropdown({ editor, disabled }: { editor: Editor; disabled: boolean }) {
+  const intl = useOptionalIntl()
   const currentType = useEditorState({ editor, selector: selectBlockType })
+  const currentLabel =
+    currentType === 'Text'
+      ? intl.formatMessage({ id: 'ui.editor.slash.text', defaultMessage: 'Text' })
+      : currentType
 
   const blockTypes = [
-    { label: 'Text', value: 'paragraph', icon: <Type className="size-4" /> },
-    { label: 'Heading 1', value: 'h1', icon: <Heading1 className="size-4" /> },
-    { label: 'Heading 2', value: 'h2', icon: <Heading2 className="size-4" /> },
-    { label: 'Heading 3', value: 'h3', icon: <Heading3 className="size-4" /> },
+    {
+      label: intl.formatMessage({ id: 'ui.editor.slash.text', defaultMessage: 'Text' }),
+      value: 'paragraph',
+      icon: <Type className="size-4" />,
+    },
+    {
+      label: intl.formatMessage({ id: 'ui.editor.slash.heading1', defaultMessage: 'Heading 1' }),
+      value: 'h1',
+      icon: <Heading1 className="size-4" />,
+    },
+    {
+      label: intl.formatMessage({ id: 'ui.editor.slash.heading2', defaultMessage: 'Heading 2' }),
+      value: 'h2',
+      icon: <Heading2 className="size-4" />,
+    },
+    {
+      label: intl.formatMessage({ id: 'ui.editor.slash.heading3', defaultMessage: 'Heading 3' }),
+      value: 'h3',
+      icon: <Heading3 className="size-4" />,
+    },
   ]
 
   const handleSelect = (value: string) => {
@@ -2350,7 +2455,7 @@ function HeadingDropdown({ editor, disabled }: { editor: Editor; disabled: boole
           className="h-7 px-2 gap-1 text-xs font-medium"
           disabled={disabled}
         >
-          {currentType}
+          {currentLabel}
           <ChevronDown className="size-3" />
         </Button>
       </DropdownMenuTrigger>
@@ -2382,6 +2487,7 @@ interface TableToolbarProps {
 }
 
 function TableToolbar({ editor, disabled }: TableToolbarProps) {
+  const intl = useOptionalIntl()
   return (
     <div className="flex items-center gap-0.5 rounded-lg border bg-popover p-1 shadow-md">
       {/* Add row above */}
@@ -2389,14 +2495,14 @@ function TableToolbar({ editor, disabled }: TableToolbarProps) {
         icon={ArrowUp}
         onClick={() => editor.chain().focus().addRowBefore().run()}
         disabled={disabled}
-        title="Add row above"
+        title={intl.formatMessage({ id: 'ui.editor.addRowAbove', defaultMessage: 'Add row above' })}
       />
       {/* Add row below */}
       <ToolbarButton
         icon={ArrowDown}
         onClick={() => editor.chain().focus().addRowAfter().run()}
         disabled={disabled}
-        title="Add row below"
+        title={intl.formatMessage({ id: 'ui.editor.addRowBelow', defaultMessage: 'Add row below' })}
       />
       <ToolbarDivider />
       {/* Add column left */}
@@ -2404,14 +2510,20 @@ function TableToolbar({ editor, disabled }: TableToolbarProps) {
         icon={ArrowLeft}
         onClick={() => editor.chain().focus().addColumnBefore().run()}
         disabled={disabled}
-        title="Add column left"
+        title={intl.formatMessage({
+          id: 'ui.editor.addColumnLeft',
+          defaultMessage: 'Add column left',
+        })}
       />
       {/* Add column right */}
       <ToolbarButton
         icon={ArrowRight}
         onClick={() => editor.chain().focus().addColumnAfter().run()}
         disabled={disabled}
-        title="Add column right"
+        title={intl.formatMessage({
+          id: 'ui.editor.addColumnRight',
+          defaultMessage: 'Add column right',
+        })}
       />
       <ToolbarDivider />
       {/* Delete row */}
@@ -2433,19 +2545,19 @@ function TableToolbar({ editor, disabled }: TableToolbarProps) {
             onClick={() => editor.chain().focus().deleteRow().run()}
             className="gap-2"
           >
-            Delete row
+            {intl.formatMessage({ id: 'ui.editor.deleteRow', defaultMessage: 'Delete row' })}
           </DropdownMenuItem>
           <DropdownMenuItem
             onClick={() => editor.chain().focus().deleteColumn().run()}
             className="gap-2"
           >
-            Delete column
+            {intl.formatMessage({ id: 'ui.editor.deleteColumn', defaultMessage: 'Delete column' })}
           </DropdownMenuItem>
           <DropdownMenuItem
             onClick={() => editor.chain().focus().deleteTable().run()}
             className="gap-2 text-destructive focus:text-destructive"
           >
-            Delete table
+            {intl.formatMessage({ id: 'ui.editor.deleteTable', defaultMessage: 'Delete table' })}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -2528,9 +2640,10 @@ interface ImageToolbarProps {
 }
 
 const selectImageSrc = ({ editor: e }: { editor: Editor }) =>
-  e.getAttributes('resizableImage').src as string | undefined
+  e.getAttributes('image').src as string | undefined
 
 function ImageToolbar({ editor, disabled }: ImageToolbarProps) {
+  const intl = useOptionalIntl()
   const src = useEditorState({ editor, selector: selectImageSrc })
 
   const { viewImage, downloadImage, copyImage, copyLink, deleteImage } = useImageActions({
@@ -2542,43 +2655,64 @@ function ImageToolbar({ editor, disabled }: ImageToolbarProps) {
     <div
       className="flex items-center gap-0.5 rounded-lg border bg-popover p-1 shadow-md"
       role="toolbar"
-      aria-label="Image options"
+      aria-label={intl.formatMessage({
+        id: 'ui.editor.imageOptions',
+        defaultMessage: 'Image options',
+      })}
     >
       <ToolbarButton
         icon={Expand}
         onClick={viewImage}
         disabled={disabled}
-        title="View image"
-        aria-label="View image in new tab"
+        title={intl.formatMessage({ id: 'ui.editor.viewImage', defaultMessage: 'View image' })}
+        aria-label={intl.formatMessage({
+          id: 'ui.editor.viewImageNewTab',
+          defaultMessage: 'View image in new tab',
+        })}
       />
       <ToolbarButton
         icon={Download}
         onClick={downloadImage}
         disabled={disabled}
-        title="Download"
-        aria-label="Download image"
+        title={intl.formatMessage({ id: 'files.download', defaultMessage: 'Download' })}
+        aria-label={intl.formatMessage({
+          id: 'ui.editor.downloadImage',
+          defaultMessage: 'Download image',
+        })}
       />
       <ToolbarButton
         icon={Copy}
         onClick={copyImage}
         disabled={disabled}
-        title="Copy to clipboard"
-        aria-label="Copy image to clipboard"
+        title={intl.formatMessage({
+          id: 'common.copyToClipboard',
+          defaultMessage: 'Copy to clipboard',
+        })}
+        aria-label={intl.formatMessage({
+          id: 'ui.editor.copyImageToClipboard',
+          defaultMessage: 'Copy image to clipboard',
+        })}
       />
       <ToolbarButton
         icon={Link2}
         onClick={copyLink}
         disabled={disabled}
-        title="Copy link"
-        aria-label="Copy image link"
+        title={intl.formatMessage({ id: 'common.copyLink', defaultMessage: 'Copy link' })}
+        aria-label={intl.formatMessage({
+          id: 'ui.editor.copyImageLink',
+          defaultMessage: 'Copy image link',
+        })}
       />
       <ToolbarDivider />
       <ToolbarButton
         icon={Trash2}
         onClick={deleteImage}
         disabled={disabled}
-        title="Delete"
-        aria-label="Delete image"
+        title={intl.formatMessage({ id: 'common.delete', defaultMessage: 'Delete' })}
+        aria-label={intl.formatMessage({
+          id: 'ui.editor.deleteImage',
+          defaultMessage: 'Delete image',
+        })}
       />
     </div>
   )
@@ -2633,6 +2767,7 @@ function MenuBar({
   variant = 'top',
   borderless = false,
 }: MenuBarProps) {
+  const intl = useOptionalIntl()
   const isBottom = variant === 'bottom'
   // Muted ghost buttons on the transparent bottom row; filled active-state on top.
   const btn = isBottom ? ('quiet' as const) : ('default' as const)
@@ -2674,11 +2809,16 @@ function MenuBar({
       } catch (error) {
         console.error('Failed to upload image:', error)
         const { toast } = await import('sonner')
-        toast.error("Couldn't upload image. Try again.")
+        toast.error(
+          intl.formatMessage({
+            id: 'ui.editor.uploadImageFailed',
+            defaultMessage: "Couldn't upload image. Try again.",
+          })
+        )
       }
     }
     input.click()
-  }, [editor, onImageUpload])
+  }, [editor, onImageUpload, intl])
 
   const insertVideo = useCallback(() => {
     if (!onVideoUpload) return
@@ -2706,11 +2846,16 @@ function MenuBar({
       } catch (error) {
         console.error('Failed to upload video:', error)
         const { toast } = await import('sonner')
-        toast.error("Couldn't upload video. Try again.")
+        toast.error(
+          intl.formatMessage({
+            id: 'ui.editor.uploadVideoFailed',
+            defaultMessage: "Couldn't upload video. Try again.",
+          })
+        )
       }
     }
     input.click()
-  }, [editor, onVideoUpload])
+  }, [editor, onVideoUpload, intl])
 
   return (
     <div
@@ -2733,7 +2878,10 @@ function MenuBar({
             onClick={commands.heading1}
             disabled={disabled}
             isActive={active.heading1}
-            title="Heading 1"
+            title={intl.formatMessage({
+              id: 'ui.editor.slash.heading1',
+              defaultMessage: 'Heading 1',
+            })}
           />
           <ToolbarButton
             variant={btn}
@@ -2741,7 +2889,10 @@ function MenuBar({
             onClick={commands.heading2}
             disabled={disabled}
             isActive={active.heading2}
-            title="Heading 2"
+            title={intl.formatMessage({
+              id: 'ui.editor.slash.heading2',
+              defaultMessage: 'Heading 2',
+            })}
           />
           <ToolbarButton
             variant={btn}
@@ -2749,7 +2900,10 @@ function MenuBar({
             onClick={commands.heading3}
             disabled={disabled}
             isActive={active.heading3}
-            title="Heading 3"
+            title={intl.formatMessage({
+              id: 'ui.editor.slash.heading3',
+              defaultMessage: 'Heading 3',
+            })}
           />
           <ToolbarDivider />
         </>
@@ -2762,7 +2916,7 @@ function MenuBar({
         onClick={commands.bold}
         disabled={disabled}
         isActive={active.bold}
-        title="Bold"
+        title={intl.formatMessage({ id: 'ui.editor.bold', defaultMessage: 'Bold' })}
       />
       <ToolbarButton
         variant={btn}
@@ -2770,7 +2924,7 @@ function MenuBar({
         onClick={commands.italic}
         disabled={disabled}
         isActive={active.italic}
-        title="Italic"
+        title={intl.formatMessage({ id: 'ui.editor.italic', defaultMessage: 'Italic' })}
       />
       <ToolbarDivider />
 
@@ -2781,7 +2935,10 @@ function MenuBar({
         onClick={commands.bulletList}
         disabled={disabled}
         isActive={active.bulletList}
-        title="Bullet List"
+        title={intl.formatMessage({
+          id: 'ui.editor.slash.bulletList',
+          defaultMessage: 'Bullet List',
+        })}
       />
       <ToolbarButton
         variant={btn}
@@ -2789,7 +2946,7 @@ function MenuBar({
         onClick={commands.orderedList}
         disabled={disabled}
         isActive={active.orderedList}
-        title="Ordered List"
+        title={intl.formatMessage({ id: 'ui.editor.orderedList', defaultMessage: 'Ordered List' })}
       />
       <ToolbarDivider />
 
@@ -2800,7 +2957,7 @@ function MenuBar({
         onClick={setLink}
         disabled={disabled}
         isActive={active.link}
-        title="Insert Link"
+        title={intl.formatMessage({ id: 'ui.editor.insertLink', defaultMessage: 'Insert Link' })}
       />
 
       {/* Code block button */}
@@ -2811,7 +2968,10 @@ function MenuBar({
           onClick={commands.codeBlock}
           disabled={disabled}
           isActive={active.codeBlock}
-          title="Code Block"
+          title={intl.formatMessage({
+            id: 'ui.editor.slash.codeBlock',
+            defaultMessage: 'Code Block',
+          })}
         />
       )}
 
@@ -2822,7 +2982,10 @@ function MenuBar({
           icon={ImagePlus}
           onClick={insertImage}
           disabled={disabled}
-          title="Insert Image"
+          title={intl.formatMessage({
+            id: 'ui.editor.insertImage',
+            defaultMessage: 'Insert Image',
+          })}
         />
       )}
 
@@ -2832,7 +2995,10 @@ function MenuBar({
           icon={VideoIcon}
           onClick={insertVideo}
           disabled={disabled}
-          title="Insert Video"
+          title={intl.formatMessage({
+            id: 'ui.editor.insertVideo',
+            defaultMessage: 'Insert Video',
+          })}
         />
       )}
 
@@ -2846,14 +3012,14 @@ function MenuBar({
         icon={ArrowUturnLeftIcon}
         onClick={commands.undo}
         disabled={disabled || !active.canUndo}
-        title="Undo"
+        title={intl.formatMessage({ id: 'ui.editor.undo', defaultMessage: 'Undo' })}
       />
       <ToolbarButton
         variant={btn}
         icon={ArrowUturnRightIcon}
         onClick={commands.redo}
         disabled={disabled || !active.canRedo}
-        title="Redo"
+        title={intl.formatMessage({ id: 'ui.editor.redo', defaultMessage: 'Redo' })}
       />
     </div>
   )

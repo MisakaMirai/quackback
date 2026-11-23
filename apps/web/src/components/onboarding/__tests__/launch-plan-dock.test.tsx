@@ -71,15 +71,12 @@ const open: LaunchStatus = {
     helpCenter: true,
     statusPage: false,
     integrations: true,
-    assistant: false,
   },
 }
 // Every chore is done: the plan still waits for a customer.
 const choresDone: LaunchStatus = {
   ...open,
   publicBoardLinkCopiedAt: '2026-10-03T10:00:00.000Z',
-  hasWidgetInstalled: true,
-  hasWidgetEnabled: true,
   hasHelpArticle: true,
   hasBranding: true,
   hasPublishedChangelog: true,

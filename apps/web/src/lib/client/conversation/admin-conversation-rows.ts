@@ -12,7 +12,7 @@ import type { BlockState } from '@/lib/shared/conversation/types'
 export type AdminConversationRow =
   | { type: 'load-older'; key: 'load-older' }
   | { type: 'unread'; key: 'unread' }
-  // `blockState` mirrors conversation-rows.ts's ConversationRow (the widget's
+  // `blockState` mirrors conversation-rows.ts's ConversationRow (the visitor's
   // own row type) — set only when `message.block` is an interactive kind, so
   // AgentMessageBubble's read-only summary can stop implying an answered
   // block is still live (CF3).

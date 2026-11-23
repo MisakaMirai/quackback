@@ -17,7 +17,7 @@ vi.mock('@/lib/server/db', () => ({
 const context = vi.fn()
 vi.mock('../index', () => ({
   getIntegration: (type: string) =>
-    ({ hubspot: { context }, zendesk: { context }, linear: {} })[type],
+    ({ hubspot: { context }, intercom: { context }, linear: {} })[type],
 }))
 
 vi.mock('../token-refresh', () => ({
@@ -49,7 +49,7 @@ describe('hasCustomerContextProvider', () => {
   it('is true when an active, connected integration provides context', async () => {
     activeRows.mockResolvedValueOnce([
       { integrationType: 'linear', hasSecrets: true },
-      { integrationType: 'zendesk', hasSecrets: true },
+      { integrationType: 'intercom', hasSecrets: true },
     ])
     await expect(hasCustomerContextProvider()).resolves.toBe(true)
     expect(context).not.toHaveBeenCalled()

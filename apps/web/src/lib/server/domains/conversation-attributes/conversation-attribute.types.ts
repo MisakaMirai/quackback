@@ -15,10 +15,6 @@ export interface ConversationAttribute {
   options: ConversationAttributeOption[] | null
   requiredToClose: boolean
   sourceHint: ConversationAttributeSourceHint | null
-  /** Opt in to deterministic AI classification at the "job done" moments. `select` field type only. */
-  aiDetect: boolean
-  /** Additionally re-check this attribute when a teammate closes the conversation. `select` field type only. */
-  detectOnClose: boolean
   archivedAt: Date | null
   createdAt: Date
   updatedAt: Date
@@ -49,11 +45,6 @@ export interface CreateConversationAttributeInput {
   options?: CreateAttributeOptionInput[]
   requiredToClose?: boolean
   sourceHint?: ConversationAttributeSourceHint | null
-  /** `select` field type only — validated at the service layer. Defaults ON
-   *  for select, so Quinn classifies new attributes unless opted out. */
-  aiDetect?: boolean
-  /** `select` field type only — validated at the service layer. */
-  detectOnClose?: boolean
 }
 
 /** Field type is immutable after creation, so it is not updatable. */
@@ -63,8 +54,4 @@ export interface UpdateConversationAttributeInput {
   options?: UpdateAttributeOptionInput[]
   requiredToClose?: boolean
   sourceHint?: ConversationAttributeSourceHint | null
-  /** `select` field type only — validated against the existing definition. */
-  aiDetect?: boolean
-  /** `select` field type only — validated against the existing definition. */
-  detectOnClose?: boolean
 }

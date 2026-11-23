@@ -10,6 +10,7 @@ import { Fragment } from 'react'
 import { CheckCircleIcon, ClockIcon, ExclamationCircleIcon } from '@heroicons/react/24/solid'
 import { CopyButton } from '@/components/shared/copy-button'
 import { Button } from '@/components/ui/button'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { useCopyToClipboard } from '@/lib/client/hooks/use-copy-to-clipboard'
 import { cn } from '@/lib/shared/utils'
 
@@ -51,6 +52,7 @@ export function txtParts(value: string): string {
 }
 
 function CopyAsParts({ value, name }: { value: string; name: string }) {
+  const intl = useOptionalIntl()
   const { copied, copy } = useCopyToClipboard()
   return (
     <Button
@@ -59,9 +61,14 @@ function CopyAsParts({ value, name }: { value: string; name: string }) {
       size="sm"
       onClick={() => copy(txtParts(value))}
       className="h-auto p-0 text-xs font-normal text-muted-foreground"
-      aria-label={`Copy as parts for ${name}`}
+      aria-label={intl.formatMessage(
+        { id: 'common.dns.copyAsPartsAria', defaultMessage: 'Copy as parts for {name}' },
+        { name }
+      )}
     >
-      {copied ? 'Copied' : 'Copy as parts'}
+      {copied
+        ? intl.formatMessage({ id: 'common.dns.copied', defaultMessage: 'Copied' })
+        : intl.formatMessage({ id: 'common.dns.copyAsParts', defaultMessage: 'Copy as parts' })}
     </Button>
   )
 }
@@ -79,26 +86,49 @@ const STACKED_CELL =
   '@max-xl:before:content-[attr(data-label)]'
 
 const STATE_ICON = {
-  found: { icon: CheckCircleIcon, label: 'Found', tone: 'text-success' },
-  waiting: { icon: ClockIcon, label: 'Waiting', tone: 'text-muted-foreground/70' },
-  problem: { icon: ExclamationCircleIcon, label: 'Needs a fix', tone: 'text-destructive' },
+  found: { icon: CheckCircleIcon, tone: 'text-success' },
+  waiting: { icon: ClockIcon, tone: 'text-muted-foreground/70' },
+  problem: { icon: ExclamationCircleIcon, tone: 'text-destructive' },
+} as const
+
+const STATE_LABEL_ID = {
+  found: 'common.dns.stateFound',
+  waiting: 'common.dns.stateWaiting',
+  problem: 'common.dns.stateNeedsFix',
+} as const
+
+const STATE_DEFAULT_LABEL = {
+  found: 'Found',
+  waiting: 'Waiting',
+  problem: 'Needs a fix',
 } as const
 
 export function DnsRecordTable({ records }: { records: DnsRecordRow[] }) {
+  const intl = useOptionalIntl()
+  const columns = {
+    record: intl.formatMessage({ id: 'common.dns.columnRecord', defaultMessage: 'Record' }),
+    name: intl.formatMessage({ id: 'common.dns.columnName', defaultMessage: 'Name' }),
+    type: intl.formatMessage({ id: 'common.dns.columnType', defaultMessage: 'Type' }),
+    value: intl.formatMessage({ id: 'common.dns.columnValue', defaultMessage: 'Value' }),
+  }
   return (
     <div className="@container overflow-x-auto">
       <table className="w-full text-[13px] @max-xl:block">
         <thead className="@max-xl:hidden">
           <tr className="text-left text-xs text-muted-foreground">
-            <th className="py-1.5 pr-3 font-medium">Record</th>
-            <th className="py-1.5 pr-3 font-medium">Name</th>
-            <th className="py-1.5 pr-3 font-medium">Type</th>
-            <th className="py-1.5 font-medium">Value</th>
+            <th className="py-1.5 pr-3 font-medium">{columns.record}</th>
+            <th className="py-1.5 pr-3 font-medium">{columns.name}</th>
+            <th className="py-1.5 pr-3 font-medium">{columns.type}</th>
+            <th className="py-1.5 font-medium">{columns.value}</th>
           </tr>
         </thead>
         <tbody className="@max-xl:block">
           {records.map((r) => {
-            const { icon: Icon, label, tone } = STATE_ICON[r.state]
+            const { icon: Icon, tone } = STATE_ICON[r.state]
+            const stateLabel = intl.formatMessage({
+              id: STATE_LABEL_ID[r.state],
+              defaultMessage: STATE_DEFAULT_LABEL[r.state],
+            })
             return (
               <Fragment key={`${r.type} ${r.name} ${r.value}`}>
                 <tr
@@ -108,11 +138,11 @@ export function DnsRecordTable({ records }: { records: DnsRecordRow[] }) {
                   <td className="py-1.5 pr-3 whitespace-nowrap @max-xl:block @max-xl:pt-0 @max-xl:font-medium">
                     <span className="flex items-center gap-1.5">
                       <Icon className={cn('size-4 shrink-0', tone)} aria-hidden="true" />
-                      <span className="sr-only">{label}: </span>
+                      <span className="sr-only">{stateLabel}: </span>
                       {r.label}
                     </span>
                   </td>
-                  <td data-label="Name" className={cn('py-1.5 pr-3', STACKED_CELL)}>
+                  <td data-label={columns.name} className={cn('py-1.5 pr-3', STACKED_CELL)}>
                     <span className="flex min-w-0 items-start gap-1">
                       <span className="font-mono whitespace-nowrap @max-xl:break-all @max-xl:whitespace-normal">
                         {r.name}
@@ -121,24 +151,36 @@ export function DnsRecordTable({ records }: { records: DnsRecordRow[] }) {
                         value={r.name}
                         variant="ghost"
                         className="size-6"
-                        aria-label={`Copy name ${r.name}`}
+                        aria-label={intl.formatMessage(
+                          {
+                            id: 'common.dns.copyNameAria',
+                            defaultMessage: 'Copy name {name}',
+                          },
+                          { name: r.name }
+                        )}
                       />
                     </span>
                   </td>
                   <td
-                    data-label="Type"
+                    data-label={columns.type}
                     className={cn('py-1.5 pr-3 font-mono whitespace-nowrap', STACKED_CELL)}
                   >
                     {r.type}
                   </td>
-                  <td data-label="Value" className={cn('py-1.5', STACKED_CELL)}>
+                  <td data-label={columns.value} className={cn('py-1.5', STACKED_CELL)}>
                     <span className="flex min-w-0 items-start gap-1">
                       <span className="font-mono break-all">{r.value}</span>
                       <CopyButton
                         value={r.value}
                         variant="ghost"
                         className="size-6"
-                        aria-label={`Copy value for ${r.name}`}
+                        aria-label={intl.formatMessage(
+                          {
+                            id: 'common.dns.copyValueAria',
+                            defaultMessage: 'Copy value for {name}',
+                          },
+                          { name: r.name }
+                        )}
                       />
                     </span>
                   </td>

@@ -3,13 +3,17 @@ import { FormattedMessage, useIntl } from 'react-intl'
 import { HelpCenterHero } from '@/components/help-center/help-center-hero'
 import { HelpCenterHeroSearch } from '@/components/help-center/help-center-search'
 import { HelpCenterCategoryGrid } from '@/components/help-center/help-center-category-grid'
+import { HelpCenterPopularArticles } from '@/components/help-center/help-center-popular-articles'
 import { getTopLevelCategories } from '@/components/help-center/help-center-utils'
 import {
   helpCenterAbsoluteUrl,
   helpCenterHeadMessages,
   helpCenterHeadPortal,
 } from '@/components/help-center/help-center-head'
-import { listPublicCategoriesFn } from '@/lib/server/functions/help-center'
+import {
+  listPopularPublicArticlesFn,
+  listPublicCategoriesFn,
+} from '@/lib/server/functions/help-center'
 import { localizedHcPath } from '@/lib/shared/help-center-url'
 import { DEFAULT_HELP_CENTER_CONFIG, type HelpCenterConfig } from '@/lib/shared/types/settings'
 import { resolvePortalOgImageUrl } from '@/lib/shared/portal-og-image'
@@ -43,22 +47,29 @@ function landingCopy(
 }
 
 /**
- * Locale-prefixed help-center homepage (domains/languages §2). Mirrors
- * `/hc/index.tsx` for an additional locale: translated chrome strings,
- * translated+gated category grid. "Popular articles" is intentionally
- * omitted here -- view-count ranking has no per-locale notion yet, and
- * showing default-locale titles on a translated homepage would be
- * confusing. Ask AI is also off here (retrieval isn't locale-aware).
+ * Locale-prefixed help-center homepage — the only landing page, for every
+ * language including the default (domains/languages §2). The bare `/hc` route
+ * redirects here. "Popular articles" is only shown for the default locale:
+ * view-count ranking has no per-locale notion yet, and default-locale titles on
+ * a translated homepage would be untranslated. Ask AI is off here for the same
+ * reason (retrieval isn't locale-aware).
  */
 export const Route = createFileRoute('/_portal/hc/$locale/')({
   loader: async ({ context, params }) => {
     const { settings } = context
     const helpCenterConfig = settings?.helpCenterConfig as HelpCenterConfig | undefined
-    const categories = await listPublicCategoriesFn({ data: { locale: params.locale } })
+    const defaultLocale = helpCenterConfig?.locales?.default ?? 'en'
+    const [categories, popularArticles] = await Promise.all([
+      listPublicCategoriesFn({ data: { locale: params.locale } }),
+      params.locale === defaultLocale
+        ? listPopularPublicArticlesFn({ data: { limit: 6 } })
+        : Promise.resolve([]),
+    ])
     const chrome = helpCenterConfig?.locales?.chrome?.[params.locale]
 
     return {
       categories,
+      popularArticles,
       // Unset chrome falls back to the default copy in the app's language,
       // on the page and in its metadata.
       title: chrome?.homepageTitle || null,
@@ -99,7 +110,12 @@ export const Route = createFileRoute('/_portal/hc/$locale/')({
 
 function LocaleHelpCenterLandingPage() {
   const intl = useIntl()
-  const { categories, title: chromeTitle, description: chromeDescription } = Route.useLoaderData()
+  const {
+    categories,
+    popularArticles,
+    title: chromeTitle,
+    description: chromeDescription,
+  } = Route.useLoaderData()
   const { locale } = Route.useParams()
   const collectionCount = getTopLevelCategories(categories).length
   const { title, description } = landingCopy(chromeTitle, chromeDescription, (copy) =>
@@ -133,6 +149,8 @@ function LocaleHelpCenterLandingPage() {
         </div>
         <HelpCenterCategoryGrid categories={categories} locale={locale} />
       </section>
+
+      <HelpCenterPopularArticles articles={popularArticles} locale={locale} />
     </>
   )
 }

@@ -12,16 +12,7 @@ import type { SesDomainIdentity, SesIdentityCreation } from '@quackback/email/se
 import type { RawEmailOptions } from '@quackback/email'
 
 import { createDbTestFixture, testDb } from '@/lib/server/__tests__/db-test-fixture'
-import {
-  eq,
-  isNull,
-  and,
-  teams,
-  emailSendingDomains,
-  channelAccounts,
-  domains,
-  ssoVerifiedDomain,
-} from '@/lib/server/db'
+import { eq, isNull, and, teams, emailSendingDomains, channelAccounts } from '@/lib/server/db'
 
 vi.mock('@/lib/server/db', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/server/db')>()),
@@ -96,17 +87,6 @@ vi.mock('../outbound-identity', async (importOriginal) => {
   }
 })
 
-const maxSendingDomains = vi.fn<() => number | null>(() => null)
-vi.mock('@/lib/server/domains/settings/tier-limits.service', async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import('@/lib/server/domains/settings/tier-limits.service')>()
-  const { OSS_TIER_LIMITS } = await import('@/lib/server/domains/settings/tier-limits.types')
-  return {
-    ...actual,
-    getTierLimits: async () => ({ ...OSS_TIER_LIMITS, maxSendingDomains: maxSendingDomains() }),
-  }
-})
-
 import {
   addSendingAddress,
   removeSendingAddress,
@@ -114,7 +94,6 @@ import {
   addressModeFor,
 } from '../sending-address'
 import { sendingIdentityContext } from '../outbound-identity'
-import { refreshSendingDomain } from '../sending-identity'
 import { deleteSendingDomain, SendingDomainInUseError } from '../channel-account.service'
 
 const identity = (domain: string): SesDomainIdentity => ({
@@ -182,11 +161,9 @@ describe.skipIf(!fixture.available)('sending addresses (real DB, rolled back)', 
     vi.stubEnv('EMAIL_FROM', 'Quackback <notifications@mail.platform.test>')
     vi.stubEnv('EMAIL_INBOUND_DOMAIN', 'mail.platform.test')
     // Many workspaces share the provider account, so the guard is strict.
-    vi.stubEnv('QUACKBACK_TENANCY', 'pooled')
     createIdentity
       .mockReset()
       .mockImplementation(async (domain) => ({ identity: identity(domain), preexisting: false }))
-    maxSendingDomains.mockReset().mockReturnValue(null)
     existingIdentity.mockReset().mockReturnValue(null)
     duringPreflight.mockReset().mockResolvedValue()
     sent.mockReset()
@@ -242,35 +219,10 @@ describe.skipIf(!fixture.available)('sending addresses (real DB, rolled back)', 
       expect(account.sendingDomainId).toBe(verified.id)
     })
 
-    it('refuses past the plan cap and keeps no address', async () => {
-      const teamId = await seedTeam()
-      maxSendingDomains.mockReturnValue(1)
-      await addSendingAddress({
-        owningTeamId: teamId,
-        address: 'help@a.example',
-      })
-
-      await expect(
-        addSendingAddress({ owningTeamId: teamId, address: 'help@b.example' })
-      ).rejects.toThrow(/sending domains/i)
-      expect((await liveAddresses(teamId)).map((a) => a.address)).toEqual(['help@a.example'])
-    })
-
-    it('refuses with the one line on a server that cannot set up domains', async () => {
-      vi.stubEnv('EMAIL_SES_IDENTITY_ACCESS_KEY_ID', '')
-      const teamId = await seedTeam()
-      await expect(
-        addSendingAddress({ owningTeamId: teamId, address: 'help@acme.com' })
-      ).rejects.toThrow("Custom sending addresses aren't available on this server.")
-      expect(await liveAddresses(teamId)).toEqual([])
-      expect(await domainsOf(teamId)).toEqual([])
-    })
-
-    it('still adds an address on a single-workspace server that cannot set up domains', async () => {
+    it('still adds the address when the domain cannot be set up', async () => {
       // One workspace, its own provider account: the send guard already lets it
       // send as anything, as it always has.
       vi.stubEnv('EMAIL_SES_IDENTITY_ACCESS_KEY_ID', '')
-      vi.stubEnv('QUACKBACK_TENANCY', '')
       const teamId = await seedTeam()
       const account = await addSendingAddress({
         owningTeamId: teamId,
@@ -281,7 +233,6 @@ describe.skipIf(!fixture.available)('sending addresses (real DB, rolled back)', 
     })
 
     it('sets up the domain on a single-workspace server that can, and links the address', async () => {
-      vi.stubEnv('QUACKBACK_TENANCY', '')
       const teamId = await seedTeam()
       const account = await addSendingAddress({
         owningTeamId: teamId,
@@ -292,28 +243,9 @@ describe.skipIf(!fixture.available)('sending addresses (real DB, rolled back)', 
       expect(account.sendingDomainId).toBe(domain.id)
     })
 
-    it('still adds the address on a single-workspace server when its domain cannot be set up', async () => {
-      // The address was always accepted here; a refused setup must not refuse it.
-      vi.stubEnv('QUACKBACK_TENANCY', '')
-      const teamId = await seedTeam()
-      maxSendingDomains.mockReturnValue(1)
-      await addSendingAddress({
-        owningTeamId: teamId,
-        address: 'help@a.example',
-      })
-
-      const account = await addSendingAddress({
-        owningTeamId: teamId,
-        address: 'help@b.example',
-      })
-      expect(account).toMatchObject({ address: 'help@b.example', sendingDomainId: null })
-      expect((await domainsOf(teamId)).map((d) => d.domain)).toEqual(['a.example'])
-    })
-
     it('leaves a domain verified by hand alone on a single-workspace server', async () => {
       // The operator verified acme.com themselves; creating a row and an
       // identity setup over it would only get in the way.
-      vi.stubEnv('QUACKBACK_TENANCY', '')
       existingIdentity.mockImplementation((domain) =>
         domain === 'acme.com'
           ? { ...identity(domain), dkimStatus: 'SUCCESS', verifiedForSending: true }
@@ -330,7 +262,6 @@ describe.skipIf(!fixture.available)('sending addresses (real DB, rolled back)', 
     })
 
     it('sets up a pending identity that already exists without re-keying it (single workspace)', async () => {
-      vi.stubEnv('QUACKBACK_TENANCY', '')
       existingIdentity.mockImplementation((domain) => ({
         ...identity(domain),
         verifiedForSending: false,
@@ -346,7 +277,6 @@ describe.skipIf(!fixture.available)('sending addresses (real DB, rolled back)', 
     })
 
     it('still sets up an unverified identity on a single-workspace server', async () => {
-      vi.stubEnv('QUACKBACK_TENANCY', '')
       existingIdentity.mockImplementation((domain) => ({
         ...identity(domain),
         verifiedForSending: false,
@@ -360,34 +290,9 @@ describe.skipIf(!fixture.available)('sending addresses (real DB, rolled back)', 
       expect(createIdentity).toHaveBeenCalledWith('acme.com')
     })
 
-    it.each([
-      ['shared', 'pooled'],
-      ['single-workspace', ''],
-    ])(
-      'reuses the row another add created for the same domain a moment earlier (%s)',
-      async (_l, tenancy) => {
-        // The other add's row lands after this one looked for it and before it
-        // inserted its own, which is the unique-key race.
-        vi.stubEnv('QUACKBACK_TENANCY', tenancy)
-        const teamId = await seedTeam()
-        let winner: { id: string } | undefined
-        duringPreflight.mockImplementationOnce(async () => {
-          winner = await seedDomain(teamId, 'acme.com', 'pending')
-        })
-        const account = await addSendingAddress({
-          owningTeamId: teamId,
-          address: 'help@acme.com',
-        })
-        expect(winner).toBeDefined()
-        expect(await domainsOf(teamId)).toHaveLength(1)
-        expect(account.sendingDomainId).toBe(winner?.id)
-      }
-    )
-
-    it('reuses the row another add created when that add took the last plan slot', async () => {
-      // The winner's row fills the plan, so this add is refused at the cap
-      // before it ever reaches the unique key. The domain exists all the same.
-      maxSendingDomains.mockReturnValue(1)
+    it('reuses the row another add created for the same domain a moment earlier', async () => {
+      // The other add's row lands after this one looked for it and before it
+      // inserted its own, which is the unique-key race.
       const teamId = await seedTeam()
       let winner: { id: string } | undefined
       duringPreflight.mockImplementationOnce(async () => {
@@ -400,18 +305,6 @@ describe.skipIf(!fixture.available)('sending addresses (real DB, rolled back)', 
       expect(winner).toBeDefined()
       expect(await domainsOf(teamId)).toHaveLength(1)
       expect(account.sendingDomainId).toBe(winner?.id)
-    })
-
-    it('still refuses at the plan cap when the domain was not added meanwhile', async () => {
-      maxSendingDomains.mockReturnValue(1)
-      const teamId = await seedTeam()
-      duringPreflight.mockImplementationOnce(async () => {
-        await seedDomain(teamId, 'other.example', 'pending')
-      })
-      await expect(
-        addSendingAddress({ owningTeamId: teamId, address: 'help@acme.com' })
-      ).rejects.toThrow(/sending domains/i)
-      expect(await liveAddresses(teamId)).toEqual([])
     })
 
     it('adds the platform default address without setting up a domain', async () => {
@@ -436,86 +329,15 @@ describe.skipIf(!fixture.available)('sending addresses (real DB, rolled back)', 
       ).rejects.toThrow()
       expect(await domainsOf(teamId)).toEqual([])
     })
-
-    describe('the domain on Settings > Domains', () => {
-      const addedDomains = () => testDb.select().from(domains)
-
-      it('leaves exactly one domain for the address, and nothing for any other use', async () => {
-        const teamId = await seedTeam()
-        await addSendingAddress({ owningTeamId: teamId, address: 'help@acme.com' })
-
-        expect((await addedDomains()).map((d) => [d.name, d.status])).toEqual([
-          ['acme.com', 'pending'],
-        ])
-        expect(await testDb.select().from(ssoVerifiedDomain)).toEqual([])
-      })
-
-      it('keeps the one domain and its token for a second address on it', async () => {
-        const teamId = await seedTeam()
-        await addSendingAddress({ owningTeamId: teamId, address: 'help@acme.com' })
-        const [first] = await addedDomains()
-        await addSendingAddress({ owningTeamId: teamId, address: 'news@acme.com' })
-
-        const after = await addedDomains()
-        expect(after).toHaveLength(1)
-        expect(after[0]!.ownershipToken).toBe(first!.ownershipToken)
-      })
-
-      it('adds the domain before its sending row is set up', async () => {
-        const teamId = await seedTeam()
-        const seen: string[][] = []
-        duringPreflight.mockImplementation(async () => {
-          seen.push((await addedDomains()).map((d) => d.name))
-        })
-        await addSendingAddress({ owningTeamId: teamId, address: 'help@acme.com' })
-        expect(seen[0]).toEqual(['acme.com'])
-      })
-
-      it("gives a sending row on the provider's keys the domain's token, so one record proves both", async () => {
-        const teamId = await seedTeam()
-        const [row] = await testDb
-          .insert(emailSendingDomains)
-          .values({ owningTeamId: teamId, domain: 'acme.com', mailFromLabel: 'qb-bounce' })
-          .returning()
-        await addSendingAddress({ owningTeamId: teamId, address: 'help@acme.com' })
-        const [domain] = await addedDomains()
-
-        const refreshed = await refreshSendingDomain(row!.id)
-        expect(refreshed?.dnsRecords.find((r) => r.purpose === 'ownership')?.value).toBe(
-          `quackback-domain-verification=${domain!.ownershipToken}`
-        )
-      })
-
-      it('leaves no domain behind when the address is refused', async () => {
-        const teamId = await seedTeam()
-        maxSendingDomains.mockReturnValue(1)
-        await addSendingAddress({ owningTeamId: teamId, address: 'help@acme.com' })
-        await expect(
-          addSendingAddress({ owningTeamId: teamId, address: 'help@acme.io' })
-        ).rejects.toThrow(/sending domains/i)
-
-        expect((await addedDomains()).map((d) => d.name)).toEqual(['acme.com'])
-      })
-    })
   })
 
   describe('addressModeFor', () => {
     const sendingAddressMode = async () => addressModeFor(await sendingIdentityContext())
 
     it('is any on a single-workspace server, whatever it can set up', async () => {
-      vi.stubEnv('QUACKBACK_TENANCY', '')
       expect(await sendingAddressMode()).toBe('any')
       vi.stubEnv('EMAIL_SES_IDENTITY_ACCESS_KEY_ID', '')
       expect(await sendingAddressMode()).toBe('any')
-    })
-
-    it('is verified-domains on a shared server that can set up domains', async () => {
-      expect(await sendingAddressMode()).toBe('verified-domains')
-    })
-
-    it('is unavailable on a shared server that cannot', async () => {
-      vi.stubEnv('EMAIL_SES_IDENTITY_ACCESS_KEY_ID', '')
-      expect(await sendingAddressMode()).toBe('unavailable')
     })
   })
 
@@ -679,21 +501,9 @@ describe.skipIf(!fixture.available)('sending addresses (real DB, rolled back)', 
       expect(sent.mock.calls[0][0].from).toBe('help@acme.com')
     })
 
-    it('refuses while the domain is not live', async () => {
-      const teamId = await seedTeam()
-      const account = await addSendingAddress({
-        owningTeamId: teamId,
-        address: 'help@acme.com',
-      })
-      accountEmails.set('user_admin', 'admin@example.com')
-      await expect(test(account.id)).rejects.toThrow(/acme\.com/)
-      expect(sent).not.toHaveBeenCalled()
-    })
-
     it('sends from an unverified domain on a single-workspace server, as real sends do', async () => {
       // One workspace: the send guard permits any From, so replies already
       // leave as this address. A test that refused it would disagree with them.
-      vi.stubEnv('QUACKBACK_TENANCY', '')
       const teamId = await seedTeam()
       const account = await addSendingAddress({
         owningTeamId: teamId,

@@ -1,18 +1,17 @@
 /**
- * Support-surface gates. `isMessengerEnabled` (settings.widget.ts) keeps gating
- * the widget messenger surface; these compose it with the portal Support tab so the
- * shared conversation paths (visitor send/read, SSE stream, inbound email)
- * stay alive when either surface is on.
+ * Support-surface gates. `isMessengerEnabled` (settings.messenger.ts) gates the
+ * Messenger; these compose it with the portal Support tab so the shared
+ * conversation paths (visitor send/read, SSE stream, inbound email) stay alive
+ * when either surface is on.
  */
 
 import type { PrincipalId } from '@quackback/ids'
 import {
   isPortalChatStartEnabled,
   isPortalSupportSurfaceEnabled,
-  isWidgetMessengerEnabled,
 } from '@/lib/shared/support-surfaces'
 
-export { isPortalChatStartEnabled, isPortalSupportSurfaceEnabled, isWidgetMessengerEnabled }
+export { isPortalChatStartEnabled, isPortalSupportSurfaceEnabled }
 
 /**
  * Whether the portal Support tab is enabled: tickets-enabled workspaces, or
@@ -31,20 +30,18 @@ export async function isPortalSupportEnabled(): Promise<boolean> {
 }
 
 /**
- * Whether conversations are reachable from ANY visitor surface (widget
- * messenger, portal Support tab, or the converged Messages surface of a
- * tickets-enabled workspace). The shared visitor-facing conversation paths
- * gate on this, so disabling the widget no longer kills the portal surface and
- * vice versa. Tickets count because every customer ticket IS a conversation
- * pair — an email-first workspace with the messenger off still lists and
- * replies to its ticket threads through Messages.
+ * Whether conversations are reachable from ANY visitor surface (the Messenger,
+ * portal Support tab, or the converged Messages surface of a tickets-enabled
+ * workspace). The shared visitor-facing conversation paths gate on this, so a
+ * tickets-enabled workspace with the messenger off still lists and replies to
+ * its ticket threads through Messages.
  */
 export async function isConversationsEnabled(): Promise<boolean> {
   // Sequential short-circuit, deliberately not Promise.all: the flags read
   // from one per-request-cached settings row, so there is nothing to win by
   // racing — and concurrent dynamic imports of the same module resolve
   // unreliably under the test runner's mock interceptor.
-  const { isMessengerEnabled } = await import('./settings.widget')
+  const { isMessengerEnabled } = await import('./settings.messenger')
   if (await isMessengerEnabled()) return true
   if (await isPortalSupportEnabled()) return true
   return isSupportTicketsEnabled()

@@ -496,12 +496,8 @@ export const fetchIntegrationByType = createServerFn({ method: 'GET' })
 
     const notificationChannels = [...channelMap.values()]
     const { readSyncHealth } = await import('@/lib/server/integrations/sync/health')
-    const {
-      connectionIsDestination,
-      readSlackAssistantEnabled,
-      syncHistoryAvailable,
-      writesLedger,
-    } = await import('@/lib/server/integrations/sync/availability')
+    const { connectionIsDestination, syncHistoryAvailable, writesLedger } =
+      await import('@/lib/server/integrations/sync/availability')
     const syncHealth = await readSyncHealth(integration)
     const syncHistoryAvailableFlag = syncHistoryAvailable({
       provider: data.type,
@@ -510,7 +506,6 @@ export const fetchIntegrationByType = createServerFn({ method: 'GET' })
       notificationChannels,
       writesLedger: writesLedger(definition),
       connectionIsDestination: connectionIsDestination(definition),
-      slackAssistantEnabled: await readSlackAssistantEnabled(data.type),
     }).available
 
     return {
@@ -637,10 +632,6 @@ export const checkOnboardingState = createServerFn({ method: 'GET' }).handler(as
   const currentSettings = await getSettings()
   const setupState = getSetupState(currentSettings?.setupState ?? null)
   const isOnboardingComplete = checkComplete(setupState)
-  const { parseIdentityProjection } =
-    await import('@/lib/server/domains/settings/cloud/identity-projection')
-  const platformHostname =
-    parseIdentityProjection(currentSettings?.cloudIdentity)?.platformHostname ?? null
 
   log.debug(
     {
@@ -666,7 +657,7 @@ export const checkOnboardingState = createServerFn({ method: 'GET' }).handler(as
     hasSettings: !!currentSettings,
     setupState,
     isOnboardingComplete,
-    platformHostname,
+    platformHostname: null,
   }
 })
 
@@ -1146,12 +1137,6 @@ export const segmentConditionSchema = z.object({
     'last_active_days_ago',
     'signup_source',
     'principal_type',
-    // Company predicates (§K3), resolved through principal.company_id.
-    'company_plan',
-    'company_mrr',
-    'company_size',
-    'company_industry',
-    'company_attr',
   ]),
   operator: z.enum([
     'eq',

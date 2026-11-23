@@ -11,6 +11,7 @@ import { useState } from 'react'
 import { formatDistanceToNow } from 'date-fns'
 import { DnsRecordTable } from '@/components/shared/dns-record-table'
 import { Button } from '@/components/ui/button'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { useCopyToClipboard } from '@/lib/client/hooks/use-copy-to-clipboard'
 import type { SendingDomainDTO } from '@/lib/server/functions/channel-accounts'
 import { SendingRecordTable } from './dns-record-table'
@@ -43,10 +44,19 @@ export function DomainSetupPanel({
   hideName?: boolean
 }) {
   // Was live once and is not now: the records were there, so this is a fix.
+  const intl = useOptionalIntl()
   const broken = phase === 'attention' && domain.verifiedAt !== null
   const checked = lastCheckedAt(domain)
   const checkedAgo = checked ? formatDistanceToNow(checked, { addSuffix: true }) : null
-  const checkedTitle = checkedAgo ? `Last checked ${checkedAgo}` : undefined
+  const checkedTitle = checkedAgo
+    ? intl.formatMessage(
+        {
+          id: 'admin.channels.email.domain.lastChecked',
+          defaultMessage: 'Last checked {time}',
+        },
+        { time: checkedAgo }
+      )
+    : undefined
   // Said in the line while records are wanted: it is what a press of Check now changes.
   const lastChecked = checkedAgo ? ` Last checked ${checkedAgo}.` : ''
   const { found, total } = recordsFound(domain)

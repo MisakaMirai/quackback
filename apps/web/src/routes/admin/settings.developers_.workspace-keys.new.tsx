@@ -5,7 +5,7 @@ import { assertRoutePermission } from '@/lib/shared/route-permission'
 import { adminPageHead } from '@/lib/client/admin-head'
 
 export const Route = createFileRoute('/admin/settings/developers_/workspace-keys/new')({
-  head: adminPageHead('New workspace key'),
+  head: adminPageHead('New workspace key', 'admin.pageTitle.newWorkspaceKey'),
   beforeLoad: ({ context }) => {
     assertRoutePermission(context.permissions, PERMISSIONS.API_KEY_MANAGE)
   },

@@ -29,11 +29,6 @@ function run(
 }
 
 describe('assertBootConfigurationOrExit', () => {
-  it('exits 1 on an unresolvable MIN_SCHEMA_VERSION', () => {
-    expect(run({ MIN_SCHEMA_VERSION: '9999' }).exited).toBe(1)
-    expect(run({ MIN_SCHEMA_VERSION: 'nonsense' }).exited).toBe(1)
-  })
-
   it('exits 1 on an unrecognised QUACKBACK_ROLE', () => {
     for (const role of ['banana', 'MIGRATOR', 'Migrator']) {
       expect(run({ QUACKBACK_ROLE: role }).exited, role).toBe(1)

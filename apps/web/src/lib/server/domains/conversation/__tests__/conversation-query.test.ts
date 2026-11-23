@@ -7,13 +7,7 @@
  * listConversationsForAgent SQL builder is intentionally not exercised here.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type {
-  ConversationId,
-  ConversationMessageId,
-  PrincipalId,
-  SegmentId,
-  CompanyId,
-} from '@quackback/ids'
+import type { ConversationId, ConversationMessageId, PrincipalId, SegmentId } from '@quackback/ids'
 import type { Conversation, ConversationMessage } from '@/lib/server/db'
 import type { ConversationAuthorDTO } from '@/lib/shared/conversation/types'
 
@@ -108,7 +102,6 @@ import {
   sortDescriptorFor,
   slaDueAtFor,
   slaDtoFor,
-  translationStateFrom,
 } from '../conversation.query'
 import { isNull, isNotNull, eq, ne } from '@/lib/server/db'
 import type { Actor } from '@/lib/server/policy/types'
@@ -320,65 +313,6 @@ describe('toConversationDTO', () => {
     expect(dto.visitorLastReadAt).toBe('2026-02-01T00:00:00.000Z')
     expect(dto.agentLastReadAt).toBe('2026-02-02T00:00:00.000Z')
   })
-
-  it('defaults translation to null when omitted (visitor-facing calls never pass it)', () => {
-    const dto = toConversationDTO(makeConversation(), visitorAuthor, null, 0)
-    expect(dto.translation).toBeNull()
-  })
-
-  it('passes the translation state through when the caller supplies it (agent-facing)', () => {
-    const state = translationStateFrom(
-      makeConversation({ translationEnabled: true, detectedCustomerLanguage: 'fr' })
-    )
-    const dto = toConversationDTO(
-      makeConversation(),
-      visitorAuthor,
-      null,
-      0,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      state
-    )
-    expect(dto.translation).toEqual(state)
-  })
-})
-
-describe('translationStateFrom', () => {
-  it('projects the conversation row into the DTO shape', () => {
-    const dto = translationStateFrom(
-      makeConversation({
-        translationEnabled: true,
-        detectedCustomerLanguage: 'fr',
-        translationDismissedAt: null,
-      })
-    )
-    expect(dto).toEqual({
-      enabled: true,
-      detectedCustomerLanguage: 'fr',
-      suggestionDismissed: false,
-    })
-  })
-
-  it('reports suggestionDismissed once a dismissal timestamp is set', () => {
-    const dto = translationStateFrom(makeConversation({ translationDismissedAt: new Date() }))
-    expect(dto.suggestionDismissed).toBe(true)
-  })
-
-  it('null-coalesces an undefined translationEnabled / detectedCustomerLanguage', () => {
-    // makeConversation casts a partial object, so a row shape from before
-    // this migration (missing the new columns) must still degrade cleanly.
-    const dto = translationStateFrom({} as Conversation)
-    expect(dto).toEqual({
-      enabled: false,
-      detectedCustomerLanguage: null,
-      suggestionDismissed: false,
-    })
-  })
 })
 
 describe('authorFromInput', () => {
@@ -566,28 +500,6 @@ describe('listConversationsForAgent visitor filter', () => {
   it('does not constrain by visitor by default', async () => {
     await listConversationsForAgent({}, serviceActor)
     expect(vi.mocked(eq).mock.calls.some((c) => c[1] === visitorId)).toBe(false)
-  })
-})
-
-describe('listConversationsForAgent company filter', () => {
-  const companyId = 'company_acme' as CompanyId
-
-  it('restricts to conversations whose visitor belongs to the company', async () => {
-    await listConversationsForAgent({ companyId }, serviceActor)
-    // A subquery over principal pins the visitor to this company_id.
-    expect(vi.mocked(eq).mock.calls.some((c) => c[1] === companyId)).toBe(true)
-  })
-
-  it('does not constrain by company by default', async () => {
-    await listConversationsForAgent({}, serviceActor)
-    expect(vi.mocked(eq).mock.calls.some((c) => c[1] === companyId)).toBe(false)
-  })
-
-  it('combines the company filter with a status filter', async () => {
-    await listConversationsForAgent({ companyId, status: 'open' }, serviceActor)
-    const calls = vi.mocked(eq).mock.calls
-    expect(calls.some((c) => c[1] === companyId)).toBe(true)
-    expect(calls.some((c) => c[1] === 'open')).toBe(true)
   })
 })
 

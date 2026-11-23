@@ -19,13 +19,6 @@ export type ActivationAction =
       kind: 'copy'
       payload: { boardId: string; path: string }
     }
-  | {
-      id: string
-      outcome: OnboardingOutcome
-      label: string
-      kind: 'external'
-      destination: string
-    }
 
 export interface ActivationActionContext {
   surface: ActivationSurface
@@ -45,12 +38,6 @@ export function copyBoardLinkAction(
     kind: 'copy',
     payload: { boardId: status.publicBoardId, path: status.publicBoardPath },
   }
-}
-
-function safeSiteDestination(hostname: string | null | undefined): string | null {
-  const host = hostname?.trim()
-  if (!host || host.includes('/') || host.includes('@') || /\s/.test(host)) return null
-  return `https://${host}`
 }
 
 /**
@@ -86,35 +73,11 @@ export function selectActivationAction({
         destination: '/admin/settings/boards',
       }
     }
-    if (!status.publicBoardLinkCopiedAt && !status.hasWidgetInstalled && !status.hasFirstWin) {
+    if (!status.publicBoardLinkCopiedAt && !status.hasFirstWin) {
       if (status.permissions?.boardManage === false) return null
       return copyBoardLinkAction(outcome, status)
     }
     return null
-  }
-
-  if (surface === 'conversation_empty') {
-    if (outcome !== 'customer_support' || status.hasFirstWin) return null
-    if (!status.hasWidgetInstalled) {
-      if (status.permissions?.settingsManage === false) return null
-      return {
-        id: 'connect-messenger',
-        outcome,
-        label: 'Connect Messenger',
-        kind: 'link',
-        destination: '/admin/settings/widget/install',
-      }
-    }
-    const destination = safeSiteDestination(status.widgetOriginHost)
-    return destination
-      ? {
-          id: 'open-installed-site',
-          outcome,
-          label: 'Open your site',
-          kind: 'external',
-          destination,
-        }
-      : null
   }
 
   if (surface === 'onboarding_handoff') {
@@ -138,15 +101,6 @@ export function selectActivationAction({
           destination: '/admin/feedback',
         }
       )
-    }
-    if (outcome === 'customer_support') {
-      return {
-        id: 'connect-messenger',
-        outcome,
-        label: 'Connect Messenger',
-        kind: 'link',
-        destination: '/admin/settings/widget/install',
-      }
     }
     if (outcome === 'help_center' && startingPoint.resourceId) {
       return {

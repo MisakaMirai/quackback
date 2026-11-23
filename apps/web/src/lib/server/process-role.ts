@@ -3,19 +3,15 @@
  *
  * QUACKBACK_ROLE=web     Serve HTTP only. Queue modules stay producer-only:
  *                        they can enqueue, but nothing claims a job.
- * QUACKBACK_ROLE=worker  Run the job worker — one poll loop per workspace.
+ * QUACKBACK_ROLE=worker  Run the job worker — one poll loop for the install.
  *                        Still serves HTTP (health probes work unchanged);
  *                        don't route user traffic to it.
  * QUACKBACK_ROLE=all     Both — the default. Unset means `all`, which is the
  *                        self-host single-container path.
- * QUACKBACK_ROLE=migrator Reconcile workspace schemas toward the control plane's
- *                        recorded intent, then exit (SAAS-HOSTING-STACK.md
- *                        §10.3). Serves no traffic and runs no queues: it holds
- *                        a DIRECT session-mode connection per workspace it is
- *                        working, which is the one thing that must never share
- *                        a process with the serving tier, because holding a
- *                        connection open is exactly what stops a workspace database
- *                        suspending.
+ * QUACKBACK_ROLE=migrator Reconcile the database schema, then exit. Serves no
+ *                        traffic and runs no queues: it holds a DIRECT
+ *                        session-mode connection, which must never share a
+ *                        process with the serving tier.
  *
  * Read directly from process.env (not the zod config) so the check works in
  * any context without a full config load, mirroring `helpCenterDev`.
@@ -92,7 +88,7 @@ export class InvalidProcessRole extends Error {
     super(
       `QUACKBACK_ROLE='${raw}' is not one of ${PROCESS_ROLES.join(' | ')}. Refusing to start: ` +
         'the previous behaviour was to fall back to `all`, which boots the job worker and the ' +
-        'sweepers — so a typo silently produced the one topology pooled tenancy forbids.'
+        'sweepers — a typo must not silently start a tier the operator did not ask for.'
     )
     this.name = 'InvalidProcessRole'
   }

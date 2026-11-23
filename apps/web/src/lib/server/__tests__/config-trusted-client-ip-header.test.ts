@@ -23,7 +23,7 @@ let saved: NodeJS.ProcessEnv
 
 beforeEach(() => {
   saved = { ...process.env }
-  for (const key of ['QUACKBACK_TENANCY', 'TRUSTED_CLIENT_IP_HEADER', 'TRUSTED_PROXY_HOPS']) {
+  for (const key of ['TRUSTED_CLIENT_IP_HEADER', 'TRUSTED_PROXY_HOPS']) {
     delete process.env[key]
   }
   Object.assign(process.env, {

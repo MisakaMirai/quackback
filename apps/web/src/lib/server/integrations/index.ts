@@ -6,7 +6,6 @@ import { jiraIntegration } from '@/integrations/jira/server'
 import { githubIntegration } from '@/integrations/github/server'
 import { intercomIntegration } from '@/integrations/intercom/server'
 import { teamsIntegration } from '@/integrations/teams/server'
-import { zendeskIntegration } from '@/integrations/zendesk/server'
 import { hubspotIntegration } from '@/integrations/hubspot/server'
 import { asanaIntegration } from '@/integrations/asana/server'
 import { clickupIntegration } from '@/integrations/clickup/server'
@@ -33,7 +32,6 @@ const registry = new Map<string, IntegrationDefinition>([
   [githubIntegration.id, githubIntegration],
   [intercomIntegration.id, intercomIntegration],
   [teamsIntegration.id, teamsIntegration],
-  [zendeskIntegration.id, zendeskIntegration],
   [hubspotIntegration.id, hubspotIntegration],
   [asanaIntegration.id, asanaIntegration],
   [clickupIntegration.id, clickupIntegration],

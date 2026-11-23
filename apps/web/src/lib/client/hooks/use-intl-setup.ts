@@ -3,9 +3,9 @@ import { DEFAULT_LOCALE, loadMessages, type SupportedLocale } from '@/lib/shared
 
 /**
  * Shared hook that loads the message catalog for a locale (used by
- * PortalIntlProvider and WidgetAuthProvider). It does NOT touch `<html lang>`/
+ * PortalIntlProvider). It does NOT touch `<html lang>`/
  * `dir`: the root document owns those reactively (see `documentLocale`), so
- * only one place decides the document language. The widget, a separate iframe
+ * only one place decides the document language.
  * document with its own runtime locale, sets its own `lang`/`dir`.
  *
  * Pass `initialMessages` (loaded server-side and serialized into the route's

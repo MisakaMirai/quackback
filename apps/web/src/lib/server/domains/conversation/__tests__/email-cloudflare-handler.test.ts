@@ -31,7 +31,7 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createHmac } from 'crypto'
-import { mailSlugFor, withWorkspace } from '@/lib/server/__tests__/workspace-scope'
+import { withWorkspace } from '@/lib/server/__tests__/workspace-scope'
 import { workspaceSlugFromInboundAddress } from '../conversation.email-channel'
 
 const ingestParsedEmail = vi.fn()
@@ -83,19 +83,6 @@ function tripwireModule(specifier: string): Record<string, unknown> {
 
 vi.mock('@/lib/server/db', () => tripwireModule('@/lib/server/db'))
 vi.mock('@/lib/server/utils/rate-bucket', () => tripwireModule('rate-bucket'))
-// Real module with one function wrapped: `withWorkspace` opens the scope through
-// this same specifier, so replacing it wholesale would leave the suite with no
-// workspace identity to be.
-vi.mock('@/lib/server/workspaces/workspace-context', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/lib/server/workspaces/workspace-context')>()
-  return {
-    ...actual,
-    getScopedDatabase: () => {
-      dbTouches.push('workspace-context#getScopedDatabase')
-      return actual.getScopedDatabase()
-    },
-  }
-})
 vi.mock('@quackback/db/client', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@quackback/db/client')>()
   return {
@@ -159,6 +146,7 @@ import {
   verifyInboundSignature,
 } from '../email-cloudflare-handler'
 import { MAX_EMAIL_WEBHOOK_BODY_BYTES } from '../email-webhook-handler'
+import { SELF_HOSTED_MAIL_SLUG } from '../conversation.mail-slug'
 import {
   inboundDedupeKey,
   MAX_DEDUPE_KEY_CHARS,
@@ -171,8 +159,8 @@ const ADDRESS_SECRET = 'whsec_dGVzdHNlY3JldA=='
 const DOMAIN = 'quackback.co.uk'
 /** A domain this install still RECEIVES on and no longer mints addresses on. */
 const RETIRED_DOMAIN = 'mail.retired.test'
-const SLUG = mailSlugFor('ws-t1')
-const OTHER_SLUG = mailSlugFor('ws-t2')
+const SLUG = SELF_HOSTED_MAIL_SLUG
+const OTHER_SLUG = 'ws-t2'
 
 /**
  * THE SHARED VECTOR. This constant is reproduced in the control-plane repo,
@@ -308,7 +296,6 @@ beforeEach(() => {
   vi.clearAllMocks()
   dbTouches.length = 0
   logLines.length = 0
-  vi.stubEnv('QUACKBACK_TENANCY', 'pooled')
   vi.stubEnv('INBOUND_HMAC_SECRET', SECRET)
   vi.stubEnv('EMAIL_INBOUND_DOMAIN', DOMAIN)
   // The addressing half of the channel. Set for every case because a front door
@@ -350,29 +337,6 @@ describe('the signed wire contract', () => {
     // Each negative is the digest one specific mistake would have produced.
     expect(check(VECTOR.signatureOverDecodedBody)).toBe(false)
     expect(check(VECTOR.signatureUnderOtherSlug)).toBe(false)
-  })
-
-  it('ingests the shared vector end to end', async () => {
-    // The same trap through the handler: a real request that verifies only if
-    // nothing decoded the body on the way to the digest and nothing dropped the
-    // label from the prefix. Only the clock is faked — faking timers as well
-    // would stall the body stream.
-    expect(SLUG).toBe(VECTOR.mailSlug)
-    vi.useFakeTimers({ toFake: ['Date'] })
-    vi.setSystemTime(VECTOR.timestamp * 1000)
-    vi.stubEnv('INBOUND_HMAC_SECRET', VECTOR.secret)
-
-    const res = await post(
-      inboundRequest({
-        body: VECTOR.body,
-        timestamp: VECTOR.timestamp,
-        mailSlug: VECTOR.mailSlug,
-        signature: VECTOR.signature,
-      })
-    )
-
-    expect(res.status).toBe(200)
-    expect(ingestParsedEmail).toHaveBeenCalledOnce()
   })
 
   it('401s a signature made with the wrong secret', async () => {
@@ -734,16 +698,6 @@ describe('the guard', () => {
     expectNoDatabaseWork()
   })
 
-  it('404s when the process has no workspace to be', async () => {
-    // A pooled process outside a workspace scope names no workspace, so it can
-    // accept mail for none.
-    const res = await handleCloudflareInboundEmail(inboundRequest())
-
-    expect(res.status).toBe(404)
-    expect(reasons()).toEqual(['not_this_workspace'])
-    expectNoDatabaseWork()
-  })
-
   it('is checked after the signature, so it cannot be probed for which workspace a host serves', async () => {
     // A wrong label AND a wrong signature answers on the signature. If the guard
     // ran first, the 404-versus-401 difference would tell an unauthenticated
@@ -793,10 +747,10 @@ describe('the guard', () => {
     // request carrying a raw U+212A is not a case the handler can ever meet,
     // and building one tested the test harness rather than the folding rule.
     const kelvinEnvelope = `\u{212A}ilo-1@${DOMAIN}`
-    expect(kelvinEnvelope).not.toContain(mailSlugFor('kilo-1'))
+    expect(kelvinEnvelope).not.toContain('kilo-1')
 
     const named = workspaceSlugFromInboundAddress(kelvinEnvelope)
-    expect(named).toEqual({ kind: 'slug', slug: mailSlugFor('kilo-1') })
+    expect(named).toEqual({ kind: 'slug', slug: 'kilo-1' })
   })
 
   it('splits on the last `@`, so a local part carrying one cannot spoof a label', async () => {

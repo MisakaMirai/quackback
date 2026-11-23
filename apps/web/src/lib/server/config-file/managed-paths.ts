@@ -5,7 +5,6 @@ import type { QuackbackConfigSpec } from './schema'
  *
  * Path conventions:
  * - `workspace.name`, `workspace.slug`, `workspace.useCase` — leaf
- * - `tierLimits` — whole-block (matches every `tierLimits.*` child)
  *
  * The order matters only for snapshot-style equality in tests; runtime
  * checks via `isPathManaged` are order-insensitive.
@@ -15,7 +14,6 @@ export function computeManagedPaths(spec: QuackbackConfigSpec): string[] {
   if (spec.workspace?.name !== undefined) paths.push('workspace.name')
   if (spec.workspace?.slug !== undefined) paths.push('workspace.slug')
   if (spec.workspace?.useCase !== undefined) paths.push('workspace.useCase')
-  if (spec.tierLimits !== undefined) paths.push('tierLimits')
   return paths
 }
 

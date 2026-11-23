@@ -1,31 +1,25 @@
 /**
- * Composing a bucket object name for one workspace, then proving it landed
- * inside that workspace.
+ * Composing a bucket object name for this install, then proving it landed
+ * inside the install's namespace.
  *
- * SAAS-HOSTING-STACK.md §9 replaces one bucket per workspace with one bucket for
- * the fleet and a per-workspace key prefix. That moves the isolation boundary out
- * of the provider and into this file. A per-bucket credential could not name
- * another workspace's bucket whatever the application believed; a shared bucket has
- * no such backstop, so the failure shape is §3's exactly: **a key that escapes
- * its namespace reads another customer's object, and it does not error and it
- * looks correct.**
+ * ## Why an install needs a prefix at all
+ *
+ * One bucket may hold more than objects written by this app: an operator can
+ * point several installs at one bucket, and a bucket may carry objects from
+ * before the namespace existed. The prefix keeps this install's objects
+ * together and lets the relocation below recognise the ones that predate it.
+ * It moves the isolation boundary out of the provider and into this file — a
+ * per-bucket credential cannot name another bucket whatever the application
+ * believes, but a shared bucket has no such backstop.
  *
  * ## Why the WorkspaceId, and not some other identifier
  *
  * The namespace is `settings.id` — the branded {@link WorkspaceId}. It is not a
- * new workspace identifier, and refusing to invent one is the point: it is the
- * value §3's fingerprint already asserts. `evaluateWorkspaceIdentity` refuses a
- * pool whose `settings.id` is not the one the registry named, so **a database
- * that passes the fingerprint has, by construction, the right storage
- * namespace.**
- *
- * That inheritance is the whole argument, because there is no storage-side
- * fingerprint and there cannot be: a database can be asked who it is, an object
- * under the wrong prefix reads back perfectly and has nothing to say. Storage
- * therefore borrows the database's verification instead of holding one of its
- * own, and any identifier that did not come from that check — a slug, a
- * hostname, a request parameter, a segment of a stored key — forfeits the
- * inheritance silently.
+ * new identifier and refusing to invent one is the point: `settings` is a
+ * singleton row, so its primary key is a process-lifetime constant that cannot
+ * drift. A slug, a hostname, a request parameter or a segment of a stored key
+ * would all change under the operator's feet and silently forfeit the
+ * inheritance.
  *
  * ## The stored key never carries the namespace
  *
@@ -45,10 +39,10 @@
  * are all the same claim — "the name that is about to reach a command is not
  * inside the namespace it was composed for" — and asking that question of the
  * finished string cannot miss a way of arriving at it. A composed name that
- * fails throws. It never falls back to the un-namespaced key, because in a
- * shared bucket that key is nobody's namespace.
+ * fails throws. It never falls back to the un-namespaced key.
  */
-import { isTypeId, type WorkspaceId } from '@quackback/ids'
+import { fromUuid, isTypeId, type WorkspaceId } from '@quackback/ids'
+import { db } from '@/lib/server/db'
 
 /**
  * Segment 0 of every object name this application writes.
@@ -102,6 +96,45 @@ export class StorageNamespaceViolation extends Error {
 /** Everything every object name for `workspaceId` begins with. */
 export function workspaceNamespace(workspaceId: WorkspaceId): string {
   return `${WORKSPACE_NAMESPACE_ROOT}/${workspaceId}/`
+}
+
+/** The storage namespace cannot be resolved. */
+export class WorkspaceNamespaceUnresolvable extends Error {
+  constructor(detail: string) {
+    super(
+      `Cannot resolve the storage namespace: ${detail}. Every object name is composed ` +
+        `from settings.id, so storage has nothing to address until that is known.`
+    )
+    this.name = 'WorkspaceNamespaceUnresolvable'
+  }
+}
+
+let resolvedWorkspaceId: WorkspaceId | null = null
+
+/**
+ * The install's `settings.id`, memoised.
+ *
+ * `settings` is a singleton row and its primary key never changes, so this is a
+ * process-lifetime constant rather than a cache with a staleness question. The
+ * memo only saves a query per storage command; the proxy read path is per asset
+ * request.
+ */
+export async function currentWorkspaceId(): Promise<WorkspaceId> {
+  if (resolvedWorkspaceId) return resolvedWorkspaceId
+  const row = await db.query.settings.findFirst({ columns: { id: true } })
+  if (!row?.id) throw new WorkspaceNamespaceUnresolvable('this database has no settings row')
+  resolvedWorkspaceId = row.id
+  return row.id
+}
+
+/** Test seam: pin the namespace to a known id, or clear it. */
+export function __setWorkspaceIdForTests(id: WorkspaceId | null): void {
+  resolvedWorkspaceId = id
+}
+
+/** The branded id form for a raw UUID, for fixtures that need a namespace. */
+export function workspaceIdFromUuid(uuid: string): WorkspaceId {
+  return fromUuid('workspace', uuid)
 }
 
 /**

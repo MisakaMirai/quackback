@@ -19,6 +19,7 @@ import { PERMISSIONS } from '@/lib/shared/permissions'
 import { assertRoutePermission } from '@/lib/shared/route-permission'
 import { isProductEnabled } from '@/lib/shared/types/settings'
 import { readBatch } from '@/lib/client/queries/read-batch'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 
 const searchSchema = z.object({
   tab: boardTabSearch,
@@ -56,6 +57,7 @@ export const Route = createFileRoute('/admin/settings/boards/$slug')({
 })
 
 function BoardSettingsPage() {
+  const intl = useOptionalIntl()
   const { slug } = Route.useParams()
   const { tab } = Route.useSearch()
   const navigate = Route.useNavigate()
@@ -80,7 +82,13 @@ function BoardSettingsPage() {
       title={currentBoard.name}
       crumbs={[
         moduleCrumb('/admin/settings/feedback'),
-        { label: 'Boards', to: '/admin/settings/boards' },
+        {
+          label: intl.formatMessage({
+            id: 'admin.settings.boards.crumbBoards',
+            defaultMessage: 'Boards',
+          }),
+          to: '/admin/settings/boards',
+        },
       ]}
     >
       <Tabs
@@ -96,10 +104,30 @@ function BoardSettingsPage() {
         className="space-y-6"
       >
         <TabsList>
-          <TabsTrigger value="general">General</TabsTrigger>
-          <TabsTrigger value="access">Access</TabsTrigger>
-          <TabsTrigger value="moderation">Moderation</TabsTrigger>
-          <TabsTrigger value="data">Data</TabsTrigger>
+          <TabsTrigger value="general">
+            {intl.formatMessage({
+              id: 'admin.settings.boards.tabGeneral',
+              defaultMessage: 'General',
+            })}
+          </TabsTrigger>
+          <TabsTrigger value="access">
+            {intl.formatMessage({
+              id: 'admin.settings.boards.tabAccess',
+              defaultMessage: 'Access',
+            })}
+          </TabsTrigger>
+          <TabsTrigger value="moderation">
+            {intl.formatMessage({
+              id: 'admin.settings.boards.tabModeration',
+              defaultMessage: 'Moderation',
+            })}
+          </TabsTrigger>
+          <TabsTrigger value="data">
+            {intl.formatMessage({
+              id: 'admin.settings.boards.tabData',
+              defaultMessage: 'Data',
+            })}
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="general" className="space-y-6">
@@ -107,7 +135,13 @@ function BoardSettingsPage() {
             <BoardGeneralForm key={currentBoard.id} board={currentBoard} />
           </SettingsCard>
 
-          <SettingsCard title="Danger zone" variant="danger">
+          <SettingsCard
+            title={intl.formatMessage({
+              id: 'admin.settings.boards.dangerZone',
+              defaultMessage: 'Danger zone',
+            })}
+            variant="danger"
+          >
             <DeleteBoardForm key={currentBoard.id} board={currentBoard} />
           </SettingsCard>
         </TabsContent>
@@ -125,10 +159,20 @@ function BoardSettingsPage() {
         </TabsContent>
 
         <TabsContent value="data" className="space-y-6">
-          <SettingsCard title="Import">
+          <SettingsCard
+            title={intl.formatMessage({
+              id: 'admin.settings.boards.importTitle',
+              defaultMessage: 'Import',
+            })}
+          >
             <BoardImportSection boardId={currentBoard.id} />
           </SettingsCard>
-          <SettingsCard title="Export">
+          <SettingsCard
+            title={intl.formatMessage({
+              id: 'admin.settings.boards.exportTitle',
+              defaultMessage: 'Export',
+            })}
+          >
             <BoardExportSection boardId={currentBoard.id} />
           </SettingsCard>
         </TabsContent>

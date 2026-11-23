@@ -45,13 +45,7 @@ vi.mock('@/lib/server/db', async (importOriginal) => {
   }
 })
 
-vi.mock('@/lib/server/domains/settings/tier-limits.service', () => ({
-  getTierLimits: vi.fn(),
-}))
-
 import { createBoard, updateBoard } from '../board.service'
-import { getTierLimits } from '@/lib/server/domains/settings/tier-limits.service'
-import { OSS_TIER_LIMITS } from '@/lib/server/domains/settings/tier-limits.types'
 import type { BoardId } from '@quackback/ids'
 
 const BOARD_ID = 'board_01' as unknown as BoardId
@@ -97,7 +91,6 @@ beforeEach(() => {
 describe('board slug generation for non-Latin names (#285)', () => {
   describe('createBoard', () => {
     beforeEach(() => {
-      vi.mocked(getTierLimits).mockResolvedValue(OSS_TIER_LIMITS)
       hoisted.mockedFindFirst.mockResolvedValue(null) // no slug collision
     })
 

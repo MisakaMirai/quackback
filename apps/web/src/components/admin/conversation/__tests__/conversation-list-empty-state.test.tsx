@@ -20,7 +20,6 @@ const fetchOnboardingStatus = vi.hoisted(() =>
   vi.fn(async () => ({
     useCase: 'customer_support',
     hasFirstWin: false,
-    hasWidgetInstalled: false,
     permissions: { settingsManage: true },
   }))
 )
@@ -123,14 +122,12 @@ describe('ConversationListColumn launch status', () => {
     expect(fetchOnboardingStatus).not.toHaveBeenCalled()
   })
 
-  it('decides the call to action of an empty main queue', async () => {
+  it('shows no install call to action on an empty main queue', async () => {
     fetchOnboardingStatus.mockClear()
     renderColumn([])
 
-    expect(await screen.findByRole('link', { name: 'Connect Messenger' })).toHaveAttribute(
-      'href',
-      '/admin/settings/widget/install'
-    )
+    expect(await screen.findByText('Nothing to review')).toBeTruthy()
+    expect(screen.queryByRole('link', { name: 'Connect Messenger' })).toBeNull()
     // Title and one action: no explanatory paragraph under the title.
     expect(screen.queryByText(/When customers message you/)).toBeNull()
     expect(fetchOnboardingStatus).toHaveBeenCalledTimes(1)
@@ -142,7 +139,6 @@ describe('first-run empty inbox', () => {
     fetchOnboardingStatus.mockImplementation(async () => ({
       useCase: 'product_feedback',
       hasFirstWin: false,
-      hasWidgetInstalled: false,
       permissions: { settingsManage: true },
     }))
     inboxHistory.hasConversations = false

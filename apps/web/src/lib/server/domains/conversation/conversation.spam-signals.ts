@@ -1,9 +1,8 @@
 /**
- * Deterministic (non-AI) inbound spam signals. These run BEFORE the AI
- * classifier on every new-conversation ingest path: a matching signal files
- * the conversation to Spam on its own, so an obvious case never spends a
- * completion. The classifier remains the fallback for everything the signals
- * don't catch.
+ * Deterministic (non-AI) inbound spam signals. A matching signal files a new
+ * conversation to Spam on its own; with the AI classifier gone there is no
+ * fallback layer that spends a completion. The workspace trust list still
+ * outranks every signal.
  *
  * Three signals, cheapest first:
  *   - auto_responder      → RFC 3834 / bulk-precedence headers on a cold
@@ -17,14 +16,13 @@
  *                           cap, which drops rather than files).
  *
  * Every signal fails open: a store error, a missing header, or any thrown
- * error resolves to "no signal", leaving the thread in triage — the same
- * failure contract as the AI filter, whose trust-list bypass the caller also
- * applies before any of these run.
+ * error resolves to "no signal", leaving the thread in triage.
  *
- * The one exception to that bypass is `sender_auth_reject`, and it is
- * deliberate: see `senderAuthSpamSignal`.
+ * The one exception to the trust-list bypass is `sender_auth_reject`, and it
+ * is deliberate: see `senderAuthSpamSignal`.
  */
 import { logger } from '@/lib/server/logger'
+import type { ConversationId } from '@quackback/ids'
 import type { InboundAuthResult } from './email-auth'
 
 const log = logger.child({ component: 'spam-signals' })
@@ -93,4 +91,40 @@ export async function detectSpamSignal(input: DetectSpamSignalInput): Promise<Sp
     }
   }
   return null
+}
+
+/**
+ * File a freshly created conversation to Spam when a deterministic signal
+ * matches. With the AI classifier gone this is the only automatic filing
+ * path: a trusted sender bypasses it, and every failure (an unreadable trust
+ * list, a failed write) leaves the thread in triage rather than breaking
+ * ingest.
+ */
+export async function maybeAutoFileSignaledSpam(
+  conversationId: ConversationId,
+  input: DetectSpamSignalInput
+): Promise<boolean> {
+  try {
+    const { isTestConversation } = await import('@/lib/server/test-data')
+    if (await isTestConversation(conversationId)) return false
+    try {
+      const { getSpamFilterConfig, isTrustedSender } =
+        await import('@/lib/server/domains/settings/settings.spam')
+      const { trustedSenders } = await getSpamFilterConfig()
+      if (isTrustedSender(input.senderEmail, trustedSenders)) {
+        log.info({ sender: input.senderEmail }, 'spam filing bypassed: trusted sender')
+        return false
+      }
+    } catch (err) {
+      // An unreadable trust list must not block a deterministic filing.
+      log.warn({ err }, 'spam signals: trusted-sender list unreadable, filing anyway')
+    }
+    const signal = await detectSpamSignal(input)
+    if (!signal) return false
+    const { autoFileConversationAsSpam } = await import('./conversation.service')
+    return await autoFileConversationAsSpam(conversationId, signal)
+  } catch (err) {
+    log.warn({ err, conversation_id: conversationId }, 'auto-file as spam failed')
+    return false
+  }
 }

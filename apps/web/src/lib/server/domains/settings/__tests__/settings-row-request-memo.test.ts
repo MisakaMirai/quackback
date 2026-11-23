@@ -135,11 +135,9 @@ describe('the cached settings row within a request', () => {
     const second = await inRequest(async () => {
       const first = await requireSettingsCached()
       first.name = 'mutated by a caller'
-      ;(first.assistantConfig as { identity: { name: string } }).identity.name = 'mutated'
       return requireSettingsCached()
     })
     expect(second.name).toBe('Acme')
-    expect(second.assistantConfig).toEqual({ identity: { name: 'Quinn' } })
   })
 
   it('stays a fresh read for a read-modify-write', async () => {
@@ -177,10 +175,10 @@ describe('the cached settings row across requests, in production', () => {
   it('hands every request a copy of its own', async () => {
     await inRequest(async () => {
       const first = await requireSettingsCached()
-      ;(first.assistantConfig as { identity: { name: string } }).identity.name = 'mutated'
+      first.name = 'mutated'
     })
     const next = await inRequest(() => requireSettingsCached())
-    expect(next.assistantConfig).toEqual({ identity: { name: 'Quinn' } })
+    expect(next.name).toBe('Acme')
     expect(mockFindFirst).toHaveBeenCalledTimes(1)
   })
 

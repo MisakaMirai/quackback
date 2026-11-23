@@ -52,9 +52,6 @@ vi.mock('@/lib/server/domains/subscriptions/subscription.service', () => ({
   batchGetNotificationPreferences: vi.fn().mockResolvedValue(new Map()),
   batchGenerateUnsubscribeTokens: vi.fn().mockResolvedValue(new Map()),
 }))
-vi.mock('@/lib/server/domains/ai/config', () => ({
-  getOpenAI: vi.fn().mockReturnValue(null),
-}))
 vi.mock('../hook-context', () => ({
   buildHookContext: vi.fn().mockResolvedValue({
     workspaceName: 'Test',

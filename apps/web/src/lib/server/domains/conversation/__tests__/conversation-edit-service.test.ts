@@ -37,10 +37,6 @@ vi.mock('@/lib/server/domains/tickets/pair-thread.service', () => ({
   resolvePairTicketIdForConversation: vi.fn(async () => pairTicketId),
 }))
 
-vi.mock('@/lib/server/messages/assistant-principal', () => ({
-  assistantPrincipalIdOnce: vi.fn(async () => null),
-}))
-
 vi.mock('@/lib/server/sanitize-tiptap', () => ({
   sanitizeTiptapContent: (doc: unknown) => doc,
 }))
@@ -88,7 +84,6 @@ vi.mock('../conversation.query', () => ({
       reactions: [],
       flaggedAt: null,
       postSuggestion: null,
-      translatedFrom: null,
     }))
   ),
 }))

@@ -38,16 +38,11 @@ vi.mock('@/lib/server/domains/users/user.service', () => ({
   listPortalUsers: hoisted.listPortalUsers,
 }))
 
-vi.mock('@/lib/server/domains/companies', () => ({
-  listCompanies: vi.fn(),
-}))
-
 import { boardsExporter } from '../entities/taxonomy'
 import { postsExporter } from '../entities/posts'
 import { commentsExporter } from '../entities/comments'
 import { votesExporter } from '../entities/votes'
 import { createUsersExporter } from '../entities/users'
-import { companiesExporter } from '../entities/companies'
 import { conversationsExporter } from '../entities/conversations'
 import { kbArticlesExporter } from '../entities/kb'
 
@@ -113,27 +108,10 @@ describe('votesExporter.serialize', () => {
       id: 'post_vote_1',
       postId: 'post_1',
       voterEmail: 'voter@example.com',
-      sourceType: 'zendesk',
+      sourceType: 'intercom',
       createdAt: d('2026-07-03T12:00:00Z'),
     } as never)
-    expect(line).toBe('post_vote_1,post_1,"voter@example.com","zendesk",2026-07-03T12:00:00.000Z')
-  })
-})
-
-describe('companiesExporter.serialize', () => {
-  it('formats monthly spend from cents', () => {
-    const line = companiesExporter.serialize({
-      name: 'Acme, Inc.',
-      domain: 'acme.example',
-      externalId: 'crm_1',
-      plan: 'enterprise',
-      mrrCents: 123456,
-      memberCount: 7,
-      createdAt: d('2026-07-04T00:00:00Z'),
-    } as never)
-    expect(line).toBe(
-      '"Acme, Inc.","acme.example","crm_1","enterprise",1234.56,7,2026-07-04T00:00:00.000Z'
-    )
+    expect(line).toBe('post_vote_1,post_1,"voter@example.com","intercom",2026-07-03T12:00:00.000Z')
   })
 })
 
@@ -189,7 +167,6 @@ describe('boardsExporter / headers', () => {
       commentsExporter,
       votesExporter,
       createUsersExporter(),
-      companiesExporter,
       conversationsExporter,
       kbArticlesExporter,
     ]) {

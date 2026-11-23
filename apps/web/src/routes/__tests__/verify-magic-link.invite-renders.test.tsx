@@ -13,6 +13,7 @@ vi.mock('@tanstack/react-router', () => ({
   createFileRoute: () => (options: { component: ComponentType }) => ({
     options,
     useSearch: () => search,
+    useLoaderData: () => ({ locale: 'en', messages: {} }),
   }),
 }))
 vi.mock('@/lib/server/functions/invitations', () => ({

@@ -12,10 +12,6 @@ vi.mock('@/lib/server/db', async (original) => ({
   ...(await original<typeof import('@/lib/server/db')>()),
   db: (await import('@/lib/server/__tests__/db-test-fixture')).testDb,
 }))
-vi.mock('@/lib/server/domains/assistant', async (original) => ({
-  ...(await original<typeof import('@/lib/server/domains/assistant')>()),
-  isAssistantConfigured: () => false,
-}))
 
 import { loadLaunchStatus } from '../launch-status'
 

@@ -18,7 +18,6 @@ import { postsExporter } from './entities/posts'
 import { commentsExporter } from './entities/comments'
 import { votesExporter } from './entities/votes'
 import { createUsersExporter } from './entities/users'
-import { companiesExporter } from './entities/companies'
 import { conversationsExporter } from './entities/conversations'
 import { changelogExporter } from './entities/changelog'
 import { kbArticlesExporter } from './entities/kb'
@@ -40,7 +39,6 @@ function buildEntityList(): EntityExporter[] {
     commentsExporter,
     votesExporter,
     createUsersExporter(),
-    companiesExporter,
     conversationsExporter,
     changelogExporter,
     kbArticlesExporter,

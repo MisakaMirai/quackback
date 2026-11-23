@@ -1,11 +1,9 @@
 import { describe, it, expect } from 'vitest'
-import { parseJsonConfig, parsePortalConfig, parseWidgetConfig } from '../settings.helpers'
+import { parseJsonConfig, parsePortalConfig } from '../settings.helpers'
 import {
   DEFAULT_AUTH_CONFIG,
   DEFAULT_PORTAL_CONFIG,
-  DEFAULT_WIDGET_CONFIG,
   workspaceAllowsAnonymous,
-  type PublicPortalConfig,
 } from '../settings.types'
 
 describe('DEFAULT_PORTAL_CONFIG', () => {
@@ -17,31 +15,12 @@ describe('DEFAULT_PORTAL_CONFIG', () => {
     })
   })
 
-  it('DEFAULT_PORTAL_CONFIG has widgetSignIn defaulting to false', () => {
-    expect(DEFAULT_PORTAL_CONFIG.access?.widgetSignIn).toBe(false)
-  })
-})
-
-describe('PublicPortalConfig.portalAccess', () => {
-  it('portalAccess shape includes widgetSignIn', () => {
-    // Verify the type carries widgetSignIn (build-time type assertion via satisfies)
-    const cfg = {
-      features: DEFAULT_PORTAL_CONFIG.features,
-      openSignup: true,
-      portalAccess: { isPrivate: true, widgetSignIn: false },
-    } satisfies PublicPortalConfig
-    expect(cfg.portalAccess?.isPrivate).toBe(true)
-    expect(cfg.portalAccess?.widgetSignIn).toBe(false)
-  })
-
-  it('portalAccess.widgetSignIn is boolean', () => {
-    const cfg: PublicPortalConfig = {
-      features: DEFAULT_PORTAL_CONFIG.features,
-      openSignup: true,
-      portalAccess: { isPrivate: false, widgetSignIn: true },
-    }
-    expect(typeof cfg.portalAccess?.widgetSignIn).toBe('boolean')
-    expect(cfg.portalAccess?.widgetSignIn).toBe(true)
+  it('DEFAULT_PORTAL_CONFIG access defaults to a public portal with no grants', () => {
+    expect(DEFAULT_PORTAL_CONFIG.access).toEqual({
+      visibility: 'public',
+      allowedDomains: [],
+      allowedSegmentIds: [],
+    })
   })
 })
 
@@ -100,12 +79,12 @@ describe('parseJsonConfig', () => {
   })
 
   it('handles flat configs (no nested objects)', () => {
-    const stored = JSON.stringify({ enabled: true })
+    const stored = JSON.stringify({ openSignup: true })
 
-    const result = parseJsonConfig(stored, DEFAULT_WIDGET_CONFIG)
+    const result = parseJsonConfig(stored, DEFAULT_PORTAL_CONFIG)
 
-    expect(result.enabled).toBe(true)
-    expect(result.tabs?.home).toBe(true)
+    expect(result.openSignup).toBe(true)
+    expect(result.features.allowAnonymous).toBe(true)
   })
 
   it('preserves default authConfig.oauth.password when stored oauth omits it (bug fix)', () => {
@@ -168,24 +147,6 @@ describe('workspaceAllowsAnonymous', () => {
   it('fails closed on malformed JSON instead of throwing', () => {
     expect(() => workspaceAllowsAnonymous('{ not valid json')).not.toThrow()
     expect(workspaceAllowsAnonymous('{ not valid json')).toBe(false)
-  })
-})
-
-describe('parseWidgetConfig', () => {
-  it('uses the new defaults for a blank blob', () => {
-    expect(parseWidgetConfig(null).tabs?.messenger).toBe(true)
-    expect(parseWidgetConfig(null).tabs?.tickets).toBe(true)
-    expect(parseWidgetConfig(null).tabs?.changelog).toBe(true)
-    expect(parseWidgetConfig(null).messenger?.assistant?.respond).toBe(true)
-  })
-
-  it('keeps missing messenger, changelog, and respond keys off on a stored config', () => {
-    const result = parseWidgetConfig(JSON.stringify({ enabled: true, tabs: { feedback: true } }))
-    expect(result.enabled).toBe(true)
-    expect(result.tabs?.feedback).toBe(true)
-    expect(result.tabs?.messenger).toBe(false)
-    expect(result.tabs?.changelog).toBe(false)
-    expect(result.messenger?.assistant?.respond).toBe(false)
   })
 })
 

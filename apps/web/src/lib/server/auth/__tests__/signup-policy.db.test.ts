@@ -71,14 +71,31 @@ const fixture = await createDbTestFixture({
 })
 
 async function seedSettings(
-  opts: { stamp?: string; metadataStamp?: string; setupState?: string } = {}
+  opts: {
+    stamp?: string
+    metadataStamp?: string
+    setupState?: string
+    setupComplete?: boolean
+  } = {}
 ): Promise<void> {
   await testDb.insert(settings).values({
     id: createId('workspace'),
     name: 'Acme',
     slug: `acme-${Math.random().toString(36).slice(2, 8)}`,
     createdAt: new Date(),
-    setupState: opts.setupState ?? null,
+    setupState:
+      opts.setupState ??
+      (opts.setupComplete
+        ? JSON.stringify(
+            finishIdentityOnboarding(
+              {
+                ...DEFAULT_SETUP_STATE,
+                steps: { ...DEFAULT_SETUP_STATE.steps, workspace: true },
+              },
+              'product_feedback'
+            )
+          )
+        : null),
     metadata: opts.metadataStamp
       ? JSON.stringify({ cloudTenant: { v: 1, workspaceKey: opts.metadataStamp, stampedAt: '' } })
       : null,
@@ -124,25 +141,6 @@ async function seedAdmin(email: string): Promise<void> {
   })
 }
 
-async function seedInvite(opts: {
-  email: string
-  status?: string
-  kind?: 'team' | 'portal'
-  expiresAt?: Date
-}): Promise<void> {
-  const inviterId = await seedUser(`inviter-${Math.random().toString(36).slice(2, 8)}@acme.example`)
-  await testDb.insert(invitation).values({
-    id: createId('invite'),
-    email: opts.email,
-    status: opts.status ?? 'pending',
-    kind: opts.kind ?? 'team',
-    role: 'member',
-    expiresAt: opts.expiresAt ?? new Date(Date.now() + 86_400_000),
-    createdAt: new Date(),
-    inviterId,
-  })
-}
-
 /** A workspace whose admin has said "no self-service accounts". */
 const CLOSED = { authConfig: { openSignup: false } }
 const OPEN = { authConfig: { openSignup: true } }
@@ -155,123 +153,6 @@ describe.skipIf(!fixture.available)('isAccountCreationAllowed', () => {
   })
   afterEach(fixture.rollback)
   afterAll(fixture.close)
-
-  describe('a provisioned workspace', () => {
-    // The attack, stated as a test: a stranger who guessed the hostname asks
-    // for an account on a workspace that was never theirs.
-    it('refuses a stranger when it already has an owner', async () => {
-      await seedSettings({ stamp: 'ws_acme' })
-      await seedAdmin('owner@acme.example')
-
-      expect(await isAccountCreationAllowed('stranger@evil.example', 'portal')).toBe(false)
-    })
-
-    // The same refusal has to survive the case the exposure actually lives in:
-    // provisioning recorded no owner, so nobody has ever signed in and the
-    // workspace reads unclaimed.
-    it('refuses a stranger when no owner was ever recorded', async () => {
-      await seedSettings({ stamp: 'ws_acme' })
-
-      expect(await isAccountCreationAllowed('stranger@evil.example', 'portal')).toBe(false)
-    })
-
-    // The shape current provisioning actually writes. Live workspaces created
-    // by today's control plane have `cloud_workspace_key` NULL and carry the
-    // stamp here, so a fixture set that only ever used the column would leave
-    // the whole production cohort unrepresented.
-    it('refuses a stranger on a workspace stamped only in the metadata bag', async () => {
-      await seedSettings({ metadataStamp: 'ws_acme' })
-
-      expect(await isAccountCreationAllowed('stranger@evil.example', 'portal')).toBe(false)
-    })
-
-    // And in the older of the two live bag shapes, which names the workspace
-    // `tenantId` instead of `workspaceKey` while declaring the same `v: 1`. The
-    // predicate is deliberately presence-only, so both read as provisioned;
-    // this is the fixture that would notice if it ever stopped being.
-    it('refuses a stranger on a workspace stamped in the older bag shape', async () => {
-      await testDb.insert(settings).values({
-        id: createId('workspace'),
-        name: 'Acme',
-        slug: `acme-${Math.random().toString(36).slice(2, 8)}`,
-        createdAt: new Date(),
-        metadata: JSON.stringify({
-          cloudTenant: { v: 1, tenantId: 'ws_acme', stampedAt: '2026-01-01T00:00:00.000Z' },
-        }),
-      })
-
-      expect(await isAccountCreationAllowed('stranger@evil.example', 'portal')).toBe(false)
-    })
-
-    // A portal invitation is as much a grant as a team one, and the lookup
-    // filters `kind` explicitly (the schema requires every query against that
-    // table to). A filter written as `kind = 'team'` would refuse exactly the
-    // person an admin invited to a private portal.
-    it('lets somebody holding a pending PORTAL invitation create their account', async () => {
-      await seedSettings({ metadataStamp: 'ws_acme' })
-      await seedAdmin('owner@acme.example')
-      await seedInvite({ email: 'guest@partner.example', kind: 'portal' })
-
-      expect(await isAccountCreationAllowed('guest@partner.example', 'portal')).toBe(true)
-    })
-
-    // The control that proves the two cases above are deciding on the stamp and
-    // not on some other difference: same rows, stamp removed.
-    it('lets the first arrival in once the stamp is gone', async () => {
-      await seedSettings({ stamp: 'ws_acme' })
-      await testDb.execute(sql`UPDATE settings SET cloud_workspace_key = NULL`)
-
-      expect(await isAccountCreationAllowed('first@acme.example', 'portal')).toBe(true)
-    })
-
-    it('still lets the owner the control plane recorded sign in', async () => {
-      await seedSettings({ stamp: 'ws_acme' })
-      await seedAdmin('owner@acme.example')
-
-      expect(await isAccountCreationAllowed('owner@acme.example', 'portal')).toBe(true)
-    })
-
-    it('still lets an invited person create their account', async () => {
-      await seedSettings({ stamp: 'ws_acme' })
-      await seedAdmin('owner@acme.example')
-      await seedInvite({ email: 'newhire@acme.example' })
-
-      expect(await isAccountCreationAllowed('newhire@acme.example', 'portal')).toBe(true)
-    })
-
-    // An invite the admin cancelled, and one that ran out, are both a "no" that
-    // a status-blind lookup would read as a "yes".
-    it('does not treat a cancelled or expired invitation as a grant', async () => {
-      await seedSettings({ stamp: 'ws_acme' })
-      await seedAdmin('owner@acme.example')
-      await seedInvite({ email: 'cancelled@acme.example', status: 'canceled' })
-      await seedInvite({
-        email: 'stale@acme.example',
-        expiresAt: new Date(Date.now() - 86_400_000),
-      })
-
-      expect(await isAccountCreationAllowed('cancelled@acme.example', 'portal')).toBe(false)
-      expect(await isAccountCreationAllowed('stale@acme.example', 'portal')).toBe(false)
-    })
-
-    // The invite paths compare addresses case-insensitively, so an exemption
-    // that missed on case would refuse exactly the person an admin invited.
-    it('matches an invitation whatever case it was stored in', async () => {
-      await seedSettings({ stamp: 'ws_acme' })
-      await seedAdmin('owner@acme.example')
-      await seedInvite({ email: 'NewHire@Acme.Example' })
-
-      expect(await isAccountCreationAllowed('newhire@acme.example', 'portal')).toBe(true)
-    })
-
-    it('opens up when the workspace says openSignup', async () => {
-      hoisted.getWorkspaceSettings.mockResolvedValue(OPEN)
-      await seedSettings({ stamp: 'ws_acme' })
-      await seedAdmin('owner@acme.example')
-
-      expect(await isAccountCreationAllowed('anyone@example.com', 'portal')).toBe(true)
-    })
-  })
 
   /**
    * A private portal that grants a whole email domain.
@@ -289,7 +170,7 @@ describe.skipIf(!fixture.available)('isAccountCreationAllowed', () => {
         access: {
           visibility: 'private',
           allowedDomains: ['acme.example'],
-          widgetSignIn: false,
+
           allowedSegmentIds: [],
         },
       },
@@ -297,7 +178,7 @@ describe.skipIf(!fixture.available)('isAccountCreationAllowed', () => {
 
     it('lets somebody at the granted domain open the account the grant is about', async () => {
       hoisted.getWorkspaceSettings.mockResolvedValue(GRANTS_ACME)
-      await seedSettings({ stamp: 'ws_acme' })
+      await seedSettings({ setupComplete: true })
       await seedAdmin('owner@acme.example')
 
       expect(await isAccountCreationAllowed('newperson@acme.example', 'portal')).toBe(true)
@@ -307,7 +188,7 @@ describe.skipIf(!fixture.available)('isAccountCreationAllowed', () => {
     // being taken for everyone: one character different in the domain.
     it('still refuses somebody at a domain nobody granted', async () => {
       hoisted.getWorkspaceSettings.mockResolvedValue(GRANTS_ACME)
-      await seedSettings({ stamp: 'ws_acme' })
+      await seedSettings({ setupComplete: true })
       await seedAdmin('owner@acme.example')
 
       expect(await isAccountCreationAllowed('stranger@acme.example.evil', 'portal')).toBe(false)
@@ -319,7 +200,7 @@ describe.skipIf(!fixture.available)('isAccountCreationAllowed', () => {
     // grant would admit people the grant does not.
     it('does not extend the grant to a subdomain of it', async () => {
       hoisted.getWorkspaceSettings.mockResolvedValue(GRANTS_ACME)
-      await seedSettings({ stamp: 'ws_acme' })
+      await seedSettings({ setupComplete: true })
       await seedAdmin('owner@acme.example')
 
       expect(await isAccountCreationAllowed('stranger@mail.acme.example', 'portal')).toBe(false)
@@ -332,7 +213,7 @@ describe.skipIf(!fixture.available)('isAccountCreationAllowed', () => {
           access: { ...GRANTS_ACME.portalConfig.access, allowedDomains: ['Acme.Example'] },
         },
       })
-      await seedSettings({ stamp: 'ws_acme' })
+      await seedSettings({ setupComplete: true })
       await seedAdmin('owner@acme.example')
 
       expect(await isAccountCreationAllowed('NewPerson@ACME.example', 'portal')).toBe(true)
@@ -346,7 +227,7 @@ describe.skipIf(!fixture.available)('isAccountCreationAllowed', () => {
           access: { ...GRANTS_ACME.portalConfig.access, allowedDomains: [] },
         },
       })
-      await seedSettings({ stamp: 'ws_acme' })
+      await seedSettings({ setupComplete: true })
       await seedAdmin('owner@acme.example')
 
       expect(await isAccountCreationAllowed('anyone@acme.example', 'portal')).toBe(false)
@@ -497,12 +378,6 @@ describe.skipIf(!fixture.available)('isAccountCreationAllowed', () => {
 
       // Read on every workspace a process serves, so it must not open one a
       // control plane created.
-      it('opens no provisioned workspace to the named address', async () => {
-        await seedSettings({ stamp: 'ws_acme' })
-        hoisted.getWorkspaceSettings.mockResolvedValue(CLOSED)
-
-        expect(await isAccountCreationAllowed('owner@acme.example', 'portal')).toBe(false)
-      })
     })
 
     // Every portal email sign-in asks this gate, and a finished install is the

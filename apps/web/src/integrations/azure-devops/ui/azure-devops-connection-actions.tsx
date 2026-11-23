@@ -3,6 +3,7 @@ import { ArrowPathIcon, CheckCircleIcon, ExclamationCircleIcon } from '@heroicon
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { connectAzureDevOpsFn } from '@/integrations/azure-devops/server/functions'
 import { useDeleteIntegration } from '@/lib/client/mutations'
@@ -17,6 +18,7 @@ export function AzureDevOpsConnectionActions({
   integrationId,
   isConnected,
 }: AzureDevOpsConnectionActionsProps) {
+  const intl = useOptionalIntl()
   const deleteMutation = useDeleteIntegration()
   const [organizationUrl, setOrganizationUrl] = useState('')
   const [pat, setPat] = useState('')
@@ -40,7 +42,15 @@ export function AzureDevOpsConnectionActions({
       const timer = setTimeout(() => setShowSuccess(false), 3000)
       return () => clearTimeout(timer)
     } catch (err) {
-      setError(errorText(err, 'Failed to connect to Azure DevOps'))
+      setError(
+        errorText(
+          err,
+          intl.formatMessage({
+            id: 'admin.integrations.azureDevops.connectFailed',
+            defaultMessage: 'Failed to connect to Azure DevOps',
+          })
+        )
+      )
     } finally {
       setSaving(false)
     }
@@ -65,18 +75,37 @@ export function AzureDevOpsConnectionActions({
           {disconnecting ? (
             <>
               <ArrowPathIcon className="mr-2 h-4 w-4 animate-spin" />
-              Disconnecting...
+              {intl.formatMessage({
+                id: 'admin.integrations.connection.disconnecting',
+                defaultMessage: 'Disconnecting...',
+              })}
             </>
           ) : (
-            'Disconnect'
+            intl.formatMessage({
+              id: 'admin.integrations.connection.disconnect',
+              defaultMessage: 'Disconnect',
+            })
           )}
         </Button>
         <ConfirmDialog
           open={disconnectDialogOpen}
           onOpenChange={setDisconnectDialogOpen}
-          title="Disconnect Azure DevOps?"
-          description="This will remove the Azure DevOps integration and stop creating work items from feedback. You can reconnect at any time."
-          confirmLabel="Disconnect"
+          title={intl.formatMessage(
+            {
+              id: 'admin.integrations.connection.disconnectTitle',
+              defaultMessage: 'Disconnect {name}?',
+            },
+            { name: 'Azure DevOps' }
+          )}
+          description={intl.formatMessage({
+            id: 'admin.integrations.azureDevops.disconnectDescription',
+            defaultMessage:
+              'This will remove the Azure DevOps integration and stop creating work items from feedback. You can reconnect at any time.',
+          })}
+          confirmLabel={intl.formatMessage({
+            id: 'admin.integrations.connection.disconnect',
+            defaultMessage: 'Disconnect',
+          })}
           isPending={disconnecting}
           onConfirm={handleDisconnect}
         />
@@ -89,7 +118,12 @@ export function AzureDevOpsConnectionActions({
       {showSuccess && (
         <div className="flex items-center gap-2 rounded-lg border border-green-500/30 bg-green-500/10 px-3 py-2 text-sm text-green-600 dark:text-green-400">
           <CheckCircleIcon className="h-4 w-4" />
-          <span>Connected to Azure DevOps!</span>
+          <span>
+            {intl.formatMessage({
+              id: 'admin.integrations.azureDevops.connected',
+              defaultMessage: 'Connected to Azure DevOps!',
+            })}
+          </span>
         </div>
       )}
 
@@ -103,7 +137,10 @@ export function AzureDevOpsConnectionActions({
       <div className="flex w-full max-w-md flex-col gap-3">
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="org-url" className="text-sm">
-            Organization URL
+            {intl.formatMessage({
+              id: 'admin.integrations.azureDevops.organizationUrlLabel',
+              defaultMessage: 'Organization URL',
+            })}
           </Label>
           <Input
             id="org-url"
@@ -116,12 +153,18 @@ export function AzureDevOpsConnectionActions({
         </div>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="pat" className="text-sm">
-            Personal Access Token
+            {intl.formatMessage({
+              id: 'admin.integrations.azureDevops.patLabel',
+              defaultMessage: 'Personal Access Token',
+            })}
           </Label>
           <Input
             id="pat"
             type="password"
-            placeholder="Enter your PAT"
+            placeholder={intl.formatMessage({
+              id: 'admin.integrations.azureDevops.patPlaceholder',
+              defaultMessage: 'Enter your PAT',
+            })}
             value={pat}
             onChange={(e) => setPat(e.target.value)}
             disabled={saving}
@@ -135,10 +178,16 @@ export function AzureDevOpsConnectionActions({
           {saving ? (
             <>
               <ArrowPathIcon className="mr-2 h-4 w-4 animate-spin" />
-              Connecting...
+              {intl.formatMessage({
+                id: 'admin.integrations.connection.connecting',
+                defaultMessage: 'Connecting...',
+              })}
             </>
           ) : (
-            'Connect'
+            intl.formatMessage({
+              id: 'admin.integrations.connection.connect',
+              defaultMessage: 'Connect',
+            })
           )}
         </Button>
       </div>

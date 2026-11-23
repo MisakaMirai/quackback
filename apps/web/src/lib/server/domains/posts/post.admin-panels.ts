@@ -13,19 +13,14 @@
 import type { PostId } from '@quackback/ids'
 import { PERMISSIONS, type PermissionKey } from '@/lib/shared/permissions'
 import { toIsoString } from '@/lib/shared/utils'
-import { logger } from '@/lib/server/logger'
-import { getPendingSuggestionsForPost } from '@/lib/server/domains/merge-suggestions/merge-suggestion.service'
 import { listTeamMembers } from '@/lib/server/domains/principals/principal.service'
 import { toOwnerRef } from '@/lib/server/functions/post-owner-context'
 import type { EnrichmentCard } from '@/lib/server/integrations/types'
 import { getPostVoters } from './post.voters'
 import { getPostExternalLinks } from './post.cascade-delete'
 
-const log = logger.child({ component: 'merge-suggestions' })
-
 export const ADMIN_POST_PANELS = [
   'voters',
-  'mergeSuggestions',
   'externalLinks',
   'ownerCandidates',
   'customerContext',
@@ -40,20 +35,6 @@ export async function loadPostVotersPanel(postId: PostId) {
     ...v,
     createdAt: toIsoString(v.createdAt as Date | string),
   }))
-}
-
-/** Pending merge suggestions as `getMergeSuggestionsForPostFn` returns them. */
-export async function loadMergeSuggestionsPanel(postId: PostId) {
-  try {
-    const suggestions = await getPendingSuggestionsForPost(postId)
-    return suggestions.map((s) => ({
-      ...s,
-      createdAt: s.createdAt instanceof Date ? s.createdAt.toISOString() : s.createdAt,
-    }))
-  } catch (error) {
-    log.error({ err: error, post_id: postId }, 'get merge suggestions for post failed')
-    return []
-  }
 }
 
 /**
@@ -73,7 +54,6 @@ async function loadCustomerContextPanel(
 
 type Panels = {
   voters?: Awaited<ReturnType<typeof loadPostVotersPanel>>
-  mergeSuggestions?: Awaited<ReturnType<typeof loadMergeSuggestionsPanel>>
   externalLinks?: Awaited<ReturnType<typeof getPostExternalLinks>>
   ownerCandidates?: ReturnType<typeof toOwnerRef>[]
   customerContext?: EnrichmentCard[]
@@ -92,20 +72,17 @@ export async function loadAdminPostPanels(
   const wanted = new Set(requested)
   if (!permissions.includes(PERMISSIONS.POST_SET_OWNER)) wanted.delete('ownerCandidates')
 
-  const [voters, mergeSuggestions, externalLinks, ownerCandidates, customerContext] =
-    await Promise.all([
-      wanted.has('voters') ? loadPostVotersPanel(postId) : undefined,
-      wanted.has('mergeSuggestions') ? loadMergeSuggestionsPanel(postId) : undefined,
-      wanted.has('externalLinks') ? getPostExternalLinks(postId) : undefined,
-      wanted.has('ownerCandidates')
-        ? listTeamMembers().then((members) => members.map(toOwnerRef))
-        : undefined,
-      wanted.has('customerContext') ? loadCustomerContextPanel(permissions) : undefined,
-    ])
+  const [voters, externalLinks, ownerCandidates, customerContext] = await Promise.all([
+    wanted.has('voters') ? loadPostVotersPanel(postId) : undefined,
+    wanted.has('externalLinks') ? getPostExternalLinks(postId) : undefined,
+    wanted.has('ownerCandidates')
+      ? listTeamMembers().then((members) => members.map(toOwnerRef))
+      : undefined,
+    wanted.has('customerContext') ? loadCustomerContextPanel(permissions) : undefined,
+  ])
 
   const panels: Panels = {}
   if (voters) panels.voters = voters
-  if (mergeSuggestions) panels.mergeSuggestions = mergeSuggestions
   if (externalLinks) panels.externalLinks = externalLinks
   if (ownerCandidates) panels.ownerCandidates = ownerCandidates
   if (customerContext) panels.customerContext = customerContext

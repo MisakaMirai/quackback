@@ -2,6 +2,7 @@ import { UserGroupIcon } from '@heroicons/react/24/outline'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import {
   SegmentMultiSelect,
   type SegmentItem,
@@ -25,6 +26,7 @@ export function ArticleAudienceControl({
   onChange,
   disabled,
 }: ArticleAudienceControlProps) {
+  const intl = useOptionalIntl()
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -34,12 +36,23 @@ export function ArticleAudienceControl({
           size="sm"
           disabled={disabled}
           className="h-8 rounded-full text-xs px-3"
-          aria-label="Audience"
+          aria-label={intl.formatMessage({
+            id: 'admin.helpCenter.audience.label',
+            defaultMessage: 'Audience',
+          })}
         >
           <UserGroupIcon className="h-3.5 w-3.5" />
-          Audience
+          {intl.formatMessage({
+            id: 'admin.helpCenter.audience.label',
+            defaultMessage: 'Audience',
+          })}
           {value.length === 0 ? (
-            <span className="text-muted-foreground">Everyone</span>
+            <span className="text-muted-foreground">
+              {intl.formatMessage({
+                id: 'admin.helpCenter.audience.everyone',
+                defaultMessage: 'Everyone',
+              })}
+            </span>
           ) : (
             <Badge size="sm" variant="secondary">
               {value.length}
@@ -48,19 +61,36 @@ export function ArticleAudienceControl({
         </Button>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-72 p-3">
-        <p className="text-xs font-medium text-foreground">Audience</p>
+        <p className="text-xs font-medium text-foreground">
+          {intl.formatMessage({
+            id: 'admin.helpCenter.audience.label',
+            defaultMessage: 'Audience',
+          })}
+        </p>
         <p className="mt-0.5 mb-2.5 text-xs text-muted-foreground">
-          With segments selected, the article is only visible to the selected segments.
+          {intl.formatMessage({
+            id: 'admin.helpCenter.audience.description',
+            defaultMessage:
+              'With segments selected, the article is only visible to the selected segments.',
+          })}
         </p>
         {segments.length === 0 ? (
-          <p className="text-xs text-muted-foreground">No segments defined yet.</p>
+          <p className="text-xs text-muted-foreground">
+            {intl.formatMessage({
+              id: 'admin.helpCenter.audience.noSegments',
+              defaultMessage: 'No segments defined yet.',
+            })}
+          </p>
         ) : (
           <SegmentMultiSelect
             segments={segments}
             value={value}
             onChange={onChange}
             disabled={disabled}
-            ariaLabel="Article audience segments"
+            ariaLabel={intl.formatMessage({
+              id: 'admin.helpCenter.audience.segmentsAria',
+              defaultMessage: 'Article audience segments',
+            })}
           />
         )}
       </PopoverContent>

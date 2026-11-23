@@ -7,7 +7,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 const hoisted = vi.hoisted(() => ({
   mockRequireAuth: vi.fn(),
   mockListPortalUsers: vi.fn(),
-  mockGetTierLimits: vi.fn(),
 }))
 
 vi.mock('@/lib/server/functions/auth-helpers', () => ({
@@ -16,10 +15,6 @@ vi.mock('@/lib/server/functions/auth-helpers', () => ({
 
 vi.mock('@/lib/server/domains/users/user.service', () => ({
   listPortalUsers: hoisted.mockListPortalUsers,
-}))
-
-vi.mock('@/lib/server/domains/settings/tier-limits.service', () => ({
-  getTierLimits: hoisted.mockGetTierLimits,
 }))
 
 import { handleExportUsers } from '../export.users'
@@ -31,7 +26,6 @@ function makeRequest(query: string = ''): Request {
 beforeEach(() => {
   vi.clearAllMocks()
   hoisted.mockRequireAuth.mockResolvedValue({ settings: { slug: 'acme' } })
-  hoisted.mockGetTierLimits.mockResolvedValue({ features: { analyticsExports: true } })
   hoisted.mockListPortalUsers.mockResolvedValue({
     items: [
       {

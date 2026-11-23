@@ -196,11 +196,11 @@ describe('API Auth', () => {
       keyRole('member')
 
       await expect(
-        withApiKeyAuth(bearer(), { permission: PERMISSIONS.BILLING_MANAGE })
+        withApiKeyAuth(bearer(), { permission: PERMISSIONS.AUDIT_VIEW })
       ).rejects.toThrow(ForbiddenError)
       await expect(
-        withApiKeyAuth(bearer(), { permission: PERMISSIONS.BILLING_MANAGE })
-      ).rejects.toThrow("Requires the 'billing.manage' permission")
+        withApiKeyAuth(bearer(), { permission: PERMISSIONS.AUDIT_VIEW })
+      ).rejects.toThrow("Requires the 'audit.view' permission")
     })
 
     it('throws ForbiddenError when the owner is a portal user (no team permissions)', async () => {
@@ -263,7 +263,7 @@ describe('API Auth', () => {
 
       const seen = await runWithAuditAttribution(null, async () => {
         await expect(
-          withApiKeyAuth(bearer(), { permission: PERMISSIONS.BILLING_MANAGE })
+          withApiKeyAuth(bearer(), { permission: PERMISSIONS.AUDIT_VIEW })
         ).rejects.toThrow(ForbiddenError)
         return { attribution: getAuditAttribution(), actor: getAuditBoundaryActor() }
       })
@@ -360,8 +360,8 @@ describe('API Auth', () => {
       vi.mocked(verifyApiKey).mockResolvedValue(scopedKey(['read:feedback', 'write:feedback']))
       keyRole('member')
       await expect(
-        withApiKeyAuth(bearer(), { permission: PERMISSIONS.BILLING_MANAGE })
-      ).rejects.toThrow("'billing.manage' permission")
+        withApiKeyAuth(bearer(), { permission: PERMISSIONS.AUDIT_VIEW })
+      ).rejects.toThrow("'audit.view' permission")
     })
 
     it('assertApiPermissions enforces the mapped scope per permission for scoped keys', async () => {

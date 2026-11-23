@@ -39,7 +39,6 @@ import {
 } from '@/lib/server/events/dispatch'
 import { scheduleDispatch, cancelScheduledDispatch } from '@/lib/server/events/scheduler'
 import { setEntryCategories, getCategoriesForEntries } from './changelog-category.service'
-import { embedChangelogEntryOnPublish } from './changelog-embedding.service'
 import { logger } from '@/lib/server/logger'
 
 import { isSameDay } from 'date-fns'
@@ -304,7 +303,6 @@ export async function updateChangelog(
   const contentChanged =
     input.contentJson !== undefined || input.content !== undefined || input.title !== undefined
   if (contentChanged && input.publishState === undefined) {
-    void embedChangelogEntryOnPublish(id)
   }
 
   return getChangelogById(id)
@@ -496,7 +494,6 @@ export async function notifyChangelogPublished(
   // path (create, update-to-published, scheduled job, reconciler) reaches, so
   // one call here covers them all. Independent of `notify` — the entry is now
   // public knowledge whether or not subscribers were emailed.
-  void embedChangelogEntryOnPublish(id)
 
   if (!notify) return true
 

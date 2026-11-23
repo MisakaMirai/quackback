@@ -35,9 +35,6 @@ vi.mock('@/lib/server/domains/settings/settings.status', () => ({
   getStatusSettings: vi.fn().mockResolvedValue({ enabled: true }),
   updateStatusSettings: vi.fn(),
 }))
-vi.mock('@/lib/server/domains/settings/tier-enforce', () => ({
-  enforceStatusComponentLimit: vi.fn(),
-}))
 vi.mock('@/lib/server/events/process', () => ({ processEvent: vi.fn() }))
 vi.mock('@/lib/server/events/scheduler', () => ({
   scheduleDispatch: vi.fn().mockResolvedValue(undefined),

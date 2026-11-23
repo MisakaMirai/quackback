@@ -50,7 +50,7 @@ function widgetCtx(id: PrincipalId, userId: UserId): AuthContext {
     user: { id: userId, email: '', name: 'Visitor', image: null },
     principal: { id, role: 'user', type: 'anonymous' },
     permissions: [],
-    scope: 'widget',
+    scope: 'portal',
   }
 }
 

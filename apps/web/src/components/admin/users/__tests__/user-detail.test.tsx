@@ -59,14 +59,6 @@ vi.mock('@/lib/server/functions/changelog-subscriptions', () => ({
   setChangelogSubscriptionFn: vi.fn(),
 }))
 
-vi.mock('@/lib/server/functions/companies', () => ({
-  getCompanyForPrincipalFn: vi.fn().mockResolvedValue(null),
-  listCompaniesFn: vi.fn().mockResolvedValue([]),
-  createCompanyFn: vi.fn(),
-  attachPrincipalToCompanyFn: vi.fn(),
-  detachPrincipalFromCompanyFn: vi.fn(),
-}))
-
 vi.mock('@/lib/client/hooks/use-user-tags', () => ({
   useUserTags: () => ({ data: [] }),
   useUserTagsForPrincipal: () => ({ data: [] }),
@@ -148,8 +140,6 @@ describe('UserDetail', () => {
     expect(screen.getByText('12')).toBeInTheDocument()
     expect(screen.getByText('Activity')).toBeInTheDocument()
     expect(screen.getByText('No activity yet')).toBeInTheDocument()
-    expect(screen.getByText('Company')).toBeInTheDocument()
-    expect(screen.getByText('No company')).toBeInTheDocument()
     expect(screen.getByText('usr_7f3a91')).toBeInTheDocument()
     expect(screen.getByText('plan_tier')).toBeInTheDocument()
     expect(screen.queryByText('_externalUserId')).not.toBeInTheDocument()

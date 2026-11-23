@@ -35,7 +35,8 @@ vi.mock('../conversation.auto-ack', () => ({ maybeSendColdInboundAck: ack }))
 
 import { ingestParsedEmail } from '../conversation.email-inbound.service'
 import { testEmailAlias } from '../conversation.email-channel'
-import { mailSlugFor, withWorkspace } from '@/lib/server/__tests__/workspace-scope'
+import { withWorkspace } from '@/lib/server/__tests__/workspace-scope'
+import { SELF_HOSTED_MAIL_SLUG } from '../conversation.mail-slug'
 import { testOwnerOf } from '@/lib/server/test-data'
 
 const fixture = await createDbTestFixture({
@@ -45,7 +46,7 @@ const fixture = await createDbTestFixture({
 })
 
 const WORKSPACE = 'live-t1'
-const SLUG = mailSlugFor(WORKSPACE)
+const SLUG = SELF_HOSTED_MAIL_SLUG
 const PLATFORM_ADDRESS = `${SLUG}@tenaevexeo.resend.app`
 const asWorkspace = <T>(fn: () => T): T => withWorkspace(WORKSPACE, fn)
 const suffix = () => `${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`

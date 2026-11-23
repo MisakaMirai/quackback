@@ -42,10 +42,6 @@ export const conversationKeys = {
   agentContactDetail: (principalId: PrincipalId | undefined) =>
     ['admin', 'inbox', 'visitor', principalId] as const,
 
-  /** The detail panel's Quinn AI activity summary for one conversation. */
-  agentAssistantActivity: (conversationId: ConversationId | undefined) =>
-    ['admin', 'inbox', 'assistant-activity', conversationId] as const,
-
   /** The detail panel's Files section: every attachment across a
    *  conversation or ticket's whole thread. */
   agentConversationFiles: (id: ConversationId | TicketId | undefined) =>
@@ -54,24 +50,10 @@ export const conversationKeys = {
   /** The per-agent "Saved for later" (flagged messages) feed. */
   agentFlagged: () => ['admin', 'inbox', 'flagged'] as const,
 
-  /** A visitor-side thread (portal Support tab + widget messenger). Keyed by
+  /** A visitor-side thread (portal Support tab). Keyed by
    *  conversation id; a not-yet-created thread has no cache entry. */
   visitorThread: (conversationId: ConversationId | null) =>
     ['conversation', 'visitor-thread', conversationId ?? 'none'] as const,
-
-  /** Prefix of every widget Messages tab list, across sessions. */
-  widgetConversationLists: () => ['widget', 'my-conversations'] as const,
-
-  /** The widget Messages tab list, re-keyed when identify swaps the actor. */
-  widgetConversationList: (sessionVersion: number | string) =>
-    [...conversationKeys.widgetConversationLists(), sessionVersion] as const,
-
-  /** Prefix of every widget Messages tab badge (total unread), across sessions. */
-  widgetMessengerUnreads: () => ['widget', 'messenger-unread'] as const,
-
-  /** The widget Messages tab badge, re-keyed when identify swaps the actor. */
-  widgetMessengerUnread: (sessionVersion: number | string) =>
-    [...conversationKeys.widgetMessengerUnreads(), sessionVersion] as const,
 
   /** The portal Support tab list. */
   portalConversationList: () => ['portal', 'my-conversations'] as const,

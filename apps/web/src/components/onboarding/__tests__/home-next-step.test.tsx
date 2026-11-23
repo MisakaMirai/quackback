@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { AnchorHTMLAttributes, ReactNode } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import en from '@/locales/en.json'
-import de from '@/locales/de.json'
+import zhCn from '@/locales/zh-cn.json'
 import { launchPath, type LaunchStatus } from '@/lib/shared/launch-checklist'
 
 vi.mock('@tanstack/react-router', () => ({
@@ -47,7 +47,6 @@ const status: LaunchStatus = {
     helpCenter: false,
     statusPage: false,
     integrations: true,
-    assistant: false,
     changelog: true,
   },
 }
@@ -133,10 +132,9 @@ describe("Home's launch plan card", () => {
       features: { ...status.features!, helpCenter: true },
     }
     mount(goals)
-    // Support and Help center come before the polish, as on the plan page.
+    // Help center comes before the polish, as on the plan page.
     const open = launchPath(goals).later.filter((task) => !task.isCompleted && !task.isSkipped)
     expect(open.map((task) => task.title)).toEqual([
-      'Put Messenger on your site',
       'Publish your first article',
       'Publish your first update',
       'Add your logo',
@@ -145,11 +143,11 @@ describe("Home's launch plan card", () => {
     ])
     const later = screen.getByText(/^Later:/)
     expect(later.textContent).toBe(
-      'Later: Put Messenger on your site, publish your first article, publish your first update, and 3 more'
+      'Later: Publish your first article, publish your first update, add your logo, and 2 more'
     )
-    expect(within(later).getByRole('link', { name: 'Put Messenger on your site' })).toHaveAttribute(
+    expect(within(later).getByRole('link', { name: 'Publish your first article' })).toHaveAttribute(
       'href',
-      '/admin/settings/widget/install'
+      '/admin/help-center'
     )
     expect(screen.getByRole('link', { name: 'All steps' })).toHaveAttribute(
       'href',
@@ -160,8 +158,6 @@ describe("Home's launch plan card", () => {
   it('leaves done and skipped steps out of Later', () => {
     mount({
       ...status,
-      hasWidgetInstalled: true,
-      hasWidgetEnabled: true,
       hasPublishedChangelog: true,
       taskResolutions: {
         product_feedback: {
@@ -190,8 +186,6 @@ describe("Home's launch plan card", () => {
       hasBranding: true,
       memberCount: 2,
       hasPublishedChangelog: true,
-      hasWidgetInstalled: true,
-      hasWidgetEnabled: true,
     })
     expect(screen.getByRole('region', { name: 'A customer creates a post' })).toBeVisible()
   })
@@ -285,16 +279,20 @@ describe("Home's launch plan card", () => {
     }
     client.setQueryData(['admin', 'onboarding'], short)
     render(
-      <IntlProvider locale="de" messages={de}>
+      <IntlProvider locale="zh-cn" messages={zhCn}>
         <QueryClientProvider client={client}>
           <HomeNextStep status={short} pending={false} onCreateBoard={() => {}} />
         </QueryClientProvider>
       </IntlProvider>
     )
-    // German keeps its capitals and joins with "und".
-    // Branding comes before invites, so the logo is first and the team last.
-    expect(screen.getByText(/^Später:/).textContent).toMatch(/^Später: Logo hinzufügen und /)
+    // Chinese keeps its characters as written and joins with 和.
+    // Branding comes before invites, so the logo is named first and the team after it.
+    const prefix = zhCn['onboarding.home.later'].split('{items}')[0]!
+    const later = screen.getByText((content) => content.startsWith(prefix))
+    expect(later.textContent).toContain(zhCn['onboarding.task.customize-branding'])
+    expect(later.textContent).toContain(zhCn['onboarding.task.invite-team'])
+    expect(later.textContent).not.toContain('Add your logo')
     // The region says which language it is in; the admin document stays English.
-    expect(screen.getByText(/^Später:/).closest('[lang]')).toHaveAttribute('lang', 'de')
+    expect(later.closest('[lang]')).toHaveAttribute('lang', 'zh-cn')
   })
 })

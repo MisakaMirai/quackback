@@ -20,12 +20,6 @@ const { upsertSpy } = vi.hoisted(() => ({
   upsertSpy: vi.fn(async (_args: { data: { id: string; enabled: boolean } }) => undefined),
 }))
 
-vi.mock('@/components/admin/upgrade', () => ({
-  UpgradeNotice: () => (
-    <p>Single sign-on is an Enterprise feature. Upgrade to Enterprise to enable it.</p>
-  ),
-}))
-
 vi.mock('@tanstack/react-router', () => ({
   useRouter: () => ({ invalidate: vi.fn() }),
   useRouteContext: () => ({ managedFieldPaths: [] }),
@@ -57,7 +51,6 @@ vi.mock('@/lib/server/functions/sso', () => ({
   setProviderCredentialsFn: vi.fn(),
   addProviderDomainFn: vi.fn(),
   verifyProviderDomainFn: vi.fn(),
-  getSsoDomainProofsFn: vi.fn(async () => ({})),
   fetchDiscoveryScopesFn: vi.fn(async () => ({ scopesSupported: null })),
   setDomainEnforcedFn: vi.fn(),
   removeVerifiedDomainFn: vi.fn(),
@@ -164,7 +157,7 @@ function renderSection(enabledMethodCount = 5) {
   qc.setQueryData(['settings', 'identityProviders'], [buttonProvider, routedProvider])
   return render(
     <QueryClientProvider client={qc}>
-      <IdentityProvidersSection tierEnabled enabledMethodCount={enabledMethodCount} />
+      <IdentityProvidersSection enabledMethodCount={enabledMethodCount} />
     </QueryClientProvider>
   )
 }
@@ -196,55 +189,6 @@ describe('<IdentityProvidersSection>', () => {
     renderSection()
     // The old "no domains" filler is gone; button providers show no domain text.
     expect(screen.queryByText(/no domains/i)).toBeNull()
-  })
-})
-
-describe('plan gate', () => {
-  it('hides New provider and names Enterprise when SSO is not entitled', () => {
-    const qc = new QueryClient()
-    qc.setQueryData(['settings', 'identityProviders'], [buttonProvider, routedProvider])
-    render(
-      <QueryClientProvider client={qc}>
-        <IdentityProvidersSection tierEnabled={false} enabledMethodCount={5} />
-      </QueryClientProvider>
-    )
-    expect(screen.queryByRole('link', { name: /new provider/i })).toBeNull()
-    expect(screen.getByText(/Single sign-on is an Enterprise feature/)).toBeTruthy()
-  })
-
-  function renderWithoutTier() {
-    const qc = new QueryClient()
-    qc.setQueryData(['settings', 'identityProviders'], [buttonProvider, routedProvider])
-    return render(
-      <QueryClientProvider client={qc}>
-        <IdentityProvidersSection tierEnabled={false} enabledMethodCount={5} />
-      </QueryClientProvider>
-    )
-  }
-
-  it('still lists existing providers so an enabled one can be switched off', async () => {
-    renderWithoutTier()
-    expect(screen.getByText('Acme SSO')).toBeTruthy()
-    fireEvent.click(screen.getByRole('switch', { name: /enable acme sso/i }))
-    await waitFor(() => expect(upsertSpy).toHaveBeenCalledTimes(1))
-    expect(upsertSpy.mock.calls[0][0].data).toMatchObject({
-      id: routedProvider.id,
-      enabled: false,
-    })
-  })
-
-  it('locks the switch of a disabled provider, since turning it on needs the tier', () => {
-    renderWithoutTier()
-    const toggle = screen.getByRole('switch', { name: /enable customer login/i })
-    expect(toggle).toBeDisabled()
-    fireEvent.click(toggle)
-    expect(upsertSpy).not.toHaveBeenCalled()
-  })
-
-  it('omits the Configure link without the tier', () => {
-    renderWithoutTier()
-    expect(screen.getByText('Acme SSO')).toBeTruthy()
-    expect(screen.queryByRole('link', { name: /configure acme sso/i })).toBeNull()
   })
 })
 
@@ -301,10 +245,8 @@ describe('enable toggle on the list row', () => {
   })
 })
 
-describe('last-method guard depends on the SSO tier', () => {
-  // Without the tier the method count leaves identity providers out, so a
-  // count of 1 is the built-in or social method, not the SSO provider.
-  it('locks the last working method while the tier is on', () => {
+describe('last-method guard', () => {
+  it('locks the last working method', () => {
     renderSection(1)
     const toggle = screen.getByRole('switch', { name: /enable acme sso/i })
     expect(toggle).toBeDisabled()
@@ -312,24 +254,6 @@ describe('last-method guard depends on the SSO tier', () => {
       'title',
       'At least one sign-in method must stay enabled.'
     )
-  })
-
-  it('lets a stale provider be switched off while the tier is off', async () => {
-    const qc = new QueryClient()
-    qc.setQueryData(['settings', 'identityProviders'], [buttonProvider, routedProvider])
-    render(
-      <QueryClientProvider client={qc}>
-        <IdentityProvidersSection tierEnabled={false} enabledMethodCount={1} />
-      </QueryClientProvider>
-    )
-    const toggle = screen.getByRole('switch', { name: /enable acme sso/i })
-    expect(toggle).not.toBeDisabled()
-    fireEvent.click(toggle)
-    await waitFor(() => expect(upsertSpy).toHaveBeenCalledTimes(1))
-    expect(upsertSpy.mock.calls[0][0].data).toMatchObject({
-      id: routedProvider.id,
-      enabled: false,
-    })
   })
 })
 
@@ -339,7 +263,7 @@ describe('empty list', () => {
     qc.setQueryData(['settings', 'identityProviders'], [])
     render(
       <QueryClientProvider client={qc}>
-        <IdentityProvidersSection tierEnabled enabledMethodCount={5} />
+        <IdentityProvidersSection enabledMethodCount={5} />
       </QueryClientProvider>
     )
     expect(screen.getByText('No providers yet')).toBeInTheDocument()

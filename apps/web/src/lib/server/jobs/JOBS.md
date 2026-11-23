@@ -1,11 +1,13 @@
 # The Postgres job queue
 
-Background work on Postgres, per workspace, with leases. This is the substrate that
-replaces Redis for the background tier (`SAAS-HOSTING-STACK.md` §7).
+Background work on Postgres, with leases. This is the substrate that replaces
+Redis for the background tier.
 
-`QUACKBACK_TENANCY=single` — the default and every self-hosted install — gets one
-loop, no workspace scope, and the same scheduled jobs on the cadences they have
-always run on. Nothing here needs a registry or a control plane.
+Quackback is single-workspace: one process serves one database, so the worker
+runs one loop and the same scheduled jobs on the cadences they have always run
+on. Nothing here needs a registry or a control plane. Sections below that discuss
+a two-workspace fleet describe the removed pooled runtime and are kept as design
+history.
 
 ---
 
@@ -90,42 +92,25 @@ decided this worker was dead while it was still working. That means either a
 lease shorter than the work or a stalled process, and both are worth seeing, so
 it logs at error rather than retrying quietly.
 
-## 4. The workspace boundary
+## 4. One queue per install
 
-The queue is per-workspace **because the table lives in the workspace's own database**.
-There is no shared queue, so there is no routing decision to get wrong and no
-workspace parameter on `enqueueJob` — to enqueue for a workspace you must be in that
-workspace's scope, at which point you are writing into its database.
+The queue is **the install's**, because the table lives in the install's own
+database. There is no shared queue, so there is no routing decision to get wrong
+and no workspace parameter on `enqueueJob`.
 
-That is a structural argument, and §3 of the plan is precisely the observation
-that a wrong-workspace answer passes every structural check without erroring. So the
-structure is not trusted on its own:
-
-- every row is stamped with the workspace that enqueued it;
-- **every claim asserts that stamp against the ambient scope**, and a mismatch is
-  refused loudly and made terminal — never executed;
-- the assertion lives inside `claimJobs`, not in each caller, so there is no
-  version of "forgot to assert".
-
-Demonstrated on a live two-workspace fleet with a database per workspace
-(`scripts/job-workspace-proof.ts run`): jobs enqueued for each workspace executed only
-against that workspace's own database (confirmed by `current_database()`, not by name),
-zero cross-workspace observations in both orderings, and a row planted in one
-workspace's queue but stamped for the other was refused:
-
-```
-job REFUSED: row workspace does not match the workspace scope that claimed it
-last_error = workspace mismatch: row is stamped inst_…bravo, scope is inst_…alpha
-```
+An earlier pooled build stamped every row with the workspace that enqueued it
+and refused a claim whose stamp did not match the ambient scope. With one
+workspace there is nothing to compare, so rows carry no tenant column
+(migration 0324) and a claim has nothing to assert beyond the lease.
 
 ## 5. Start-by-id, and the sweeper
 
 Happy-path dispatch is **claim this `job_id` now**. After a `job_queue` insert
-commits, `noteDurableWork` carries the id. Self-host `ROLE=all` / the worker
-calls `claimById` (same lease stamp as `claimJobs`) and `runJob`. Cloud
-`ROLE=web` POSTs `{ workspaceKey, jobIds }` to
+commits, `noteDurableWork` carries the id. `ROLE=all` / the worker calls
+`claimById` (same lease stamp as `claimJobs`) and `runJob`. A split deployment
+(`ROLE=web` plus a worker) POSTs `{ jobIds }` to
 `QUACKBACK_JOB_WORKER_URL/api/internal/job-wake`; the worker does the same
-claim. A parked workspace's loop is started, then the id is claimed.
+claim.
 
 The poll loop is the **sweeper**, not how Slack work starts. Lost HTTP, a
 full concurrency slot, or a worker restart still drain on
@@ -186,53 +171,26 @@ rather than falling back to a permissive reading. A mis-parsed cron expression
 changes a sweep's cadence with no error anywhere, which is not a failure mode a
 scheduler should be able to have.
 
-### A fleet does not start a slot on the same second
+### Every replica starts a slot on the cron's own minute
 
-Every pooled workspace loop evaluates the same crons, so a plain slot is a
-fleet-wide starting gun: an hourly sweep starts in every workspace at once and
-the shared database takes the whole fleet's work in one burst. Measured on a
-fleet of about two hundred workspaces, every hourly `analytics` refresh started
-inside one minute and the database ran out of memory.
+A slot is the cron's instant, and the unique index on `(queue, dedupe_key)` is
+what makes it run once: two replicas racing the same tick both attempt the
+insert and the database settles it. Nothing schedules per workspace any more, so
+there is no spread key and no offset — the scheduler evaluates the cron against
+`now` and adopts or runs the slot it sees.
 
-So a pooled loop's scheduler carries a **spread key** (its workspace key) and
-evaluates each cron a fixed offset behind real time. `scheduleOffsetMs` derives
-the offset from a stable hash of the key, scaled into the
-schedule's spread window: the smallest gap between two of its slots, capped at an hour.
-A per-minute sweep therefore starts somewhere inside its minute, a five-minutely
-one inside its five minutes, and an hourly or daily one somewhere inside an
-hour.
+### The scheduler's memory is passed in
 
-- **The slot does not move.** The dedupe key and `scheduledFor` are the slot's
-  instant, so each slot still runs once, and a replica that computes a
-  different offset (or none) dedupes against this one.
-- **The offset is stable**, so a workspace starts a schedule at the same point
-  in every slot and replicas agree without coordinating.
-- **A workspace's schedules on one cadence share its offset**, so its loop
-  still wakes once a minute for its per-minute sweeps. Each tick asks every
-  schedule's gate, and some gates query the database; an offset per schedule
-  would multiply those queries across the fleet.
-- **A single-workspace install has no spread key** and runs on the cron's own
-  minute, exactly as before.
-
-### The scheduler's memory is per workspace, and that is structural
-
-`ScheduleState` is created by each workspace loop and **passed in**. It was a
-module-scope `Map` keyed on the schedule name, and that is a cross-workspace defect:
-one process runs one loop per workspace, so whichever workspace reached a slot first
-advanced a counter every other workspace then read as "already done". Measured live
-on two workspaces, each minute's sweep landed on exactly one of them. It
-affected every scheduled sweep, and only `page-view-partitions` had a backstop.
-
-Keying the map by workspace would have fixed the instance. Making the state a
-parameter fixes the class — there is no shared object left to key wrongly, and
-the compiler names every caller that has to decide whose state it is.
+`ScheduleState` is created by the worker and **passed in**, rather than held at
+module scope. A module-scope `Map` would be shared by any second scheduler in
+the process (a test, a second worker), letting one scheduler's progress suppress
+another's slots.
 
 `ScheduleTickResult` reports `attempted` alongside `enqueued` for the same
 reason. `enqueued` is what the database accepted, so it is 0 when another replica
 won the slot — a healthy race. `attempted` is this scheduler's own decision, and
 it is the only thing that separates "another replica got there first" from
-"this scheduler never considered the slot due", which is what shared state
-produced.
+"this scheduler never considered the slot due".
 
 ### Daylight saving
 
@@ -273,17 +231,16 @@ the next day's run restores it.
 
 ## 7. Shape of the worker
 
-`loops.ts` runs **one poll loop per workspace**. `workspaces/fleet.ts` already
-answers "iterate all workspaces per tick", and that is the right answer for a
-periodic sweep and the wrong one for a queue: the latency of an on-demand job
-would become the tick interval times the workspace count.
+`worker.ts` runs **one poll loop for the install**. The loop claims from the
+single queue, schedules the crons and reaps expired leases; the pool it drains
+through is capped per queue.
 
-`QUACKBACK_ROLE=web` does not start the job worker. Cloud runs a dedicated
-`QUACKBACK_ROLE=worker` replica with a loop per active workspace. Unset
-`QUACKBACK_ROLE` still means `all` (self-host).
+`QUACKBACK_ROLE=web` does not start the job worker. A split deployment runs a
+dedicated `QUACKBACK_ROLE=worker` replica. Unset `QUACKBACK_ROLE` still means
+`all` (a single-process install).
 
-A workspace whose database has not yet run the job-queue migration is
-**skipped with a warning**, not crash-looped.
+A database that has not yet run the job-queue migration is **skipped with a
+warning**, not crash-looped.
 
 ## 8. Configuration
 
@@ -291,15 +248,15 @@ Read from `process.env` directly rather than through the zod config, matching
 `process-role.ts`: these must work in any context, including a worker process that
 has not loaded the full application config.
 
-| Variable                   | Default | Meaning                                                                                                                                                                                 |
-| -------------------------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `JOB_POLL_INTERVAL_MS`     | 1000    | Longest an idle workspace loop sleeps. It wakes sooner for its next schedule slot or a delayed job (§5). Under pooled tenancy, a minute keeps each loop to one wake per slot            |
-| `JOB_BATCH_SIZE`           | 5       | Jobs claimed per drain pass                                                                                                                                                             |
-| `JOB_REAP_INTERVAL_MS`     | 15000   | How often expired leases are adjudicated                                                                                                                                                |
-| `JOB_PRUNE_INTERVAL_MS`    | 1 hour  | How often terminal rows past retention are dropped (a per-workspace table scan; keep it slow)                                                                                           |
-| `JOB_RETENTION_MS`         | 7 days  | How long terminal rows are kept. Must exceed any live cron slot key                                                                                                                     |
-| `QUACKBACK_DISABLED_JOBS`  | unset   | Comma list of job names to pause, e.g. `spam-retention,file-retention`. See below                                                                                                       |
-| `QUACKBACK_JOB_WORKER_URL` | unset   | Cloud web only: origin of the worker (`http://worker.railway.internal:3000`). Publisher also requires `QUACKBACK_FLEET_INTERNAL_TOKEN`. Unset, rejected, or token-missing = poll floor. |
+| Variable                   | Default | Meaning                                                                                                                                                                                        |
+| -------------------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `JOB_POLL_INTERVAL_MS`     | 1000    | Longest an idle loop sleeps. It wakes sooner for its next schedule slot or a delayed job (§5)                                                                                                  |
+| `JOB_BATCH_SIZE`           | 5       | Jobs claimed per drain pass                                                                                                                                                                    |
+| `JOB_REAP_INTERVAL_MS`     | 15000   | How often expired leases are adjudicated                                                                                                                                                       |
+| `JOB_PRUNE_INTERVAL_MS`    | 1 hour  | How often terminal rows past retention are dropped (a table scan; keep it slow)                                                                                                                |
+| `JOB_RETENTION_MS`         | 7 days  | How long terminal rows are kept. Must exceed any live cron slot key                                                                                                                            |
+| `QUACKBACK_DISABLED_JOBS`  | unset   | Comma list of job names to pause, e.g. `spam-retention,file-retention`. See below                                                                                                              |
+| `QUACKBACK_JOB_WORKER_URL` | unset   | Split deployment only: origin of the worker (`http://worker.railway.internal:3000`). Publisher also requires `QUACKBACK_FLEET_INTERNAL_TOKEN`. Unset, rejected, or token-missing = poll floor. |
 
 ### Pausing a job
 
@@ -307,8 +264,8 @@ has not loaded the full application config.
 queue names in §10. A paused schedule writes no row, as a shut `cronEnabled`
 gate does. A paused queue's rows stay `pending` with no attempt spent: no claim
 path takes them (the poll or start-by-id), and they never fail because of the
-pause. Neither its rows nor its schedule's deadline keep a parked workspace
-awake or wake it. Take the name off the list and restart, and the rows run.
+pause. Neither its rows nor its schedule's deadline keep the loop awake. Take
+the name off the list and restart, and the rows run.
 
 Each worker start logs one `job paused` line per paused job, and a warning for
 a name that matches no job (which is ignored), so a forgotten pause shows up in
@@ -322,8 +279,8 @@ active would hide the pause from the person waiting on the work.
 
 Every execution is one structured NDJSON line on stdout. A worker replica
 (`QUACKBACK_ROLE=worker`) binds `service_name=quackback-worker`. Filter on
-`event` plus `workspace_key` / `queue`. **Payloads are never logged** — IDs
-only (`job_id`, `dedupe_key`, `attempt`, `max_attempts`, `duration_ms`).
+`event` plus `queue`. **Payloads are never logged** — IDs only (`job_id`,
+`dedupe_key`, `attempt`, `max_attempts`, `duration_ms`).
 
 | `event`              | level        | `msg`                    | when                                              |
 | -------------------- | ------------ | ------------------------ | ------------------------------------------------- |
@@ -331,9 +288,9 @@ only (`job_id`, `dedupe_key`, `attempt`, `max_attempts`, `duration_ms`).
 | `job.finished`       | info         | `job finished`           | handler succeeded and the lease completed         |
 | `job.retrying`       | warn         | `job retrying`           | handler threw, attempts remain                    |
 | `job.failed`         | error        | `job failed`             | terminal failure, no handler, or lost lease       |
-| `job.loop_started`   | info         | `job loop started`       | a workspace's poll loop armed                     |
-| `job.loop_stopped`   | info         | `job loop stopped`       | that loop drained (workspace left, or shutdown)   |
-| `job.worker_started` | info         | `job worker started (…)` | worker process has loops running                  |
+| `job.loop_started`   | info         | `job loop started`       | the poll loop armed                               |
+| `job.loop_stopped`   | info         | `job loop stopped`       | that loop drained (shutdown)                      |
+| `job.worker_started` | info         | `job worker started (…)` | worker process has a loop running                 |
 | `job.worker_stopped` | info         | `job worker stopped`     | worker process drained the loops                  |
 | `job.lease_expired`  | warn / error | `expired lease …`        | reaper requeued or terminally failed a dead lease |
 
@@ -341,75 +298,21 @@ only (`job_id`, `dedupe_key`, `attempt`, `max_attempts`, `duration_ms`).
 `lease_lost`. A Railway search on `event:"job.failed"` is the pageable set;
 retries are `job.retrying` so they do not sit in the same bucket.
 
-## 9. Workspace scope, and the shape this must not reproduce
+## 9. Module-load order
 
-A BullMQ `Worker` constructed inside a request's workspace scope **inherits that
-scope for every job it ever processes** — the constructor captures the
-AsyncLocalStorage context, and the queue modules that armed lazily on first
-enqueue armed inside whatever request reached them first. Measured on the
-BullMQ side with real Redis. No such module remains; the import hazard below
-is what outlived them.
+A BullMQ `Worker` constructed inside a request used to capture that request
+context for every job it ever processed, and lazily-armed queue modules did the
+same. The same hazard survives in a weaker form with no scopes: a handler
+module that captures per-request state at its top level would capture whatever
+request loaded it first, and be shared process-wide afterwards.
 
-This queue does not have that shape, and it is worth being precise about why
-rather than asserting it:
-
-- **`loops.ts` opens a fresh `withWorkspaceScopeById(...)` around every pass.** The
-  scope a handler runs in belongs to the pass that is running it. There is no
-  long-lived worker object holding one.
-- **The heartbeat timer is created inside that scope and cleared before the pass
-  ends**, so it inherits the scope of its own job — which is correct — and cannot
-  outlive it.
-- **Handler modules are imported once at tier start, before any scope is open**
-  (`primeJobHandlers()`). That closes the quieter version of the same risk: a
-  dynamic `import()` executed inside a workspace scope would run the module's top
-  level under that workspace's connection.
-
-  **That guarantee reaches exactly as far as the static import graph, and an
-  earlier version of this document overstated it.** Priming loads every
-  handler _wrapper_ module; three of them deferred their sweep modules to call
-  time, which is inside the per-pass workspace scope — and `resolveHandler`'s
-  warning could not see it, because it only guards the outer import. Proven on
-  the pooled fleet with a top-level probe in `sla.sweep.ts`: `(module not
-imported)` after priming, `inst_gauntlet_alpha` after the job worker ran the sweep.
-
-  Those imports are now static, and `__tests__/handler-imports.test.ts` scans
-  every registered handler module and fails on a call-time `import(`. A source
-  scan rather than a runtime assertion, because the property is about _when_ a
-  module loaded and the module registry keeps no record of the scope it loaded
-  under. `__tests__/priming.test.ts` pins the other half — that priming actually
-  runs — because the scan proves only that the modules _can_ be primed.
-
-  **The scan is one level deep, and the boundary is a cross-piece contract.** It
-  reads the wrapper files named by `JOB_DEFINITIONS`, not their graph. Deepening it was measured and
-  rejected: the modules those wrappers statically import carry 32 call-time imports
-  across 12 files (`settings.service` 24, `conversation.service` 6,
-  `pending-actions.service` 2) — ordinary lazy loading, none of it
-  queue-specific. So the guarantee is: **the wrappers and their static graph load
-  before any scope opens.** Deeper than that, a call-time import runs under
-  whatever scope its caller has, which for a request is the _correct_ workspace; the
-  hazard is only that the module is then shared process-wide, and only if it
-  captured scope-dependent state at its top level.
-
-  **That other half is `lib/server/policy/module-state/`**, the §4.4 scanner,
-  which owns every module-scope mutable-state site it can see under
-  `lib/server/**`, against a checked-in ledger, **with its recall limits recorded
-  in that module's README**. Being a source scan, load order is irrelevant to it
-  — it sees a captured singleton whether the module loaded at prime time, at call
-  time, or never. That property is the reason coverage genuinely lives elsewhere
-  rather than nowhere.
-
-  **So state the dependency honestly: this piece's boundary is sound to exactly
-  the degree that scanner's recall is.** It is the reason this piece declined to
-  deepen its own scan, so a reader who later doubts the scanner needs to be able
-  to find the limit rather than discover it. One gap is worth naming here because
-  it is invisible from the ledger: `walkSourceFiles` skips `__tests__`,
-  `node_modules`, `dist` and any `*.test.ts`, so a captured singleton in a
-  server-side **test helper** is outside the contract entirely. Correct to skip —
-  a test helper is not shipped — but not covered, and nobody should assume
-  otherwise.
-
-  A memo miss still resolves and logs — but that path only covers the wrapper,
-  so the scan is what actually holds the property.
+- **Handler modules are imported once at tier start**, before any request is
+  served (`primeJobHandlers()`), so the memo is a pure lookup and a miss still
+  resolves for a direct `runJob` in a test.
+- **`__tests__/handler-imports.test.ts`** scans every registered handler module
+  and fails on a call-time `import(`; `lib/server/policy/module-state/` owns the
+  module-scope mutable-state ledger, with its recall limits recorded in that
+  module's README.
 
 ## 10. What runs here
 
@@ -422,49 +325,37 @@ went stale the moment a queue moved.
 
 <!-- QUEUE-TABLE:START — generated from JOB_DEFINITIONS; do not hand-edit -->
 
-| Queue                           | Schedule       | Concurrency | Attempts | Lease |
-| ------------------------------- | -------------- | ----------- | -------- | ----- |
-| `slack-hook`                    | —              | 1           | 3        | 60s   |
-| `integration-deliveries-sweep`  | `0 3 * * *`    | 1           | 1        | 60s   |
-| `integration-install-cleanup`   | —              | 1           | 1        | 60s   |
-| `integration-installs-backfill` | —              | 1           | 1        | 60s   |
-| `anon-sweep`                    | `0 3 * * *`    | 1           | 3        | 60s   |
-| `page-view-partitions`          | `30 2 * * *`   | 1           | 3        | 60s   |
-| `sla-breach-sweep`              | `* * * * *`    | 1           | 3        | 60s   |
-| `snooze-sweep`                  | `* * * * *`    | 1           | 3        | 60s   |
-| `workflow-sweep`                | `*/5 * * * *`  | 1           | 3        | 60s   |
-| `workflow-retention`            | `0 4 * * *`    | 1           | 3        | 60s   |
-| `email-log-retention`           | `0 6 * * *`    | 1           | 3        | 60s   |
-| `onboarding-email`              | —              | 1           | 3        | 60s   |
-| `spam-retention`                | `0 5 * * *`    | 1           | 3        | 60s   |
-| `sending-domain-recheck`        | `20 6 * * *`   | 1           | 3        | 60s   |
-| `sending-domain-watch`          | `7/10 * * * *` | 1           | 1        | 60s   |
-| `domain-ownership-watch`        | `50 6 * * *`   | 1           | 3        | 60s   |
-| `ses-tenant-reconcile`          | `41 * * * *`   | 1           | 3        | 60s   |
-| `analytics`                     | `0 * * * *`    | 1           | 3        | 60s   |
-| `startup-backfill`              | `15 * * * *`   | 1           | 20       | 60s   |
-| `ticket-frt-reconcile`          | —              | 1           | 20       | 60s   |
-| `deferred-index-build`          | `35 * * * *`   | 1           | 5        | 60s   |
-| `events`                        | —              | 5           | 6        | 60s   |
-| `integration-sync`              | —              | 5           | 6        | 90s   |
-| `integration-sync-sweep`        | `* * * * *`    | 1           | 1        | 60s   |
-| `integration-sync-retention`    | `45 2 * * *`   | 1           | 3        | 60s   |
-| `jira-webhook-refresh`          | `* * * * *`    | 1           | 3        | 60s   |
-| `event-dispatch`                | —              | 5           | 10       | 60s   |
-| `event-reactions`               | —              | 1           | 3        | 60s   |
-| `event-summaries`               | —              | 2           | 3        | 60s   |
-| `segment-evaluation`            | dynamic        | 2           | 3        | 60s   |
-| `file-preview`                  | —              | 2           | 2        | 120s  |
-| `file-retention`                | `40 4 * * *`   | 1           | 3        | 60s   |
-| `help-center-translate`         | —              | 1           | 3        | 120s  |
-| `help-center-translate-resume`  | `25 * * * *`   | 1           | 1        | 60s   |
-| `email-imap`                    | `* * * * *`    | 1           | 1        | 60s   |
-| `workflow-dispatch`             | —              | 1           | 3        | 60s   |
-| `workflow-wait`                 | —              | 4           | 3        | 60s   |
-| `import`                        | —              | 2           | 1        | 60s   |
-| `export`                        | —              | 1           | 1        | 60s   |
-| `membership-sync`               | `*/15 * * * *` | 1           | 10       | 60s   |
-| `usage-report`                  | `10 * * * *`   | 1           | 10       | 60s   |
+| Queue                          | Schedule       | Concurrency | Attempts | Lease |
+| ------------------------------ | -------------- | ----------- | -------- | ----- |
+| `slack-hook`                   | —              | 1           | 3        | 60s   |
+| `integration-deliveries-sweep` | `0 3 * * *`    | 1           | 1        | 60s   |
+| `anon-sweep`                   | `0 3 * * *`    | 1           | 3        | 60s   |
+| `page-view-partitions`         | `30 2 * * *`   | 1           | 3        | 60s   |
+| `sla-breach-sweep`             | `* * * * *`    | 1           | 3        | 60s   |
+| `snooze-sweep`                 | `* * * * *`    | 1           | 3        | 60s   |
+| `email-log-retention`          | `0 6 * * *`    | 1           | 3        | 60s   |
+| `onboarding-email`             | —              | 1           | 3        | 60s   |
+| `spam-retention`               | `0 5 * * *`    | 1           | 3        | 60s   |
+| `sending-domain-recheck`       | `20 6 * * *`   | 1           | 3        | 60s   |
+| `sending-domain-watch`         | `7/10 * * * *` | 1           | 1        | 60s   |
+| `ses-tenant-reconcile`         | `41 * * * *`   | 1           | 3        | 60s   |
+| `analytics`                    | `0 * * * *`    | 1           | 3        | 60s   |
+| `startup-backfill`             | `15 * * * *`   | 1           | 20       | 60s   |
+| `ticket-frt-reconcile`         | —              | 1           | 20       | 60s   |
+| `deferred-index-build`         | `35 * * * *`   | 1           | 5        | 60s   |
+| `events`                       | —              | 5           | 6        | 60s   |
+| `integration-sync`             | —              | 5           | 6        | 90s   |
+| `integration-sync-sweep`       | `* * * * *`    | 1           | 1        | 60s   |
+| `integration-sync-retention`   | `45 2 * * *`   | 1           | 3        | 60s   |
+| `jira-webhook-refresh`         | `* * * * *`    | 1           | 3        | 60s   |
+| `event-dispatch`               | —              | 5           | 10       | 60s   |
+| `event-reactions`              | —              | 1           | 3        | 60s   |
+| `segment-evaluation`           | dynamic        | 2           | 3        | 60s   |
+| `file-preview`                 | —              | 2           | 2        | 120s  |
+| `file-retention`               | `40 4 * * *`   | 1           | 3        | 60s   |
+| `email-imap`                   | `* * * * *`    | 1           | 1        | 60s   |
+| `import`                       | —              | 2           | 1        | 60s   |
+| `export`                       | —              | 1           | 1        | 60s   |
 
 <!-- QUEUE-TABLE:END -->
 
@@ -543,14 +434,14 @@ heavy queue wants. Jobs over the cap stay `pending`, unclaimed, so no lease
 runs down while they wait. The cap is per process: two worker replicas allow
 twice as many.
 
-**The fleet cap rule.** Every new heavy or fleet-wide job sets `fleetConcurrency`
-(2 to 4) and `retryBackoffMs`, as `analytics` does. Heavy means it walks or
-scans a large table or builds an index; fleet-wide means a schedule that runs in
-every workspace. Without the cap, a fleet upgrade or a database restart starts
-the same work in every workspace at once, which is how the hourly `analytics`
-refresh took the database out of memory (§6). `startup-backfill`,
-`ticket-frt-reconcile` and `deferred-index-build` follow it; a guard test
-(`__tests__/upgrade-jobs-fleet-cap.test.ts`) holds them to it.
+**The process cap rule.** Every new heavy job sets `fleetConcurrency` (2 to 4)
+and `retryBackoffMs`, as `analytics` does. Heavy means it walks or scans a large
+table or builds an index. Without the cap, a database restart starts the same
+work in every replica at once, which is how the hourly `analytics` refresh once
+took the database out of memory. `startup-backfill`, `ticket-frt-reconcile` and
+`deferred-index-build` follow it; a guard test
+(`__tests__/upgrade-jobs-fleet-cap.test.ts`) holds them to it. The name predates
+the single-install runtime; it caps work per process, not per workspace.
 
 ### What the move fixed rather than preserved
 
@@ -563,14 +454,13 @@ refresh took the database out of memory (§6). `startup-backfill`,
   parked before waits were sequence-keyed still used.)
 - **Redis held every workspace's payloads in one un-namespaced list per queue.**
   Its shared connection set no key prefix and every queue name was a
-  compile-time constant, so any consumer that ever attached would drain all
-  workspaces from one list with no workspace discriminator. The queue table lives in the workspace's own
-  database, and the claim asserts the row's stamp against the ambient scope.
+  compile-time constant. The queue table now lives in the install's own
+  database, so there is one queue to drain.
 - **Readiness could not see a missing consumer.** `ok = failed === 0` over
   eagerly-initialised workers reported `workers ok:true total:0` on a replica
   that had constructed none, because a worker never built is not _failed_. A
-  worker-role process whose loops are not running is now unready, and the payload
-  reports how many workspace loops it is serving.
+  worker-role process whose loop is not running is now unready, and the payload
+  reports whether it is serving.
 - **`segment-evaluation`'s schedules stopped being a second copy.** They were
   repeatable jobs written into Redis, which had to be _restored_ at boot in case
   Redis had been cleared. They are now derived from `segments` rows on every
@@ -621,11 +511,10 @@ cutover has since run: `ioredis` is no longer a dependency, `REDIS_URL` is no
 longer read, and no service provisions a Redis. `policy/no-bullmq/` keeps the
 queue package out.
 
-**`email-imap` refuses to schedule under pooled tenancy** and says so at error.
-Its mailbox is process-wide configuration while the queue is per workspace, so
-scheduling it on every workspace's loop would have each workspace poll the _same_
-mailbox and ingest the same message into its own database. Not a regression: the
-BullMQ worker was never started under pooled tenancy either.
+**`email-imap` is disabled in the shipped defaults** and says so at error. Its
+mailbox is process-wide configuration pointed at one IMAP account; the queue no
+longer carries a tenant dimension, so the risk it used to guard against (every
+workspace polling the same mailbox) is structurally gone.
 
 **Domain events are dispatched through this queue.** `emit()` writes an
 `event-dispatch` job in the same transaction as the outbox row. The former
@@ -800,33 +689,17 @@ run steps 4 and 5 once the older build is up.
 
 ## 11. Running the evidence
 
+The standalone proof scripts this section used to list drove the pooled
+runtime and have been removed with it. What remains is the suite:
+
 ```bash
-# lease semantics, kill at every stage, with the positive control
-DATABASE_URL=... bun run scripts/job-lease-proof.ts kill-matrix
-
-# a job held across minutes of work with no transaction open, then SIGKILL
-DATABASE_URL=... bun run scripts/job-lease-proof.ts long-lease --work-seconds 180
-
-# the workspace boundary, on a real pooled fleet.
-# This is the only harness with a cron schedule — job-lease-proof.ts is
-# single-workspace and could not see a cross-workspace scheduler defect at all.
-env $(cat pooled.env) bun run scripts/job-workspace-proof.ts run --a <id> --b <id>
-env $(cat pooled.env) bun run scripts/job-workspace-proof.ts listen-endpoints
-
-# the eight migrated queues, on a real two-workspace fleet: real producers, the
-# real registry, both orderings, and a positive control that fails the run if
-# any queue produced no effect in either workspace
-env $(cat pooled.env) bun run scripts/job-eight-proof.ts run --a <id> --b <id>
-
-# what the serial drain cost, with the serial shape itself as the control
-DATABASE_URL=... bun run scripts/job-concurrency-proof.ts --work-seconds 130
-
-# the `events` queue's four properties: the custom retry curve, bulk dedupe,
-# cancelable delayed jobs, and webhook auto-disable — each with its control
-DATABASE_URL=... bun run scripts/job-events-proof.ts
-
-# like-for-like against the reference build. The SAME file runs on both trees
-# against ONE seeded database, driving the real producers and reading the rows
-# a caller would poll; it starts whichever consumer the tree has.
-DATABASE_URL=... bun run scripts/queue-parity-probe.ts <label>
+# lease, reaper, fencing, start-by-id and scheduling, against real Postgres
+bunx vitest run apps/web/src/lib/server/jobs
+# the stores that replaced Redis (TTL, NX, atomic increments, concurrent claims)
+bunx vitest run apps/web/src/lib/server/kv
+# pubsub and presence over real LISTEN connections
+bunx vitest run apps/web/src/lib/server/realtime
 ```
+
+The kill-matrix and the reference parity probe are recorded in the git history
+of the trees they measured; their scripts are not part of this build.

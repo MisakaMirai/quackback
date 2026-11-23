@@ -10,12 +10,7 @@
 
 import { createDb, type Database as PostgresDatabase } from '@quackback/db/client'
 import { config } from '@/lib/server/config'
-import { isPooledTenancy } from '@/lib/server/workspaces/mode'
-import {
-  getScopedDatabase,
-  WorkspaceScopeMissingError,
-} from '@/lib/server/workspaces/workspace-context'
-import { wrapDbTransaction } from '@/lib/server/workspaces/after-commit'
+import { wrapDbTransaction } from '@/lib/server/jobs/after-commit'
 import { countingQueryLogger } from '@/lib/server/request-metrics'
 
 // Import drizzle-orm operators explicitly to work around Nitro bundler issues
@@ -76,6 +71,16 @@ export const max = _max
 
 // Database type - postgres.js for self-hosted
 export type Database = PostgresDatabase
+/**
+ * A transaction handle.
+ *
+ * Inside a `db.transaction(async (tx) => ...)` callback every query MUST go
+ * through `tx`, or through a helper that accepts the transaction. Calling the
+ * global `db` there requests a SECOND connection from the pool while the first
+ * one is still held: a one-slot pool deadlocks, and a larger pool can exhaust
+ * itself under concurrency. Helpers that may run either standalone or in a
+ * caller's transaction take an `executor`/`tx` parameter for exactly this.
+ */
 export type Transaction = Parameters<Parameters<Database['transaction']>[0]>[0]
 
 // Use globalThis to persist database instance across hot reloads in development
@@ -84,34 +89,11 @@ declare global {
 }
 
 /**
- * Get the database instance for the caller's scope.
+ * The process's database, from `DATABASE_URL`.
  *
- * Two modes, decided by `QUACKBACK_TENANCY`:
- *
- * - **`single`** (the default, and every self-hosted install): one memoized
- *   connection from `DATABASE_URL`. Byte-for-byte the behaviour this function
- *   has always had.
- * - **`pooled`**: the connection belongs to whichever workspace the request
- *   resolved to, and there is no fleet-wide fallback. A missing scope throws.
- *   That is deliberate and it is the point — SAAS-HOSTING-STACK.md §3 is the
- *   observation that a *wrong* pool passes every RBAC and permission check,
- *   because that database's own rows are self-consistent. A silent default
- *   would be the same failure with a friendlier name.
+ * Memoized on `globalThis` so a development reload does not open a second pool.
  */
 function getDatabase(): Database {
-  const scoped = getScopedDatabase()
-  if (scoped) return scoped
-
-  // Read from the environment rather than through `config`. `config` validates
-  // the whole application configuration, and making the first `db` access
-  // anywhere do that would turn an unrelated missing variable into a database
-  // error — including inside unit tests that mock `db` and never wanted a
-  // config. `tenancy/mode.ts` documents the pairing, and a test pins the two
-  // readings together.
-  if (isPooledTenancy()) {
-    throw new WorkspaceScopeMissingError('A `db` call was made with no workspace resolved.')
-  }
-
   if (!globalThis.__db) {
     globalThis.__db = createDb(config.databaseUrl, {
       max: config.dbPoolMax,
@@ -125,22 +107,13 @@ function getDatabase(): Database {
 /**
  * Database instance.
  *
- * A Proxy, so 537 importing files never learn that the connection became
- * per-request. The trap resolves the handle on every property access; the call
- * sites are unchanged.
+ * A Proxy, so the 500-odd importing files never learn that the handle is
+ * resolved lazily. The trap resolves the memoized handle on every property
+ * access, so a module imported before `DATABASE_URL` is readable still works.
  *
- * **`this` matters here, and it did not used to.** The previous trap returned
- * the raw property, so `db.select(...)` ran with `this === proxy`. That was a
- * latent bug that only worked because `getDatabase()` returned one memoized
- * singleton, which made `this.session` re-derive the same object anyway. Once
- * the trap can resolve *different* handles, an unbound method called on the
- * proxy would re-enter the trap for its own internals and could pick up a
- * different workspace's session part-way through a statement. So functions are
- * bound to the handle they came from, and `Reflect.get` is given that same
- * handle as the receiver so getters resolve against the real object rather than
- * the proxy. The pattern is not new to the codebase —
- * `__tests__/db-test-fixture.ts` already binds function properties for exactly
- * this reason.
+ * Functions are bound to the handle they came from and `Reflect.get` is given
+ * that same handle as the receiver, so getters resolve against the real object
+ * rather than the proxy.
  */
 export const db: Database = new Proxy({} as Database, {
   get(_target, prop) {
@@ -148,8 +121,8 @@ export const db: Database = new Proxy({} as Database, {
     const value = Reflect.get(database as object, prop, database)
     if (typeof value !== 'function') return value
     const bound = value.bind(database)
-    // Every domain transaction participates in after-commit workspace
-    // signaling. Nested calls are savepoints; only the outer commit flushes.
+    // Every domain transaction participates in after-commit signalling. Nested
+    // calls are savepoints; only the outer commit flushes.
     if (prop === 'transaction') return wrapDbTransaction(bound)
     return bound
   },
@@ -188,16 +161,12 @@ export {
   sessionRelations,
   settings,
   settingsRelations,
-  workspaceExperiments,
-  workspaceExperimentsRelations,
   identityProvider,
   ssoVerifiedDomain,
   twoFactor,
   user,
   userRelations,
   verification,
-  widgetOriginSession,
-  widgetIdentifiedSession,
   // Schema tables - boards
   boards,
   boardsRelations,
@@ -231,9 +200,6 @@ export {
   postTagAssignmentsRelations,
   postVotes,
   postVotesRelations,
-  // Schema tables - companies
-  companies,
-  companiesRelations,
   // Schema tables - teams
   teams,
   teamsRelations,
@@ -260,18 +226,11 @@ export {
   emailSendingDomains,
   emailSesTenants,
   emailSenders,
-  // Schema tables - domains added by name (Settings > Domains)
-  domains,
   EMAIL_SENDER_SURFACES,
   // Schema tables - office hours + SLA (support platform §4.6)
   officeHoursSchedules,
   slaPolicies,
   slaEvents,
-  // Schema tables - workflows engine (support platform §4.6)
-  workflows,
-  workflowRuns,
-  workflowRunEvents,
-  workflowVersions,
   // Schema tables - integrations
   integrationEventMappings,
   integrationEventMappingsRelations,
@@ -305,7 +264,6 @@ export {
   conversations,
   conversationsRelations,
   conversationMessages,
-  workspaceAssistantThreads,
   conversationMessagesRelations,
   conversationTags,
   conversationTagsRelations,
@@ -318,14 +276,8 @@ export {
   conversationMessageReactionsRelations,
   conversationMessageFlags,
   conversationMessageFlagsRelations,
-  conversationMessageTranslations,
-  conversationMessageTranslationsRelations,
   // Schema tables - past-conversation summaries (Quinn grounding, P2-A.4)
-  conversationSummaries,
-  conversationSummariesRelations,
   // Schema tables - closed-ticket resolution summaries (Quinn grounding, Phase 4)
-  ticketSummaries,
-  ticketSummariesRelations,
   // Schema tables - custom saved inbox views + per-user pins
   conversationViews,
   conversationViewPins,
@@ -352,8 +304,6 @@ export {
   onboardingEmails,
   unsubscribeTokensRelations,
   // Schema tables - sentiment
-  postSentiment,
-  postSentimentRelations,
   // Schema tables - api keys
   apiKeys,
   apiKeysRelations,
@@ -364,8 +314,6 @@ export {
   hookDeliveries,
   // Schema tables - durable event outbox (EVENTING-V2 spine)
   events,
-  // Schema tables - third-party app platform
-  apps,
   // Schema tables - audit log
   auditLog,
   RESTORE_SETTLEMENT_AUDIT_EVENT,
@@ -392,16 +340,11 @@ export {
   userTagsRelations,
   userTagAssignments,
   userTagAssignmentsRelations,
-  // Schema tables - company attributes
-  companyAttributeDefinitions,
   // Schema tables - merge suggestions
-  mergeSuggestions,
-  mergeSuggestionsRelations,
   // Schema tables - activity
   postActivity,
   postActivityRelations,
   // Schema tables - ai usage log
-  aiUsageLog,
   emailLog,
   // Schema tables - analytics
   analyticsDailyStats,
@@ -414,6 +357,8 @@ export {
   VISITOR_SURFACES,
   VISITOR_TOP_DIMENSIONS,
   ensurePageViewPartitions,
+  ensurePageViewPartitionForToday,
+  isMissingPageViewPartition,
   dropExpiredPageViewPartitions,
   refreshVisitorAnalytics,
   VISITOR_PERIODS,
@@ -448,40 +393,10 @@ export {
   statusSubscriptions,
   statusSubscriptionsRelations,
   statusIncidentTemplates,
-  // Schema tables - push devices
-  pushDevices,
-  // Schema tables - assistant (Quinn) involvement record
-  assistantInvolvements,
-  ASSISTANT_INVOLVEMENT_TRIGGERS,
-  ASSISTANT_INVOLVEMENT_STATUSES,
-  ASSISTANT_HANDOFF_REASONS,
-  ASSISTANT_MODEL_HANDOFF_REASONS,
-  // Schema tables - assistant guidance rules
-  assistantGuidanceRules,
-  connectors,
-  connectorsRelations,
-  type CachedConnectorTool,
-  type ConnectorToolPolicies,
-  type ConnectorAssignments,
-  type ConnectorAuthMode,
-  type ConnectorStatus,
-  type ConnectorToolPolicy,
-  agentSkills,
-  agentSkillsRelations,
-  type SkillAssignments,
-  // Schema tables - assistant snippets
-  assistantSnippets,
-  assistantSnippetsRelations,
-  // Schema tables - assistant knowledge documents
-  assistantDocuments,
-  assistantDocumentsRelations,
   files,
   filesRelations,
   // Schema tables - assistant web sources
-  assistantWebSources,
   // Schema tables - assistant pending actions
-  assistantPendingActions,
-  ASSISTANT_PENDING_ACTION_STATUSES,
   APPROVAL_RISKS,
   APPROVAL_REQUEST_CHANNELS,
   APPROVAL_DECISION_CHANNELS,
@@ -491,12 +406,8 @@ export {
   type ApprovalDecisionChannel,
   type ApprovalExecutionState,
   // Schema tables - assistant tool-call audit log
-  assistantToolCalls,
-  ASSISTANT_TOOL_CALL_STATUSES,
-  // Schema tables - assistant usage events (Copilot outcome loop)
-  assistantEvents,
+  // Retired assistant tables are no longer exported.
   slackUserLinks,
-  slackThreadSessions,
   integrationDeliveries,
   integrationSyncOperations,
   integrationSyncAttempts,
@@ -540,23 +451,8 @@ export {
 } from '@quackback/db/schema-ops'
 
 // Re-export schema types not covered by @quackback/db/types
-export type {
-  AssistantInvolvementSource,
-  AssistantInvolvementStatus,
-  AssistantInvolvementTrigger,
-  AssistantHandoffReason,
-  AssistantPendingActionStatus,
-  AssistantToolCallStatus,
-  AssistantSnippet,
-  AssistantWebSource,
-  ConversationSummary,
-  MacroScope,
-  MacroPriority,
-  MacroSnoozePreset,
-  MacroAction,
-} from '@quackback/db'
+export type { MacroScope, MacroPriority, MacroSnoozePreset, MacroAction } from '@quackback/db'
 export type { ServiceMetadata } from '@quackback/db'
-export type { Domain, DomainStatus } from '@quackback/db'
 export type { FileRecord, NewFileRecord } from '@quackback/db'
 export type { IdentityProviderClaimMapping, ClaimRoleMapping } from '@quackback/db'
 export type { PermissionKey, PermissionCategory, SystemRoleKey } from '@quackback/db'
@@ -597,15 +493,6 @@ export type {
   ImportRunErrorEntry,
 } from '@quackback/db'
 export type { ExportRunStatus, ExportRunEntityCounts } from '@quackback/db'
-export type {
-  Workflow,
-  WorkflowRun,
-  WorkflowRunEvent,
-  WorkflowVersion,
-  WorkflowClass,
-  WorkflowStatus,
-  WorkflowRunState,
-} from '@quackback/db'
 
 // Re-export types (for client components that need types without side effects)
 export * from '@quackback/db/types'

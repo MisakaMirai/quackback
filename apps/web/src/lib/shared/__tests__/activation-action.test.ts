@@ -12,8 +12,6 @@ const base: LaunchStatus = {
   hasPublicBoard: false,
   memberCount: 1,
   hasBranding: false,
-  hasWidgetInstalled: false,
-  hasMessengerEnabled: false,
   hasFirstWin: false,
   useCase: 'product_feedback',
 }
@@ -47,7 +45,6 @@ describe('selectActivationAction', () => {
           brandingManage: false,
           integrationManage: false,
           helpCenterManage: false,
-          assistantManage: false,
         },
       })
     ).toBeNull()
@@ -78,53 +75,23 @@ describe('selectActivationAction', () => {
     })
   })
 
-  it.each([
-    { publicBoardLinkCopiedAt: '2026-08-14T10:00:00.000Z' },
-    { hasWidgetInstalled: true },
-    { hasFirstWin: true },
-  ])('does not show feedback setup after distribution: %o', (signal) => {
-    expect(
-      action('feedback_empty', {
-        hasPublicBoard: true,
-        publicBoardId: 'board_1',
-        publicBoardPath: '/?board=feedback',
-        ...signal,
-      })
-    ).toBeNull()
-  })
+  it.each([{ publicBoardLinkCopiedAt: '2026-08-14T10:00:00.000Z' }, { hasFirstWin: true }])(
+    'does not show feedback setup after distribution: %o',
+    (signal) => {
+      expect(
+        action('feedback_empty', {
+          hasPublicBoard: true,
+          publicBoardId: 'board_1',
+          publicBoardPath: '/?board=feedback',
+          ...signal,
+        })
+      ).toBeNull()
+    }
+  )
 
-  it('connects Messenger only for the customer-support outcome', () => {
-    expect(action('conversation_empty', { useCase: 'customer_support' })).toMatchObject({
-      id: 'connect-messenger',
-      destination: '/admin/settings/widget/install',
-    })
+  it('offers no Messenger-install action from the empty inbox', () => {
+    expect(action('conversation_empty', { useCase: 'customer_support' })).toBeNull()
     expect(action('conversation_empty', { useCase: 'product_feedback' })).toBeNull()
-  })
-
-  it('opens the observed site after Messenger installation', () => {
-    expect(
-      action('conversation_empty', {
-        useCase: 'customer_support',
-        hasWidgetInstalled: true,
-        widgetOriginHost: 'app.example.com',
-      })
-    ).toEqual({
-      id: 'open-installed-site',
-      outcome: 'customer_support',
-      label: 'Open your site',
-      kind: 'external',
-      destination: 'https://app.example.com',
-    })
-  })
-
-  it('refuses to turn malformed observed hostnames into external links', () => {
-    expect(
-      action('conversation_empty', {
-        useCase: 'customer_support',
-        hasWidgetInstalled: true,
-        widgetOriginHost: 'example.com/path',
-      })
-    ).toBeNull()
   })
 
   const createdBoard: StartingPointState = {
@@ -192,8 +159,8 @@ describe('selectActivationAction', () => {
         resolution: 'created' as const,
         completedAt: '2026-08-14T12:00:00.000Z',
       },
-      id: 'connect-messenger',
-      destination: '/admin/settings/widget/install',
+      id: 'open-launch-plan',
+      destination: '/admin',
     },
     {
       startingPoint: {
@@ -225,11 +192,11 @@ describe('selectActivationAction', () => {
     expect(ctas.share).toBeNull()
   })
 
-  it('does not offer Messenger as the product-feedback Ready action', () => {
+  it('does not offer a Messenger-install link as the product-feedback Ready action', () => {
     const ctas = resolveOnboardingHandoffCtas({
       startingPoint: createdBoard,
       status: { ...base, useCase: 'product_feedback' },
     })
-    expect(ctas.primary.id).not.toBe('connect-messenger')
+    expect(ctas.primary.id).toBe('open-feedback-board')
   })
 })

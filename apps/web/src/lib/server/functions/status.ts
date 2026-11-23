@@ -72,7 +72,6 @@ import {
   getStatusSettings,
   updateStatusSettings,
 } from '@/lib/server/domains/settings/settings.status'
-import { enforceStatusComponentLimit } from '@/lib/server/domains/settings/tier-enforce'
 import {
   statusSettingsSchema,
   DEFAULT_STATUS_SETTINGS,
@@ -195,7 +194,6 @@ export const createStatusComponentFn = createServerFn({ method: 'POST' })
   .handler(async ({ data }) => {
     log.debug({ name: data.name }, 'create status component')
     await requireAuth({ permission: PERMISSIONS.STATUS_PAGE_MANAGE })
-    await enforceStatusComponentLimit()
     return await createStatusComponent({
       name: data.name,
       description: data.description ?? null,

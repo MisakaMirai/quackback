@@ -43,7 +43,7 @@ describe('policy authorize', () => {
   })
 
   it('resolveActorPermissions expands the role (null/anonymous -> empty)', () => {
-    expect(resolveActorPermissions('admin').has(PERMISSIONS.BILLING_MANAGE)).toBe(true)
+    expect(resolveActorPermissions('admin').has(PERMISSIONS.AUDIT_VIEW)).toBe(true)
     expect(resolveActorPermissions('member').has(PERMISSIONS.SETTINGS_MANAGE)).toBe(false)
     expect(resolveActorPermissions('member').has(PERMISSIONS.POST_EDIT)).toBe(true)
     expect(resolveActorPermissions('user').size).toBe(0)

@@ -20,11 +20,6 @@ vi.mock('@/lib/server/db', async (importOriginal) => {
   }
 })
 
-vi.mock('@/lib/server/workspaces/workspace-context', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/lib/server/workspaces/workspace-context')>()),
-  getCurrentWorkspace: () => ({ workspaceKey: 'ws_emit' }),
-}))
-
 import { db, events, auditLog, eq, and, sql } from '@/lib/server/db'
 import { getExecuteRows } from '@/lib/server/utils/execute-rows'
 import { createId } from '@quackback/ids'
@@ -44,7 +39,7 @@ const auditedDef: EventDefinition<{ postId: string; note: string }> = {
   entity: 'post',
   version: 1,
   payload: z.object({ postId: z.string(), note: z.string() }),
-  exposure: { webhook: false, workflow: false, notification: null, activity: null, audit: true },
+  exposure: { webhook: false, notification: null, activity: null, audit: true },
   category: 'feedback',
   requiredScope: 'read:feedback',
   emits: 'always',
@@ -55,7 +50,7 @@ const plainDef: EventDefinition<{ postId: string }> = {
   entity: 'post',
   version: 2,
   payload: z.object({ postId: z.string() }),
-  exposure: { webhook: true, workflow: false, notification: null, activity: null, audit: false },
+  exposure: { webhook: true, notification: null, activity: null, audit: false },
   category: 'feedback',
   requiredScope: 'read:feedback',
   emits: 'always',
@@ -182,7 +177,7 @@ describe('emit()', () => {
       getExecuteRows<{ queue: string; dedupe_key: string }>(
         await db.execute(sql`
           SELECT queue, dedupe_key FROM job_queue
-          WHERE queue IN ('event-reactions', 'event-summaries')
+          WHERE queue IN ('event-reactions')
             AND payload->>'eventId' = ${eventId}
           ORDER BY queue
         `)
@@ -196,10 +191,9 @@ describe('emit()', () => {
         entityId: reactedEntity,
       })
     )
-    // The ordered reactions and the close summary each get their own job.
+    // The ordered reactions get their own job.
     expect(await reactionJobsFor(reactedId)).toEqual([
       { queue: 'event-reactions', dedupe_key: `event-reactions:${reactedId}` },
-      { queue: 'event-summaries', dedupe_key: `event-summaries:${reactedId}` },
     ])
 
     const plainEntity = createId('post')
@@ -229,7 +223,7 @@ describe('emit()', () => {
     // suite's drain to claim.
     await db.execute(sql`
       DELETE FROM job_queue
-      WHERE queue IN ('event-reactions', 'event-summaries')
+      WHERE queue IN ('event-reactions')
         AND payload->>'eventId' IN (${reactedId}, ${plainId})
     `)
   })

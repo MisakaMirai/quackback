@@ -19,14 +19,13 @@ import { API_KEY_SCOPES, MCP_AS_SCOPES } from '@/lib/server/domains/api-keys/api
 import { config } from '@/lib/server/config'
 import { activeSecretKey } from '@/lib/server/secret-key'
 import { logger } from '@/lib/server/logger'
-import { getWorkspaceScope, runWithWorkspaceScope } from '@/lib/server/workspaces/workspace-context'
-import { WorkspaceKeyedCache } from '@/lib/server/workspaces/workspace-keyed'
+import { BoundedCache } from '@/lib/server/bounded-cache'
 import type { GenericOAuthConfig } from './build-oauth-configs'
 import { guardBetterAuthUserCreation } from './signup-policy'
 import { assignSessionScope } from './session-audience'
 import { isSignInMethodEnabled } from '@/lib/shared/signin-methods'
 import { accountDisplayName } from '@/lib/shared/greeting-name'
-import { workspaceAuthTrustedOrigins } from './trusted-origins'
+import { trustedAuthOrigins } from './trusted-origins'
 import { ensureMcpOauthResource } from './ensure-mcp-oauth-resource'
 import { reconcileMcpOauthClientScopes } from './reconcile-mcp-oauth-client-scopes'
 import { HTTP_DISABLED_AUTH_PATHS } from './http-disabled-paths'
@@ -39,31 +38,22 @@ const log = logger.child({ component: 'auth-config' })
 const STASH_TTL_MS = 30_000
 
 /**
- * A stash entry is a live credential keyed by an email address, and an address
- * is not unique across workspaces: `admin@example.com` can hold an account in
- * any number of them. Keyed by address alone, the second workspace to mint a
- * link for that address overwrites the first, and whichever flow drains the
- * stash next emails a token minted against the other workspace's database —
- * a sign-in link for an account its recipient does not own.
+ * A short-lived stash of credentials keyed by email address, used to carry a
+ * minted link or code from the place it is created to the place it is emailed.
  */
 function makeStash<T>() {
-  const m = new WorkspaceKeyedCache<{ value: T; ts: number }>()
+  const m = new BoundedCache<{ value: T; ts: number }>()
   return {
     set(key: string, value: T) {
       const k = key.toLowerCase()
       m.set(k, { value, ts: Date.now() })
       // The sweep is what stops an undrained token living in heap for the life
-      // of the process, so it has to keep firing. A timer callback runs with no
-      // ambient scope, where every workspace-keyed read resolves to the
-      // single-workspace namespace — it would miss the entry it was armed for and
-      // delete an unrelated one. Re-entering the scope that armed it is the
-      // only way the sweep addresses the same entry `set` just wrote.
-      const scope = getWorkspaceScope()
+      // of the process, so it has to keep firing.
       const sweep = () => {
         const s = m.get(k)
         if (s && Date.now() - s.ts >= STASH_TTL_MS) m.delete(k)
       }
-      setTimeout(() => (scope ? runWithWorkspaceScope(scope, sweep) : sweep()), STASH_TTL_MS)
+      setTimeout(sweep, STASH_TTL_MS)
     },
     take(key: string): T | undefined {
       const k = key.toLowerCase()
@@ -109,29 +99,27 @@ export const getOTP = (purpose: OtpPurpose, email: string) => otpStash.take(otpK
 type AuthInstance = Awaited<ReturnType<typeof createAuth>>['instance']
 
 /**
- * The built auth instance, per workspace.
+ * The built auth instance.
  *
  * The instance closes over a database adapter, a set of registered OAuth
- * providers, this workspace's trusted origins and its base URL — everything
- * that decides who may sign in and where they land. One shared instance in a
- * pooled process authenticates every workspace against whichever workspace built it.
+ * providers, the install's trusted origins and its base URL — everything that
+ * decides who may sign in and where they land.
  *
- * The version guard has to be partitioned with it. `auth_config_version` is a
- * small per-workspace counter, so two workspaces sitting on the same number is
- * routine rather than unlikely; compared across workspaces it reads "unchanged"
- * and hands back a cached instance built for someone else.
+ * The version guard travels with it: `auth_config_version` is the counter that
+ * tells a cached instance its configuration changed, so a settings write reaches
+ * the next request without a restart.
  */
-const authInstances = new WorkspaceKeyedCache<AuthInstance>(256)
+const authInstances = new BoundedCache<AuthInstance>(256)
 // Cross-pod invalidation: the version of `settings.auth_config_version`
 // at the time the cached instance was built. Compared per-request against
 // the current value (via the existing settings cache, no extra DB
 // round-trip). Mismatch → rebuild, other pods' writes propagate.
-const authConfigVersions = new WorkspaceKeyedCache<number>(256)
+const authConfigVersions = new BoundedCache<number>(256)
 const AUTH_CACHE_KEY = 'instance'
 // The build in flight, per workspace. A cold page fans out into several
 // concurrent server-function requests; they share one build rather than each
 // loading every provider's credentials and registering the plugins again.
-const authBuilds = new WorkspaceKeyedCache<Promise<AuthInstance>>(256)
+const authBuilds = new BoundedCache<Promise<AuthInstance>>(256)
 
 /**
  * A workspace whose MCP client scope reconcile has failed and not yet
@@ -142,13 +130,13 @@ interface PendingClientScopeReconcile {
   lastAttemptAt: number
   inFlight: boolean
 }
-const pendingClientScopeReconciles = new WorkspaceKeyedCache<PendingClientScopeReconcile>(256)
+const pendingClientScopeReconciles = new BoundedCache<PendingClientScopeReconcile>(256)
 /** The least time between two attempts at a failed client scope reconcile. */
 const CLIENT_SCOPE_RECONCILE_RETRY_MS = 60_000
 
 type RateLimitCounter = { count: number; lastRequest: number }
 
-const rateLimitCounters = new WorkspaceKeyedCache<RateLimitCounter>(20_000)
+const rateLimitCounters = new BoundedCache<RateLimitCounter>(20_000)
 
 /**
  * Rate-limit counters, partitioned by workspace.
@@ -179,9 +167,9 @@ export const workspaceRateLimitStorage = {
   },
 }
 
-/** Test seam: forget the active workspace's rate-limit counters. */
+/** Test seam: forget the rate-limit counters. */
 export function __resetRateLimitCountersForWorkspace(): void {
-  rateLimitCounters.clearWorkspace()
+  rateLimitCounters.clear()
 }
 
 async function createAuth() {
@@ -212,7 +200,6 @@ async function createAuth() {
   const { getPlatformCredentials } =
     await import('@/lib/server/domains/platform-credentials/platform-credential.service')
   const { getAllAuthProviders, socialProviderConfig } = await import('./auth-providers')
-  const { getTierLimits } = await import('@/lib/server/domains/settings/tier-limits.service')
   const { getWorkspaceSettings } = await import('@/lib/server/domains/settings/settings.service')
   const { listIdentityProviders, getIdentityProviderCredentials } =
     await import('@/lib/server/domains/settings/identity-providers.service')
@@ -225,23 +212,16 @@ async function createAuth() {
   const trustedProviders: string[] = []
   const genericOAuthConfigs: GenericOAuthConfig[] = []
 
-  // Tier limits + workspace settings are independent reads — fire them
-  // together to avoid stacking Redis round-trips on every auth-instance
-  // rebuild. workspaceSettings still drives the social-provider surface
-  // filter below; OIDC config now comes from the identity_provider list.
-  const [tierLimits, workspaceSettings] = await Promise.all([
-    getTierLimits(),
-    getWorkspaceSettings(),
-  ])
+  // workspaceSettings drives the social-provider surface filter below; OIDC
+  // config comes from the identity_provider list.
+  const workspaceSettings = await getWorkspaceSettings()
 
   // OIDC providers (single sign-on + portal custom OIDC) are registered
   // from the identity_provider list — the single source of truth. Each
   // provider keeps its own registrationId as the Better-Auth providerId
   // (migrated rows preserve 'sso'/'custom-oidc'), so the OAuth redirect
-  // URI is stable and needs no IdP reconfiguration. Tier-gated inside
-  // buildGenericOAuthConfigs: a downgraded workspace stops registering
-  // OIDC even though the rows remain. The login_hint params are carried
-  // to every provider since any may be domain-routed.
+  // URI is stable and needs no IdP reconfiguration. The login_hint params
+  // are carried to every provider since any may be domain-routed.
   // Discovery and userinfo are fetched through the SSRF-guarded helper, and
   // resolved HERE rather than inside the resolver: the plugin's getUserInfo
   // seam receives only the token set, so without closing the endpoint over at
@@ -300,7 +280,6 @@ async function createAuth() {
   const oidcConfigs = await buildGenericOAuthConfigs({
     providers: providerRows,
     creds: getIdentityProviderCredentials,
-    tierAllowsOidc: tierLimits.features.customOidcProvider,
     baseUrl: config.baseUrl,
     discovery: (discoveryUrl) => fetchJson(discoveryUrl),
     fetchUserInfo: (url, accessToken) => fetchJson(url, { authorization: `Bearer ${accessToken}` }),
@@ -384,10 +363,9 @@ async function createAuth() {
     trustedProviders.push(provider.id)
   }
 
-  // BASE_URL is required for auth callbacks and redirects. Under pooled
-  // tenancy `config.baseUrl` is the workspace's own pinned origin, and this
-  // instance is cached per workspace, so the callback origin and the cookie
-  // `secure` flag below follow the hostname the request arrived on.
+  // BASE_URL is required for auth callbacks and redirects. The auth instance is
+  // cached for the process, so the callback origin and the cookie `secure` flag
+  // below follow the configured origin.
   const baseURL = config.baseUrl
   const mcpResourceIdentifier = betterAuthMcpResource(`${baseURL}/api/mcp`)
   // Better Auth 1.7 seeds oauth_resource on plugin init. Pre-insert so a
@@ -495,7 +473,7 @@ async function createAuth() {
     baseURL,
 
     // https://better-auth.com/docs/reference/security#dynamic-origin-list
-    trustedOrigins: async (request) => workspaceAuthTrustedOrigins(request),
+    trustedOrigins: async () => trustedAuthOrigins(),
 
     // Tell Better-Auth about non-standard columns on `user` so the
     // OAuth `mapProfileToUser` return shape is allowed through and
@@ -717,7 +695,7 @@ async function createAuth() {
       // One-time token plugin for cross-domain session transfer.
       // expiresIn is in MINUTES (the plugin multiplies by 60 000 ms internally).
       // 10 min: the OTT sign-in flow needs more headroom than the default —
-      // the user may take time between clicking the widget CTA and the portal
+      // the user may take time between clicking the sign-in CTA and the portal
       // page loading (slow connection, tab restore, etc.).
       oneTimeToken({
         expiresIn: 10,
@@ -856,7 +834,7 @@ async function createAuth() {
       }),
 
       // Bearer token plugin — converts Authorization: Bearer headers to session lookups.
-      // Used by the widget iframe which can't set cookies in cross-origin contexts.
+      // Used by cross-origin clients which can't set cookies.
       bearer(),
 
       // TOTP-based 2FA. Adds /two-factor/enable, /two-factor/verify, etc.

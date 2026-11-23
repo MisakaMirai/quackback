@@ -8,7 +8,7 @@ import { warmQuery } from '@/lib/client/queries/warm-query'
 import { adminPageHead } from '@/lib/client/admin-head'
 
 export const Route = createFileRoute('/admin/settings/channels')({
-  head: adminPageHead('Channels settings'),
+  head: adminPageHead('Channels settings', 'admin.pageTitle.channelsSettings'),
   beforeLoad: ({ context }) => {
     if (!context.settings?.featureFlags?.supportInbox) {
       throw redirect({ to: '/admin/settings/general' })
@@ -27,7 +27,7 @@ export const Route = createFileRoute('/admin/settings/channels')({
     // own fetch and its defaults, as before.
     const ensure = readBatch(queryClient)
     await Promise.all([
-      ensure(settingsQueries.widgetConfig()),
+      ensure(settingsQueries.messengerConfig()),
       ensure(settingsQueries.portalConfig()),
       warmQuery(ensure, channels.emailStatus()),
       warmQuery(ensure, githubStatus()),

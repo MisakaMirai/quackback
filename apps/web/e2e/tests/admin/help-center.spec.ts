@@ -655,7 +655,9 @@ test.describe('Help Center article list filtering - status', () => {
 // ---------------------------------------------------------------------------
 
 test.describe('Help Center article preview link', () => {
-  test('"View article" link uses the correct /hc/articles/{cat}/{slug} path', async ({ page }) => {
+  test('"View article" link uses the canonical /hc/{locale}/articles/{id}-{slug} path', async ({
+    page,
+  }) => {
     const url = await createAndOpenArticle(page, `Preview Test ${Date.now()}`)
     if (!url) return
 
@@ -668,9 +670,9 @@ test.describe('Help Center article preview link', () => {
     const viewLink = page.locator('a').filter({ hasText: /view article/i })
     await expect(viewLink).toBeVisible({ timeout: 10000 })
 
-    // Verify the href follows /hc/articles/{category-slug}/{article-slug}
+    // Verify the href is the canonical locale-prefixed article URL
     const href = await viewLink.getAttribute('href')
-    expect(href).toMatch(/\/hc\/articles\//)
+    expect(href).toMatch(/\/hc\/[^/]+\/articles\/[^/]+$/)
   })
 
   test('"View article" link opens in a new tab (target=_blank)', async ({ page }) => {

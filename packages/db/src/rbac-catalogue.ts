@@ -22,8 +22,6 @@ export const PERMISSIONS = {
   SETTINGS_BRANDING: 'settings.branding', // theme, logos, custom CSS, workspace name
   SETTINGS_MODERATION: 'settings.moderation', // workspace moderation default
   SETTINGS_NOTIFICATIONS: 'settings.notifications', // RESERVED: no OSS surface yet
-  SETTINGS_CUSTOM_DOMAIN: 'settings.custom_domain', // Settings → Domains (cloud identity gateway)
-  BILLING_MANAGE: 'billing.manage', // cloud billing (Owner-only by default)
   ROLE_MANAGE: 'role.manage', // create / edit custom roles
   API_KEY_MANAGE: 'api_key.manage',
   WEBHOOK_VIEW: 'webhook.view', // read outbound webhook subscriptions
@@ -39,10 +37,6 @@ export const PERMISSIONS = {
   // category 'people' — the People directory (end-users: visitor / lead / user)
   PEOPLE_VIEW: 'people.view', // browse people + their lifecycle stage
   PEOPLE_MANAGE: 'people.manage', // edit + the lead -> user merge
-
-  // category 'company' — the Companies directory (the B2B companies object)
-  COMPANY_VIEW: 'company.view', // browse companies + plan / MRR context in the inbox
-  COMPANY_MANAGE: 'company.manage', // edit company records + person <-> company links
 
   // category 'audience' — targeting
   SEGMENT_VIEW: 'segment.view',
@@ -76,8 +70,6 @@ export const PERMISSIONS = {
   STATUS_MANAGE: 'status.manage', // create / edit / reorder / delete post statuses
   TAG_VIEW: 'tag.view', // read the tag taxonomy (pickers)
   TAG_MANAGE: 'tag.manage', // create / edit / delete tag definitions
-  SUGGESTION_VIEW: 'suggestion.view', // read the AI feedback-suggestions triage queue
-  SUGGESTION_MANAGE: 'suggestion.manage', // accept / dismiss / restore / retry suggestions
   PRIORITIZATION_MANAGE: 'prioritization.manage', // RESERVED: prioritization frameworks
 
   // category 'changelog'
@@ -129,13 +121,7 @@ export const PERMISSIONS = {
   OFFICE_HOURS_MANAGE: 'office_hours.manage', // manage business-hours schedules (workspace-admin)
   ROUTING_MANAGE: 'routing.manage', // manage routing rules (workspace-admin)
   TEAM_MANAGE: 'team.manage', // manage teams + membership (workspace-admin)
-  WORKFLOW_MANAGE: 'workflow.manage', // create / update / delete / status workflows (workspace-admin)
   CHANNEL_ACCOUNT_MANAGE: 'channel_account.manage', // manage connected inbox channels (workspace-admin; was inbox.manage)
-
-  // category 'ai'
-  AI_CUSTOMER_MANAGE: 'ai.customer.manage', // customer-facing AI (answers customers): identity, voice, knowledge, guidance, tools, who answers
-  AI_TEAMMATE_MANAGE: 'ai.teammate.manage', // teammate AI (Home chat, inbox assist, Slack): Copilot knowledge, capabilities, Slack agent
-  COPILOT_USE: 'copilot.use', // use the agent-facing Copilot assistant in the inbox
 
   // category 'status_page' — the Status page product (Status Product Spec §6).
   // Named status_page.* (not status.*) to avoid colliding with the existing
@@ -154,7 +140,6 @@ export const PERMISSION_CATEGORIES = [
   'workspace',
   'members',
   'people',
-  'company',
   'audience',
   'feedback',
   'changelog',
@@ -164,7 +149,6 @@ export const PERMISSION_CATEGORIES = [
   'analytics',
   'integration',
   'support',
-  'ai',
   'status_page',
 ] as const
 
@@ -181,11 +165,6 @@ export const PERMISSION_CATALOGUE: ReadonlyArray<{
     category: 'workspace',
     description:
       'Manage workspace settings: branding, general config, portal and widget, moderation default, and the addresses email is sent from',
-  },
-  {
-    key: PERMISSIONS.BILLING_MANAGE,
-    category: 'workspace',
-    description: 'Manage billing and subscription',
   },
   {
     key: PERMISSIONS.ROLE_MANAGE,
@@ -229,11 +208,6 @@ export const PERMISSION_CATALOGUE: ReadonlyArray<{
     description: 'Manage notification settings (reserved; not yet enforced)',
   },
   {
-    key: PERMISSIONS.SETTINGS_CUSTOM_DOMAIN,
-    category: 'workspace',
-    description: 'Manage the custom domain (reserved; not yet enforced)',
-  },
-  {
     key: PERMISSIONS.CUSTOM_FIELD_MANAGE,
     category: 'workspace',
     description: 'Define custom fields (reserved; not yet enforced)',
@@ -259,17 +233,6 @@ export const PERMISSION_CATALOGUE: ReadonlyArray<{
     key: PERMISSIONS.PEOPLE_MANAGE,
     category: 'people',
     description: 'Edit people and merge a lead into an identified user',
-  },
-
-  {
-    key: PERMISSIONS.COMPANY_VIEW,
-    category: 'company',
-    description: 'Browse companies and their plan / MRR context',
-  },
-  {
-    key: PERMISSIONS.COMPANY_MANAGE,
-    category: 'company',
-    description: 'Edit company records and person-to-company links',
   },
 
   { key: PERMISSIONS.SEGMENT_VIEW, category: 'audience', description: 'View segments' },
@@ -393,16 +356,6 @@ export const PERMISSION_CATALOGUE: ReadonlyArray<{
     key: PERMISSIONS.TAG_MANAGE,
     category: 'feedback',
     description: 'Create, edit, and delete tag definitions',
-  },
-  {
-    key: PERMISSIONS.SUGGESTION_VIEW,
-    category: 'feedback',
-    description: 'Read the AI feedback-suggestions triage queue',
-  },
-  {
-    key: PERMISSIONS.SUGGESTION_MANAGE,
-    category: 'feedback',
-    description: 'Accept, dismiss, restore, and retry feedback suggestions',
   },
   {
     key: PERMISSIONS.PRIORITIZATION_MANAGE,
@@ -560,33 +513,11 @@ export const PERMISSION_CATALOGUE: ReadonlyArray<{
     description: 'Manage teams and membership',
   },
   {
-    key: PERMISSIONS.WORKFLOW_MANAGE,
-    category: 'support',
-    description: 'Manage workflows and automation',
-  },
-  {
     key: PERMISSIONS.CHANNEL_ACCOUNT_MANAGE,
     category: 'support',
     description:
       'Manage connected inbox channels (email and widget accounts) and the address support replies come from',
   },
-
-  {
-    key: PERMISSIONS.AI_CUSTOMER_MANAGE,
-    category: 'ai',
-    description: 'Manage the customer-facing AI: identity, voice, knowledge, guidance, and tools',
-  },
-  {
-    key: PERMISSIONS.AI_TEAMMATE_MANAGE,
-    category: 'ai',
-    description: 'Manage the teammate AI: Copilot knowledge and capabilities, and the Slack agent',
-  },
-  {
-    key: PERMISSIONS.COPILOT_USE,
-    category: 'ai',
-    description: 'Use the agent-facing Copilot assistant in the inbox',
-  },
-
   {
     key: PERMISSIONS.STATUS_PAGE_MANAGE,
     category: 'status_page',
@@ -623,8 +554,6 @@ export const WORKSPACE_ADMIN_PERMISSIONS: readonly PermissionKey[] = [
   PERMISSIONS.SETTINGS_BRANDING,
   PERMISSIONS.SETTINGS_MODERATION,
   PERMISSIONS.SETTINGS_NOTIFICATIONS,
-  PERMISSIONS.SETTINGS_CUSTOM_DOMAIN,
-  PERMISSIONS.BILLING_MANAGE,
   PERMISSIONS.MEMBER_MANAGE,
   PERMISSIONS.ROLE_MANAGE,
   PERMISSIONS.API_KEY_MANAGE,
@@ -640,11 +569,7 @@ export const WORKSPACE_ADMIN_PERMISSIONS: readonly PermissionKey[] = [
   PERMISSIONS.OFFICE_HOURS_MANAGE,
   PERMISSIONS.ROUTING_MANAGE,
   PERMISSIONS.TEAM_MANAGE,
-  PERMISSIONS.WORKFLOW_MANAGE,
   PERMISSIONS.CHANNEL_ACCOUNT_MANAGE,
-  // AI infrastructure config (admin-only)
-  PERMISSIONS.AI_CUSTOMER_MANAGE,
-  PERMISSIONS.AI_TEAMMATE_MANAGE,
   // Status page structure (components/groups/settings/templates) is
   // admin-only; publishing incidents is a broader operator action (below).
   PERMISSIONS.STATUS_PAGE_MANAGE,
@@ -652,31 +577,45 @@ export const WORKSPACE_ADMIN_PERMISSIONS: readonly PermissionKey[] = [
 
 /**
  * The support-operations permissions a Support lead holds on top of everything
- * Manager has: routing, workflows, SLA policies, office hours, inbox channels,
- * custom fields, and the customer-facing AI. An explicit list so a new
- * workspace-admin permission never reaches the preset by accident. Teams,
- * settings, integrations, and the teammate AI stay admin-only.
+ * Manager has: routing, SLA policies, office hours, inbox channels, custom
+ * fields. An explicit list so a new workspace-admin permission never reaches
+ * the preset by accident. Teams, settings, integrations stay admin-only.
  */
 export const SUPPORT_LEAD_EXTRA_PERMISSIONS: readonly PermissionKey[] = [
   PERMISSIONS.ROUTING_MANAGE,
-  PERMISSIONS.WORKFLOW_MANAGE,
   PERMISSIONS.SLA_MANAGE,
   PERMISSIONS.OFFICE_HOURS_MANAGE,
   PERMISSIONS.CHANNEL_ACCOUNT_MANAGE,
   PERMISSIONS.CUSTOM_FIELD_MANAGE,
-  PERMISSIONS.AI_CUSTOMER_MANAGE,
 ]
 
 /**
  * Permission keys retired from the catalogue. Their `permissions` rows and
  * grants stay in the database so an older app version still running during a
  * rollout keeps working; the reconcile leaves their preset grants alone.
+ *
+ * - `billing.manage` retired with the Quackback Cloud subscription layer.
+ * - `assistant.manage` retired with Quackback AI.
+ * - `suggestion.view` / `suggestion.manage` retired with the AI merge-suggestion
+ *   queue; `workflow.manage` retired with the workflow engine.
+ * - `settings.custom_domain` retired with the Settings > Domains verification
+ *   page.
  */
-export const RETIRED_PERMISSION_KEYS: readonly string[] = ['assistant.manage']
+export const RETIRED_PERMISSION_KEYS: readonly string[] = [
+  'assistant.manage',
+  'billing.manage',
+  'settings.custom_domain',
+  'suggestion.view',
+  'suggestion.manage',
+  'workflow.manage',
+]
 
 export const SYSTEM_ROLE_PERMISSIONS: Record<SystemRoleKey, PermissionKey[]> = {
   owner: ALL_PERMISSIONS,
-  admin: ALL_PERMISSIONS.filter((p) => p !== PERMISSIONS.BILLING_MANAGE),
+  // Owner and Admin now hold the same keys: the only difference used to be
+  // billing.manage, which is gone. They stay separate roles because ownership
+  // is a transferable title, not just a permission bundle.
+  admin: ALL_PERMISSIONS,
   // Everything except the workspace-admin set; this naturally keeps member.view +
   // integration.view (not in the set) while excluding member.manage / integration.manage.
   manager: ALL_PERMISSIONS.filter((p) => !WORKSPACE_ADMIN_PERMISSIONS.includes(p)),
@@ -708,19 +647,15 @@ export const SYSTEM_ROLE_PERMISSIONS: Record<SystemRoleKey, PermissionKey[]> = {
     PERMISSIONS.CONVERSATION_ASSIGN,
     PERMISSIONS.CONVERSATION_SET_STATUS,
     PERMISSIONS.CONVERSATION_SET_TAGS,
-    PERMISSIONS.COPILOT_USE,
     // reads + triage intake
     PERMISSIONS.CHANGELOG_VIEW_DRAFT,
     PERMISSIONS.PEOPLE_VIEW,
-    PERMISSIONS.COMPANY_VIEW,
     PERMISSIONS.MEMBER_VIEW,
     PERMISSIONS.SEGMENT_VIEW,
     PERMISSIONS.INTEGRATION_VIEW,
     PERMISSIONS.ANALYTICS_VIEW,
     PERMISSIONS.STATUS_VIEW,
     PERMISSIONS.TAG_VIEW,
-    PERMISSIONS.SUGGESTION_VIEW,
-    PERMISSIONS.SUGGESTION_MANAGE,
     // on-call responders post incident/maintenance updates; only admins
     // reshape the page (status_page.manage, above)
     PERMISSIONS.STATUS_PAGE_PUBLISH,
@@ -738,9 +673,9 @@ export const SYSTEM_ROLE_DEFS: ReadonlyArray<{
   {
     key: SYSTEM_ROLES.OWNER,
     name: 'Owner',
-    description: 'Full access, including billing and role management',
+    description: 'Full access, including role management',
   },
-  { key: SYSTEM_ROLES.ADMIN, name: 'Admin', description: 'Full access except billing' },
+  { key: SYSTEM_ROLES.ADMIN, name: 'Admin', description: 'Full access' },
   {
     key: SYSTEM_ROLES.MANAGER,
     name: 'Manager',
@@ -751,7 +686,7 @@ export const SYSTEM_ROLE_DEFS: ReadonlyArray<{
     key: SYSTEM_ROLES.SUPPORT_LEAD,
     name: 'Support lead',
     description:
-      'Everything a Manager can do, plus routing, workflows, SLA policies, office hours, inbox channels and the support reply address, custom fields, and the customer-facing AI',
+      'Everything a Manager can do, plus routing, SLA policies, office hours, inbox channels and the support reply address, and custom fields',
   },
   {
     key: SYSTEM_ROLES.CONTRIBUTOR,

@@ -9,7 +9,6 @@ import {
 } from '@/lib/shared/theme'
 import { getUpdateBannerDismissedVersionCookie } from '@/lib/shared/update-banner-cookie'
 import { resolveLocale, type SupportedLocale } from '@/lib/shared/i18n'
-import { starPromptAllowedHere } from '@/lib/server/github-star-prompt'
 import { redactSettingsForClient } from '@/lib/shared/redact-portal-config'
 import {
   getSetupState,
@@ -19,13 +18,7 @@ import {
 import type { Session, PrincipalType } from '@/lib/server/auth/session'
 import type { WorkspaceSettings } from '@/lib/server/domains/settings'
 import type { SessionId, UserId } from '@quackback/ids'
-import type { StoredCloudConfig } from '@/lib/shared/db-types'
-import { resolveCloudConfig } from '@/lib/server/domains/settings/cloud/cloud.service'
 import { logger } from '@/lib/server/logger'
-import { runWithoutLogContext } from '@/lib/server/log-context'
-import { shouldRunWorkers } from '@/lib/server/process-role'
-import { getCurrentWorkspace } from '@/lib/server/workspaces/workspace-context'
-import { analyticsWorkspaceKey } from '@/lib/shared/analytics-identity'
 
 const log = logger.child({ component: 'bootstrap' })
 
@@ -66,48 +59,6 @@ export interface BootstrapData {
    *  Threaded into the admin route the same way `themeCookie` is, so the
    *  banner renders in its final expanded/collapsed state on first paint. */
   updateBannerDismissedVersion: string | null
-  /**
-   * Whether this workspace has a valid control-plane billing projection.
-   *
-   * A single boolean, and deliberately nothing more: the admin settings nav
-   * needs to know whether a Billing item exists, and nothing else on the
-   * client is entitled to a billing fact. No customer reference, no
-   * subscription reference, no plan, no price — every one of those stays
-   * server-side, and `settings.cloud` remains in `SERVER_ONLY_SETTINGS_KEYS`.
-   *
-   * False on every self-hosted install. Provider configuration is never read
-   * by the workspace application.
-   */
-  billingEnabled: boolean
-  /**
-   * Whether this workspace has a signed cloud identity projection.
-   * Gates the Settings Domains row. False on every self-hosted install.
-   */
-  cloudEnabled: boolean
-  /**
-   * Whether the one-time GitHub star prompt and the Help menu's GitHub link may
-   * show: self-hosted only, never on the Cloud fleet, and not switched off.
-   */
-  githubStarPrompt: boolean
-  /**
-   * Browser product analytics for the admin app, present only when the
-   * operator set `POSTHOG_KEY`. `workspaceId` is the opaque group key the
-   * admin events and this workspace's instance ping share
-   * (see analytics-identity.ts).
-   */
-  productAnalytics: {
-    key: string
-    /** Where the SDK sends: PostHog, or a reverse proxy in front of it. */
-    apiHost: string
-    /** The PostHog app, for toolbar links; null when it cannot be known. */
-    uiHost: string | null
-    sessionRecording: boolean
-    /** Replays hide every text node, not only inputs. */
-    maskText: boolean
-    /** Replays hide every input value, not only passwords. */
-    maskInputs: boolean
-    workspaceId: string | null
-  } | null
 }
 
 // Returns both the session (with principalType) AND the user role from one
@@ -186,8 +137,6 @@ function clientSafeSettings(settings: WorkspaceSettings): WorkspaceSettings {
   return { ...redacted, settings: {} as WorkspaceSettings['settings'] }
 }
 
-let _initialized = false
-
 const getBootstrapDataInternal = createServerOnlyFn(async (): Promise<BootstrapData> => {
   const [
     { getWorkspaceSettings },
@@ -210,52 +159,6 @@ const getBootstrapDataInternal = createServerOnlyFn(async (): Promise<BootstrapD
     getWorkspaceSettings(),
     getRegisteredAuthProviders(),
   ])
-
-  // One-time initialization on first request.
-  //
-  // Role-gated, and the gate is not cosmetic. Telemetry is default-on and this
-  // path had none, so a `role=web` replica walked every workspace in the registry
-  // once an hour — which is precisely what SAAS-HOSTING-STACK.md §1's
-  // scale-to-zero argument says a web replica does not do ("a QUACKBACK_ROLE=web
-  // replica runs none of them"), and what Piece 2 measured. Fixing the
-  // wrong-workspace problem by making the sweep fleet-wide widened its blast
-  // radius from one workspace's database to every workspace's, including on replicas
-  // that must stay silent to let their computes suspend.
-  //
-  // `shouldRunWorkers()` is the same predicate `startup.ts` gates the sweepers
-  // behind, so telemetry now lives on the same side of the split as the rest
-  // of the background work.
-  if (!_initialized && shouldRunWorkers()) {
-    _initialized = true
-
-    // Delay telemetry to let the DB connection initialize
-    setTimeout(() => {
-      // Detached from the request that happened to arm it.
-      //
-      // AsyncLocalStorage carries the arming request's store into this timer,
-      // into `startTelemetry`, and into the hourly `setInterval` it arms — for
-      // the life of the process. Under pooled tenancy that store carries the
-      // WORKSPACE SCOPE, and `withSweepLock` fans a tick across the fleet only
-      // when no scope is active. So without this, whichever workspace rendered the
-      // pod's first page would own the fleet's telemetry forever: the hourly
-      // claim would take the lock in *its* database, no other workspace would ever
-      // be pinged, and `telemetry/instance-id.ts` would keep issuing an
-      // unlocked read-modify-write of *its* `settings.metadata` — the write
-      // SAAS-HOSTING-STACK.md §3 names as able to drop the fingerprint stamp.
-      //
-      // `_initialized` itself is fine shared: it is a once-per-process latch,
-      // and process-lifetime is exactly what it should mean. The bug was that
-      // the work it gates inherited a request's identity.
-      void runWithoutLogContext(async () => {
-        try {
-          const { startTelemetry } = await import('@/lib/server/telemetry')
-          await startTelemetry()
-        } catch {
-          // Silent failure -- telemetry must never affect the application
-        }
-      })
-    }, 10_000)
-  }
 
   const headers = getRequestHeaders()
   const themeCookie = getThemeCookie(headers.get('cookie') ?? null)
@@ -289,9 +192,6 @@ const getBootstrapDataInternal = createServerOnlyFn(async (): Promise<BootstrapD
     currentHost: headers.get('host'),
     fallback: config.baseUrl,
   })
-  const cloud = resolveCloudConfig(
-    (settings?.settings as { cloud?: StoredCloudConfig | null } | undefined)?.cloud
-  )
   const setupState = getSetupState(settings?.settings?.setupState ?? null)
 
   return {
@@ -309,23 +209,6 @@ const getBootstrapDataInternal = createServerOnlyFn(async (): Promise<BootstrapD
     registeredAuthProviders,
     acceptLanguageLocale,
     updateBannerDismissedVersion,
-    billingEnabled: cloud.enabled && (cloud.canUpgrade || cloud.canManageBilling),
-    cloudEnabled: cloud.enabled,
-    githubStarPrompt: starPromptAllowedHere(cloud.enabled),
-    productAnalytics: config.productAnalytics
-      ? {
-          key: config.productAnalytics.key,
-          apiHost: config.productAnalytics.host,
-          uiHost: config.productAnalytics.uiHost,
-          sessionRecording: config.productAnalytics.sessionRecording,
-          maskText: config.productAnalytics.maskText,
-          maskInputs: config.productAnalytics.maskInputs,
-          workspaceId: await analyticsWorkspaceKey(
-            getCurrentWorkspace()?.workspaceKey,
-            typeof settings?.settings?.id === 'string' ? settings.settings.id : null
-          ),
-        }
-      : null,
   }
 })
 

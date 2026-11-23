@@ -10,12 +10,6 @@ vi.mock('@/lib/server/domains/settings/settings.service', () => ({
   getWorkspaceSettings: async () => ({ settings: { cloud: null } }),
 }))
 
-// The domain the help center is set to also goes on Settings > Domains; that
-// row is covered by its own database test.
-vi.mock('@/lib/server/domains/domain-proof/domains.service', () => ({
-  ensureDomain: async () => null,
-}))
-
 const mockResolve4 = vi.fn()
 const mockResolve6 = vi.fn()
 

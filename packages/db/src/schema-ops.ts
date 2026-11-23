@@ -76,26 +76,6 @@ export interface ConcurrentIndexSpec {
 
 export const CONCURRENT_INDEX_SPECS: readonly ConcurrentIndexSpec[] = [
   {
-    name: 'posts_embedding_hnsw_idx',
-    concurrent: true,
-    ddl: 'CREATE INDEX CONCURRENTLY IF NOT EXISTS posts_embedding_hnsw_idx ON posts USING hnsw (embedding vector_cosine_ops) WHERE embedding IS NOT NULL',
-  },
-  {
-    name: 'kb_articles_embedding_hnsw_idx',
-    concurrent: true,
-    ddl: 'CREATE INDEX CONCURRENTLY IF NOT EXISTS kb_articles_embedding_hnsw_idx ON kb_articles USING hnsw (embedding vector_cosine_ops) WHERE embedding IS NOT NULL',
-  },
-  {
-    name: 'assistant_snippets_embedding_hnsw_idx',
-    concurrent: true,
-    ddl: 'CREATE INDEX CONCURRENTLY IF NOT EXISTS assistant_snippets_embedding_hnsw_idx ON assistant_snippets USING hnsw (embedding vector_cosine_ops) WHERE embedding IS NOT NULL',
-  },
-  {
-    name: 'conversation_summaries_embedding_hnsw_idx',
-    concurrent: true,
-    ddl: 'CREATE INDEX CONCURRENTLY IF NOT EXISTS conversation_summaries_embedding_hnsw_idx ON conversation_summaries USING hnsw (embedding vector_cosine_ops) WHERE embedding IS NOT NULL',
-  },
-  {
     name: 'principal_display_name_trgm_idx',
     concurrent: true,
     ddl: 'CREATE INDEX CONCURRENTLY IF NOT EXISTS principal_display_name_trgm_idx ON principal USING gin (display_name gin_trgm_ops) WHERE display_name IS NOT NULL',
@@ -141,16 +121,6 @@ export const CONCURRENT_INDEX_SPECS: readonly ConcurrentIndexSpec[] = [
     name: 'user_email_trgm_idx',
     concurrent: true,
     ddl: 'CREATE INDEX CONCURRENTLY IF NOT EXISTS user_email_trgm_idx ON "user" USING gin (email gin_trgm_ops)',
-  },
-  {
-    name: 'companies_name_trgm_idx',
-    concurrent: true,
-    ddl: 'CREATE INDEX CONCURRENTLY IF NOT EXISTS companies_name_trgm_idx ON companies USING gin (name gin_trgm_ops)',
-  },
-  {
-    name: 'companies_domain_trgm_idx',
-    concurrent: true,
-    ddl: 'CREATE INDEX CONCURRENTLY IF NOT EXISTS companies_domain_trgm_idx ON companies USING gin (domain gin_trgm_ops)',
   },
   {
     name: 'kb_articles_title_trgm_idx',

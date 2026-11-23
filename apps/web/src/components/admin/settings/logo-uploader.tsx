@@ -2,6 +2,7 @@ import { nameInitial } from '@/lib/shared/utils/initial'
 import { useEffect, useRef, useState } from 'react'
 import { ArrowPathIcon, CameraIcon } from '@heroicons/react/24/solid'
 import { toast } from 'sonner'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { Button } from '@/components/ui/button'
 import { ImageCropper } from '@/components/ui/image-cropper'
 import { cn } from '@/lib/shared/utils'
@@ -19,6 +20,7 @@ interface LogoUploaderProps {
 }
 
 export function LogoUploader({ workspaceName, onLogoChange, focus }: LogoUploaderProps) {
+  const intl = useOptionalIntl()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const rootRef = useRef<HTMLDivElement>(null)
   const uploadButtonRef = useRef<HTMLButtonElement>(null)
@@ -51,11 +53,21 @@ export function LogoUploader({ workspaceName, onLogoChange, focus }: LogoUploade
     if (!file) return
 
     if (!RASTER_IMAGE_TYPES.includes(file.type)) {
-      toast.error('Invalid file type. Allowed: JPEG, PNG, GIF, WebP')
+      toast.error(
+        intl.formatMessage({
+          id: 'admin.settings.logo.invalidType',
+          defaultMessage: 'Invalid file type. Allowed: JPEG, PNG, GIF, WebP',
+        })
+      )
       return
     }
     if (file.size > 5 * 1024 * 1024) {
-      toast.error('File too large. Maximum size is 5MB')
+      toast.error(
+        intl.formatMessage({
+          id: 'admin.settings.logo.tooLarge',
+          defaultMessage: 'File too large. Maximum size is 5MB',
+        })
+      )
       return
     }
 
@@ -70,8 +82,18 @@ export function LogoUploader({ workspaceName, onLogoChange, focus }: LogoUploade
       setCropImageSrc(null)
     }
     uploadMutation.mutate(croppedBlob, {
-      onSuccess: () => toast.success('Logo updated'),
-      onError: (error) => toastError(error, 'Failed to upload logo'),
+      onSuccess: () =>
+        toast.success(
+          intl.formatMessage({ id: 'admin.settings.logo.updated', defaultMessage: 'Logo updated' })
+        ),
+      onError: (error) =>
+        toastError(
+          error,
+          intl.formatMessage({
+            id: 'admin.settings.logo.uploadFailed',
+            defaultMessage: 'Failed to upload logo',
+          })
+        ),
     })
   }
 
@@ -128,9 +150,21 @@ export function LogoUploader({ workspaceName, onLogoChange, focus }: LogoUploade
         size="sm"
         onClick={() => fileInputRef.current?.click()}
         disabled={uploadMutation.isPending}
-        aria-label={hasCustomLogo ? 'Change logo' : 'Upload logo'}
+        aria-label={
+          hasCustomLogo
+            ? intl.formatMessage({
+                id: 'admin.settings.logo.changeAria',
+                defaultMessage: 'Change logo',
+              })
+            : intl.formatMessage({
+                id: 'admin.settings.logo.uploadAria',
+                defaultMessage: 'Upload logo',
+              })
+        }
       >
-        {hasCustomLogo ? 'Change' : 'Upload logo'}
+        {hasCustomLogo
+          ? intl.formatMessage({ id: 'admin.settings.logo.change', defaultMessage: 'Change' })
+          : intl.formatMessage({ id: 'admin.settings.logo.upload', defaultMessage: 'Upload logo' })}
       </Button>
       {hasCustomLogo && (
         <button
@@ -138,16 +172,33 @@ export function LogoUploader({ workspaceName, onLogoChange, focus }: LogoUploade
           onClick={() =>
             deleteMutation.mutate(undefined, {
               onSuccess: () => {
-                toast.success('Logo removed')
+                toast.success(
+                  intl.formatMessage({
+                    id: 'admin.settings.logo.removed',
+                    defaultMessage: 'Logo removed',
+                  })
+                )
                 onLogoChange?.(null)
               },
-              onError: (error) => toastError(error, 'Failed to remove logo'),
+              onError: (error) =>
+                toastError(
+                  error,
+                  intl.formatMessage({
+                    id: 'admin.settings.logo.removeFailed',
+                    defaultMessage: 'Failed to remove logo',
+                  })
+                ),
             })
           }
           disabled={deleteMutation.isPending}
           className="text-xs text-muted-foreground hover:text-destructive transition-colors"
         >
-          {deleteMutation.isPending ? 'Removing…' : 'Remove'}
+          {deleteMutation.isPending
+            ? intl.formatMessage({
+                id: 'admin.settings.logo.removing',
+                defaultMessage: 'Removing…',
+              })
+            : intl.formatMessage({ id: 'admin.settings.logo.remove', defaultMessage: 'Remove' })}
         </button>
       )}
 
@@ -167,7 +218,10 @@ export function LogoUploader({ workspaceName, onLogoChange, focus }: LogoUploade
           onCropComplete={handleCropComplete}
           aspectRatio={1}
           maxOutputSize={512}
-          title="Crop your logo"
+          title={intl.formatMessage({
+            id: 'admin.settings.logo.cropTitle',
+            defaultMessage: 'Crop your logo',
+          })}
         />
       )}
     </div>

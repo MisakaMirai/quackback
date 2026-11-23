@@ -34,8 +34,7 @@ export const BATCHED_READS: readonly BatchedRead[] = [
   settingsQueries.teamMembersAndInvitations,
   settingsQueries.teams,
   settingsQueries.verifiedDomains,
-  settingsQueries.widgetConfig,
-  settingsQueries.widgetSecret,
+  settingsQueries.messengerConfig,
   adminQueries.apiKeys,
   adminQueries.authProviderStatus,
   // Also the key adminQueries.boards reads, with the same function.

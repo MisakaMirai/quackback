@@ -19,11 +19,8 @@ import { request as httpsRequest } from 'node:https'
 import { request as httpRequest } from 'node:http'
 import { checkServerIdentity } from 'node:tls'
 import type { IncomingMessage } from 'node:http'
-import {
-  CONNECTOR_MAX_RESPONSE_BYTES,
-  CONNECTOR_REQUEST_TIMEOUT_MS,
-} from '@/lib/shared/assistant/connectors'
-
+const MAX_RESPONSE_BYTES = 256 * 1024
+const REQUEST_TIMEOUT_MS = 10_000
 const ALLOWED_SCHEMES = new Set(['http:', 'https:'])
 
 /** Return true if the URL parses and uses http or https. */
@@ -451,8 +448,8 @@ export async function safePinnedFetch(
     method: request.method,
     headers,
     body: bodyBuffer ? bodyBuffer.toString('utf8') : undefined,
-    timeoutMs: CONNECTOR_REQUEST_TIMEOUT_MS,
-    maxResponseBytes: CONNECTOR_MAX_RESPONSE_BYTES,
+    timeoutMs: REQUEST_TIMEOUT_MS,
+    maxResponseBytes: MAX_RESPONSE_BYTES,
     onOverflow: 'error',
   })
 }

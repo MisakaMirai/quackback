@@ -1,6 +1,7 @@
 import { CopyButton } from '@/components/shared/copy-button'
 import { WarningBox } from '@/components/shared/warning-box'
 import { Button } from '@/components/ui/button'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import {
   Dialog,
   DialogContent,
@@ -32,12 +33,32 @@ export function SecretRevealDialog({
   description,
   secretLabel,
   secretValue,
-  confirmLabel = "I've saved this",
-  warningTitle = 'Copy this now',
-  warningDescription = "This is the only time you'll see it. Store it securely and never share it publicly.",
-  copyLabel = 'Copy to clipboard',
+  confirmLabel,
+  warningTitle,
+  warningDescription,
+  copyLabel,
   children,
 }: SecretRevealDialogProps) {
+  const intl = useOptionalIntl()
+  const resolvedConfirmLabel =
+    confirmLabel ??
+    intl.formatMessage({
+      id: 'common.secretReveal.confirm',
+      defaultMessage: "I've saved this",
+    })
+  const resolvedWarningTitle =
+    warningTitle ??
+    intl.formatMessage({ id: 'common.secretReveal.warningTitle', defaultMessage: 'Copy this now' })
+  const resolvedWarningDescription =
+    warningDescription ??
+    intl.formatMessage({
+      id: 'common.secretReveal.warningDescription',
+      defaultMessage:
+        "This is the only time you'll see it. Store it securely and never share it publicly.",
+    })
+  const resolvedCopyLabel =
+    copyLabel ??
+    intl.formatMessage({ id: 'common.copyToClipboard', defaultMessage: 'Copy to clipboard' })
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
@@ -49,7 +70,11 @@ export function SecretRevealDialog({
         </DialogHeader>
 
         <div className="py-4 space-y-4">
-          <WarningBox variant="warning" title={warningTitle} description={warningDescription} />
+          <WarningBox
+            variant="warning"
+            title={resolvedWarningTitle}
+            description={resolvedWarningDescription}
+          />
 
           <div className="space-y-2">
             <label className="text-sm font-medium">{secretLabel}</label>
@@ -57,7 +82,7 @@ export function SecretRevealDialog({
               <code className="ph-mask flex-1 rounded-lg bg-muted px-3 py-2.5 font-mono text-sm break-all">
                 {secretValue}
               </code>
-              <CopyButton value={secretValue ?? ''} aria-label={copyLabel} />
+              <CopyButton value={secretValue ?? ''} aria-label={resolvedCopyLabel} />
             </div>
           </div>
 
@@ -65,7 +90,7 @@ export function SecretRevealDialog({
         </div>
 
         <DialogFooter>
-          <Button onClick={() => onOpenChange(false)}>{confirmLabel}</Button>
+          <Button onClick={() => onOpenChange(false)}>{resolvedConfirmLabel}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

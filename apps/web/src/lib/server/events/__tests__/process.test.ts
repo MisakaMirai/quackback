@@ -86,7 +86,6 @@ const sentinels = vi.hoisted(() => ({
   notifyChangelogPublished: vi.fn().mockResolvedValue(undefined),
   handleMaintenanceStart: vi.fn().mockResolvedValue(undefined),
   handleMaintenanceComplete: vi.fn().mockResolvedValue(undefined),
-  checkPostForMergeCandidates: vi.fn().mockResolvedValue(undefined),
 }))
 vi.mock('@/lib/server/domains/changelog/changelog.service', () => ({
   notifyChangelogPublished: sentinels.notifyChangelogPublished,
@@ -95,10 +94,6 @@ vi.mock('@/lib/server/domains/status/status.maintenance', () => ({
   handleMaintenanceStart: sentinels.handleMaintenanceStart,
   handleMaintenanceComplete: sentinels.handleMaintenanceComplete,
 }))
-vi.mock('@/lib/server/domains/merge-suggestions/merge-check.service', () => ({
-  checkPostForMergeCandidates: sentinels.checkPostForMergeCandidates,
-}))
-
 // --- Helpers ---
 
 function makeEvent(): PostCreatedEvent {
@@ -132,7 +127,6 @@ function makeJob(overrides: Partial<ClaimedJob> = {}): ClaimedJob {
       target: { url: 'https://example.com/hook' },
       config: { secret: 'secret', webhookId: 'wh_1' },
     },
-    workspaceKey: null,
     attempts: 1,
     maxAttempts: 6,
     leaseToken: '00000000-0000-0000-0000-000000000000',
@@ -271,7 +265,6 @@ describe('Event processing', () => {
     // payload from config, so none may touch the event.
     it.each([
       ['__changelog_publish__', { changelogId: 'changelog_1' }, 'notifyChangelogPublished'],
-      ['__post_merge_recheck__', { postId: 'post_1' }, 'checkPostForMergeCandidates'],
       [
         '__status_maintenance_start__',
         { incidentId: 'status_incident_1' },

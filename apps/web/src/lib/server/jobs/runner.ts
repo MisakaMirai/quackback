@@ -2,9 +2,8 @@
  * Running claimed work — the half of the queue that executes outside a
  * transaction.
  *
- * Everything in this module assumes an open workspace scope: `db` resolves to the
- * workspace's pool, and `job_queue` is that workspace's own table. `loops.ts` owns
- * opening the scope and the timers; this file owns what happens inside one.
+ * `job_queue` is the install's own table. `worker.ts` owns the loop and the
+ * timers; this file owns what happens inside one pass.
  *
  * The load-bearing property is that **no transaction is open while a handler
  * runs**. The claim commits, the handler runs for as long as it takes, and the
@@ -17,7 +16,6 @@
  * including a worker process that has not loaded the full application config.
  */
 import { logger } from '@/lib/server/logger'
-import { getCurrentWorkspace } from '@/lib/server/workspaces/workspace-context'
 import { runWithAuditAttribution, SYSTEM_ATTRIBUTION } from '@/lib/server/audit/attribution'
 import {
   claimById,
@@ -50,15 +48,7 @@ import {
   type JobHandler,
 } from './definitions'
 import { enqueueJob } from './job-queue'
-import {
-  latestSlotAtOrBefore,
-  nextSlotAfter,
-  parseCron,
-  slotKey,
-  slotSpreadMs,
-  stableFraction,
-  type ParsedCron,
-} from './cron'
+import { latestSlotAtOrBefore, nextSlotAfter, parseCron, slotKey, type ParsedCron } from './cron'
 
 const log = logger.child({ component: 'job-runner' })
 
@@ -83,21 +73,20 @@ export interface RunnerConfig {
   /**
    * How often terminal rows past retention are pruned. Deliberately much slower
    * than `reapIntervalMs`: a lost lease has to be noticed quickly, an aged row
-   * does not, and the prune is a table scan on every workspace in a pooled
-   * fleet. Slack payload privacy does not ride on this clock — `completeJob`
-   * scrubs a `slack-hook` payload the moment the job succeeds.
+   * does not, and the prune is a table scan. Slack payload privacy does not ride
+   * on this clock — `completeJob` scrubs a `slack-hook` payload the moment the
+   * job succeeds.
    */
   pruneIntervalMs: number
   /** How long terminal rows are kept. Must exceed any live cron slot key. */
   retentionMs: number
   /**
-   * Ceiling on jobs running at once in one workspace's loop.
+   * Ceiling on jobs running at once in the process.
    *
    * Defaults to the sum of every definition's `concurrency`, which is exactly
    * what the reference allowed (one BullMQ `Worker` per queue, each at its own
-   * concurrency), so the default binds nothing and single-workspace behaviour does
-   * not move. It exists because a pooled process runs one loop per workspace, and
-   * a fleet operator sizing connections cares about the product, not the term.
+   * concurrency), so the default binds nothing and behaviour does not move. It
+   * exists so an operator sizing connections can put a ceiling on the product.
    */
   maxConcurrency: number
 }
@@ -127,37 +116,22 @@ export function activeQueueNames(): string[] {
  * Handler modules, imported once and memoised.
  *
  * The reason this exists is a hazard measured on the BullMQ side of the house: a
- * `Worker` constructed inside a request's workspace scope inherits that scope for
- * every job it ever processes, because the scope is AsyncLocalStorage and the
- * constructor captured it. It was not a theoretical shape — the queue modules
- * that armed lazily on first enqueue armed inside whatever request reached them
- * first. No such module is left, but the *import* hazard below outlives them.
- *
- * This queue does not have that shape — `loops.ts` opens a fresh
- * `withWorkspaceScopeById(...)` around every pass, so a handler always runs inside
- * the scope of the job it is running, never one captured earlier. But the
- * *import* is a second, quieter version of the same risk: `def.handler()` is a
- * dynamic import, and a module executing top-level work would run it inside
- * whichever workspace's scope happened to trigger the first import.
+ * `Worker` constructed inside a request inherited that request's context for
+ * every job it ever processed, because the context is AsyncLocalStorage and the
+ * constructor captured it. The queue modules that armed lazily on first enqueue
+ * armed inside whatever request reached them first. No such module is left, but
+ * the *import* hazard below outlives them: `def.handler()` is a dynamic import,
+ * and a module executing top-level work would run it inside whichever request
+ * loaded it first, then stay shared process-wide.
  *
  * `primeJobHandlers()` closes that by importing every module once, at tier
- * start, **before any workspace scope is open**. The memo is then a pure function
- * lookup. A miss still resolves rather than failing — a direct `runJob` in a
- * test must work — but it says so, because a miss in a running tier means a
- * module is being imported under a workspace scope.
+ * start, before any request is served. The memo is then a pure function lookup.
+ * A miss still resolves rather than failing — a direct `runJob` in a test must
+ * work — and the module-state ledger covers what a module captured at load.
  */
 const handlerMemo = new Map<string, JobHandler>()
 
 export async function primeJobHandlers(): Promise<void> {
-  if (getCurrentWorkspace()) {
-    // Priming is the thing that must happen OUTSIDE a scope. If a caller has one
-    // open, priming here would defeat its own purpose silently.
-    log.error(
-      'primeJobHandlers() was called inside a workspace scope — handler modules would ' +
-        'be imported under that workspace. Prime before opening any scope.'
-    )
-    return
-  }
   for (const def of jobDefinitions()) {
     if (handlerMemo.has(def.name)) continue
     try {
@@ -176,12 +150,6 @@ export function resetJobHandlers(): void {
 async function resolveHandler(def: JobDefinition): Promise<JobHandler> {
   const memo = handlerMemo.get(def.name)
   if (memo) return memo
-  if (getCurrentWorkspace()) {
-    log.warn(
-      { queue: def.name },
-      'job handler module imported inside a workspace scope — prime handlers at tier start'
-    )
-  }
   const handler = await def.handler()
   handlerMemo.set(def.name, handler)
   return handler
@@ -192,12 +160,11 @@ async function resolveHandler(def: JobDefinition): Promise<JobHandler> {
  *
  * `event` is the filter key (`job.started`, `job.finished`, `job.retrying`,
  * `job.failed`). `QUACKBACK_ROLE=worker` already binds `service_name` to
- * `quackback-worker`, so a Railway search on `event` + `workspace_key` is the
- * whole execution trace.
+ * `quackback-worker`, so a search on `event` + `job_id` is the whole execution
+ * trace.
  */
 function jobFields(job: ClaimedJob, extra: Record<string, unknown> = {}) {
   return {
-    workspace_key: job.workspaceKey ?? getCurrentWorkspace()?.workspaceKey ?? null,
     queue: job.queue,
     job_id: job.jobId,
     attempt: job.attempts,
@@ -352,10 +319,9 @@ export interface DrainResult {
  * the slot bracketing now, so a two-minute job costs the per-minute
  * `snooze-sweep` and `sla-breach-sweep` two runs each, silently.
  *
- * **Why a pool rather than per-queue loops.** Fifteen loops per workspace would
- * multiply the poll traffic by fifteen against a per-workspace database, and the
- * database is the scarce thing here — §6's corollary is that this loop already
- * holds a connection per workspace open by design. One loop keeps one poll, one
+ * **Why a pool rather than per-queue loops.** Fifteen loops would multiply the
+ * poll traffic by fifteen, and the database is the scarce thing here — the loop
+ * already holds one connection open by design. One loop keeps one poll, one
  * listener and one claim query per pass, whatever the queue count.
  *
  * **Why per-queue caps rather than one pool size.** The reference gave each
@@ -485,7 +451,7 @@ export interface DispatchResult {
 export async function dispatchPass(opts: {
   pool: JobPool
   config: RunnerConfig
-  /** Runs one job, in whatever workspace scope the caller owns. */
+  /** Runs one claimed job. */
   run: (job: ClaimedJob) => Promise<'succeeded' | 'failed' | 'retrying'>
   /** Called as each job settles, so the loop can claim the freed slot at once. */
   onSettled?: (queue: string, outcome: 'succeeded' | 'failed' | 'retrying') => void
@@ -643,7 +609,7 @@ export interface ScheduleTickResult {
    * healthy race. `attempted` is this scheduler's own decision, and it is the
    * only way to tell "another replica got there first" apart from "this
    * scheduler never considered the slot due at all", which is what shared
-   * scheduler state produced across workspaces.
+   * scheduler state produced.
    */
   attempted: number
   enqueued: number
@@ -662,8 +628,6 @@ export interface ScheduleTickResult {
 
 interface CachedCron {
   cron: ParsedCron
-  /** How widely a fleet spreads its starts for one slot (`slotSpreadMs`). */
-  spreadMs: number
 }
 
 const cronCache = new Map<string, CachedCron>()
@@ -671,59 +635,18 @@ const cronCache = new Map<string, CachedCron>()
 function cachedCron(pattern: string): CachedCron {
   let cached = cronCache.get(pattern)
   if (!cached) {
-    const cron = parseCron(pattern)
-    cached = { cron, spreadMs: slotSpreadMs(cron) }
+    cached = { cron: parseCron(pattern) }
     cronCache.set(pattern, cached)
   }
   return cached
 }
 
 /**
- * How long after each slot this scheduler starts it.
- *
- * Every pooled workspace loop evaluates the same crons, so without this an
- * hourly sweep starts in every workspace in the same second and the shared
- * database takes the whole fleet's work at once. Measured on a fleet of about
- * two hundred workspaces: every hourly analytics refresh started inside one
- * minute, and the database ran out of memory.
- *
- * The offset is a stable hash of the scheduler's spread key, scaled into the
- * schedule's spread window, so:
- *
- * - a workspace starts a schedule at the same point in every slot, and every
- *   replica agrees on that point without coordinating;
- * - a workspace's schedules on one cadence share a point, so its loop still
- *   wakes once a minute for its per-minute sweeps. Each tick asks every gate,
- *   and some gates query the database, so a point per schedule would multiply
- *   those queries across the fleet;
- * - the slot itself does not move. The dedupe key and `scheduledFor` are still
- *   the slot's instant, so a replica that computes no offset dedupes against
- *   one that does.
- *
- * A scheduler with no spread key (a single-workspace install) gets zero and
- * runs on the cron's own minute, as it always has.
- */
-export function scheduleOffsetMs(spreadKey: string | null, pattern: string): number {
-  if (spreadKey === null) return 0
-  const { spreadMs } = cachedCron(pattern)
-  return Math.floor(stableFraction(spreadKey) * spreadMs)
-}
-
-/**
  * One scheduler's memory of the last slot it has accounted for, per schedule.
  *
- * **This is per workspace, and it is passed in rather than held here, because the
- * module-scope version of it was a real cross-workspace defect.** One process runs
- * one loop per workspace; a `Map` keyed on the schedule name alone is shared by all
- * of them, so whichever workspace's loop reached a slot first advanced a counter
- * every other workspace then read as "already done" — and the rest silently never
- * enqueued that slot. Measured live on two workspaces: each minute's sweep
- * landed on one workspace, never both. It affected all seven sweeps.
- *
- * That is the §4.1 process-global-state hazard, introduced by the piece meant to
- * remove it. Keying the map by workspace would fix the instance; making the state a
- * parameter fixes the class, because there is no longer a shared object for the
- * next scheduler to key wrongly.
+ * The state is passed in rather than held at module scope so a second scheduler
+ * (a test, a second worker in one process) starts clean; a shared map would let
+ * one scheduler's progress suppress another's slots.
  *
  * ## What the state is for
  *
@@ -742,38 +665,23 @@ export function scheduleOffsetMs(spreadKey: string | null, pattern: string): num
  */
 export interface ScheduleState {
   readonly seen: Map<string, number>
-  /** What this scheduler's slot offsets are derived from (`scheduleOffsetMs`). Null runs on the minute. */
-  readonly spreadKey: string | null
 }
 
-/**
- * A scheduler's own state. One per workspace loop — never shared between them.
- *
- * A pooled loop passes its workspace key as `spreadKey`, so its slots start at
- * that workspace's own offset rather than on the same second as the rest of the
- * fleet.
- */
-export function createScheduleState(opts: { spreadKey?: string | null } = {}): ScheduleState {
-  return { seen: new Map<string, number>(), spreadKey: opts.spreadKey ?? null }
+/** A scheduler's own state. */
+export function createScheduleState(): ScheduleState {
+  return { seen: new Map<string, number>() }
 }
 
-/**
- * One schedule as this scheduler sees it at `now`: the cron is evaluated the
- * scheduler's offset behind real time, so a slot is due once its instant plus
- * the offset has passed.
- */
+/** One schedule as this scheduler sees it at `now`. */
 function scheduleView(
   state: ScheduleState,
   pattern: string,
   now: Date
 ): { slot: Date | null; nextDueAt: Date | null } {
   const { cron } = cachedCron(pattern)
-  const offset = scheduleOffsetMs(state.spreadKey, pattern)
-  const shifted = new Date(now.getTime() - offset)
-  const next = nextSlotAfter(cron, shifted)
   return {
-    slot: latestSlotAtOrBefore(cron, shifted),
-    nextDueAt: next ? new Date(next.getTime() + offset) : null,
+    slot: latestSlotAtOrBefore(cron, now),
+    nextDueAt: nextSlotAfter(cron, now),
   }
 }
 
@@ -783,10 +691,6 @@ function scheduleView(
  * Only the slot bracketing `now` is emitted — never a backlog. A tier that was
  * down for three hours runs an hourly sweep once on restart rather than three
  * times, which is what the BullMQ repeatable jobs did.
- *
- * "Now" is this scheduler's own: `now` less its offset for the schedule
- * (`scheduleOffsetMs`), so each pooled workspace starts a slot at its own point
- * inside the slot's spread window.
  *
  * Two replicas racing the same tick both attempt the insert and the unique index
  * on `(queue, dedupe_key)` settles it, so the cross-instance exclusion is a
@@ -851,7 +755,7 @@ export async function runScheduleTick(
    * first pass, and a first pass deliberately adopts the current slot rather
    * than running it (or every process restart would replay one of everything).
    * A gate that opens is therefore always a first pass, and the work never runs
-   * — measured against a real workspace, a snooze due in ninety seconds was never
+   * — measured against a real install, a snooze due in ninety seconds was never
    * swept at all. Harmless while gates flipped for a minute at a time; fatal
    * once a gate can stay shut for hours.
    *

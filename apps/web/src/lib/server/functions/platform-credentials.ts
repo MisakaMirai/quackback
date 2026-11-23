@@ -41,9 +41,6 @@ export const savePlatformCredentialsFn = createServerFn({ method: 'POST' })
     log.debug({ integration_type: data.integrationType }, 'save platform credentials')
     const auth = await requireAuth({ permission: PERMISSIONS.INTEGRATION_MANAGE })
 
-    const { assertTierFeature } = await import('@/lib/server/domains/settings/tier-enforce')
-    await assertTierFeature('integrations', 'Integrations')
-
     // Validate required fields against the integration definition
     const { getIntegration } = await import('@/lib/server/integrations')
     const definition = getIntegration(data.integrationType)
@@ -130,19 +127,6 @@ export const fetchPlatformCredentialsMaskedFn = createServerFn({ method: 'GET' }
       )
     }
 
-    const { config } = await import('@/lib/server/config')
-    if (
-      config.platformCredentialsSource === 'control-plane' &&
-      (await arePlatformCredentialsManaged(data.integrationType))
-    ) {
-      const { hasPlatformCredentials } =
-        await import('@/lib/server/domains/platform-credentials/platform-credential.service')
-      return {
-        configured: await hasPlatformCredentials(data.integrationType),
-        fields: null,
-        managed: true,
-      }
-    }
     const credentials = await getPlatformCredentials(data.integrationType)
 
     if (!credentials) {

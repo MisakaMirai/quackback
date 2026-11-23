@@ -48,25 +48,6 @@ test.describe('Base UI component usability', () => {
     const checked = await productSwitch.getAttribute('aria-checked')
     expect(checked === 'true' || checked === 'false').toBeTruthy()
 
-    await page.goto('/admin/settings/widget')
-    await expect(page.getByRole('heading', { name: 'Widget' }).first()).toBeVisible({
-      timeout: 15_000,
-    })
-    const position = page.locator('#widget-position')
-    await waitForHydration(position)
-    const shown = await position.innerText()
-    await position.click()
-    const listbox = page.locator('[data-slot="select-content"], [role="listbox"]').first()
-    await expect(listbox).toBeVisible()
-    await expect(page.getByRole('option').first()).toBeVisible()
-    await page.keyboard.press('Escape')
-    await expect(listbox).toBeHidden()
-    await expect(position).toHaveText(shown)
-
-    const install = page.getByRole('link', { name: /Install widget|View installation/ })
-    await expect(install).toBeVisible()
-    await expect(install).not.toHaveAttribute('role', 'button')
-
     await page.goto('/admin/settings/portal')
     await expect(page.getByRole('heading', { name: 'Portal' })).toBeVisible({ timeout: 15_000 })
     const slider = page.getByRole('slider')

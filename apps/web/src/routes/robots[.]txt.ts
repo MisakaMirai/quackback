@@ -34,7 +34,6 @@ export const Route = createFileRoute('/robots.txt')({
           'Disallow: /auth/',
           'Disallow: /onboarding/',
           'Disallow: /api/',
-          'Disallow: /widget',
           ...(helpCenterEnabled && !helpCenterIndexable ? ['Disallow: /hc'] : []),
           '',
           `Sitemap: ${baseUrl}/sitemap.xml`,

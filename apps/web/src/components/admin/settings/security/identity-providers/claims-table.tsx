@@ -15,6 +15,7 @@ import { ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/24/outline'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { DEFAULT_IDENTITY_SOURCES, type IdentitySource } from '@/lib/shared/oidc-claim-mapping'
 import type { ProfileFieldValues } from '@/lib/shared/sso-mapping-preview'
 import { PictureWithUrl } from './claim-picture'
@@ -53,6 +54,7 @@ export function ClaimsTable({
 }) {
   const hasPeople = additionalRows.some((row) => row.kind === 'people')
   const showTest = testValues != null
+  const intl = useOptionalIntl()
 
   return (
     <div className="space-y-4">
@@ -62,18 +64,40 @@ export function ClaimsTable({
           <thead>
             <tr className="border-b border-border/50 text-left text-muted-foreground">
               <th scope="col" className="py-2 pr-3 font-medium whitespace-nowrap">
-                Field
+                {intl.formatMessage({
+                  id: 'admin.settings.security.idp.table.field',
+                  defaultMessage: 'Field',
+                })}
               </th>
               <th scope="col" className="min-w-0 py-2 pr-3 font-medium">
-                {providerLabel ? `${providerLabel} claim` : 'Provider claim'}
+                {providerLabel
+                  ? intl.formatMessage(
+                      {
+                        id: 'admin.settings.security.idp.table.providerClaimNamed',
+                        defaultMessage: '{provider} claim',
+                      },
+                      { provider: providerLabel }
+                    )
+                  : intl.formatMessage({
+                      id: 'admin.settings.security.idp.providerClaim',
+                      defaultMessage: 'Provider claim',
+                    })}
               </th>
               {showTest && (
                 <th scope="col" className="py-2 pr-3 font-medium whitespace-nowrap">
-                  Last test sign-in
+                  {intl.formatMessage({
+                    id: 'admin.settings.security.idp.lastTest',
+                    defaultMessage: 'Last test sign-in',
+                  })}
                 </th>
               )}
               <th scope="col" className="w-px py-2 font-medium">
-                <span className="sr-only">Actions</span>
+                <span className="sr-only">
+                  {intl.formatMessage({
+                    id: 'admin.settings.security.idp.table.actions',
+                    defaultMessage: 'Actions',
+                  })}
+                </span>
               </th>
             </tr>
           </thead>
@@ -118,10 +142,18 @@ export function ClaimsTable({
                 onPeopleFlagsChange({ ...peopleFlags, overrideExisting: v === true })
               }
               disabled={disabled}
-              aria-label="Overwrite attribute values that are already set"
+              aria-label={intl.formatMessage({
+                id: 'admin.settings.security.idp.table.overwriteExisting',
+                defaultMessage: 'Overwrite attribute values that are already set',
+              })}
               className="mt-0.5"
             />
-            <span>Overwrite attribute values that are already set</span>
+            <span>
+              {intl.formatMessage({
+                id: 'admin.settings.security.idp.table.overwriteExisting',
+                defaultMessage: 'Overwrite attribute values that are already set',
+              })}
+            </span>
           </div>
           <div className="flex items-start gap-2 text-sm">
             <Checkbox
@@ -130,10 +162,18 @@ export function ClaimsTable({
                 onPeopleFlagsChange({ ...peopleFlags, syncOnSignIn: v === true })
               }
               disabled={disabled}
-              aria-label="Clear an attribute when its claim is missing"
+              aria-label={intl.formatMessage({
+                id: 'admin.settings.security.idp.table.clearMissing',
+                defaultMessage: 'Clear an attribute when its claim is missing',
+              })}
               className="mt-0.5"
             />
-            <span>Clear an attribute when its claim is missing</span>
+            <span>
+              {intl.formatMessage({
+                id: 'admin.settings.security.idp.table.clearMissing',
+                defaultMessage: 'Clear an attribute when its claim is missing',
+              })}
+            </span>
           </div>
         </div>
       )}
@@ -150,7 +190,15 @@ function ClaimPath({ children }: { children: React.ReactNode }) {
 }
 
 function CustomBadge() {
-  return <Badge variant="outline">Custom</Badge>
+  const intl = useOptionalIntl()
+  return (
+    <Badge variant="outline">
+      {intl.formatMessage({
+        id: 'admin.settings.security.idp.table.custom',
+        defaultMessage: 'Custom',
+      })}
+    </Badge>
+  )
 }
 
 function IconButton({
@@ -226,6 +274,7 @@ function ProfileRow({
   disabled?: boolean
   onEdit: () => void
 }) {
+  const intl = useOptionalIntl()
   return (
     <tr className="border-b border-border/50 last:border-0 align-top">
       <td className="py-2.5 pr-3">
@@ -246,7 +295,17 @@ function ProfileRow({
         </td>
       )}
       <td className="py-2.5">
-        <IconButton label={`Edit ${row.label} mapping`} onClick={onEdit} disabled={disabled}>
+        <IconButton
+          label={intl.formatMessage(
+            {
+              id: 'admin.settings.security.idp.editMapping',
+              defaultMessage: 'Edit {field} mapping',
+            },
+            { field: row.label }
+          )}
+          onClick={onEdit}
+          disabled={disabled}
+        >
           <PencilIcon className="h-3.5 w-3.5" />
         </IconButton>
       </td>
@@ -267,6 +326,7 @@ function PeopleRowView({
   onEdit: () => void
   onRemove: () => void
 }) {
+  const intl = useOptionalIntl()
   return (
     <tr className="border-b border-border/50 last:border-0 align-top">
       <td className="py-2.5 pr-3">
@@ -275,12 +335,18 @@ function PeopleRowView({
           {row.typeLabel && <span className="text-muted-foreground">{row.typeLabel}</span>}
           {row.orphaned && (
             <Badge variant="outline" className="border-warning/40 text-warning">
-              Attribute no longer exists
+              {intl.formatMessage({
+                id: 'admin.settings.security.idp.table.attributeGone',
+                defaultMessage: 'Attribute no longer exists',
+              })}
             </Badge>
           )}
           {row.duplicate && (
             <Badge variant="outline" className="border-warning/40 text-warning">
-              Duplicate
+              {intl.formatMessage({
+                id: 'admin.settings.security.idp.table.duplicate',
+                defaultMessage: 'Duplicate',
+              })}
             </Badge>
           )}
         </div>
@@ -291,11 +357,27 @@ function PeopleRowView({
       <NoTestValue show={showTest} />
       <td className="py-2.5">
         <div className="flex items-center justify-end gap-1">
-          <IconButton label={`Edit ${row.label} mapping`} onClick={onEdit} disabled={disabled}>
+          <IconButton
+            label={intl.formatMessage(
+              {
+                id: 'admin.settings.security.idp.editMapping',
+                defaultMessage: 'Edit {field} mapping',
+              },
+              { field: row.label }
+            )}
+            onClick={onEdit}
+            disabled={disabled}
+          >
             <PencilIcon className="h-3.5 w-3.5" />
           </IconButton>
           <IconButton
-            label={`Remove ${row.label} mapping`}
+            label={intl.formatMessage(
+              {
+                id: 'admin.settings.security.idp.removeMapping',
+                defaultMessage: 'Remove {field} mapping',
+              },
+              { field: row.label }
+            )}
             onClick={onRemove}
             disabled={disabled}
             destructive
@@ -309,13 +391,19 @@ function PeopleRowView({
 }
 
 function UnsupportedRowView({ row, showTest }: { row: ClaimsUnsupportedRow; showTest: boolean }) {
+  const intl = useOptionalIntl()
   return (
     <tr className="border-b border-border/50 last:border-0 align-top">
       <td className="py-2.5 pr-3">
         <div className="font-medium">{row.label}</div>
         <p className="mt-0.5 text-muted-foreground">{row.detail}</p>
       </td>
-      <td className="py-2.5 pr-3 text-muted-foreground">Not editable here</td>
+      <td className="py-2.5 pr-3 text-muted-foreground">
+        {intl.formatMessage({
+          id: 'admin.settings.security.idp.table.notEditable',
+          defaultMessage: 'Not editable here',
+        })}
+      </td>
       <NoTestValue show={showTest} />
       <td className="py-2.5" />
     </tr>
@@ -338,6 +426,7 @@ export function IdentitySourcesEditor({
   onChange: (next: IdentitySource[]) => void
   disabled?: boolean
 }) {
+  const intl = useOptionalIntl()
   const enabled = new Set(sources)
   const ordered: IdentitySource[] = []
   for (const source of sources) {
@@ -373,11 +462,18 @@ export function IdentitySourcesEditor({
   return (
     <div className="space-y-3" data-testid="identity-sources-editor">
       <div>
-        <div className="text-sm font-medium">Identity sources</div>
+        <div className="text-sm font-medium">
+          {intl.formatMessage({
+            id: 'admin.settings.security.idp.sources.title',
+            defaultMessage: 'Identity sources',
+          })}
+        </div>
         <p className="mt-1 text-sm text-muted-foreground">
-          Standard OpenID Connect reads the ID token, then UserInfo. Change this only for a provider
-          that puts identity somewhere else. Changing it can change which account a person matches
-          and needs a new connection test.
+          {intl.formatMessage({
+            id: 'admin.settings.security.idp.sources.description',
+            defaultMessage:
+              'Standard OpenID Connect reads the ID token, then UserInfo. Change this only for a provider that puts identity somewhere else. Changing it can change which account a person matches and needs a new connection test.',
+          })}
         </p>
       </div>
       <ol className="space-y-2">
@@ -396,7 +492,13 @@ export function IdentitySourcesEditor({
                 {index >= 0 ? `${index + 1}. ` : ''}
                 {SOURCE_LABELS[source]}
                 {source === 'accessTokenJwt' && (
-                  <span className="text-muted-foreground"> (may be issued for another API)</span>
+                  <span className="text-muted-foreground">
+                    {' '}
+                    {intl.formatMessage({
+                      id: 'admin.settings.security.idp.sources.mayBeAnotherApi',
+                      defaultMessage: '(may be issued for another API)',
+                    })}
+                  </span>
                 )}
               </span>
               {checked && (
@@ -406,7 +508,13 @@ export function IdentitySourcesEditor({
                     variant="ghost"
                     size="sm"
                     className="h-7 px-2"
-                    aria-label={`Move ${SOURCE_LABELS[source]} up`}
+                    aria-label={intl.formatMessage(
+                      {
+                        id: 'admin.settings.security.idp.sources.moveUp',
+                        defaultMessage: 'Move {source} up',
+                      },
+                      { source: SOURCE_LABELS[source] }
+                    )}
                     disabled={disabled || index <= 0}
                     onClick={() => move(index, -1)}
                   >
@@ -417,7 +525,13 @@ export function IdentitySourcesEditor({
                     variant="ghost"
                     size="sm"
                     className="h-7 px-2"
-                    aria-label={`Move ${SOURCE_LABELS[source]} down`}
+                    aria-label={intl.formatMessage(
+                      {
+                        id: 'admin.settings.security.idp.sources.moveDown',
+                        defaultMessage: 'Move {source} down',
+                      },
+                      { source: SOURCE_LABELS[source] }
+                    )}
                     disabled={disabled || index < 0 || index >= sources.length - 1}
                     onClick={() => move(index, 1)}
                   >
@@ -437,7 +551,10 @@ export function IdentitySourcesEditor({
           disabled={disabled}
           onClick={() => onChange([...DEFAULT_IDENTITY_SOURCES])}
         >
-          Use standard sources
+          {intl.formatMessage({
+            id: 'admin.settings.security.idp.sources.useStandard',
+            defaultMessage: 'Use standard sources',
+          })}
         </Button>
       )}
     </div>

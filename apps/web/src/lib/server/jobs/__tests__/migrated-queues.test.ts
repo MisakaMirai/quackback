@@ -7,11 +7,9 @@
  * implicit in one place. Two statements of one rule need two tests, or the
  * second is decoration a refactor can drop unnoticed.
  *
- * **The schedule gate.** `email-imap` refuses to schedule under pooled tenancy:
- * its mailbox is process-wide configuration while the queue is per workspace, so
- * scheduling it on every workspace's loop would have each workspace poll the same
- * mailbox and ingest the same message into its own database. Nothing else in
- * the suite would notice that refusal disappearing.
+ * **The schedule gate.** `email-imap` schedules only when a mailbox is
+ * configured; a cron that enqueued anyway would write 1,440 no-op rows a day.
+ * Nothing else in the suite would notice that gate disappearing.
  */
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import {
@@ -42,15 +40,6 @@ vi.mock('@/lib/server/db', async (importOriginal) => ({
 
 vi.mock('@/lib/server/workspaces/workspace-context', () => ({
   getCurrentWorkspace: () => null,
-}))
-
-let pooled = false
-vi.mock('@/lib/server/config', () => ({
-  config: {
-    get isPooledTenancy() {
-      return pooled
-    },
-  },
 }))
 
 let imapEnv: Record<string, string | undefined> = {}
@@ -115,22 +104,11 @@ describe('at-most-once is stated at the enqueue site too', () => {
 describe('the email-imap schedule gate', () => {
   it('is closed when no mailbox is configured', () => {
     imapEnv = {}
-    pooled = false
     expect(isEmailImapPollable()).toBe(false)
   })
 
-  it('is open on a single-workspace install with a mailbox', () => {
+  it('is open when a mailbox is configured', () => {
     imapEnv = { configured: '1' }
-    pooled = false
     expect(isEmailImapPollable()).toBe(true)
-  })
-
-  it('is REFUSED under pooled tenancy even with a mailbox configured', () => {
-    // One shared mailbox polled from every workspace's loop would ingest the same
-    // message into every workspace's database. It fails closed rather than
-    // silently fanning a mailbox out across the fleet.
-    imapEnv = { configured: '1' }
-    pooled = true
-    expect(isEmailImapPollable()).toBe(false)
   })
 })

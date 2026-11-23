@@ -5,7 +5,8 @@
  */
 import { useMemo, useState } from 'react'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { defineMessages, useIntl, type IntlShape, type MessageDescriptor } from 'react-intl'
+import { defineMessages, type IntlShape, type MessageDescriptor } from 'react-intl'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { useDebouncedValue } from '@/lib/client/hooks/use-debounced-value'
 import { ArrowDownTrayIcon } from '@heroicons/react/24/solid'
 import {
@@ -30,10 +31,8 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { adminQueries } from '@/lib/client/queries/admin'
-import { ASSISTANT_CONFIG_EVENT_LABELS } from '@/lib/shared/assistant/config-audit-events'
 import type { AuditEventRow } from '@/lib/server/functions/audit-log'
 import type { AuditChannel } from '@/lib/shared/audit-attribution'
-import { displayAssistantName } from '@/lib/shared/assistant/config'
 
 /**
  * Event-type catalog for the filter dropdown. Mirrors the
@@ -47,80 +46,269 @@ import { displayAssistantName } from '@/lib/shared/assistant/config'
  * future multi-select variant of this filter.
  */
 interface FilterEventOption {
-  label: string
+  label: MessageDescriptor
   value: string
-  group?: string
+  group?: MessageDescriptor
   excludeByDefault?: boolean
 }
 
-const WIDGET_ACTIVITY_GROUP = 'Widget activity'
+const EVENT_TYPE_MESSAGES = defineMessages({
+  all: {
+    id: 'admin.settings.security.audit.events.all',
+    defaultMessage: 'All events',
+  },
+  ssoEnforcementDomainEnabled: {
+    id: 'admin.settings.security.audit.events.ssoEnforcementDomainEnabled',
+    defaultMessage: 'SSO enforcement enabled (domain)',
+  },
+  ssoEnforcementDomainDisabled: {
+    id: 'admin.settings.security.audit.events.ssoEnforcementDomainDisabled',
+    defaultMessage: 'SSO enforcement disabled (domain)',
+  },
+  ssoConfigChanged: {
+    id: 'admin.settings.security.audit.events.ssoConfigChanged',
+    defaultMessage: 'SSO config changed',
+  },
+  passwordEnabled: {
+    id: 'admin.settings.security.audit.events.passwordEnabled',
+    defaultMessage: 'Password sign-in enabled',
+  },
+  passwordDisabled: {
+    id: 'admin.settings.security.audit.events.passwordDisabled',
+    defaultMessage: 'Password sign-in disabled',
+  },
+  emailEnabled: {
+    id: 'admin.settings.security.audit.events.emailEnabled',
+    defaultMessage: 'Email sign-in enabled',
+  },
+  emailDisabled: {
+    id: 'admin.settings.security.audit.events.emailDisabled',
+    defaultMessage: 'Email sign-in disabled',
+  },
+  twoFactorResetByAdmin: {
+    id: 'admin.settings.security.audit.events.twoFactorResetByAdmin',
+    defaultMessage: 'Two-factor reset by admin',
+  },
+  restoreSettled: {
+    id: 'admin.settings.security.audit.events.restoreSettled',
+    defaultMessage: 'Restore: external side effects settled',
+  },
+  portalAllowedDomainsChanged: {
+    id: 'admin.settings.security.audit.events.portalAllowedDomainsChanged',
+    defaultMessage: 'Allowed domains changed',
+  },
+  portalAllowedSegmentsChanged: {
+    id: 'admin.settings.security.audit.events.portalAllowedSegmentsChanged',
+    defaultMessage: 'Allowed segments changed',
+  },
+  portalAccessDenied: {
+    id: 'admin.settings.security.audit.events.portalAccessDenied',
+    defaultMessage: 'Access denied',
+  },
+  portalInviteAccepted: {
+    id: 'admin.settings.security.audit.events.portalInviteAccepted',
+    defaultMessage: 'Invite accepted',
+  },
+  portalInviteResent: {
+    id: 'admin.settings.security.audit.events.portalInviteResent',
+    defaultMessage: 'Invite resent',
+  },
+  portalInviteLinkMinted: {
+    id: 'admin.settings.security.audit.events.portalInviteLinkMinted',
+    defaultMessage: 'Invite link minted',
+  },
+  portalInviteSent: {
+    id: 'admin.settings.security.audit.events.portalInviteSent',
+    defaultMessage: 'Invite sent',
+  },
+  portalSignInFailed: {
+    id: 'admin.settings.security.audit.events.portalSignInFailed',
+    defaultMessage: 'Sign-in failed',
+  },
+  portalVisibilityChanged: {
+    id: 'admin.settings.security.audit.events.portalVisibilityChanged',
+    defaultMessage: 'Visibility changed',
+  },
+  labsExperimentChanged: {
+    id: 'admin.settings.security.audit.events.labsExperimentChanged',
+    defaultMessage: 'Experiment changed',
+  },
+  apiWrite: {
+    id: 'admin.settings.security.audit.events.apiWrite',
+    defaultMessage: 'API write',
+  },
+  apiImport: {
+    id: 'admin.settings.security.audit.events.apiImport',
+    defaultMessage: 'API import',
+  },
+  mcpToolCall: {
+    id: 'admin.settings.security.audit.events.mcpToolCall',
+    defaultMessage: 'MCP tool call',
+  },
+  settingsApplied: {
+    id: 'admin.settings.security.audit.events.settingsApplied',
+    defaultMessage: 'Settings applied',
+  },
+  settingsUndone: {
+    id: 'admin.settings.security.audit.events.settingsUndone',
+    defaultMessage: 'Settings undone',
+  },
+})
+
+const EVENT_GROUP_MESSAGES = defineMessages({
+  portal: { id: 'admin.settings.security.audit.groups.portal', defaultMessage: 'Portal' },
+  labs: { id: 'admin.settings.security.audit.groups.labs', defaultMessage: 'Labs' },
+  apiAndMcp: {
+    id: 'admin.settings.security.audit.groups.apiAndMcp',
+    defaultMessage: 'API and MCP',
+  },
+  settings: {
+    id: 'admin.settings.security.audit.groups.settings',
+    defaultMessage: 'Settings',
+  },
+})
 
 const FILTER_EVENT_TYPES: FilterEventOption[] = [
-  { label: 'All events', value: 'all' },
-  { label: 'SSO enforcement enabled (domain)', value: 'sso.enforcement.domain.enabled' },
-  { label: 'SSO enforcement disabled (domain)', value: 'sso.enforcement.domain.disabled' },
-  { label: 'SSO config changed', value: 'sso.config.changed' },
-  { label: 'Password sign-in enabled', value: 'auth.password.enabled' },
-  { label: 'Password sign-in disabled', value: 'auth.password.disabled' },
-  { label: 'Email sign-in enabled', value: 'auth.magic_link.enabled' },
-  { label: 'Email sign-in disabled', value: 'auth.magic_link.disabled' },
-  { label: 'Two-factor reset by admin', value: 'two_factor.reset_by_admin' },
-  { label: 'Restore: external side effects settled', value: 'restore.side_effects_settled' },
+  { label: EVENT_TYPE_MESSAGES.all, value: 'all' },
+  {
+    label: EVENT_TYPE_MESSAGES.ssoEnforcementDomainEnabled,
+    value: 'sso.enforcement.domain.enabled',
+  },
+  {
+    label: EVENT_TYPE_MESSAGES.ssoEnforcementDomainDisabled,
+    value: 'sso.enforcement.domain.disabled',
+  },
+  { label: EVENT_TYPE_MESSAGES.ssoConfigChanged, value: 'sso.config.changed' },
+  { label: EVENT_TYPE_MESSAGES.passwordEnabled, value: 'auth.password.enabled' },
+  { label: EVENT_TYPE_MESSAGES.passwordDisabled, value: 'auth.password.disabled' },
+  { label: EVENT_TYPE_MESSAGES.emailEnabled, value: 'auth.magic_link.enabled' },
+  { label: EVENT_TYPE_MESSAGES.emailDisabled, value: 'auth.magic_link.disabled' },
+  { label: EVENT_TYPE_MESSAGES.twoFactorResetByAdmin, value: 'two_factor.reset_by_admin' },
+  { label: EVENT_TYPE_MESSAGES.restoreSettled, value: 'restore.side_effects_settled' },
   // Portal events
   {
-    group: 'Portal',
-    label: 'Allowed domains changed',
+    group: EVENT_GROUP_MESSAGES.portal,
+    label: EVENT_TYPE_MESSAGES.portalAllowedDomainsChanged,
     value: 'portal.allowed_domains.changed',
   },
   {
-    group: 'Portal',
-    label: 'Allowed segments changed',
+    group: EVENT_GROUP_MESSAGES.portal,
+    label: EVENT_TYPE_MESSAGES.portalAllowedSegmentsChanged,
     value: 'portal.allowed_segments.changed',
   },
-  { group: 'Portal', label: 'Access denied', value: 'portal.access.denied' },
-  { group: 'Portal', label: 'Invite accepted', value: 'portal.invite.accepted' },
-  { group: 'Portal', label: 'Invite expired', value: 'portal.invite.expired' },
-  { group: 'Portal', label: 'Invite link minted', value: 'portal.invite.link_minted' },
-  { group: 'Portal', label: 'Invite resent', value: 'portal.invite.resent' },
-  { group: 'Portal', label: 'Invite revoked', value: 'portal.invite.revoked' },
-  { group: 'Portal', label: 'Invite sent', value: 'portal.invite.sent' },
-  { group: 'Portal', label: 'Sign-in failed', value: 'auth.signin.failed' },
-  { group: 'Portal', label: 'Visibility changed', value: 'portal.visibility.changed' },
-  { group: 'Labs', label: 'Experiment changed', value: 'labs.experiment.changed' },
+  {
+    group: EVENT_GROUP_MESSAGES.portal,
+    label: EVENT_TYPE_MESSAGES.portalAccessDenied,
+    value: 'portal.access.denied',
+  },
+  {
+    group: EVENT_GROUP_MESSAGES.portal,
+    label: EVENT_TYPE_MESSAGES.portalInviteAccepted,
+    value: 'portal.invite.accepted',
+  },
+  {
+    group: EVENT_GROUP_MESSAGES.portal,
+    label: {
+      id: 'portal.invite.expired.title',
+      defaultMessage: 'Invite expired',
+    },
+    value: 'portal.invite.expired',
+  },
+  {
+    group: EVENT_GROUP_MESSAGES.portal,
+    label: EVENT_TYPE_MESSAGES.portalInviteLinkMinted,
+    value: 'portal.invite.link_minted',
+  },
+  {
+    group: EVENT_GROUP_MESSAGES.portal,
+    label: EVENT_TYPE_MESSAGES.portalInviteResent,
+    value: 'portal.invite.resent',
+  },
+  {
+    group: EVENT_GROUP_MESSAGES.portal,
+    label: {
+      id: 'portal.invite.revoked.title',
+      defaultMessage: 'Invite revoked',
+    },
+    value: 'portal.invite.revoked',
+  },
+  {
+    group: EVENT_GROUP_MESSAGES.portal,
+    label: EVENT_TYPE_MESSAGES.portalInviteSent,
+    value: 'portal.invite.sent',
+  },
+  {
+    group: EVENT_GROUP_MESSAGES.portal,
+    label: EVENT_TYPE_MESSAGES.portalSignInFailed,
+    value: 'auth.signin.failed',
+  },
+  {
+    group: EVENT_GROUP_MESSAGES.portal,
+    label: EVENT_TYPE_MESSAGES.portalVisibilityChanged,
+    value: 'portal.visibility.changed',
+  },
+  {
+    group: EVENT_GROUP_MESSAGES.labs,
+    label: EVENT_TYPE_MESSAGES.labsExperimentChanged,
+    value: 'labs.experiment.changed',
+  },
   // Changes made with an API key or an MCP client, recorded at the boundary.
-  { group: 'API and MCP', label: 'API write', value: 'api.write' },
-  { group: 'API and MCP', label: 'API import', value: 'api.import' },
-  { group: 'API and MCP', label: 'MCP tool call', value: 'mcp.tool_call' },
-  { group: 'Settings', label: 'Settings applied', value: 'settings.applied' },
-  { group: 'Settings', label: 'Settings undone', value: 'settings.undone' },
-  { group: 'Portal', label: 'Widget sign-in changed', value: 'portal.widget_signin.changed' },
-  // Widget activity, separated because handshake events are high-volume on active workspaces.
-  // portal.widget_handshake.consumed is flagged excludeByDefault for future multi-select support.
   {
-    group: WIDGET_ACTIVITY_GROUP,
-    label: 'Handshake consumed',
-    value: 'portal.widget_handshake.consumed',
-    excludeByDefault: true,
+    group: EVENT_GROUP_MESSAGES.apiAndMcp,
+    label: EVENT_TYPE_MESSAGES.apiWrite,
+    value: 'api.write',
   },
   {
-    group: WIDGET_ACTIVITY_GROUP,
-    label: 'Handshake invalid',
-    value: 'portal.widget_handshake.invalid',
+    group: EVENT_GROUP_MESSAGES.apiAndMcp,
+    label: EVENT_TYPE_MESSAGES.apiImport,
+    value: 'api.import',
   },
-  // AI config changelog events. The assistant admin page reads the same set
-  // from the shared label map so the two can never list a different set.
-  ...Object.entries(ASSISTANT_CONFIG_EVENT_LABELS).map(([value, label]) => ({
-    group: 'AI config',
-    label,
-    value,
-  })),
+  {
+    group: EVENT_GROUP_MESSAGES.apiAndMcp,
+    label: EVENT_TYPE_MESSAGES.mcpToolCall,
+    value: 'mcp.tool_call',
+  },
+  {
+    group: EVENT_GROUP_MESSAGES.settings,
+    label: EVENT_TYPE_MESSAGES.settingsApplied,
+    value: 'settings.applied',
+  },
+  {
+    group: EVENT_GROUP_MESSAGES.settings,
+    label: EVENT_TYPE_MESSAGES.settingsUndone,
+    value: 'settings.undone',
+  },
 ]
 
 const TIME_RANGES = [
-  { label: 'Last 7 days', value: '7d' },
-  { label: 'Last 30 days', value: '30d' },
-  { label: 'Last 90 days', value: '90d' },
-  { label: 'All time', value: 'all' },
+  {
+    label: {
+      id: 'portal.feedback.filter.date.last7Days',
+      defaultMessage: 'Last 7 days',
+    },
+    value: '7d',
+  },
+  {
+    label: {
+      id: 'portal.feedback.filter.date.last30Days',
+      defaultMessage: 'Last 30 days',
+    },
+    value: '30d',
+  },
+  {
+    label: {
+      id: 'portal.feedback.filter.date.last90Days',
+      defaultMessage: 'Last 90 days',
+    },
+    value: '90d',
+  },
+  {
+    label: {
+      id: 'admin.settings.security.audit.range.allTime',
+      defaultMessage: 'All time',
+    },
+    value: 'all',
+  },
 ] as const
 
 type TimeRange = (typeof TIME_RANGES)[number]['value']
@@ -250,7 +438,6 @@ export function rowsToCsv(rows: AuditEventRow[]): string {
 const VIA_CHANNEL: Partial<Record<AuditChannel, MessageDescriptor>> = defineMessages({
   api: { id: 'admin.auditLog.via.api', defaultMessage: 'via API' },
   mcp: { id: 'admin.auditLog.via.mcp', defaultMessage: 'via MCP' },
-  assistant: { id: 'admin.auditLog.via.assistant', defaultMessage: 'via assistant' },
   workflow: { id: 'admin.auditLog.via.workflow', defaultMessage: 'via workflow' },
   system: { id: 'admin.auditLog.via.system', defaultMessage: 'via system' },
 })
@@ -259,13 +446,8 @@ const VIA_ON_BEHALF_OF = defineMessages({
   onBehalfOf: { id: 'admin.auditLog.via.onBehalfOf', defaultMessage: 'for {name}' },
 }).onBehalfOf
 
-/**
- * The client name a row shows. An assistant row stored under the former default
- * name reads as the product name.
- */
 function viaClientName(row: { channel: AuditChannel | null; clientName: string | null }) {
-  if (row.channel !== 'assistant' || !row.clientName) return row.clientName
-  return displayAssistantName(row.clientName)
+  return row.clientName
 }
 
 /**
@@ -304,7 +486,7 @@ export function attributionTooltip(
 }
 
 function ViaLine({ row }: { row: AuditEventRow }) {
-  const intl = useIntl()
+  const intl = useOptionalIntl()
   const line = attributionLine(row, intl)
   if (!line) return null
   return (
@@ -322,8 +504,15 @@ function ActorCell({ row }: { row: AuditEventRow }) {
   // actorType so the row is never blank. This is the in-table
   // surface for the 0070_audit_log_observability migration's
   // actorType + authMethod columns; request_id stays in the CSV.
+  const intl = useOptionalIntl()
   const primary = row.actorEmail ?? (row.actorType ? `(${row.actorType})` : null)
-  if (!primary) return <span className="text-muted-foreground">None</span>
+  if (!primary) {
+    return (
+      <span className="text-muted-foreground">
+        {intl.formatMessage({ id: 'common.none', defaultMessage: 'None' })}
+      </span>
+    )
+  }
   const role = row.actorRole ? row.actorRole.charAt(0).toUpperCase() + row.actorRole.slice(1) : null
   const subtitle = [role, row.authMethod].filter(Boolean).join(' · ')
   return (
@@ -343,7 +532,14 @@ function ActorCell({ row }: { row: AuditEventRow }) {
  * row width.
  */
 function TargetCell({ row }: { row: AuditEventRow }) {
-  if (!row.targetType) return <span className="text-muted-foreground">None</span>
+  const intl = useOptionalIntl()
+  if (!row.targetType) {
+    return (
+      <span className="text-muted-foreground">
+        {intl.formatMessage({ id: 'common.none', defaultMessage: 'None' })}
+      </span>
+    )
+  }
   return (
     <div className="flex flex-col">
       <span className="text-xs uppercase tracking-wide text-muted-foreground">
@@ -380,7 +576,7 @@ function downloadCsv(rows: AuditEventRow[]): void {
 }
 
 export function AuditLogPage() {
-  const intl = useIntl()
+  const intl = useOptionalIntl()
   const [eventType, setEventType] = useState<string>('all')
   const [timeRange, setTimeRange] = useState<TimeRange>('30d')
   const [actorEmailInput, setActorEmailInput] = useState<string>('')
@@ -423,29 +619,31 @@ export function AuditLogPage() {
         <div className="flex flex-wrap items-center gap-2">
           <Select value={eventType} onValueChange={setEventType}>
             <SelectTrigger size="sm" className="w-full sm:w-64">
-              <SelectValue placeholder="Event type" />
+              <SelectValue
+                placeholder={intl.formatMessage({
+                  id: 'admin.settings.security.audit.filter.eventType',
+                  defaultMessage: 'Event type',
+                })}
+              />
             </SelectTrigger>
             <SelectContent>
               {/* Ungrouped items first */}
               {FILTER_EVENT_TYPES.filter((o) => !o.group).map((opt) => (
                 <SelectItem key={opt.value} value={opt.value}>
-                  {opt.label}
+                  {intl.formatMessage(opt.label)}
                 </SelectItem>
               ))}
               {/* Grouped items */}
               {Array.from(
                 new Set(FILTER_EVENT_TYPES.filter((o) => !!o.group).map((o) => o.group!))
               ).map((group) => (
-                <SelectGroup key={group}>
-                  <SelectLabel className="text-muted-foreground px-2 py-1">{group}</SelectLabel>
-                  {group === WIDGET_ACTIVITY_GROUP && (
-                    <p className="px-2 pb-1 text-xs text-muted-foreground leading-snug">
-                      High-volume on active workspaces. Pick a specific event to view it.
-                    </p>
-                  )}
+                <SelectGroup key={group.id}>
+                  <SelectLabel className="text-muted-foreground px-2 py-1">
+                    {intl.formatMessage(group)}
+                  </SelectLabel>
                   {FILTER_EVENT_TYPES.filter((o) => o.group === group).map((opt) => (
                     <SelectItem key={opt.value} value={opt.value}>
-                      {opt.label}
+                      {intl.formatMessage(opt.label)}
                     </SelectItem>
                   ))}
                 </SelectGroup>
@@ -459,18 +657,24 @@ export function AuditLogPage() {
             <SelectContent>
               {TIME_RANGES.map((opt) => (
                 <SelectItem key={opt.value} value={opt.value}>
-                  {opt.label}
+                  {intl.formatMessage(opt.label)}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
           <Input
             type="search"
-            placeholder="Filter by actor email"
+            placeholder={intl.formatMessage({
+              id: 'admin.settings.security.audit.filter.actorEmailPlaceholder',
+              defaultMessage: 'Filter by actor email',
+            })}
             value={actorEmailInput}
             onChange={(e) => setActorEmailInput(e.target.value)}
             className="h-9 w-full sm:w-56 text-xs"
-            aria-label="Filter audit events by actor email"
+            aria-label={intl.formatMessage({
+              id: 'admin.settings.security.audit.filter.actorEmailAria',
+              defaultMessage: 'Filter audit events by actor email',
+            })}
           />
         </div>
         <Button
@@ -481,7 +685,10 @@ export function AuditLogPage() {
           className="h-9"
         >
           <ArrowDownTrayIcon className="size-3.5" />
-          Export CSV
+          {intl.formatMessage({
+            id: 'admin.settings.security.audit.exportCsv',
+            defaultMessage: 'Export CSV',
+          })}
         </Button>
       </div>
 
@@ -493,18 +700,46 @@ export function AuditLogPage() {
         <Table className="table-fixed text-xs">
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[7rem]">When</TableHead>
-              <TableHead className="w-[18rem]">Event</TableHead>
-              <TableHead className="w-[16rem]">Actor</TableHead>
-              <TableHead className="w-[18rem]">Target</TableHead>
-              <TableHead className="w-[5rem]">Outcome</TableHead>
+              <TableHead className="w-[7rem]">
+                {intl.formatMessage({
+                  id: 'admin.settings.security.audit.table.when',
+                  defaultMessage: 'When',
+                })}
+              </TableHead>
+              <TableHead className="w-[18rem]">
+                {intl.formatMessage({
+                  id: 'admin.settings.security.audit.table.event',
+                  defaultMessage: 'Event',
+                })}
+              </TableHead>
+              <TableHead className="w-[16rem]">
+                {intl.formatMessage({
+                  id: 'admin.settings.security.audit.table.actor',
+                  defaultMessage: 'Actor',
+                })}
+              </TableHead>
+              <TableHead className="w-[18rem]">
+                {intl.formatMessage({
+                  id: 'admin.settings.security.audit.table.target',
+                  defaultMessage: 'Target',
+                })}
+              </TableHead>
+              <TableHead className="w-[5rem]">
+                {intl.formatMessage({
+                  id: 'admin.settings.security.audit.table.outcome',
+                  defaultMessage: 'Outcome',
+                })}
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {rows.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">
-                  No audit events match these filters yet.
+                  {intl.formatMessage({
+                    id: 'admin.settings.security.audit.empty',
+                    defaultMessage: 'No audit events match these filters yet.',
+                  })}
                 </TableCell>
               </TableRow>
             ) : (
@@ -538,7 +773,10 @@ export function AuditLogPage() {
       <div className="md:hidden rounded-md border divide-y divide-border">
         {rows.length === 0 ? (
           <p className="py-8 text-center text-sm text-muted-foreground">
-            No audit events match these filters yet.
+            {intl.formatMessage({
+              id: 'admin.settings.security.audit.empty',
+              defaultMessage: 'No audit events match these filters yet.',
+            })}
           </p>
         ) : (
           rows.map((row) => {
@@ -557,12 +795,22 @@ export function AuditLogPage() {
                 {/* Secondary fields */}
                 <div className="space-y-1 text-xs text-muted-foreground">
                   <div className="flex gap-2">
-                    <span className="w-12 shrink-0 font-medium text-foreground/60">When</span>
+                    <span className="w-12 shrink-0 font-medium text-foreground/60">
+                      {intl.formatMessage({
+                        id: 'admin.settings.security.audit.table.when',
+                        defaultMessage: 'When',
+                      })}
+                    </span>
                     <InlineTimestamp iso={row.occurredAt} />
                   </div>
                   {row.actorEmail || attributionLine(row, intl) ? (
                     <div className="flex gap-2">
-                      <span className="w-12 shrink-0 font-medium text-foreground/60">Actor</span>
+                      <span className="w-12 shrink-0 font-medium text-foreground/60">
+                        {intl.formatMessage({
+                          id: 'admin.settings.security.audit.table.actor',
+                          defaultMessage: 'Actor',
+                        })}
+                      </span>
                       <div className="flex min-w-0 flex-col">
                         <span className="truncate">
                           {row.actorEmail ?? (row.actorType ? `(${row.actorType})` : null)}
@@ -573,7 +821,12 @@ export function AuditLogPage() {
                   ) : null}
                   {row.targetType && (
                     <div className="flex gap-2">
-                      <span className="w-12 shrink-0 font-medium text-foreground/60">Target</span>
+                      <span className="w-12 shrink-0 font-medium text-foreground/60">
+                        {intl.formatMessage({
+                          id: 'admin.settings.security.audit.table.target',
+                          defaultMessage: 'Target',
+                        })}
+                      </span>
                       <div className="min-w-0">
                         <span className="uppercase tracking-wide text-xs">{row.targetType}</span>
                         {row.targetId && (
@@ -593,7 +846,14 @@ export function AuditLogPage() {
 
       {data.hasMore ? (
         <p className="text-xs text-muted-foreground">
-          Showing the most recent {rows.length} events. Narrow the filters to see older entries.
+          {intl.formatMessage(
+            {
+              id: 'admin.settings.security.audit.more',
+              defaultMessage:
+                'Showing the most recent {count, plural, one {# event} other {# events}}. Narrow the filters to see older entries.',
+            },
+            { count: rows.length }
+          )}
         </p>
       ) : null}
     </div>

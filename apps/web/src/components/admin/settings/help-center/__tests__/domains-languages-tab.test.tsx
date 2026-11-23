@@ -10,7 +10,7 @@ const { mockBillingEnabled } = vi.hoisted(() => ({
 
 vi.mock('@tanstack/react-router', () => ({
   useRouteContext: (opts?: { select?: (context: never) => unknown }) => {
-    const context = { billingEnabled: mockBillingEnabled.current }
+    const context = { cloudEnabled: mockBillingEnabled.current }
     return opts?.select ? opts.select(context as never) : context
   },
 }))
@@ -65,13 +65,6 @@ describe('DomainsLanguagesTab', () => {
     expect(screen.queryByText(/TLS terminates at your own reverse proxy/i)).toBeNull()
     fireEvent.click(screen.getByText('DNS setup'))
     expect(screen.getByText(/TLS terminates at your own reverse proxy/i)).toBeTruthy()
-  })
-
-  it('hides the local reverse-proxy writer when cloud is on', () => {
-    mockBillingEnabled.current = true
-    render(<DomainsLanguagesTab config={config} />)
-    expect(screen.queryByText('Custom domain')).toBeNull()
-    expect(screen.queryByText(/TLS terminates at your own reverse proxy/i)).toBeNull()
   })
 })
 

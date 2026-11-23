@@ -10,6 +10,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { useUpdateIntegration } from '@/lib/client/mutations'
 import { OnDeleteConfig } from '@/components/admin/settings/integrations/on-delete-config'
 import { fetchNotionDatabasesFn, type NotionDatabase } from '@/integrations/notion/server/functions'
@@ -30,8 +31,14 @@ interface NotionConfigProps {
 const EVENT_CONFIG = [
   {
     id: 'post.created' as const,
-    label: 'New feedback submitted',
-    description: 'Create a database item when a user submits new feedback',
+    label: {
+      id: 'admin.integrations.config.eventNewFeedback',
+      defaultMessage: 'New feedback submitted',
+    },
+    description: {
+      id: 'admin.integrations.notion.eventNewFeedbackDescription',
+      defaultMessage: 'Create a database item when a user submits new feedback',
+    },
   },
 ]
 
@@ -41,6 +48,7 @@ export function NotionConfig({
   initialEventMappings,
   enabled,
 }: NotionConfigProps) {
+  const intl = useOptionalIntl()
   const updateMutation = useUpdateIntegration()
   const [databases, setDatabases] = useState<NotionDatabase[]>([])
   const [loadingDatabases, setLoadingDatabases] = useState(false)
@@ -63,11 +71,16 @@ export function NotionConfig({
       const result = await fetchNotionDatabasesFn()
       setDatabases(result)
     } catch {
-      setDatabaseError('Failed to load databases. Please try again.')
+      setDatabaseError(
+        intl.formatMessage({
+          id: 'admin.integrations.config.loadDatabasesFailed',
+          defaultMessage: 'Failed to load databases. Please try again.',
+        })
+      )
     } finally {
       setLoadingDatabases(false)
     }
-  }, [])
+  }, [intl])
 
   useEffect(() => {
     fetchDatabases()
@@ -102,10 +115,16 @@ export function NotionConfig({
       <div className="flex items-center justify-between">
         <div>
           <Label htmlFor="enabled-toggle" className="text-base font-medium">
-            Integration enabled
+            {intl.formatMessage({
+              id: 'admin.integrations.config.enabled',
+              defaultMessage: 'Integration enabled',
+            })}
           </Label>
           <p className="text-xs text-muted-foreground">
-            Turn off to pause creating Notion items from feedback
+            {intl.formatMessage({
+              id: 'admin.integrations.notion.disableHint',
+              defaultMessage: 'Turn off to pause creating Notion items from feedback',
+            })}
           </p>
         </div>
         <Switch
@@ -118,7 +137,12 @@ export function NotionConfig({
 
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <Label htmlFor="database-select">Target database</Label>
+          <Label htmlFor="database-select">
+            {intl.formatMessage({
+              id: 'admin.integrations.notion.databaseLabel',
+              defaultMessage: 'Target database',
+            })}
+          </Label>
           <Button
             variant="ghost"
             size="sm"
@@ -127,7 +151,10 @@ export function NotionConfig({
             className="h-8 gap-1.5 text-xs"
           >
             <ArrowPathIcon className={`h-3.5 w-3.5 ${loadingDatabases ? 'animate-spin' : ''}`} />
-            Refresh
+            {intl.formatMessage({
+              id: 'admin.integrations.config.refresh',
+              defaultMessage: 'Refresh',
+            })}
           </Button>
         </div>
         {databaseError ? (
@@ -142,10 +169,20 @@ export function NotionConfig({
               {loadingDatabases ? (
                 <div className="flex items-center gap-2">
                   <ArrowPathIcon className="h-4 w-4 animate-spin" />
-                  <span>Loading databases...</span>
+                  <span>
+                    {intl.formatMessage({
+                      id: 'admin.integrations.config.loadingDatabases',
+                      defaultMessage: 'Loading databases...',
+                    })}
+                  </span>
                 </div>
               ) : (
-                <SelectValue placeholder="Select a database" />
+                <SelectValue
+                  placeholder={intl.formatMessage({
+                    id: 'admin.integrations.config.selectDatabase',
+                    defaultMessage: 'Select a database',
+                  })}
+                />
               )}
             </SelectTrigger>
             <SelectContent>
@@ -158,14 +195,27 @@ export function NotionConfig({
           </Select>
         )}
         <p className="text-xs text-muted-foreground">
-          New feedback will be added as items in this database. The database must have a Title
-          property.
+          {intl.formatMessage({
+            id: 'admin.integrations.notion.databaseHint',
+            defaultMessage:
+              'New feedback will be added as items in this database. The database must have a Title property.',
+          })}
         </p>
       </div>
 
       <div className="space-y-3">
-        <Label className="text-base font-medium">Events</Label>
-        <p className="text-xs text-muted-foreground">Choose which events create database items</p>
+        <Label className="text-base font-medium">
+          {intl.formatMessage({
+            id: 'admin.integrations.config.events',
+            defaultMessage: 'Events',
+          })}
+        </Label>
+        <p className="text-xs text-muted-foreground">
+          {intl.formatMessage({
+            id: 'admin.integrations.config.chooseEventsDatabaseItems',
+            defaultMessage: 'Choose which events create database items',
+          })}
+        </p>
         <div className="space-y-3 pt-2">
           {EVENT_CONFIG.map((event) => (
             <div
@@ -173,8 +223,10 @@ export function NotionConfig({
               className="flex items-center justify-between rounded-lg border border-border/50 p-3"
             >
               <div>
-                <div className="font-medium text-sm">{event.label}</div>
-                <div className="text-xs text-muted-foreground">{event.description}</div>
+                <div className="font-medium text-sm">{intl.formatMessage(event.label)}</div>
+                <div className="text-xs text-muted-foreground">
+                  {intl.formatMessage(event.description)}
+                </div>
               </div>
               <Switch
                 checked={eventSettings[event.id] ?? false}
@@ -189,13 +241,22 @@ export function NotionConfig({
       {saving && (
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <ArrowPathIcon className="h-4 w-4 animate-spin" />
-          <span>Saving...</span>
+          <span>
+            {intl.formatMessage({
+              id: 'admin.integrations.config.saving',
+              defaultMessage: 'Saving...',
+            })}
+          </span>
         </div>
       )}
 
       {updateMutation.isError && (
         <div className="text-sm text-destructive">
-          {updateMutation.error?.message || 'Failed to save changes'}
+          {updateMutation.error?.message ||
+            intl.formatMessage({
+              id: 'admin.integrations.config.saveFailed',
+              defaultMessage: 'Failed to save changes',
+            })}
         </div>
       )}
 

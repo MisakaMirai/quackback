@@ -244,13 +244,6 @@ const aboutQuackbackSenders: Record<string, Drive> = {
     email.sendOnboardingNudgeEmail({ to, workspaceName: w!, ...onboardingContent }),
   sendSendingDomainAttentionEmail: (w) =>
     email.sendSendingDomainAttentionEmail({ to, domain: 'acme.test', workspaceName: w }),
-  sendDomainAttentionEmail: (w) =>
-    email.sendDomainAttentionEmail({
-      to,
-      domain: 'acme.test',
-      record: { name: '_quackback.acme.test', value: 'quackback-domain-verification=abc' },
-      workspaceName: w,
-    }),
 }
 
 /** Senders that never use the platform address: the caller must name one. */
@@ -452,7 +445,6 @@ describe('platformDisplayName', () => {
   it('names mail about the product Quackback whatever the workspace', () => {
     expect(platformDisplayName('OnboardingWelcomeEmail', 'Acme')).toBe('Quackback')
     expect(platformDisplayName('SendingDomainAttentionEmail', undefined)).toBe('Quackback')
-    expect(platformDisplayName('DomainAttentionEmail', 'Acme')).toBe('Quackback')
   })
 
   it('names everything else for the workspace, or nothing without one', () => {

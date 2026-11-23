@@ -7,7 +7,6 @@ import {
   type KeyboardEvent,
   type ReactNode,
 } from 'react'
-import { Link } from '@tanstack/react-router'
 import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query'
 import { formatDistanceToNow } from 'date-fns'
 import { toast } from 'sonner'
@@ -44,7 +43,6 @@ import {
   checkSeats,
   extractEmails,
   isFullEmail,
-  peopleCount,
   primaryLabel,
   seatOverMessage,
   seatRefusalMessage,
@@ -56,8 +54,17 @@ import {
 } from '@/components/admin/settings/team/add-people'
 import { RoleNotes, RoleSelect, useRoleChoice } from '@/components/admin/settings/team/role-select'
 import { toastError } from '@/lib/client/error-notice'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
+import { zhCN, zhTW } from 'date-fns/locale'
 
 const SEARCH_DEBOUNCE_MS = 250
+
+/** date-fns locale for a react-intl locale, so relative times read naturally. */
+function dateFnsLocale(locale: string) {
+  if (locale.startsWith('zh-TW') || locale.startsWith('zh-Hant')) return zhTW
+  if (locale.startsWith('zh')) return zhCN
+  return undefined
+}
 
 type SearchResult = Awaited<ReturnType<typeof searchPeopleToAddFn>>
 type FoundPerson = SearchResult['people'][number]
@@ -100,6 +107,7 @@ export interface AddPeopleDialogProps {
  * a person's detail page.
  */
 export function AddPeopleDialog({ open, onOpenChange, ...rest }: AddPeopleDialogProps) {
+  const intl = useOptionalIntl()
   // A fresh form each time the dialog opens, so nothing from the last use lingers.
   const [session, setSession] = useState(0)
   const [wasOpen, setWasOpen] = useState(open)
@@ -110,10 +118,25 @@ export function AddPeopleDialog({ open, onOpenChange, ...rest }: AddPeopleDialog
 
   const { workspaceName, ...formProps } = rest
   const title = rest.initialPerson
-    ? `Make ${rest.initialPerson.name} a teammate`
+    ? intl.formatMessage(
+        {
+          id: 'admin.settings.team.addPeople.titlePerson',
+          defaultMessage: 'Make {name} a teammate',
+        },
+        { name: rest.initialPerson.name }
+      )
     : workspaceName
-      ? `Add people to ${workspaceName}`
-      : 'Add people'
+      ? intl.formatMessage(
+          {
+            id: 'admin.settings.team.addPeople.titleWorkspace',
+            defaultMessage: 'Add people to {workspace}',
+          },
+          { workspace: workspaceName }
+        )
+      : intl.formatMessage({
+          id: 'admin.settings.team.addPeople.title',
+          defaultMessage: 'Add people',
+        })
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -136,6 +159,7 @@ function AddPeopleForm({
 }: Omit<AddPeopleDialogProps, 'open' | 'onOpenChange' | 'workspaceName'> & {
   onClose: () => void
 }) {
+  const intl = useOptionalIntl()
   const queryClient = useQueryClient()
   const [chips, setChips] = useState<AddChip[]>(() =>
     initialPerson ? [{ kind: 'person', ...initialPerson }] : []
@@ -181,7 +205,13 @@ function AddPeopleForm({
       await invalidate()
       onUndone?.()
     } catch (err) {
-      toastError(err, "Couldn't undo. Try again.")
+      toastError(
+        err,
+        intl.formatMessage({
+          id: 'admin.settings.team.addPeople.undoFailed',
+          defaultMessage: "Couldn't undo. Try again.",
+        })
+      )
     }
   }
 
@@ -226,7 +256,13 @@ function AddPeopleForm({
       else onClose()
     } catch {
       // A thrown failure is unexpected (network, server fault); its text is not for people.
-      setError({ code: null, message: "Couldn't add people. Try again." })
+      setError({
+        code: null,
+        message: intl.formatMessage({
+          id: 'admin.settings.team.addPeople.addFailed',
+          defaultMessage: "Couldn't add people. Try again.",
+        }),
+      })
     } finally {
       setSubmitting(false)
     }
@@ -266,7 +302,9 @@ function AddPeopleForm({
       />
 
       <div className="space-y-1.5">
-        <Label htmlFor="add-people-role">Role</Label>
+        <Label htmlFor="add-people-role">
+          {intl.formatMessage({ id: 'apiKeys.column.role', defaultMessage: 'Role' })}
+        </Label>
         <RoleSelect
           id="add-people-role"
           value={roleValue}
@@ -290,7 +328,10 @@ function AddPeopleForm({
 
       {chips.length > 0 && !over && (
         <ul
-          aria-label="What happens"
+          aria-label={intl.formatMessage({
+            id: 'admin.settings.team.addPeople.whatHappens',
+            defaultMessage: 'What happens',
+          })}
           className="list-disc space-y-1 pl-[18px] text-[13px] leading-normal text-muted-foreground"
         >
           {summarySentences(chips, role).map((line) => (
@@ -301,10 +342,15 @@ function AddPeopleForm({
 
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onClose}>
-          Cancel
+          {intl.formatMessage({ id: 'common.cancel', defaultMessage: 'Cancel' })}
         </Button>
         <Button type="submit" disabled={chips.length === 0 || over || submitting}>
-          {submitting ? 'Adding...' : primaryLabel(chips)}
+          {submitting
+            ? intl.formatMessage({
+                id: 'admin.settings.team.addPeople.adding',
+                defaultMessage: 'Adding...',
+              })
+            : primaryLabel(chips)}
         </Button>
       </DialogFooter>
     </form>
@@ -319,11 +365,23 @@ function InviteLinks({
   links: Array<{ email: string; link: string }>
   onDone: () => void
 }) {
+  const intl = useOptionalIntl()
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
-        Email is not set up, so no invitation email went out. Share{' '}
-        {links.length === 1 ? 'this link' : 'these links'} instead.
+        {intl.formatMessage(
+          links.length === 1
+            ? {
+                id: 'admin.settings.team.addPeople.emailNotSetUpOne',
+                defaultMessage:
+                  'Email is not set up, so no invitation email went out. Share this link instead.',
+              }
+            : {
+                id: 'admin.settings.team.addPeople.emailNotSetUpMany',
+                defaultMessage:
+                  'Email is not set up, so no invitation email went out. Share these links instead.',
+              }
+        )}
       </p>
       <ul className="space-y-2">
         {links.map(({ email, link }) => (
@@ -335,7 +393,13 @@ function InviteLinks({
                 value={link}
                 variant="ghost"
                 size="sm"
-                aria-label={`Copy invitation link for ${email}`}
+                aria-label={intl.formatMessage(
+                  {
+                    id: 'admin.settings.team.addPeople.copyInviteLinkAria',
+                    defaultMessage: 'Copy invitation link for {email}',
+                  },
+                  { email }
+                )}
               />
             </div>
           </li>
@@ -343,7 +407,10 @@ function InviteLinks({
       </ul>
       <DialogFooter>
         <Button type="button" onClick={onDone}>
-          Done
+          {intl.formatMessage({
+            id: 'admin.settings.security.recoveryCodes.done',
+            defaultMessage: 'Done',
+          })}
         </Button>
       </DialogFooter>
     </div>
@@ -360,6 +427,7 @@ function SeatMeter({
   /** The server's seat refusal, with its counts when it sent them. */
   serverRefused: { needed?: number; free?: number } | null
 }) {
+  const intl = useOptionalIntl()
   const over = check.over
   const percent =
     check.limit != null && check.limit > 0 ? Math.min(100, (check.needed / check.limit) * 100) : 0
@@ -371,12 +439,20 @@ function SeatMeter({
           over ? 'border-warning/40 bg-warning/10' : 'border-border/50 bg-muted/30'
         )}
       >
-        <span className="shrink-0">Team seats</span>
+        <span className="shrink-0">
+          {intl.formatMessage({
+            id: 'admin.settings.team.addPeople.teamSeats',
+            defaultMessage: 'Team seats',
+          })}
+        </span>
         {check.limit != null ? (
           <>
             <span
               role="progressbar"
-              aria-label="Team seats"
+              aria-label={intl.formatMessage({
+                id: 'admin.settings.team.addPeople.teamSeats',
+                defaultMessage: 'Team seats',
+              })}
               aria-valuemin={0}
               aria-valuemax={check.limit}
               aria-valuenow={Math.min(check.needed, check.limit)}
@@ -392,40 +468,45 @@ function SeatMeter({
             </span>
           </>
         ) : (
-          <span className="ml-auto font-mono tabular-nums">{check.needed} used</span>
+          <span className="ml-auto font-mono tabular-nums">
+            {intl.formatMessage(
+              { id: 'admin.settings.team.addPeople.seatsUsed', defaultMessage: '{count} used' },
+              { count: check.needed }
+            )}
+          </span>
         )}
       </div>
       {over ? (
         <p role="alert" className="text-[13px] leading-snug text-warning">
-          {seatOverMessage(adding, check)} <BillingLink />.
+          {seatOverMessage(adding, check)}{' '}
+          {intl.formatMessage({
+            id: 'admin.settings.team.addPeople.askOwner',
+            defaultMessage: 'ask a workspace owner to add seats.',
+          })}
         </p>
       ) : serverRefused ? (
         <p role="alert" className="text-[13px] leading-snug text-warning">
           {serverRefused.needed != null && serverRefused.free != null ? (
             <>
-              {seatRefusalMessage(serverRefused.needed, serverRefused.free)} <BillingLink />.
+              {seatRefusalMessage(serverRefused.needed, serverRefused.free)}{' '}
+              {intl.formatMessage({
+                id: 'admin.settings.team.addPeople.askOwner',
+                defaultMessage: 'ask a workspace owner to add seats.',
+              })}
             </>
           ) : (
-            <>
-              The plan has no seats left for {peopleCount(adding)}. Remove someone, or{' '}
-              <BillingLink />.
-            </>
+            intl.formatMessage(
+              {
+                id: 'admin.settings.team.addPeople.noSeatsLeft',
+                defaultMessage:
+                  'The plan has no seats left for {count, plural, one {# person} other {# people}}. Remove someone, or ask a workspace owner to add seats.',
+              },
+              { count: adding }
+            )
           )}
         </p>
       ) : null}
     </div>
-  )
-}
-
-function BillingLink() {
-  return (
-    <Link
-      to="/admin/settings/billing"
-      search={{ checkout: undefined, billing_error: undefined }}
-      className="underline underline-offset-2"
-    >
-      add seats in Plan &amp; billing
-    </Link>
   )
 }
 
@@ -446,6 +527,7 @@ function PeopleField({
   query: string
   onQueryChange: (query: string) => void
 }) {
+  const intl = useOptionalIntl()
   const inputId = useId()
   const listId = useId()
   const helpId = useId()
@@ -588,13 +670,24 @@ function PeopleField({
     onQueryChange('')
   }
 
-  const help = canSearchPeople
-    ? 'Search people who have signed in, or type a full email to invite someone new. You can paste several emails.'
-    : 'Type a full email to invite someone. You can paste several emails.'
+  const help = intl.formatMessage(
+    canSearchPeople
+      ? {
+          id: 'admin.settings.team.addPeople.searchHelp',
+          defaultMessage:
+            'Search people who have signed in, or type a full email to invite someone new. You can paste several emails.',
+        }
+      : {
+          id: 'admin.settings.team.addPeople.emailHelp',
+          defaultMessage: 'Type a full email to invite someone. You can paste several emails.',
+        }
+  )
 
   return (
     <div className="space-y-1.5">
-      <Label htmlFor={inputId}>People</Label>
+      <Label htmlFor={inputId}>
+        {intl.formatMessage({ id: 'ask.results.filter.person', defaultMessage: 'People' })}
+      </Label>
       <div
         className="flex min-h-9 w-full flex-wrap items-center gap-1.5 rounded-field border border-input px-2 py-1.5 focus-within:border-muted-foreground"
         onClick={() => inputRef.current?.focus()}
@@ -615,10 +708,19 @@ function PeopleField({
           aria-describedby={helpId}
           placeholder={
             chips.length > 0
-              ? 'Add more people'
+              ? intl.formatMessage({
+                  id: 'admin.settings.team.addPeople.addMorePeople',
+                  defaultMessage: 'Add more people',
+                })
               : canSearchPeople
-                ? 'Name, username, account ID or email'
-                : 'Email address'
+                ? intl.formatMessage({
+                    id: 'admin.settings.team.addPeople.searchPlaceholder',
+                    defaultMessage: 'Name, username, account ID or email',
+                  })
+                : intl.formatMessage({
+                    id: 'admin.settings.team.addPeople.emailPlaceholder',
+                    defaultMessage: 'Email address',
+                  })
           }
           value={query}
           onChange={(e) => {
@@ -644,13 +746,30 @@ function PeopleField({
         hidden={!showPanel}
         className="max-h-64 overflow-y-auto rounded-lg border border-border bg-popover p-1 shadow-md"
       >
-        <div id={listId} role="listbox" aria-label={recent ? 'Recently active' : 'People'}>
+        <div
+          id={listId}
+          role="listbox"
+          aria-label={
+            recent
+              ? intl.formatMessage({
+                  id: 'admin.settings.team.addPeople.recentlyActive',
+                  defaultMessage: 'Recently active',
+                })
+              : intl.formatMessage({
+                  id: 'ask.results.filter.person',
+                  defaultMessage: 'People',
+                })
+          }
+        >
           {recent && options.length > 0 && (
             <div
               role="presentation"
               className="px-2 pt-1.5 pb-0.5 text-xs font-medium text-muted-foreground"
             >
-              Recently active
+              {intl.formatMessage({
+                id: 'admin.settings.team.addPeople.recentlyActive',
+                defaultMessage: 'Recently active',
+              })}
             </div>
           )}
           {options.map((option, i) => (
@@ -680,6 +799,7 @@ function ResultRow({
   onHover: () => void
   onChoose: () => void
 }) {
+  const intl = useOptionalIntl()
   let icon: ReactNode
   let title: string
   let detail: string | null = null
@@ -697,18 +817,49 @@ function ResultRow({
     detail = p.detail || null
     trailing =
       p.status === 'admin'
-        ? 'Already an Admin'
+        ? intl.formatMessage({
+            id: 'admin.settings.team.addPeople.alreadyAdmin',
+            defaultMessage: 'Already an Admin',
+          })
         : p.status === 'member'
-          ? 'Already a Member'
-          : 'Portal user'
+          ? intl.formatMessage({
+              id: 'admin.settings.team.addPeople.alreadyMember',
+              defaultMessage: 'Already a Member',
+            })
+          : intl.formatMessage({
+              id: 'admin.settings.team.addPeople.portalUser',
+              defaultMessage: 'Portal user',
+            })
   } else {
     icon = <EnvelopeAvatar />
-    title = option.kind === 'invite' ? `Invite ${option.address}` : option.address
+    title =
+      option.kind === 'invite'
+        ? intl.formatMessage(
+            {
+              id: 'admin.settings.team.addPeople.inviteAddress',
+              defaultMessage: 'Invite {address}',
+            },
+            { address: option.address }
+          )
+        : option.address
     detail =
       option.kind === 'invite'
-        ? `Nobody with this email has signed in. They get an email invitation for ${TEAM_INVITATION_VALID_DAYS} days.`
+        ? intl.formatMessage(
+            {
+              id: 'admin.settings.team.addPeople.inviteHint',
+              defaultMessage:
+                'Nobody with this email has signed in. They get an email invitation for {days} days.',
+            },
+            { days: TEAM_INVITATION_VALID_DAYS }
+          )
         : null
-    trailing = option.kind === 'teammate-email' ? 'Already on the team' : null
+    trailing =
+      option.kind === 'teammate-email'
+        ? intl.formatMessage({
+            id: 'admin.settings.team.addPeople.alreadyOnTeam',
+            defaultMessage: 'Already on the team',
+          })
+        : null
   }
   return (
     <div
@@ -744,10 +895,44 @@ function EnvelopeAvatar() {
 }
 
 function PendingInviteRow({ invite }: { invite: PendingInvite }) {
+  const intl = useOptionalIntl()
   const [state, setState] = useState<'idle' | 'sending' | 'sent'>('idle')
   const when = invite.invitedAt
-    ? formatDistanceToNow(new Date(invite.invitedAt), { addSuffix: true })
+    ? formatDistanceToNow(new Date(invite.invitedAt), {
+        addSuffix: true,
+        locale: dateFnsLocale(intl.locale),
+      })
     : null
+
+  const invitedLine =
+    when && invite.roleName
+      ? intl.formatMessage(
+          {
+            id: 'admin.settings.team.addPeople.invitedWithRoleWhen',
+            defaultMessage: 'Invited {when} as {role}, not accepted yet',
+          },
+          { when, role: invite.roleName }
+        )
+      : invite.roleName
+        ? intl.formatMessage(
+            {
+              id: 'admin.settings.team.addPeople.invitedAsRole',
+              defaultMessage: 'Invited as {role}, not accepted yet',
+            },
+            { role: invite.roleName }
+          )
+        : when
+          ? intl.formatMessage(
+              {
+                id: 'admin.settings.team.addPeople.invitedWhen',
+                defaultMessage: 'Invited {when}, not accepted yet',
+              },
+              { when }
+            )
+          : intl.formatMessage({
+              id: 'admin.settings.team.addPeople.invited',
+              defaultMessage: 'Invited, not accepted yet',
+            })
 
   const resend = async () => {
     setState('sending')
@@ -758,13 +943,28 @@ function PendingInviteRow({ invite }: { invite: PendingInvite }) {
       setState('sent')
       if (result.emailSent === false && result.inviteLink) {
         const link = result.inviteLink
-        toast('Email is not set up, so no email went out.', {
-          action: { label: 'Copy link', onClick: () => void navigator.clipboard?.writeText(link) },
-        })
+        toast(
+          intl.formatMessage({
+            id: 'admin.settings.team.addPeople.noEmailSent',
+            defaultMessage: 'Email is not set up, so no email went out.',
+          }),
+          {
+            action: {
+              label: intl.formatMessage({ id: 'common.copyLink', defaultMessage: 'Copy link' }),
+              onClick: () => void navigator.clipboard?.writeText(link),
+            },
+          }
+        )
       }
     } catch (err) {
       setState('idle')
-      toastError(err, "Couldn't resend. Try again.")
+      toastError(
+        err,
+        intl.formatMessage({
+          id: 'admin.settings.team.addPeople.resendFailed',
+          defaultMessage: "Couldn't resend. Try again.",
+        })
+      )
     }
   }
 
@@ -773,14 +973,15 @@ function PendingInviteRow({ invite }: { invite: PendingInvite }) {
       <EnvelopeAvatar />
       <span className="min-w-0 flex-1">
         <span className="block truncate font-medium">{invite.address}</span>
-        <span className="block text-xs text-muted-foreground">
-          {`${['Invited', when, invite.roleName && `as ${invite.roleName}`].filter(Boolean).join(' ')}, not accepted yet`}
-        </span>
+        <span className="block text-xs text-muted-foreground">{invitedLine}</span>
       </span>
       {state === 'sent' ? (
         <span className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
           <CheckIcon className="size-3.5" />
-          Sent
+          {intl.formatMessage({
+            id: 'admin.settings.team.addPeople.sent',
+            defaultMessage: 'Sent',
+          })}
         </span>
       ) : (
         <Button
@@ -790,7 +991,10 @@ function PendingInviteRow({ invite }: { invite: PendingInvite }) {
           disabled={state === 'sending'}
           onClick={() => void resend()}
         >
-          Resend invite
+          {intl.formatMessage({
+            id: 'admin.settings.team.addPeople.resendInvite',
+            defaultMessage: 'Resend invite',
+          })}
         </Button>
       )}
     </div>
@@ -798,6 +1002,7 @@ function PendingInviteRow({ invite }: { invite: PendingInvite }) {
 }
 
 function Chip({ chip, onRemove }: { chip: AddChip; onRemove: () => void }) {
+  const intl = useOptionalIntl()
   const label = chip.kind === 'person' ? chip.name : chip.address
   return (
     <span
@@ -812,10 +1017,23 @@ function Chip({ chip, onRemove }: { chip: AddChip; onRemove: () => void }) {
         <EnvelopeIcon className="ml-0.5 size-4 text-muted-foreground" aria-hidden />
       )}
       <span className="truncate">{label}</span>
-      {chip.kind === 'email' && <span className="text-[11px] text-muted-foreground">invite</span>}
+      {chip.kind === 'email' && (
+        <span className="text-[11px] text-muted-foreground">
+          {intl.formatMessage({
+            id: 'admin.settings.team.addPeople.chipInvite',
+            defaultMessage: 'invite',
+          })}
+        </span>
+      )}
       <button
         type="button"
-        aria-label={`Remove ${label}`}
+        aria-label={intl.formatMessage(
+          {
+            id: 'admin.settings.team.addPeople.removeChipAria',
+            defaultMessage: 'Remove {label}',
+          },
+          { label }
+        )}
         onClick={(e) => {
           e.stopPropagation()
           onRemove()

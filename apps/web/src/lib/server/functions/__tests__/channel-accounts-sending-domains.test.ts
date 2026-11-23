@@ -153,7 +153,7 @@ function guard(verifiedDomains: string[] = []) {
     platformFrom: 'noreply@mail.quackback.test',
     inboundDomain: null,
     mailSlug: null,
-    pooled: true,
+    strict: true,
   }
 }
 

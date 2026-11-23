@@ -7,6 +7,7 @@ import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { deleteWebhookFn } from '@/lib/server/functions/webhooks'
 import type { Webhook } from '@/lib/shared/types'
 import { errorText } from '@/lib/client/error-text'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 
 interface DeleteWebhookDialogProps {
   webhook: Webhook
@@ -15,6 +16,7 @@ interface DeleteWebhookDialogProps {
 }
 
 export function DeleteWebhookDialog({ webhook, open, onOpenChange }: DeleteWebhookDialogProps) {
+  const intl = useOptionalIntl()
   const router = useRouter()
   const queryClient = useQueryClient()
   const [isPending, startTransition] = useTransition()
@@ -33,7 +35,15 @@ export function DeleteWebhookDialog({ webhook, open, onOpenChange }: DeleteWebho
 
       onOpenChange(false)
     } catch (err) {
-      setError(errorText(err, 'Failed to delete webhook'))
+      setError(
+        errorText(
+          err,
+          intl.formatMessage({
+            id: 'admin.webhooks.delete.failed',
+            defaultMessage: 'Failed to delete webhook',
+          })
+        )
+      )
     }
   }
 
@@ -41,19 +51,46 @@ export function DeleteWebhookDialog({ webhook, open, onOpenChange }: DeleteWebho
     <ConfirmDialog
       open={open}
       onOpenChange={onOpenChange}
-      title="Delete webhook?"
-      description="Are you sure you want to delete this webhook?"
+      title={intl.formatMessage({
+        id: 'admin.webhooks.delete.title',
+        defaultMessage: 'Delete webhook?',
+      })}
+      description={intl.formatMessage({
+        id: 'admin.webhooks.delete.description',
+        defaultMessage: 'Are you sure you want to delete this webhook?',
+      })}
       warning={{
-        title: 'This action cannot be undone',
+        title: intl.formatMessage({
+          id: 'admin.webhooks.delete.warningTitle',
+          defaultMessage: 'This action cannot be undone',
+        }),
         description: (
           <>
-            The webhook to <code className="bg-muted px-1 rounded text-xs">{webhook.url}</code> will
-            be permanently deleted and will no longer receive events.
+            {intl.formatMessage(
+              {
+                id: 'admin.webhooks.delete.warningBody',
+                defaultMessage:
+                  'The webhook to {url} will be permanently deleted and will no longer receive events.',
+              },
+              {
+                url: <code className="bg-muted px-1 rounded text-xs">{webhook.url}</code>,
+              }
+            )}
           </>
         ),
       }}
       variant="destructive"
-      confirmLabel={isPending ? 'Deleting...' : 'Delete webhook'}
+      confirmLabel={
+        isPending
+          ? intl.formatMessage({
+              id: 'admin.webhooks.delete.deleting',
+              defaultMessage: 'Deleting...',
+            })
+          : intl.formatMessage({
+              id: 'admin.webhooks.delete.confirm',
+              defaultMessage: 'Delete webhook',
+            })
+      }
       isPending={isPending}
       onConfirm={handleDelete}
     >

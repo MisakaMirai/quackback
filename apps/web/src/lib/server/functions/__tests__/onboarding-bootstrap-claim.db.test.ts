@@ -98,9 +98,7 @@ const fixture = await createDbTestFixture({
     // Migration 0258's column, probed rather than created. `ALTER TABLE` from
     // inside the fixture's transaction would hold ACCESS EXCLUSIVE on
     // `settings` for the whole test, and two suites doing that at once deadlock.
-    await db.execute(
-      sql`select cloud_workspace_key, cloud_identity, cloud_identity_revision from settings limit 0`
-    )
+    await db.execute(sql`select cloud_workspace_key from settings limit 0`)
   },
 })
 
@@ -314,35 +312,9 @@ describe.skipIf(!fixture.available)('bootstrap promotion guard', () => {
   // named customer, provisioning could not resolve that customer's address, so
   // no owner was recorded. Nobody has ever signed in, the hostname sits in an
   // enumerable set, and before this guard the first arrival became its admin.
-  it('refuses to hand a provisioned workspace to whoever arrives first', async () => {
-    await seedProvisionedWorkspace()
-    const arrivalId = await seedUser('whoever@evil.example')
-    hoisted.getSession.mockResolvedValue({
-      session: { scope: 'dashboard' },
-      user: { id: arrivalId },
-    })
-
-    await expect(saveWorkspaceAndGoalFn({ data: WORKSPACE_INPUT })).resolves.toEqual(NOT_OWNER)
-    expect(hoisted.ensurePrincipalForUser).not.toHaveBeenCalled()
-    expect(hoisted.setPrincipalRole).not.toHaveBeenCalled()
-  })
-
   // Same refusal for the arrival who already holds a portal account here —
   // signing up first and then walking to the workspace step is the same move
   // with one more step in it.
-  it('refuses an arrival who already has a default-role principal there', async () => {
-    await seedProvisionedWorkspace()
-    const arrivalId = await seedUser('whoever@evil.example')
-    await seedPrincipal({ userId: arrivalId, role: 'user' })
-    hoisted.getSession.mockResolvedValue({
-      session: { scope: 'dashboard' },
-      user: { id: arrivalId },
-    })
-
-    await expect(saveWorkspaceAndGoalFn({ data: WORKSPACE_INPUT })).resolves.toEqual(NOT_OWNER)
-    expect(hoisted.setPrincipalRole).not.toHaveBeenCalled()
-  })
-
   // The control that proves the two above are deciding on the stamp. Same
   // settings row, same caller, stamp removed: the self-hosted install, which
   // must keep promoting its first human exactly as it always has.
@@ -364,24 +336,6 @@ describe.skipIf(!fixture.available)('bootstrap promotion guard', () => {
   // The stamp's older home. A workspace stamped before the dedicated column
   // existed and never re-stamped carries only this, and reading one source
   // would leave that whole cohort claimable.
-  it('refuses on a workspace stamped only in the metadata bag', async () => {
-    await testDb.insert(settings).values({
-      id: createId('workspace'),
-      name: 'Acme',
-      slug: `acme-${Math.random().toString(36).slice(2, 8)}`,
-      createdAt: new Date(),
-      metadata: JSON.stringify({ cloudTenant: { v: 1, workspaceKey: 'ws_acme', stampedAt: '' } }),
-    })
-    const arrivalId = await seedUser('whoever@evil.example')
-    hoisted.getSession.mockResolvedValue({
-      session: { scope: 'dashboard' },
-      user: { id: arrivalId },
-    })
-
-    await expect(saveWorkspaceAndGoalFn({ data: WORKSPACE_INPUT })).resolves.toEqual(NOT_OWNER)
-    expect(hoisted.ensurePrincipalForUser).not.toHaveBeenCalled()
-  })
-
   // A provisioned workspace whose owner WAS recorded is unaffected: they are
   // already an admin, so they never reach the claim branch at all.
   it('lets the recorded owner of a provisioned workspace through', async () => {

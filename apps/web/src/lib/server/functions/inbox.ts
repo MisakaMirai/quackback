@@ -10,7 +10,7 @@
 import { z } from 'zod'
 import { createServerFn } from '@tanstack/react-start'
 import { isValidTypeId } from '@quackback/ids'
-import type { PrincipalId, TeamId, CompanyId, ConversationId } from '@quackback/ids'
+import type { PrincipalId, TeamId, ConversationId } from '@quackback/ids'
 import { TICKET_TYPES, TICKET_STAGES, CONVERSATION_PRIORITIES } from '@/lib/shared/db-types'
 import { INBOX_TRIAGE_FACETS } from '@/lib/shared/inbox/items'
 import { coerceTicketTypeId } from '@/lib/shared/tickets'
@@ -48,7 +48,6 @@ export const listInboxItemsSchema = z.object({
    *  (mirrors listTicketsFn/listConversationsFn's assignee handling). */
   assignee: z.string().optional(),
   teamId: z.string().optional(),
-  companyId: z.string().optional(),
   sort: inboxSortSchema.optional(),
   limit: PageLimitMinOneSchema,
   cursor: z.string().optional(),
@@ -89,10 +88,6 @@ export const listInboxItemsFn = createServerFn({ method: 'GET' })
       assignee,
       teamId:
         data.teamId && isValidTypeId(data.teamId, 'team') ? (data.teamId as TeamId) : undefined,
-      companyId:
-        data.companyId && isValidTypeId(data.companyId, 'company')
-          ? (data.companyId as CompanyId)
-          : undefined,
       sort: data.sort,
       limit: data.limit,
       cursor: data.cursor,

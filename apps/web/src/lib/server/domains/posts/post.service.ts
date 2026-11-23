@@ -30,9 +30,7 @@ import {
   principal as principalTable,
   type Post,
 } from '@/lib/server/db'
-import { sql, isNull } from 'drizzle-orm'
-import { getTierLimits } from '@/lib/server/domains/settings/tier-limits.service'
-import { enforceCountLimit } from '@/lib/server/domains/settings/tier-enforce'
+import { isNull } from 'drizzle-orm'
 import { createId } from '@quackback/ids'
 import { type PostId, type PrincipalId, type UserId, type PostTagId } from '@quackback/ids'
 import {
@@ -60,7 +58,6 @@ import type { CustomFieldValues } from '@/lib/shared/db-types'
 import { buildPostUrl } from '@/lib/server/integrations/message-utils'
 import { getBaseUrl } from '@/lib/server/config'
 import { logger } from '@/lib/server/logger'
-import { isTestCustomer, notTestPrincipal } from '@/lib/server/test-data'
 import { resolveTestFeedbackActor } from '@/lib/server/test-customer-feedback'
 
 const log = logger.child({ component: 'posts' })
@@ -107,25 +104,6 @@ export async function createPost(
   if (content.length > 10000) {
     throw new ValidationError('VALIDATION_ERROR', 'Content must not exceed 10,000 characters')
   }
-
-  // Tier-limit gate (no-op in OSS — getTierLimits short-circuits to OSS_TIER_LIMITS
-  // which has maxPosts: null, so enforceCountLimit returns immediately).
-  // A test customer's idea is test data: it never counts toward a plan limit.
-  const testIdea = await isTestCustomer(author.principalId)
-  const limits = await getTierLimits()
-  if (!testIdea)
-    await enforceCountLimit({
-      limit: limits.maxPosts,
-      name: 'maxPosts',
-      friendly: 'posts',
-      currentCount: async () => {
-        const [row] = await db
-          .select({ count: sql<number>`count(*)::int` })
-          .from(posts)
-          .where(and(isNull(posts.deletedAt), notTestPrincipal(posts.principalId)))
-        return row?.count ?? 0
-      },
-    })
 
   // Validate board exists and get status in parallel.
   // The deletedAt filter here is load-bearing: rehostExternalImages (below) uploads
@@ -257,7 +235,7 @@ export async function createPost(
         contentJson,
         statusId,
         principalId: author.principalId,
-        widgetMetadata: input.widgetMetadata ?? null,
+        clientMetadata: input.clientMetadata ?? null,
         customFieldValues,
         trackedByPrincipalId: input.trackedByPrincipalId ?? null,
         voteCount: 1,
@@ -302,15 +280,6 @@ export async function createPost(
       },
     })
   }
-
-  // AI auto-tagging: evaluate the post against every tag carrying an AI
-  // prompt. Fire-and-forget like the embedding regen in updatePost — the
-  // service degrades to a no-op on any AI failure and never blocks creation.
-  // A test idea spends no AI tokens.
-  if (!testIdea)
-    import('./post.autotag')
-      .then(({ autoTagPost }) => autoTagPost(post.id, post.title, post.content ?? ''))
-      .catch((err) => log.error({ err, post_id: post.id }, 'ai auto-tag failed'))
 
   if (!options?.skipDispatch) {
     // Auto-subscribe the author to their own post. Runs even when held for
@@ -461,15 +430,6 @@ export async function updatePost(
     updatedPost = result
   } else {
     updatedPost = existingPost
-  }
-
-  // Regenerate embedding (and cascade to merge check) if title or content changed
-  if (input.title !== undefined || input.content !== undefined || input.contentJson !== undefined) {
-    import('@/lib/server/domains/embeddings/embedding.service')
-      .then(({ generatePostEmbedding }) =>
-        generatePostEmbedding(id, updatedPost.title, updatedPost.content)
-      )
-      .catch((err) => log.error({ err, post_id: id }, 'embedding regen failed'))
   }
 
   // Update tags if provided

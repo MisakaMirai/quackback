@@ -1,5 +1,5 @@
 /**
- * Client-side file upload, shared by every composer (admin, widget, portal).
+ * Client-side file upload, shared by every composer (admin, portal).
  * POSTs the raw file body (not multipart) via XMLHttpRequest instead of
  * fetch(), so the caller gets real upload progress — fetch() never reports
  * any until the whole thing has landed. The server decides the real type and
@@ -29,8 +29,8 @@ export interface UploadFileOptions {
 }
 
 /**
- * The widget's own endpoints (401/429/503) answer `{ error: { code,
- * message } }` (`widgetJsonError`); every other upload failure answers
+ * Some endpoints (401/429/503) answer `{ error: { code,
+ * message } }`; every other upload failure answers
  * `{ error: <string>, reason? }`. Reads a message out of either shape,
  * never stringifying an object into "[object Object]".
  */

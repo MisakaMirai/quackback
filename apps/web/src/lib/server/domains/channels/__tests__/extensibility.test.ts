@@ -167,8 +167,6 @@ describe('channel extensibility exit test', () => {
         '',
         undefined,
         undefined,
-        undefined,
-        undefined,
         TEST_CHANNEL_ID
       )
     ).toMatchObject({ channel: TEST_CHANNEL_ID })
@@ -178,7 +176,6 @@ describe('channel extensibility exit test', () => {
         'open',
         'all',
         '',
-        undefined,
         undefined,
         undefined,
         undefined,

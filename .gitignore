@@ -71,3 +71,6 @@ docs/superpowers/
 
 # Local scratch
 scratchpad/
+
+# Local database backups
+backups/

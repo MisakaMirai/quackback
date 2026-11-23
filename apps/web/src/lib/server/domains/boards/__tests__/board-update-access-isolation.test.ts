@@ -34,13 +34,6 @@ vi.mock('@/lib/server/db', async (importOriginal) => {
   }
 })
 
-vi.mock('@/lib/server/domains/settings/tier-limits.service', () => ({
-  getTierLimits: vi.fn(),
-}))
-vi.mock('@/lib/server/domains/settings/tier-enforce', () => ({
-  enforceCountLimit: vi.fn(),
-}))
-
 import { updateBoard } from '../board.service'
 import type { BoardId } from '@quackback/ids'
 

@@ -272,7 +272,7 @@ describe('handleNewDeviceNotification — guards', () => {
     expect(mockSetCookie).not.toHaveBeenCalled()
   })
 
-  it('does not notify on an anonymous widget mint', async () => {
+  it('does not notify on an anonymous mint', async () => {
     mockIsDeviceUnseen.mockResolvedValueOnce(true)
     await handleNewDeviceNotification(buildCtx({ path: '/sign-in/anonymous' }), workspace())
     expect(mockIsDeviceUnseen).not.toHaveBeenCalled()

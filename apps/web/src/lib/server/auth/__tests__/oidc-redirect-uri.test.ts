@@ -70,7 +70,6 @@ async function providerFor(row: Record<string, unknown>): Promise<LibraryProvide
       },
     ] as never,
     creds: async () => ({ clientSecret: 'secret' }),
-    tierAllowsOidc: true,
     baseUrl: BASE_URL,
   })
   const plugin = genericOAuth({ config: [config] as never })

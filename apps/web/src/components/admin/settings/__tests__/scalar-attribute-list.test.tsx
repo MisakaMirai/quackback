@@ -15,9 +15,6 @@ const m = vi.hoisted(() => {
     userCreate: make(),
     userUpdate: make(),
     userDelete: make(),
-    companyCreate: make(),
-    companyUpdate: make(),
-    companyDelete: make(),
   }
 })
 
@@ -25,13 +22,9 @@ vi.mock('@/lib/client/mutations', () => ({
   useCreateUserAttribute: () => m.userCreate,
   useUpdateUserAttribute: () => m.userUpdate,
   useDeleteUserAttribute: () => m.userDelete,
-  useCreateCompanyAttribute: () => m.companyCreate,
-  useUpdateCompanyAttribute: () => m.companyUpdate,
-  useDeleteCompanyAttribute: () => m.companyDelete,
 }))
 
 import { UserAttributesList } from '../user-attributes/user-attributes-list'
-import { CompanyAttributesList } from '../company-attributes/company-attributes-list'
 
 afterEach(cleanup)
 beforeEach(() => vi.clearAllMocks())
@@ -56,15 +49,6 @@ const ENTITIES = [
     builtinKey: 'email',
     dialogTitle: 'New user attribute',
     externalLabel: /CDP attribute name/,
-  },
-  {
-    name: 'companies',
-    Component: CompanyAttributesList,
-    mocks: () => ({ create: m.companyCreate, update: m.companyUpdate, del: m.companyDelete }),
-    builtinLabel: 'Email domain',
-    builtinKey: 'domain',
-    dialogTitle: 'New company attribute',
-    externalLabel: /CRM attribute name/,
   },
 ] as const
 

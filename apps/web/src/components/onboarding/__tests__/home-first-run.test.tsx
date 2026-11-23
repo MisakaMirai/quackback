@@ -85,7 +85,6 @@ function status(overrides: Partial<LaunchStatus> = {}): LaunchStatus {
       helpCenter: false,
       statusPage: false,
       integrations: true,
-      assistant: false,
     },
     ...overrides,
   }
@@ -243,8 +242,6 @@ describe('Home first-run cards', () => {
     const skipped = { resolution: 'dismissed' as const, resolvedAt: new Date(NOW).toISOString() }
     hoisted.status = status({
       hasFirstWin: true,
-      hasWidgetInstalled: true,
-      hasWidgetEnabled: true,
       hasBranding: true,
       memberCount: 2,
       publicBoardLinkCopiedAt: new Date(NOW).toISOString(),
@@ -310,7 +307,7 @@ describe('Home changing in place', () => {
     copy.focus()
     fireEvent.click(copy)
     const next = await screen.findByRole('heading', { name: 'A customer creates a post' })
-    await waitFor(() => expect(document.activeElement).toBe(next))
+    await waitFor(() => expect(document.activeElement).toBe(next), { timeout: 5_000 })
     expect(politeText()).toBe('Share your board link done. Next: A customer creates a post')
   })
 

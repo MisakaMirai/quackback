@@ -66,10 +66,6 @@ vi.mock('@/lib/server/domains/subscriptions/subscription.service', () => ({
   batchGenerateUnsubscribeTokens: vi.fn().mockResolvedValue(new Map()),
 }))
 
-vi.mock('@/lib/server/domains/ai/config', () => ({
-  getOpenAI: vi.fn().mockReturnValue(null),
-}))
-
 vi.mock('../hook-context', () => ({
   buildHookContext: vi.fn().mockResolvedValue({
     workspaceName: 'Test',
@@ -160,7 +156,7 @@ describe('integration mapping caching', () => {
     expect(mockCacheGet).toHaveBeenCalledWith('hooks:integration-mappings')
     // Cache hit → the integration mappings were NOT re-queried + re-cached.
     // (Assert on the mappings cache-refresh rather than the generic db.select,
-    // which the app-webhook resolver also uses now.)
+    // which the integration-webhook delivery path also uses now.)
     expect(mockCacheSet).not.toHaveBeenCalledWith(
       'hooks:integration-mappings',
       expect.anything(),

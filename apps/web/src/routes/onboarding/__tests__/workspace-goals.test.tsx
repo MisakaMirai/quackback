@@ -41,8 +41,6 @@ function renderStep(props: {
   return render(
     <IntlProvider locale="en" messages={en}>
       <WorkspaceStep
-        isCloudProvisioned={false}
-        cloudIdentity={null}
         existingWorkspaceName="Acme"
         managedFieldPaths={props.managedFieldPaths}
         setupGoals={{ goals: props.goals }}
@@ -285,7 +283,7 @@ describe('self-hosted ready step', () => {
     await finishSetup(['product_feedback'])
 
     expect(screen.getByText('No posts yet. Be the first to post')).toBeInTheDocument()
-    expect(screen.getByText('The Acme team reads every request.')).toBeInTheDocument()
+    expect(screen.getByText('The Acme team reads every post.')).toBeInTheDocument()
     expect(screen.queryByText('Dark mode')).toBeNull()
     expect(screen.getByText(/Your portal is live at/)).toBeInTheDocument()
   })

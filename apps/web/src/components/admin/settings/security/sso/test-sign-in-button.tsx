@@ -9,6 +9,7 @@
 
 import type { ReactNode } from 'react'
 import { Button } from '@/components/ui/button'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { useSsoTestSignIn, type SsoTestSuccessAction } from './use-sso-test-sign-in'
 
 export function TestSignInButton({
@@ -17,7 +18,7 @@ export function TestSignInButton({
   size = 'sm',
   variant = 'outline',
   successAction,
-  children = 'Test sign-in',
+  children,
 }: {
   /** The provider's registrationId — forwarded to `startSsoTestFn` so the
    *  test exercises THIS provider's credentials and stamps its own gate. */
@@ -30,6 +31,7 @@ export function TestSignInButton({
   children?: ReactNode
 }) {
   const { open } = useSsoTestSignIn()
+  const intl = useOptionalIntl()
   return (
     <Button
       type="button"
@@ -38,7 +40,11 @@ export function TestSignInButton({
       variant={variant}
       size={size}
     >
-      {children}
+      {children ??
+        intl.formatMessage({
+          id: 'admin.settings.security.idp.testSignIn',
+          defaultMessage: 'Test sign-in',
+        })}
     </Button>
   )
 }

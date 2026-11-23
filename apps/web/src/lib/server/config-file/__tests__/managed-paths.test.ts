@@ -18,10 +18,6 @@ describe('computeManagedPaths', () => {
     expect(computeManagedPaths({ workspace: { name: 'X' } })).toEqual(['workspace.name'])
   })
 
-  it('emits the whole-block path "tierLimits" for any tierLimits presence', () => {
-    expect(computeManagedPaths({ tierLimits: { maxBoards: 5 } })).toEqual(['tierLimits'])
-  })
-
   it('does not emit managed paths for deprecated auth and features keys', () => {
     expect(
       computeManagedPaths({
@@ -29,15 +25,6 @@ describe('computeManagedPaths', () => {
         features: { helpCenter: true },
       })
     ).toEqual([])
-  })
-
-  it('combines all path types into one stable-ordered list', () => {
-    expect(
-      computeManagedPaths({
-        workspace: { name: 'X' },
-        tierLimits: {},
-      })
-    ).toEqual(['workspace.name', 'tierLimits'])
   })
 })
 
@@ -47,7 +34,7 @@ describe('isPathManaged', () => {
   })
 
   it('matches a child of a whole-block managed path', () => {
-    expect(isPathManaged('tierLimits.maxBoards', ['tierLimits'])).toBe(true)
+    expect(isPathManaged('workspace.extra.child', ['workspace.extra'])).toBe(true)
   })
 
   it('does not match a different leaf under the same parent', () => {

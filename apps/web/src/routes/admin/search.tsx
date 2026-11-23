@@ -7,7 +7,7 @@ import {
   SEARCH_KINDS,
   SEARCH_PAGE_SIZE,
   type SearchKind,
-} from '@/lib/shared/assistant/ask-search'
+} from '@/lib/shared/search'
 
 interface SearchPageSearch {
   q: string
@@ -18,7 +18,7 @@ interface SearchPageSearch {
 const LAST_PAGE = Math.ceil(MAX_SEARCH_DEPTH / SEARCH_PAGE_SIZE)
 
 export const Route = createFileRoute('/admin/search')({
-  head: adminPageHead('Search'),
+  head: adminPageHead('Search', 'admin.pageTitle.search'),
   // Anything unknown falls back to all kinds and the first page.
   validateSearch: (search: Record<string, unknown>): SearchPageSearch => {
     const page = Number(search.page)

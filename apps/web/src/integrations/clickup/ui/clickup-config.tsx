@@ -12,6 +12,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { useUpdateIntegration } from '@/lib/client/mutations'
 import { fetchExternalStatusesFn } from '@/lib/server/functions/external-statuses'
 import {
@@ -43,8 +44,14 @@ interface ClickUpConfigProps {
 const EVENT_CONFIG = [
   {
     id: 'post.created' as const,
-    label: 'Create task from new feedback',
-    description: 'Automatically create a ClickUp task when new feedback is submitted',
+    label: {
+      id: 'admin.integrations.config.eventCreateTask',
+      defaultMessage: 'Create task from new feedback',
+    },
+    description: {
+      id: 'admin.integrations.clickup.eventCreateTaskDescription',
+      defaultMessage: 'Automatically create a ClickUp task when new feedback is submitted',
+    },
   },
 ]
 
@@ -54,6 +61,7 @@ export function ClickUpConfig({
   initialEventMappings,
   enabled,
 }: ClickUpConfigProps) {
+  const intl = useOptionalIntl()
   const updateMutation = useUpdateIntegration()
 
   const [spaces, setSpaces] = useState<ClickUpSpace[]>([])
@@ -84,24 +92,37 @@ export function ClickUpConfig({
       const result = await fetchClickUpSpacesFn()
       setSpaces(result)
     } catch {
-      setSpaceError('Failed to load spaces. Please try again.')
+      setSpaceError(
+        intl.formatMessage({
+          id: 'admin.integrations.config.loadSpacesFailed',
+          defaultMessage: 'Failed to load spaces. Please try again.',
+        })
+      )
     } finally {
       setLoadingSpaces(false)
     }
-  }, [])
+  }, [intl])
 
-  const fetchLists = useCallback(async (spaceId: string) => {
-    setLoadingLists(true)
-    setListError(null)
-    try {
-      const result = await fetchClickUpListsFn({ data: { spaceId } })
-      setLists(result)
-    } catch {
-      setListError('Failed to load lists. Please try again.')
-    } finally {
-      setLoadingLists(false)
-    }
-  }, [])
+  const fetchLists = useCallback(
+    async (spaceId: string) => {
+      setLoadingLists(true)
+      setListError(null)
+      try {
+        const result = await fetchClickUpListsFn({ data: { spaceId } })
+        setLists(result)
+      } catch {
+        setListError(
+          intl.formatMessage({
+            id: 'admin.integrations.config.loadListsFailed',
+            defaultMessage: 'Failed to load lists. Please try again.',
+          })
+        )
+      } finally {
+        setLoadingLists(false)
+      }
+    },
+    [intl]
+  )
 
   useEffect(() => {
     fetchSpaces()
@@ -155,10 +176,16 @@ export function ClickUpConfig({
       <div className="flex items-center justify-between">
         <div>
           <Label htmlFor="enabled-toggle" className="text-base font-medium">
-            Integration enabled
+            {intl.formatMessage({
+              id: 'admin.integrations.config.enabled',
+              defaultMessage: 'Integration enabled',
+            })}
           </Label>
           <p className="text-xs text-muted-foreground">
-            Turn off to pause all ClickUp task syncing
+            {intl.formatMessage({
+              id: 'admin.integrations.clickup.disableHint',
+              defaultMessage: 'Turn off to pause all ClickUp task syncing',
+            })}
           </p>
         </div>
         <Switch
@@ -171,7 +198,12 @@ export function ClickUpConfig({
 
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <Label htmlFor="space-select">Space</Label>
+          <Label htmlFor="space-select">
+            {intl.formatMessage({
+              id: 'admin.integrations.config.space',
+              defaultMessage: 'Space',
+            })}
+          </Label>
           <Button
             variant="ghost"
             size="sm"
@@ -180,7 +212,10 @@ export function ClickUpConfig({
             className="h-8 gap-1.5 text-xs"
           >
             <ArrowPathIcon className={`h-3.5 w-3.5 ${loadingSpaces ? 'animate-spin' : ''}`} />
-            Refresh
+            {intl.formatMessage({
+              id: 'admin.integrations.config.refresh',
+              defaultMessage: 'Refresh',
+            })}
           </Button>
         </div>
         {spaceError ? (
@@ -195,10 +230,20 @@ export function ClickUpConfig({
               {loadingSpaces ? (
                 <div className="flex items-center gap-2">
                   <ArrowPathIcon className="h-4 w-4 animate-spin" />
-                  <span>Loading spaces...</span>
+                  <span>
+                    {intl.formatMessage({
+                      id: 'admin.integrations.config.loadingSpaces',
+                      defaultMessage: 'Loading spaces...',
+                    })}
+                  </span>
                 </div>
               ) : (
-                <SelectValue placeholder="Select a space" />
+                <SelectValue
+                  placeholder={intl.formatMessage({
+                    id: 'admin.integrations.config.selectSpace',
+                    defaultMessage: 'Select a space',
+                  })}
+                />
               )}
             </SelectTrigger>
             <SelectContent>
@@ -214,12 +259,20 @@ export function ClickUpConfig({
           </Select>
         )}
         <p className="text-xs text-muted-foreground">
-          Select the space that contains the list for new feedback tasks.
+          {intl.formatMessage({
+            id: 'admin.integrations.clickup.spaceHint',
+            defaultMessage: 'Select the space that contains the list for new feedback tasks.',
+          })}
         </p>
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="list-select">List</Label>
+        <Label htmlFor="list-select">
+          {intl.formatMessage({
+            id: 'admin.integrations.config.list',
+            defaultMessage: 'List',
+          })}
+        </Label>
         {listError ? (
           <p className="text-sm text-destructive">{listError}</p>
         ) : (
@@ -232,11 +285,26 @@ export function ClickUpConfig({
               {loadingLists ? (
                 <div className="flex items-center gap-2">
                   <ArrowPathIcon className="h-4 w-4 animate-spin" />
-                  <span>Loading lists...</span>
+                  <span>
+                    {intl.formatMessage({
+                      id: 'admin.integrations.config.loadingLists',
+                      defaultMessage: 'Loading lists...',
+                    })}
+                  </span>
                 </div>
               ) : (
                 <SelectValue
-                  placeholder={selectedSpace ? 'Select a list' : 'Select a space first'}
+                  placeholder={
+                    selectedSpace
+                      ? intl.formatMessage({
+                          id: 'admin.integrations.config.selectList',
+                          defaultMessage: 'Select a list',
+                        })
+                      : intl.formatMessage({
+                          id: 'admin.integrations.config.selectSpaceFirst',
+                          defaultMessage: 'Select a space first',
+                        })
+                  }
                 />
               )}
             </SelectTrigger>
@@ -250,13 +318,26 @@ export function ClickUpConfig({
           </Select>
         )}
         <p className="text-xs text-muted-foreground">
-          New feedback tasks will be created in this list.
+          {intl.formatMessage({
+            id: 'admin.integrations.clickup.listHint',
+            defaultMessage: 'New feedback tasks will be created in this list.',
+          })}
         </p>
       </div>
 
       <div className="space-y-3">
-        <Label className="text-base font-medium">Events</Label>
-        <p className="text-xs text-muted-foreground">Choose which events trigger task creation</p>
+        <Label className="text-base font-medium">
+          {intl.formatMessage({
+            id: 'admin.integrations.config.events',
+            defaultMessage: 'Events',
+          })}
+        </Label>
+        <p className="text-xs text-muted-foreground">
+          {intl.formatMessage({
+            id: 'admin.integrations.config.chooseEventsTaskCreation',
+            defaultMessage: 'Choose which events trigger task creation',
+          })}
+        </p>
         <div className="space-y-3 pt-2">
           {EVENT_CONFIG.map((event) => (
             <div
@@ -264,8 +345,10 @@ export function ClickUpConfig({
               className="flex items-center justify-between rounded-lg border border-border/50 p-3"
             >
               <div>
-                <div className="font-medium text-sm">{event.label}</div>
-                <div className="text-xs text-muted-foreground">{event.description}</div>
+                <div className="font-medium text-sm">{intl.formatMessage(event.label)}</div>
+                <div className="text-xs text-muted-foreground">
+                  {intl.formatMessage(event.description)}
+                </div>
               </div>
               <Switch
                 checked={eventSettings[event.id] ?? false}
@@ -280,13 +363,22 @@ export function ClickUpConfig({
       {saving && (
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <ArrowPathIcon className="h-4 w-4 animate-spin" />
-          <span>Saving...</span>
+          <span>
+            {intl.formatMessage({
+              id: 'admin.integrations.config.saving',
+              defaultMessage: 'Saving...',
+            })}
+          </span>
         </div>
       )}
 
       {updateMutation.isError && (
         <div className="text-sm text-destructive">
-          {updateMutation.error?.message || 'Failed to save changes'}
+          {updateMutation.error?.message ||
+            intl.formatMessage({
+              id: 'admin.integrations.config.saveFailed',
+              defaultMessage: 'Failed to save changes',
+            })}
         </div>
       )}
 

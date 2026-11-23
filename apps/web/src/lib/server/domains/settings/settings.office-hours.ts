@@ -42,14 +42,14 @@ const METADATA_KEY = 'officeHours'
  *  1. An explicit `officeHours` key in the `metadata` bag (canonical) — even a
  *     disabled one wins, since it means an admin saved through the new page.
  *  2. Read-time fallback: no metadata key yet but the released
- *     `widgetConfig.messenger.officeHours` is present and enabled — convert it so
+ *     `messengerConfig.messenger.officeHours` is present and enabled — convert it so
  *     upgraders keep their configured hours. Not written back; the next explicit
  *     save through the admin page persists canonically.
  *  3. Default 24/7.
  */
 export function resolveOfficeHoursSchedule(
   metadataJson: string | null,
-  widgetConfigJson: string | null
+  messengerConfigJson: string | null
 ): OfficeHoursSchedule {
   if (metadataJson) {
     try {
@@ -62,18 +62,18 @@ export function resolveOfficeHoursSchedule(
       // Fall through to the legacy fallback / default on unparseable metadata.
     }
   }
-  const legacy = readLegacyOfficeHours(widgetConfigJson)
+  const legacy = readLegacyOfficeHours(messengerConfigJson)
   if (legacy?.enabled) return officeHoursScheduleFromLegacyDays(legacy)
   return DEFAULT_OFFICE_HOURS_SCHEDULE
 }
 
-/** Pull the released `messenger.officeHours` blob out of raw widget-config JSON. */
+/** Pull the released `messenger.officeHours` blob out of raw messenger-config JSON. */
 function readLegacyOfficeHours(
-  widgetConfigJson: string | null
+  messengerConfigJson: string | null
 ): Parameters<typeof officeHoursScheduleFromLegacyDays>[0] {
-  if (!widgetConfigJson) return null
+  if (!messengerConfigJson) return null
   try {
-    const wc = JSON.parse(widgetConfigJson) as { messenger?: { officeHours?: unknown } }
+    const wc = JSON.parse(messengerConfigJson) as { messenger?: { officeHours?: unknown } }
     const oh = wc?.messenger?.officeHours
     return oh && typeof oh === 'object'
       ? (oh as Parameters<typeof officeHoursScheduleFromLegacyDays>[0])
@@ -86,7 +86,7 @@ function readLegacyOfficeHours(
 export async function getOfficeHoursSchedule(): Promise<OfficeHoursSchedule> {
   try {
     const org = await requireSettingsCached()
-    return resolveOfficeHoursSchedule(org.metadata, org.widgetConfig)
+    return resolveOfficeHoursSchedule(org.metadata, org.messengerConfig)
   } catch (error) {
     log.error({ err: error }, 'get office hours failed')
     wrapDbError('fetch office hours', error)

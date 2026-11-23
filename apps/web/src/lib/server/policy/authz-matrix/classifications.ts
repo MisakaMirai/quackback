@@ -21,7 +21,7 @@
 import { PERMISSIONS, type PermissionKey } from '@/lib/shared/permissions'
 
 export type SurfaceIntent =
-  /** Bare `requireAuth()`: any authenticated principal (team, portal, or widget). */
+  /** Bare `requireAuth()`: any authenticated principal (team or portal). */
   | 'END_USER'
   /** Bare `withApiKeyAuth(req)`: any valid API key, no permission; public-tier data. */
   | 'PUBLIC_DATA'
@@ -99,16 +99,6 @@ export const BARE_GATE_CLASSIFICATIONS: Record<string, Classification> = {
   ),
   // Email senders: sending is a workspace setting (settings.manage), and whoever
   // runs the support inbox may still choose where support replies come from.
-  // Domains added by name: every Domains page permission reads them, so each
-  // viewer sees a domain's ownership whichever of its uses they manage.
-  'lib/server/functions/domains.ts::getDomainFn': DYNAMIC_PERMISSION(
-    [PERMISSIONS.SETTINGS_CUSTOM_DOMAIN, PERMISSIONS.SETTINGS_MANAGE, PERMISSIONS.AUTH_MANAGE],
-    'read by the Domains page, which any one of its use permissions opens'
-  ),
-  'lib/server/functions/domains.ts::listDomainsFn': DYNAMIC_PERMISSION(
-    [PERMISSIONS.SETTINGS_CUSTOM_DOMAIN, PERMISSIONS.SETTINGS_MANAGE, PERMISSIONS.AUTH_MANAGE],
-    'read by the Domains page, which any one of its use permissions opens'
-  ),
   'lib/server/functions/channel-accounts.ts::getEmailChannelConfigFn': DYNAMIC_PERMISSION(
     [PERMISSIONS.SETTINGS_MANAGE, PERMISSIONS.CHANNEL_ACCOUNT_MANAGE],
     'read by the workspace Email page and the support inbox page; either permission opens it'
@@ -126,154 +116,12 @@ export const BARE_GATE_CLASSIFICATIONS: Record<string, Classification> = {
     ],
     'read-only From line: an admin, or the manager of the product that sends that kind of email'
   ),
-  'lib/server/functions/assistant-connectors.ts::createConnectorFn': DYNAMIC_PERMISSION(
-    [PERMISSIONS.AI_CUSTOMER_MANAGE, PERMISSIONS.AI_TEAMMATE_MANAGE],
-    'either AI permission opens it, and assigning to an agent also requires that agent AI permission'
-  ),
-  'lib/server/functions/assistant-connectors.ts::deleteConnectorFn': DYNAMIC_PERMISSION(
-    [PERMISSIONS.AI_CUSTOMER_MANAGE, PERMISSIONS.AI_TEAMMATE_MANAGE],
-    'shared AI settings: a holder of either AI permission may use them'
-  ),
-  'lib/server/functions/assistant-connectors.ts::getConnectorFn': DYNAMIC_PERMISSION(
-    [PERMISSIONS.AI_CUSTOMER_MANAGE, PERMISSIONS.AI_TEAMMATE_MANAGE],
-    'shared AI settings: a holder of either AI permission may use them'
-  ),
-  'lib/server/functions/assistant-connectors.ts::listConnectorsFn': DYNAMIC_PERMISSION(
-    [PERMISSIONS.AI_CUSTOMER_MANAGE, PERMISSIONS.AI_TEAMMATE_MANAGE],
-    'shared AI settings: a holder of either AI permission may use them'
-  ),
-  'lib/server/functions/assistant-connectors.ts::refreshConnectorFn': DYNAMIC_PERMISSION(
-    [PERMISSIONS.AI_CUSTOMER_MANAGE, PERMISSIONS.AI_TEAMMATE_MANAGE],
-    'shared AI settings: a holder of either AI permission may use them'
-  ),
-  'lib/server/functions/assistant-connectors.ts::startConnectorOAuthFn': DYNAMIC_PERMISSION(
-    [PERMISSIONS.AI_CUSTOMER_MANAGE, PERMISSIONS.AI_TEAMMATE_MANAGE],
-    'shared AI settings: a holder of either AI permission may use them'
-  ),
-  'lib/server/functions/assistant-connectors.ts::updateConnectorFn': DYNAMIC_PERMISSION(
-    [PERMISSIONS.AI_CUSTOMER_MANAGE, PERMISSIONS.AI_TEAMMATE_MANAGE],
-    'either AI permission opens it, and assigning to an agent also requires that agent AI permission'
-  ),
-  'lib/server/functions/assistant-documents.ts::deleteAssistantDocumentFn': DYNAMIC_PERMISSION(
-    [PERMISSIONS.AI_CUSTOMER_MANAGE, PERMISSIONS.AI_TEAMMATE_MANAGE],
-    'shared AI settings: a holder of either AI permission may use them'
-  ),
-  'lib/server/functions/assistant-documents.ts::listAssistantDocumentsFn': DYNAMIC_PERMISSION(
-    [PERMISSIONS.AI_CUSTOMER_MANAGE, PERMISSIONS.AI_TEAMMATE_MANAGE],
-    'shared AI settings: a holder of either AI permission may use them'
-  ),
-  'lib/server/functions/assistant-documents.ts::uploadAssistantDocumentFn': DYNAMIC_PERMISSION(
-    [PERMISSIONS.AI_CUSTOMER_MANAGE, PERMISSIONS.AI_TEAMMATE_MANAGE],
-    'shared AI settings: a holder of either AI permission may use them'
-  ),
-  'lib/server/functions/assistant-guidance-stats.ts::getGuidanceRuleStatsFn': DYNAMIC_PERMISSION(
-    [PERMISSIONS.AI_CUSTOMER_MANAGE, PERMISSIONS.AI_TEAMMATE_MANAGE],
-    'shared AI settings: a holder of either AI permission may use them'
-  ),
-  'lib/server/functions/assistant-guidance.ts::createGuidanceRuleFn': DYNAMIC_PERMISSION(
-    [PERMISSIONS.AI_CUSTOMER_MANAGE, PERMISSIONS.AI_TEAMMATE_MANAGE],
-    'the check requires the AI permission of the agent the rule or tool rules belong to'
-  ),
-  'lib/server/functions/assistant-guidance.ts::deleteGuidanceRuleFn': DYNAMIC_PERMISSION(
-    [PERMISSIONS.AI_CUSTOMER_MANAGE, PERMISSIONS.AI_TEAMMATE_MANAGE],
-    'the check requires the AI permission of the agent the rule or tool rules belong to'
-  ),
-  'lib/server/functions/assistant-guidance.ts::listAssistantToolsFn': DYNAMIC_PERMISSION(
-    [PERMISSIONS.AI_CUSTOMER_MANAGE, PERMISSIONS.AI_TEAMMATE_MANAGE],
-    'shared AI settings: a holder of either AI permission may use them'
-  ),
-  'lib/server/functions/assistant-guidance.ts::listGuidanceRulesFn': DYNAMIC_PERMISSION(
-    [PERMISSIONS.AI_CUSTOMER_MANAGE, PERMISSIONS.AI_TEAMMATE_MANAGE],
-    'shared AI settings: a holder of either AI permission may use them'
-  ),
-  'lib/server/functions/assistant-guidance.ts::reorderGuidanceRulesFn': DYNAMIC_PERMISSION(
-    [PERMISSIONS.AI_CUSTOMER_MANAGE, PERMISSIONS.AI_TEAMMATE_MANAGE],
-    'the check requires the AI permission of the agent the rule or tool rules belong to'
-  ),
-  'lib/server/functions/assistant-guidance.ts::updateGuidanceRuleFn': DYNAMIC_PERMISSION(
-    [PERMISSIONS.AI_CUSTOMER_MANAGE, PERMISSIONS.AI_TEAMMATE_MANAGE],
-    'the check requires the AI permission of the agent the rule or tool rules belong to'
-  ),
-  'lib/server/functions/assistant-settings.ts::getAssistantSettingsFn': DYNAMIC_PERMISSION(
-    [PERMISSIONS.AI_CUSTOMER_MANAGE, PERMISSIONS.AI_TEAMMATE_MANAGE],
-    'shared AI settings: a holder of either AI permission may use them'
-  ),
-  'lib/server/functions/assistant-settings.ts::updateAssistantToolRulesFn': DYNAMIC_PERMISSION(
-    [PERMISSIONS.AI_CUSTOMER_MANAGE, PERMISSIONS.AI_TEAMMATE_MANAGE],
-    'the check requires the AI permission of the agent the rule or tool rules belong to'
-  ),
-  'lib/server/functions/assistant-skills.ts::createSkillFn': DYNAMIC_PERMISSION(
-    [PERMISSIONS.AI_CUSTOMER_MANAGE, PERMISSIONS.AI_TEAMMATE_MANAGE],
-    'either AI permission opens it, and assigning to an agent also requires that agent AI permission'
-  ),
-  'lib/server/functions/assistant-skills.ts::deleteSkillFn': DYNAMIC_PERMISSION(
-    [PERMISSIONS.AI_CUSTOMER_MANAGE, PERMISSIONS.AI_TEAMMATE_MANAGE],
-    'shared AI settings: a holder of either AI permission may use them'
-  ),
-  'lib/server/functions/assistant-skills.ts::listSkillsFn': DYNAMIC_PERMISSION(
-    [PERMISSIONS.AI_CUSTOMER_MANAGE, PERMISSIONS.AI_TEAMMATE_MANAGE],
-    'shared AI settings: a holder of either AI permission may use them'
-  ),
-  'lib/server/functions/assistant-skills.ts::updateSkillFn': DYNAMIC_PERMISSION(
-    [PERMISSIONS.AI_CUSTOMER_MANAGE, PERMISSIONS.AI_TEAMMATE_MANAGE],
-    'either AI permission opens it, and assigning to an agent also requires that agent AI permission'
-  ),
-  'lib/server/functions/assistant-snippets.ts::createSnippetFn': DYNAMIC_PERMISSION(
-    [PERMISSIONS.AI_CUSTOMER_MANAGE, PERMISSIONS.AI_TEAMMATE_MANAGE],
-    'shared AI settings: a holder of either AI permission may use them'
-  ),
-  'lib/server/functions/assistant-snippets.ts::deleteSnippetFn': DYNAMIC_PERMISSION(
-    [PERMISSIONS.AI_CUSTOMER_MANAGE, PERMISSIONS.AI_TEAMMATE_MANAGE],
-    'shared AI settings: a holder of either AI permission may use them'
-  ),
-  'lib/server/functions/assistant-snippets.ts::listSnippetsFn': DYNAMIC_PERMISSION(
-    [PERMISSIONS.AI_CUSTOMER_MANAGE, PERMISSIONS.AI_TEAMMATE_MANAGE],
-    'shared AI settings: a holder of either AI permission may use them'
-  ),
-  'lib/server/functions/assistant-snippets.ts::updateSnippetFn': DYNAMIC_PERMISSION(
-    [PERMISSIONS.AI_CUSTOMER_MANAGE, PERMISSIONS.AI_TEAMMATE_MANAGE],
-    'shared AI settings: a holder of either AI permission may use them'
-  ),
-  'lib/server/functions/assistant-web-sources.ts::addWebSourceFn': DYNAMIC_PERMISSION(
-    [PERMISSIONS.AI_CUSTOMER_MANAGE, PERMISSIONS.AI_TEAMMATE_MANAGE],
-    'shared AI settings: a holder of either AI permission may use them'
-  ),
-  'lib/server/functions/assistant-web-sources.ts::deleteWebSourceFn': DYNAMIC_PERMISSION(
-    [PERMISSIONS.AI_CUSTOMER_MANAGE, PERMISSIONS.AI_TEAMMATE_MANAGE],
-    'shared AI settings: a holder of either AI permission may use them'
-  ),
-  'lib/server/functions/assistant-web-sources.ts::listWebSourcesFn': DYNAMIC_PERMISSION(
-    [PERMISSIONS.AI_CUSTOMER_MANAGE, PERMISSIONS.AI_TEAMMATE_MANAGE],
-    'shared AI settings: a holder of either AI permission may use them'
-  ),
-  'lib/server/functions/assistant-web-sources.ts::setWebSourceEnabledFn': DYNAMIC_PERMISSION(
-    [PERMISSIONS.AI_CUSTOMER_MANAGE, PERMISSIONS.AI_TEAMMATE_MANAGE],
-    'shared AI settings: a holder of either AI permission may use them'
-  ),
-  'lib/server/functions/website-branding.ts::startAutomaticWebsiteBrandingFn': DYNAMIC_PERMISSION(
-    [PERMISSIONS.SETTINGS_MANAGE],
-    'the lookup only records an offer and requires current settings management, rechecked after the fetch'
-  ),
-  'lib/server/functions/website-branding.ts::lookupWebsiteBrandingFn': DYNAMIC_PERMISSION(
-    [PERMISSIONS.SETTINGS_MANAGE],
-    'Find logo looks up a typed website through the safe fetch and records an offer; requires current settings management, rechecked after the fetch'
-  ),
-  'lib/server/functions/website-branding.ts::getAutomaticWebsiteBrandingStatusFn':
-    DYNAMIC_PERMISSION(
-      [PERMISSIONS.SETTINGS_MANAGE],
-      'private lookup status requires current settings management; ineligible callers receive no status'
-    ),
-  'lib/server/functions/website-branding.ts::undoAutomaticWebsiteBrandingFn': DYNAMIC_PERMISSION(
-    [PERMISSIONS.SETTINGS_MANAGE],
-    'Undo requires current settings management and every permission required by the stored receipt'
-  ),
-  'lib/server/functions/website-branding.ts::acceptWebsiteBrandingOfferFn': DYNAMIC_PERMISSION(
-    [PERMISSIONS.SETTINGS_MANAGE],
-    'Use it applies the offered logo with current settings management; its color additionally requires branding permission'
-  ),
-  'lib/server/functions/website-branding.ts::declineWebsiteBrandingOfferFn': DYNAMIC_PERMISSION(
-    [PERMISSIONS.SETTINGS_MANAGE],
-    'Not now closes the offer and requires current settings management'
+  // Status component PATCH is field-scoped: flipping the live status is a
+  // publish action, reshaping the component is management, and one body may
+  // carry both.
+  'routes/api/v1/status/-service-handlers.ts::patchStatusComponentHandler': DYNAMIC_PERMISSION(
+    [PERMISSIONS.STATUS_PAGE_MANAGE, PERMISSIONS.STATUS_PAGE_PUBLISH],
+    'the key needs status_page.manage to change the component and status_page.publish to flip its live status'
   ),
   'routes/api/v1/settings/index.ts::GET': DYNAMIC_PERMISSION(
     SETTINGS_REGISTRY_PERMISSIONS,
@@ -303,7 +151,6 @@ export const BARE_GATE_CLASSIFICATIONS: Record<string, Classification> = {
       PERMISSIONS.TICKET_VIEW_ALL,
       PERMISSIONS.PEOPLE_VIEW,
       PERMISSIONS.MEMBER_VIEW,
-      PERMISSIONS.COMPANY_VIEW,
     ],
     "team dashboard search: each kind needs its page permission and reads through that kind's row visibility (posts, conversations, tickets, help center audience, changelog drafts) for the effective actor, full text and semantic alike"
   ),
@@ -335,35 +182,6 @@ export const BARE_GATE_CLASSIFICATIONS: Record<string, Classification> = {
   'lib/server/functions/sign-in-again.ts::getSignInAgainOptionsFn': END_USER(
     'reads how the caller signs in and whether they signed in recently'
   ),
-  // Assistant proposals are item-scoped after authentication. Reads/rejections
-  // require visibility of the concrete parent; approval additionally checks
-  // every permission declared by the current Writer tool specification.
-  'lib/server/functions/assistant-pending-actions.ts::getAssistantPendingActionFn':
-    DYNAMIC_PERMISSION(
-      [PERMISSIONS.CONVERSATION_VIEW, PERMISSIONS.TICKET_VIEW, PERMISSIONS.COPILOT_USE],
-      'caller must be able to view the pending action parent'
-    ),
-  'lib/server/functions/assistant-actions.ts::rejectAssistantActionFn': DYNAMIC_PERMISSION(
-    [PERMISSIONS.CONVERSATION_VIEW, PERMISSIONS.TICKET_VIEW, PERMISSIONS.COPILOT_USE],
-    'caller must be able to view the pending action parent'
-  ),
-  'lib/server/functions/assistant-actions.ts::approveAssistantActionFn': DYNAMIC_PERMISSION(
-    [
-      PERMISSIONS.CONVERSATION_VIEW,
-      PERMISSIONS.TICKET_VIEW,
-      PERMISSIONS.COPILOT_USE,
-      PERMISSIONS.SETTINGS_MANAGE,
-      PERMISSIONS.SETTINGS_BRANDING,
-      PERMISSIONS.OFFICE_HOURS_MANAGE,
-      PERMISSIONS.CHANGELOG_MANAGE,
-      PERMISSIONS.CONVERSATION_SET_ATTRIBUTES,
-      PERMISSIONS.CONVERSATION_SET_STATUS,
-      PERMISSIONS.TICKET_CREATE,
-      PERMISSIONS.POST_CREATE,
-      PERMISSIONS.POST_VOTE_ON_BEHALF,
-    ],
-    'caller must view the parent and hold every permission declared by the Writer tool'
-  ),
   // Changelog self-serve subscribe/unsubscribe + status: any authenticated
   // principal manages their own changelog email subscription.
   'lib/server/functions/changelog-subscriptions.ts::subscribeToChangelogFn': END_USER(
@@ -387,7 +205,7 @@ export const BARE_GATE_CLASSIFICATIONS: Record<string, Classification> = {
   'lib/server/functions/status-subscriptions.ts::getMyStatusSubscriptionFn': END_USER(
     'signed-in caller reads their own status-page subscription status'
   ),
-  // Visitor conversations (widget + portal): any authenticated principal; team-vs-visitor
+  // Visitor conversations (portal): any authenticated principal; team-vs-visitor
   // scope is refined inside each handler (see NOT_A_GATE entries below).
   'lib/server/functions/conversation.ts::sendConversationMessageFn': END_USER(
     'visitor sends a conversation message'
@@ -421,8 +239,8 @@ export const BARE_GATE_CLASSIFICATIONS: Record<string, Classification> = {
   // Requester tickets (converged Messages surface): a signed-in requester's
   // ticket surface is their conversation pair; these fns feed the shared
   // thread's ticket header (linked-ticket read, stage labels, intake-form
-  // labels) and the watch bell, plus the own-ticket create behind the widget
-  // New-Ticket form. Ownership is enforced in the requester service.
+  // labels) and the watch bell, plus the own-ticket create behind the ticket
+  // form. Ownership is enforced in the requester service.
   'lib/server/functions/tickets.ts::createMyTicketFn': END_USER(
     'requester files their own customer ticket (flag-gated; forced requester = caller; anonymous tier requires a contact email)'
   ),
@@ -499,79 +317,14 @@ export const BARE_GATE_CLASSIFICATIONS: Record<string, Classification> = {
     'admin home aggregation — each product section still gates on its own permission'
   ),
 
-  // Widget BFF: Bearer-only surfaces. Site `requireAuth` denies widget; these
-  // call `requireWidgetAuth` and reuse the same domain run* helpers.
-  'lib/server/functions/widget/posts.ts::widgetCreatePublicPostFn': END_USER(
-    'widget visitor submits a post'
-  ),
-  'lib/server/functions/widget/posts.ts::widgetToggleVoteFn': END_USER(
-    'widget visitor votes on a post'
-  ),
-  'lib/server/functions/widget/comments.ts::widgetCreateCommentFn': END_USER(
-    'widget visitor posts a comment'
-  ),
-  'lib/server/functions/widget/comments.ts::widgetAddReactionFn': END_USER(
-    'widget visitor adds a reaction'
-  ),
-  'lib/server/functions/widget/comments.ts::widgetRemoveReactionFn': END_USER(
-    'widget visitor removes their reaction'
-  ),
-  'lib/server/functions/widget/tickets.ts::widgetGetMyTicketsFn': END_USER(
-    'widget visitor lists their own tickets'
-  ),
-  'lib/server/functions/widget/tickets.ts::widgetGetMyTicketStageLabelsFn': END_USER(
-    'widget visitor reads ticket stage labels'
-  ),
-  'lib/server/functions/widget/tickets.ts::widgetGetMyTicketFormFn': END_USER(
-    'widget visitor reads intake form labels'
-  ),
-  'lib/server/functions/widget/tickets.ts::widgetGetMyTicketWatchStatusFn': END_USER(
-    'widget visitor reads watch state of their ticket'
-  ),
-  'lib/server/functions/widget/tickets.ts::widgetGetConversationLinkedTicketFn': END_USER(
-    "widget visitor reads their conversation's linked ticket"
-  ),
-  'lib/server/functions/widget/tickets.ts::widgetCreateMyTicketFn': END_USER(
-    'widget visitor files their own ticket'
-  ),
-  'lib/server/functions/widget/tickets.ts::widgetWatchMyTicketFn': END_USER(
-    'widget visitor watches their own ticket'
-  ),
-  'lib/server/functions/widget/tickets.ts::widgetUnwatchMyTicketFn': END_USER(
-    'widget visitor unwatches their own ticket'
-  ),
-  'lib/server/functions/widget/conversation.ts::widgetSendConversationMessageFn': END_USER(
-    'widget visitor sends a conversation message'
-  ),
-  'lib/server/functions/widget/conversation.ts::widgetListConversationMessagesFn': END_USER(
-    'widget visitor pages their own conversation'
-  ),
-  'lib/server/functions/widget/conversation.ts::widgetMarkConversationReadFn': END_USER(
-    'widget visitor marks their conversation read'
-  ),
-  'lib/server/functions/widget/conversation.ts::widgetSendConversationTypingFn': END_USER(
-    'widget visitor typing indicator'
-  ),
-  'lib/server/functions/widget/conversation.ts::widgetSubmitCsatFn': END_USER(
-    'widget visitor submits a CSAT rating'
-  ),
-  'lib/server/functions/widget/conversation.ts::widgetMintConversationStreamTokenFn': END_USER(
-    'widget visitor mints their SSE stream token'
-  ),
-  'lib/server/functions/widget/user.ts::widgetGetUserStatsFn': END_USER(
-    'widget visitor reads own engagement stats'
-  ),
   'lib/server/functions/user.ts::updateNotificationPreferencesFn': END_USER(
-    'update own notification preferences; widget scope is refused separately'
+    'update own notification preferences'
   ),
   'lib/server/functions/teammate-preferences.ts::getMyLanguagePreferenceFn': END_USER(
     'teammate reads their own language preference'
   ),
   'lib/server/functions/teammate-preferences.ts::setMyLanguagePreferenceFn': END_USER(
     'teammate sets their own language preference'
-  ),
-  'lib/server/functions/billing.ts::getAdminBillingLockFn': END_USER(
-    'admin layout lock inputs: any teammate may ask; only billing.manage gets an answer'
   ),
 
   // MCP transport entry: a valid key authenticates; per-tool scopes authorize
@@ -653,7 +406,6 @@ export const BARE_GATE_CLASSIFICATIONS: Record<string, Classification> = {
 
   // Public-tier REST reads: a valid key is required, but the data is portal-public
   // so no permission is checked. Anonymous (no key) is still rejected.
-  'routes/api/v1/apps/boards.ts::GET': PUBLIC_DATA('public board list'),
   'routes/api/v1/boards/$boardId.ts::GET': PUBLIC_DATA('public board'),
   'routes/api/v1/boards/index.ts::GET': PUBLIC_DATA('public board list'),
   // Status page read API: a valid key reads the public status surface (the
@@ -683,50 +435,6 @@ export const BARE_GATE_CLASSIFICATIONS: Record<string, Classification> = {
   'routes/api/v1/statuses/index.ts::GET': PUBLIC_DATA('public status list'),
   'routes/api/v1/tags/$tagId.ts::GET': PUBLIC_DATA('public tag'),
   'routes/api/v1/tags/index.ts::GET': PUBLIC_DATA('public tag list'),
-
-  // Advertised plan stickers, the same payload Plan & billing renders. Any
-  // signed-in principal may read them so upgrade offers stay consistent;
-  // checkout, invoices and usage stay behind BILLING_MANAGE.
-  'lib/server/functions/billing.ts::fetchBillingCatalogueFn': END_USER(
-    'advertised plan catalogue; null when cloud is off'
-  ),
-
-  // Current plan name and trial eligibility for upgrade prompts. Same audience
-  // as the catalogue: the plan name already reaches every teammate through the
-  // trial banner, and nothing else (references, dates, entitlements) is exposed.
-  'lib/server/functions/billing.ts::fetchUpgradeContextFn': END_USER(
-    'current plan + trial eligibility; null when cloud is off'
-  ),
-
-  // Cloud workspace ownership. The gate admits any authenticated principal and
-  // the *handler* makes the access decision by comparing the caller's own
-  // session address against the owner the control plane reports — there is no
-  // catalogue permission for "is the owner", and an admin is deliberately not
-  // enough. The control plane re-checks and answers `not_owner` regardless, so
-  // this is defence in depth rather than the only bar.
-  'lib/server/functions/ownership.ts::getCloudOwnerEmailFn': END_USER(
-    'reads the owner address the ownership panel shows every teammate; null when cloud billing is off'
-  ),
-  'lib/server/functions/ownership.ts::transferWorkspaceOwnershipFn': END_USER(
-    'refuses unless the caller own session address equals the current owner'
-  ),
-  'lib/server/functions/ownership.ts::leaveCloudWorkspaceFn': END_USER(
-    'acts only on the caller own membership, and refuses the owner outright'
-  ),
-  // Cloud-workspace wipe: reachable self-hosted too, where the fn no-ops
-  // without a control plane. The gate is identity, not role: only the owner
-  // address may wipe, and the control plane re-checks when configured.
-  'lib/server/functions/workspace-wipe.ts::wipeCloudWorkspaceFn': END_USER(
-    'refuses unless the caller own session address equals the current owner; the control plane re-checks'
-  ),
-
-  // Best-effort product-analytics beacon. Unauthenticated callers are not
-  // refused, they are ignored: the body is size-capped and schema-parsed, the
-  // emit happens only inside a successful `requireAuth()`, and every path
-  // answers 204 so a missing session cannot be probed through this route.
-  'routes/api/plg-events.ts::handlePlgEvent': END_USER(
-    'attributes an event to the caller own session; without one nothing is recorded'
-  ),
 }
 
 // ---------------------------------------------------------------------------
@@ -794,12 +502,6 @@ export const INLINE_CLASSIFICATIONS: Record<string, Classification> = {
   'lib/server/functions/admin.ts::checkOnboardingState::isAdmin': NOT_A_GATE(
     'race-safe first-user promotion — not an access check'
   ),
-  'routes/api/widget/identify.ts::POST::isTeamMember': NOT_A_GATE(
-    'skips overwriting a teammate dashboard profile from the host-app JWT; identify still mints a widget-scoped customer session'
-  ),
-  'lib/server/functions/widget-auth.ts::getWidgetSession::isTeamMember': NOT_A_GATE(
-    'sets canPortalHandoff from the stored role; presented session role stays portal-tier'
-  ),
   'lib/server/functions/conversation.ts::assertVisitorConversationAccess::isTeamMember': NOT_A_GATE(
     'team bypasses the portal-access check; entry is the bare requireAuth on each caller'
   ),
@@ -850,9 +552,5 @@ export const INLINE_CLASSIFICATIONS: Record<string, Classification> = {
   ),
   'routes/api/v1/principals/$principalId.ts::fetchTeamMemberWithUser::isTeamMember': NOT_A_GATE(
     'route is already key-gated (member.view/manage); this returns 404 for non-team principals'
-  ),
-
-  'lib/server/functions/contact-email.ts::confirmEmailChangeFn::isTeamMember': NOT_A_GATE(
-    'decides whether the confirmed address changes a control-plane seat — a teammate is a seat, an end-user is not; the address was already written above it'
   ),
 }

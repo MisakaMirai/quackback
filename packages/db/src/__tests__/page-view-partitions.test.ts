@@ -1,7 +1,12 @@
 import { describe, it, expect, afterAll } from 'vitest'
 import { sql } from 'drizzle-orm'
 import { createDb, type Database } from '../client'
-import { ensurePageViewPartitions, dropExpiredPageViewPartitions } from '../page-view-partitions'
+import {
+  ensurePageViewPartitions,
+  ensurePageViewPartitionForToday,
+  isMissingPageViewPartition,
+  dropExpiredPageViewPartitions,
+} from '../page-view-partitions'
 
 // DB-backed (skips without Postgres, like the 0126 backfill pin). Requires the
 // 0137 page_views parent table (run `bun run db:migrate` against quackback_test).
@@ -23,6 +28,25 @@ afterAll(async () => {
   await db.execute(sql.raw(`DROP TABLE IF EXISTS "${OLD_PARTITION}"`))
   // @ts-expect-error optional teardown
   await db?.$client?.end?.()
+})
+
+describe('isMissingPageViewPartition', () => {
+  it('recognizes the no-partition check violation for page_views', () => {
+    const error = Object.assign(new Error('no partition of relation "page_views" found for row'), {
+      code: '23514',
+    })
+    expect(isMissingPageViewPartition(error)).toBe(true)
+  })
+
+  it('rejects unrelated errors', () => {
+    expect(isMissingPageViewPartition(new Error('no partition of relation "other"'))).toBe(false)
+    expect(
+      isMissingPageViewPartition(
+        Object.assign(new Error('no partition of relation "page_views"'), { code: '42P01' })
+      )
+    ).toBe(false)
+    expect(isMissingPageViewPartition(null)).toBe(false)
+  })
 })
 
 describe.skipIf(!DB_URL)('page_views partition maintenance', () => {
@@ -57,6 +81,22 @@ describe.skipIf(!DB_URL)('page_views partition maintenance', () => {
     )
     const [{ name: todayName }] = Array.from(today as Iterable<{ name: string }>)
     expect(remaining).toContain(todayName)
+  })
+
+  it('creates the partition for today on demand, idempotently', async () => {
+    if (!db) return
+    const today = await db.execute(
+      sql`SELECT 'page_views_' || to_char(current_date, 'YYYYMMDD') AS name`
+    )
+    const [{ name }] = Array.from(today as Iterable<{ name: string }>)
+
+    await db.execute(sql.raw(`DROP TABLE IF EXISTS "${name}"`))
+    expect(await listPartitions(db)).not.toContain(name)
+
+    await ensurePageViewPartitionForToday(db)
+    await ensurePageViewPartitionForToday(db)
+
+    expect(await listPartitions(db)).toContain(name)
   })
 
   it('ignores unrelated tables when pruning', async () => {

@@ -1,5 +1,5 @@
 import { useEffect, type ComponentProps } from 'react'
-import { createFileRoute, Outlet, redirect, useRouterState } from '@tanstack/react-router'
+import { createFileRoute, Outlet, useRouterState } from '@tanstack/react-router'
 import { IntlProvider } from 'react-intl'
 import { SearchPaletteProvider } from '@/components/admin/ask/search-palette'
 import { AdminWorkspaceFrame } from '@/components/admin/admin-workspace-frame'
@@ -15,16 +15,11 @@ import { AdminSidebar } from '@/components/admin/admin-sidebar'
 import { ArticleModal, ChangelogModal, PostModal } from '@/components/admin/entity-modals'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { UpdateBanner } from '@/components/admin/update-banner'
-import { GithubStarPromptGate } from '@/components/admin/github-star-prompt-gate'
-import { PlanNoticeBanner } from '@/components/admin/plan-notice-banner'
-import { getPlanNotice } from '@/lib/server/functions/plan-notice'
-import { CloudQuackbackWidget } from '@/components/shared/cloud-quackback-widget'
 import { FileViewerProvider, scrollToMessage } from '@/components/shared/files/file-viewer-context'
 import { PERMISSIONS } from '@/lib/shared/permissions'
 import { createRouteContextMemo } from '@/lib/client/route-context-memo'
 import type { requireWorkspaceRole } from '@/lib/server/functions/workspace-utils'
 import {
-  useGithubStarPrompt,
   useFeatureFlag,
   useProductEnabled,
   useHasPermission,
@@ -63,7 +58,7 @@ export const Route = createFileRoute('/admin')({
     if (typeof search.article === 'string') next.article = search.article
     return next
   },
-  beforeLoad: async ({ location, context }) => {
+  beforeLoad: async ({ location }) => {
     // Skip auth for public admin routes (login, signup)
     // These are child routes but should be publicly accessible
     const publicPaths = ['/admin/login', '/admin/signup']
@@ -71,26 +66,11 @@ export const Route = createFileRoute('/admin')({
       return {}
     }
 
-    // Only team members (admin, member roles) can access admin dashboard
+    // Only team members (admin, member roles) can access admin dashboard.
     // Portal users (role='user') don't have access to this.
-    // Role guard first: it throws a sign-in redirect. The billing helper's
-    // requireAuth() throws a plain Error, so racing the two can surface an
-    // error page for an unauthenticated visitor.
     const { user, principal, permissions } = await adminGuard.get(() =>
       loadAdminGuard(location.href)
     )
-
-    // Two billing locks keep billing managers on billing pages: a pending plan
-    // downgrade (to the pages where they get under the new plan's limits), and
-    // a trial that ended with no plan chosen, once its grace period is over (to
-    // the plan picker). Only a billing manager of a workspace with plan billing
-    // (cloudEnabled) can be held, so only they load and pay for the check.
-    if (context.cloudEnabled && permissions.includes(PERMISSIONS.BILLING_MANAGE)) {
-      const { holdOnBilling } = await import('@/lib/client/admin-billing-lock')
-      if (await holdOnBilling(location.pathname)) {
-        throw redirect({ href: '/admin/settings/billing' })
-      }
-    }
 
     return {
       user,
@@ -108,8 +88,6 @@ export const Route = createFileRoute('/admin')({
         latestVersion: null,
         updateBannerDismissedVersion: null,
         currentUser: null,
-        planNotice: null,
-        inLaunchWindow: false,
         locale: DEFAULT_LOCALE,
         messages: await loadAdminMessages(DEFAULT_LOCALE),
       }
@@ -126,19 +104,12 @@ export const Route = createFileRoute('/admin')({
       (context.permissions ?? []).includes(PERMISSIONS.POST_APPROVE)
 
     const locale = context.acceptLanguageLocale ?? DEFAULT_LOCALE
-    const [avatarData, latestRelease, planNotice, messages, launchWindow] = await Promise.all([
+    const [avatarData, latestRelease, messages] = await Promise.all([
       fetchUserAvatar({
         data: { userId: user.id, fallbackImageUrl: user.image },
       }),
       getLatestVersion(),
-      getPlanNotice(),
       loadAdminMessages(locale),
-      // Only cloud loads the help launcher, so only cloud asks whether to hide it.
-      context.cloudEnabled
-        ? import('@/lib/server/functions/onboarding-progress')
-            .then((module) => module.getLaunchWindowOpenFn())
-            .catch(() => ({ open: false }))
-        : { open: false },
       // The rail's unread badge rides the document rather than a request of
       // its own after hydration. Unreadable now, it is left to the bell.
       context.queryClient.ensureQueryData(unreadCountQuery()).catch(() => null),
@@ -163,8 +134,6 @@ export const Route = createFileRoute('/admin')({
       initialUserData,
       latestVersion,
       updateBannerDismissedVersion: context.updateBannerDismissedVersion ?? null,
-      planNotice,
-      inLaunchWindow: launchWindow.open,
       locale,
       messages,
       currentUser: {
@@ -174,7 +143,7 @@ export const Route = createFileRoute('/admin')({
       },
     }
   },
-  // The layout loader (avatar/version/plan-notice/messages) is stable across
+  // The layout loader (avatar/version/messages) is stable across
   // intra-admin navigation, so cache it for 5 min instead of re-running the
   // Promise.all on every child route change.
   staleTime: 5 * 60 * 1000,
@@ -248,8 +217,6 @@ function AdminLayout() {
     initialUserData,
     latestVersion,
     updateBannerDismissedVersion,
-    planNotice,
-    inLaunchWindow,
     currentUser,
     locale,
     messages,
@@ -276,8 +243,6 @@ function AdminLayout() {
               initialUserData={initialUserData}
               latestVersion={latestVersion}
               updateBannerDismissedVersion={updateBannerDismissedVersion}
-              planNotice={planNotice}
-              inLaunchWindow={inLaunchWindow}
               currentUser={currentUser}
             />
           </TooltipProvider>
@@ -291,37 +256,21 @@ function AdminContent({
   initialUserData,
   latestVersion,
   updateBannerDismissedVersion,
-  planNotice,
-  inLaunchWindow,
   currentUser,
 }: Pick<
   ReturnType<typeof Route.useLoaderData>,
-  | 'initialUserData'
-  | 'latestVersion'
-  | 'updateBannerDismissedVersion'
-  | 'planNotice'
-  | 'inLaunchWindow'
-  | 'currentUser'
+  'initialUserData' | 'latestVersion' | 'updateBannerDismissedVersion' | 'currentUser'
 >) {
-  const githubStarPrompt = useGithubStarPrompt()
   return (
     <>
-      {/* In the launch window the corner launcher stays hidden (it reads like the
-          workspace's own Messenger); Help, Contact us opens it. */}
-      <CloudQuackbackWidget launcherHidden={inLaunchWindow} />
       <AdminWorkspaceFrame
         sidebar={
           initialUserData && (
-            <AdminSidebar
-              initialUserData={initialUserData}
-              latestVersion={latestVersion}
-              planNotice={planNotice}
-            />
+            <AdminSidebar initialUserData={initialUserData} latestVersion={latestVersion} />
           )
         }
         notices={
           <>
-            <PlanNoticeBanner notice={planNotice} />
             <UpdateBanner
               latestVersion={latestVersion}
               dismissedVersion={updateBannerDismissedVersion}
@@ -334,8 +283,6 @@ function AdminContent({
         </FileViewerProvider>
       </AdminWorkspaceFrame>
       <EntityModals currentUser={currentUser} />
-      {/* Self-hosted only: the one-time GitHub star ask, after a ship moment. */}
-      {githubStarPrompt ? <GithubStarPromptGate /> : null}
     </>
   )
 }

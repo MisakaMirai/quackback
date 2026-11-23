@@ -35,7 +35,7 @@ describe('channels settings loaders', () => {
     const keys = await warmedKeys(HubRoute, [PERMISSIONS.SETTINGS_MANAGE])
     expect(keys).toEqual(
       expect.arrayContaining([
-        key('settings', 'widgetConfig'),
+        key('settings', 'messengerConfig'),
         key('settings', 'portalConfig'),
         key('settings', 'email-channel-status'),
         key('settings', 'github-channel-status'),

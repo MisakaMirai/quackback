@@ -1,5 +1,6 @@
 import { Avatar } from '@/components/ui/avatar'
 import { useFormatNumber } from '@/components/ui/format-number'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import {
   Table,
   TableHeader,
@@ -15,19 +16,47 @@ import type { TeammatePerformance } from '@/lib/server/domains/analytics/teammat
 /** Per-teammate support workload: conversations handled with median first
  *  response and median time to close. Rows arrive sorted by handled desc. */
 export function AnalyticsTeammatePerformance({ teammates }: { teammates: TeammatePerformance[] }) {
+  const intl = useOptionalIntl()
   const formatNumber = useFormatNumber()
   if (teammates.length === 0) {
-    return <AnalyticsEmpty message="No assigned conversations in this period" />
+    return (
+      <AnalyticsEmpty
+        message={intl.formatMessage({
+          id: 'admin.analytics.empty.teammates',
+          defaultMessage: 'No assigned conversations in this period',
+        })}
+      />
+    )
   }
 
   return (
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>Teammate</TableHead>
-          <TableHead className="text-right">Conversations</TableHead>
-          <TableHead className="text-right">Median first response</TableHead>
-          <TableHead className="text-right">Median time to close</TableHead>
+          <TableHead>
+            {intl.formatMessage({
+              id: 'admin.analytics.table.teammate',
+              defaultMessage: 'Teammate',
+            })}
+          </TableHead>
+          <TableHead className="text-right">
+            {intl.formatMessage({
+              id: 'admin.analytics.table.conversations',
+              defaultMessage: 'Conversations',
+            })}
+          </TableHead>
+          <TableHead className="text-right">
+            {intl.formatMessage({
+              id: 'admin.analytics.stat.medianFirstResponse',
+              defaultMessage: 'Median first response',
+            })}
+          </TableHead>
+          <TableHead className="text-right">
+            {intl.formatMessage({
+              id: 'admin.analytics.stat.medianTimeToClose',
+              defaultMessage: 'Median time to close',
+            })}
+          </TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>

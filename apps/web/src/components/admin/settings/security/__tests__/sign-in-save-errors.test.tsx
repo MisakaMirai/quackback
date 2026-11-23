@@ -44,7 +44,6 @@ describe('sign-in save failures', () => {
         <SignInProvidersTab
           initialTeamAuthConfig={teamAuth}
           credentialStatus={{ _emailConfigured: true }}
-          customOidcProviderTier={false}
         />
       </QueryClientProvider>
     )

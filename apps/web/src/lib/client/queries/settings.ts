@@ -10,10 +10,7 @@ import {
   fetchUserProfile,
   fetchCustomCssFn,
   fetchDeveloperConfig,
-  fetchWidgetConfig,
-  fetchWidgetSecret,
-  fetchWorkflowAbandonedAutoCloseFn,
-  fetchWorkflowCloseSpamFn,
+  fetchMessengerConfig,
   fetchDefaultSlaPolicyFn,
   getSpamFilterConfigFn,
 } from '@/lib/server/functions/settings'
@@ -170,17 +167,10 @@ export const settingsQueries = {
       staleTime: STALE_TIME_MEDIUM,
     }),
 
-  widgetConfig: () =>
+  messengerConfig: () =>
     queryOptions({
-      queryKey: ['settings', 'widgetConfig'],
-      queryFn: fetchWidgetConfig,
-      staleTime: STALE_TIME_LONG,
-    }),
-
-  widgetSecret: () =>
-    queryOptions({
-      queryKey: ['settings', 'widgetSecret'],
-      queryFn: fetchWidgetSecret,
+      queryKey: ['settings', 'messengerConfig'],
+      queryFn: fetchMessengerConfig,
       staleTime: STALE_TIME_LONG,
     }),
 
@@ -203,20 +193,6 @@ export const settingsQueries = {
     queryOptions({
       queryKey: ['settings', 'helpCenterRedirectRules'],
       queryFn: () => listRedirectRulesFn({ data: {} }),
-      staleTime: STALE_TIME_MEDIUM,
-    }),
-
-  workflowAbandonedAutoClose: () =>
-    queryOptions({
-      queryKey: ['settings', 'workflowAbandonedAutoClose'],
-      queryFn: fetchWorkflowAbandonedAutoCloseFn,
-      staleTime: STALE_TIME_MEDIUM,
-    }),
-
-  workflowCloseSpam: () =>
-    queryOptions({
-      queryKey: ['settings', 'workflowCloseSpam'],
-      queryFn: fetchWorkflowCloseSpamFn,
       staleTime: STALE_TIME_MEDIUM,
     }),
 

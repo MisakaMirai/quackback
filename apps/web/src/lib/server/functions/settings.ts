@@ -36,14 +36,13 @@ import { getPublicUrlOrNull } from '@/lib/server/storage/s3'
 import { actorFromAuth, recordAuditEvent, type AuditEventType } from '@/lib/server/audit/log'
 import { requireAuth } from './auth-helpers'
 import { teamMemberWhere } from '@/lib/server/domains/principals/principal.service'
+import { latestSignInAt } from '@/lib/server/domains/principals/last-sign-in'
 import { resolveUserAvatarUrl } from '@/lib/server/domains/principals/principal-display'
 import { getSession } from '@/lib/server/auth/session'
 import { db, principal, user, invitation, account, eq, and } from '@/lib/server/db'
 import { PERMISSIONS } from '@/lib/shared/permissions'
 import { officeHoursScheduleSchema } from '@/lib/server/domains/settings/settings.office-hours'
 import { changelogSettingsSchema } from '@/lib/shared/changelog-settings'
-import { workflowAbandonedAutoCloseSchema } from '@/lib/shared/workflows/abandoned-auto-close'
-import { workflowCloseSpamSchema } from '@/lib/shared/workflows/close-spam'
 import { defaultSlaPolicySchema } from '@/lib/shared/sla/default-policy'
 import { MAX_TRUSTED_SENDERS } from '@/lib/shared/trusted-senders'
 import { logger } from '@/lib/server/logger'
@@ -122,7 +121,8 @@ export const fetchTeamMembersAndInvitations = createServerFn({ method: 'GET' }).
 
     // Subquery: latest session timestamp per user. Left-joined so
     // a team member with no sessions still appears (lastSignInAt
-    // = null) — useful for spotting stale accounts.
+    // = null) — useful for spotting stale accounts. The principal's
+    // lastSsoSignInAt is the fallback when sessions have been pruned.
     const { session, max, sql: sqlOp } = await import('@/lib/server/db')
     const lastSession = db
       .select({
@@ -145,6 +145,7 @@ export const fetchTeamMembersAndInvitations = createServerFn({ method: 'GET' }).
         userName: user.name,
         userEmail: user.email,
         lastSignInAt: sqlOp<Date | null>`${lastSession.lastSignInAt}`,
+        lastSsoSignInAt: principal.lastSsoSignInAt,
       })
       .from(principal)
       .innerJoin(user, eq(principal.userId, user.id))
@@ -185,9 +186,10 @@ export const fetchTeamMembersAndInvitations = createServerFn({ method: 'GET' }).
 
     const members = membersRaw.map((m) => {
       const assigned = assignmentByPrincipal.get(m.id)
+      const { lastSsoSignInAt, ...member } = m
       return {
-        ...m,
-        lastSignInAt: toIsoStringOrNull(m.lastSignInAt),
+        ...member,
+        lastSignInAt: toIsoStringOrNull(latestSignInAt(m.lastSignInAt, lastSsoSignInAt)),
         assignedRole: assigned
           ? {
               id: assigned.roleId,
@@ -242,15 +244,10 @@ export const fetchTeamMembersAndInvitations = createServerFn({ method: 'GET' }).
       expiresAt: inv.expiresAt.toISOString(),
     }))
 
-    const { getTierLimits } = await import('@/lib/server/domains/settings/tier-limits.service')
     const { countSeatUsage } = await import('@/lib/server/domains/principals/seat-usage')
-    const [limits, seats] = await Promise.all([getTierLimits(), countSeatUsage()])
-    const seatUsage = {
-      used: seats.used,
-      members: seats.members,
-      pendingInvites: seats.pendingInvites,
-      limit: limits.maxTeamSeats,
-    }
+    const seats = await countSeatUsage()
+    // A single-workspace install has no seat cap.
+    const seatUsage = { ...seats, limit: null }
 
     return { members, avatarMap, formattedInvitations, seatUsage }
   }
@@ -725,21 +722,14 @@ export const updateDeveloperConfigFn = createServerFn({ method: 'POST' })
   })
 
 // ============================================
-// Widget Config Operations
+// Messenger Config Operations
 // ============================================
 
-export const fetchWidgetConfig = createServerFn({ method: 'GET' }).handler(async () => {
-  log.debug('fetch widget config')
+export const fetchMessengerConfig = createServerFn({ method: 'GET' }).handler(async () => {
+  log.debug('fetch messenger config')
   await requireAuth({ permission: PERMISSIONS.SETTINGS_MANAGE })
-  const { getWidgetConfig } = await import('@/lib/server/domains/settings/settings.widget')
-  return await getWidgetConfig()
-})
-
-export const fetchWidgetSecret = createServerFn({ method: 'GET' }).handler(async () => {
-  log.debug('fetch widget secret')
-  await requireAuth({ permission: PERMISSIONS.SETTINGS_MANAGE })
-  const { ensureWidgetSecret } = await import('@/lib/server/domains/settings/settings.widget')
-  return await ensureWidgetSecret()
+  const { getMessengerSettings } = await import('@/lib/server/domains/settings/settings.messenger')
+  return await getMessengerSettings()
 })
 
 const messengerConfigInputSchema = z.object({
@@ -749,97 +739,10 @@ const messengerConfigInputSchema = z.object({
   teamName: z.string().max(80).optional(),
   // Refuse visitor replies to closed conversations (Messenger only; §4.3).
   preventRepliesWhenClosed: z.boolean().optional(),
-  assistant: z
-    .object({
-      enabled: z.boolean().optional(),
-      // Whether the assistant actually replies (vs. identity-only).
-      respond: z.boolean().optional(),
-    })
-    .optional(),
-  officeHours: z
-    .object({
-      enabled: z.boolean(),
-      timezone: z.string().max(64),
-      days: z
-        .array(
-          z.object({
-            enabled: z.boolean(),
-            start: z.string().regex(/^\d{2}:\d{2}$/),
-            end: z.string().regex(/^\d{2}:\d{2}$/),
-          })
-        )
-        .length(7),
-    })
-    .optional(),
 })
 
-// heroImageKey is intentionally absent: the hero image is written only via
-// saveWidgetHeroImageKeyFn, which owns the S3 object lifecycle.
-// Hex-only (or empty = "use brand color"): these values are interpolated into
-// inline styles on the public widget, so the boundary must reject anything
-// that could smuggle CSS.
-const heroColorSchema = z.union([z.literal(''), z.string().regex(/^#[0-9a-f]{6}$/i)])
-
-const widgetHomeConfigSchema = z.object({
-  greeting: z.string().max(120).optional(),
-  subtitle: z.string().max(200).optional(),
-  headerStyle: z.enum(['plain', 'gradient', 'pattern', 'image']).optional(),
-  gradient: z
-    .object({
-      from: heroColorSchema.optional(),
-      to: heroColorSchema.optional(),
-    })
-    .optional(),
-  pattern: z.enum(['dots', 'grid', 'mesh', 'waves']).optional(),
-  showLogo: z.boolean().optional(),
-  showTeamAvatars: z.boolean().optional(),
-  cards: z
-    .array(
-      z
-        .object({
-          id: z.string().max(64),
-          type: z.enum([
-            'feedback',
-            'new_conversation',
-            'article_search',
-            'latest_updates',
-            'link',
-          ]),
-          enabled: z.boolean().optional(),
-          audience: z.enum(['everyone', 'anonymous', 'identified']).optional(),
-          title: z.string().max(80).optional(),
-          subtitle: z.string().max(160).optional(),
-          url: z.string().url().max(2000).optional(),
-        })
-        // A link card without a URL has nowhere to go.
-        .refine((c) => c.type !== 'link' || !!c.url, {
-          message: 'Link cards require a URL',
-        })
-    )
-    .max(8)
-    .optional(),
-})
-
-const updateWidgetConfigSchema = z.object({
-  enabled: z.boolean().optional(),
-  defaultBoard: z.string().optional(),
-  position: z.enum(['bottom-right', 'bottom-left']).optional(),
-  launcherGreeting: z.string().max(120).optional(),
-  launcherLabel: z.string().max(60).optional(),
-  visitorAnalytics: z.boolean().optional(),
-  visitorDeviceTracking: z.boolean().optional(),
-  tabs: z
-    .object({
-      feedback: z.boolean().optional(),
-      changelog: z.boolean().optional(),
-      help: z.boolean().optional(),
-      messenger: z.boolean().optional(),
-      tickets: z.boolean().optional(),
-      home: z.boolean().optional(),
-    })
-    .optional(),
+const updateMessengerConfigSchema = z.object({
   messenger: messengerConfigInputSchema.optional(),
-  home: widgetHomeConfigSchema.optional(),
   translations: z
     .record(
       z.string().max(20),
@@ -851,62 +754,15 @@ const updateWidgetConfigSchema = z.object({
     .optional(),
 })
 
-export const updateWidgetConfigFn = createServerFn({ method: 'POST' })
-  .validator(updateWidgetConfigSchema)
+export const updateMessengerConfigFn = createServerFn({ method: 'POST' })
+  .validator(updateMessengerConfigSchema)
   .handler(async ({ data }) => {
-    log.info({ enabled: data.enabled, position: data.position }, 'update widget config')
-    const auth = await requireAuth({ permission: PERMISSIONS.SETTINGS_MANAGE })
-    const { updateWidgetConfig } = await import('@/lib/server/domains/settings/settings.widget')
-    const { parseWidgetConfig, requireSettings } =
-      await import('@/lib/server/domains/settings/settings.helpers')
-    const previous = data.enabled === true ? await requireSettings() : null
-    const updated = await updateWidgetConfig(data)
-    if (data.enabled === true && previous && !parseWidgetConfig(previous.widgetConfig).enabled) {
-      const { getSetupState } = await import('@/lib/shared/db-types')
-      const { emitPlgEvent } = await import('@/lib/server/plg-events')
-      const useCase = getSetupState(previous.setupState ?? null)?.useCase
-      await emitPlgEvent(
-        {
-          name: 'widget_configured',
-          outcome: useCase === 'customer_support' ? 'customer_support' : 'product_feedback',
-          artifactType: 'widget',
-        },
-        { workspaceId: auth.settings.id, principalId: auth.principal.id }
-      )
-    }
-    return updated
-  })
-
-export const saveWidgetHeroImageKeyFn = createServerFn({ method: 'POST' })
-  .validator(z.object({ key: z.string().min(1).max(512) }))
-  .handler(async ({ data }) => {
-    log.info('save widget hero image key')
+    log.info('update messenger config')
     await requireAuth({ permission: PERMISSIONS.SETTINGS_MANAGE })
-    const { saveWidgetHeroImageKey } = await import('@/lib/server/domains/settings/settings.widget')
-    await saveWidgetHeroImageKey(data.key)
+    const { updateMessengerConfig } =
+      await import('@/lib/server/domains/settings/settings.messenger')
+    return updateMessengerConfig(data)
   })
-
-export const deleteWidgetHeroImageFn = createServerFn({ method: 'POST' }).handler(async () => {
-  log.info('delete widget hero image')
-  await requireAuth({ permission: PERMISSIONS.SETTINGS_MANAGE })
-  const { deleteWidgetHeroImage } = await import('@/lib/server/domains/settings/settings.widget')
-  await deleteWidgetHeroImage()
-})
-
-export const regenerateWidgetSecretFn = createServerFn({ method: 'POST' }).handler(async () => {
-  log.info('regenerate widget secret')
-  await requireAuth({ permission: PERMISSIONS.SETTINGS_MANAGE })
-  const { regenerateWidgetSecret } = await import('@/lib/server/domains/settings/settings.widget')
-  return await regenerateWidgetSecret()
-})
-
-export const mintWidgetInstallCodeFn = createServerFn({ method: 'POST' }).handler(async () => {
-  log.info('mint widget install pairing code')
-  await requireAuth({ permission: PERMISSIONS.SETTINGS_MANAGE })
-  const { mintWidgetInstallCode } =
-    await import('@/lib/server/domains/settings/widget-install-pairing')
-  return await mintWidgetInstallCode()
-})
 
 // ============================================
 // Office Hours Operations
@@ -994,53 +850,6 @@ export const updateChangelogSettingsFn = createServerFn({ method: 'POST' })
   })
 
 // ============================================
-// Abandoned-Journey Auto-Close Operations
-// ============================================
-
-// Gated like the rest of the automation page these settings live on
-// (functions/workflows.ts's precedent: read = ROUTING_MANAGE, write =
-// WORKFLOW_MANAGE), NOT settings.manage — a custom role holding only those
-// two (the page's actual read/write split) still needs its route loader's
-// fetch to succeed.
-export const fetchWorkflowAbandonedAutoCloseFn = createServerFn({ method: 'GET' }).handler(
-  async () => {
-    log.debug('fetch workflow abandoned auto-close settings')
-    await requireAuth({ permission: PERMISSIONS.ROUTING_MANAGE })
-    const { getWorkflowAbandonedAutoCloseSettings } =
-      await import('@/lib/server/domains/settings/settings.workflows')
-    return await getWorkflowAbandonedAutoCloseSettings()
-  }
-)
-
-export const updateWorkflowAbandonedAutoCloseFn = createServerFn({ method: 'POST' })
-  .validator(workflowAbandonedAutoCloseSchema)
-  .handler(async ({ data }) => {
-    log.info(data, 'update workflow abandoned auto-close settings')
-    await requireAuth({ permission: PERMISSIONS.WORKFLOW_MANAGE })
-    const { updateWorkflowAbandonedAutoCloseSettings } =
-      await import('@/lib/server/domains/settings/settings.workflows')
-    return await updateWorkflowAbandonedAutoCloseSettings(data)
-  })
-
-export const fetchWorkflowCloseSpamFn = createServerFn({ method: 'GET' }).handler(async () => {
-  log.debug('fetch workflow close-spam settings')
-  await requireAuth({ permission: PERMISSIONS.ROUTING_MANAGE })
-  const { getWorkflowCloseSpamSettings } =
-    await import('@/lib/server/domains/settings/settings.workflows')
-  return await getWorkflowCloseSpamSettings()
-})
-
-export const updateWorkflowCloseSpamFn = createServerFn({ method: 'POST' })
-  .validator(workflowCloseSpamSchema)
-  .handler(async ({ data }) => {
-    log.info(data, 'update workflow close-spam settings')
-    await requireAuth({ permission: PERMISSIONS.WORKFLOW_MANAGE })
-    const { updateWorkflowCloseSpamSettings } =
-      await import('@/lib/server/domains/settings/settings.workflows')
-    return await updateWorkflowCloseSpamSettings(data)
-  })
-
-// ============================================
 // Default SLA policy
 // ============================================
 
@@ -1068,7 +877,6 @@ export const updateDefaultSlaPolicyFn = createServerFn({ method: 'POST' })
 
 const updateSpamFilterConfigSchema = z.object({
   trustedSenders: z.array(z.string().max(320)).max(MAX_TRUSTED_SENDERS).optional(),
-  aiClassifier: z.boolean().optional(),
 })
 
 /** The spam filter's trusted-sender list (admin read, for the settings UI). */
@@ -1079,15 +887,11 @@ export const getSpamFilterConfigFn = createServerFn({ method: 'GET' }).handler(a
   return await getSpamFilterConfig()
 })
 
-/** Replace the trusted-sender list wholesale (add/remove are list rewrites)
- *  and/or switch the AI classifier. */
+/** Replace the trusted-sender list wholesale (add/remove are list rewrites). */
 export const updateSpamFilterConfigFn = createServerFn({ method: 'POST' })
   .validator(updateSpamFilterConfigSchema)
   .handler(async ({ data }) => {
-    log.info(
-      { trusted_count: data.trustedSenders?.length, ai_classifier: data.aiClassifier },
-      'update spam filter config'
-    )
+    log.info({ trusted_count: data.trustedSenders?.length }, 'update spam filter config')
     await requireAuth({ permission: PERMISSIONS.SETTINGS_MANAGE })
     const { updateSpamFilterConfig } = await import('@/lib/server/domains/settings/settings.spam')
     return await updateSpamFilterConfig(data)
@@ -1116,7 +920,6 @@ export const getEmailChannelStatusFn = createServerFn({ method: 'GET' }).handler
     await import('@/lib/server/domains/conversation/conversation.email-channel')
   const { customSendingDomainsAvailable } =
     await import('@/lib/server/domains/channel-accounts/sending-identity')
-  const { isPooledTenancy } = await import('@/lib/server/workspaces/mode')
   let fromAddress: string | null = null
   try {
     fromAddress = getEmailFrom()
@@ -1134,9 +937,8 @@ export const getEmailChannelStatusFn = createServerFn({ method: 'GET' }).handler
     customDomains: customSendingDomainsAvailable()
       ? ('available' as const)
       : ('unavailable' as const),
-    // Whether the server is this workspace's own to read about. On one shared
-    // by many workspaces the page leaves the transport out.
-    ownServer: !isPooledTenancy(),
+    // This server is the install's own, so the page shows the transport.
+    ownServer: true,
   }
 })
 

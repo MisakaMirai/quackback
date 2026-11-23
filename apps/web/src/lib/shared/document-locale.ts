@@ -11,17 +11,14 @@ const PORTAL_LAYOUT_ROUTE_ID = '/_portal'
 const LOCALIZED_ROUTE_IDS = new Set([
   '/auth/recovery',
   '/auth/reset-password',
-  '/widget',
   '/unsubscribe',
-  // The AI & Automation pages under settings. The settings layout and the other
-  // settings pages stay English.
-  '/admin/settings/agent',
-  '/admin/settings/copilot',
-  '/admin/settings/skills',
-  '/admin/settings/connectors',
-  '/admin/settings/connectors_/$connectorId',
-  '/admin/settings/workflows',
-  '/admin/settings_/workflows/$workflowId',
+  '/complete-signup/$id',
+  '/verify-magic-link',
+  '/auth/auth-complete',
+  '/auth/link-sso',
+  '/oauth/consent',
+  '/portal-invite/$inviteId',
+  '/csat',
 ])
 
 /**
@@ -46,7 +43,8 @@ export function documentLocale(
  * The `<html lang>`/`dir` attributes for a locale. `lang` is a canonical BCP-47
  * tag — our locale ids are lowercase (e.g. `zh-cn`), so the region subtag is
  * upper-cased (`zh-CN`, `pt-BR`). `dir` honors the `?rtl=1` debug override.
- * Shared by the root document (SSR) and the widget so both format identically.
+ * Shared by the root document (SSR) and every client render so both format
+ * identically.
  */
 export function htmlLangDir(locale: SupportedLocale): { lang: string; dir: 'ltr' | 'rtl' } {
   const [language, region] = locale.split('-')

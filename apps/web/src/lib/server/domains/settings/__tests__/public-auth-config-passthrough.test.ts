@@ -71,7 +71,6 @@ const baseSettingsRow = {
   developerConfig: '{}',
   customCss: '',
   managedFieldPaths: [],
-  state: 'active',
 }
 
 beforeEach(() => {

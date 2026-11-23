@@ -78,7 +78,7 @@ function actor(id: PrincipalId): Actor {
 it('treats a teammate idea and a legacy client marker as real, and only the test customer idea as test', async () => {
   const create = (id: PrincipalId, metadata?: Record<string, string>) =>
     createPost(
-      { boardId, title: 'An idea', content: '', widgetMetadata: metadata },
+      { boardId, title: 'An idea', content: '', clientMetadata: metadata },
       { principalId: id, actor: actor(id) },
       { skipDispatch: true }
     )
@@ -87,8 +87,8 @@ it('treats a teammate idea and a legacy client marker as real, and only the test
   const legacy = await create(ordinary, { test: 'true', onboardingGenerated: 'true' })
   const read = (id: typeof demo.id) => testDb.query.posts.findFirst({ where: eq(posts.id, id) })
   // Client metadata is stored as sent: it carries no meaning for test status.
-  expect((await read(teammate.id))!.widgetMetadata).toEqual({ source: 'widget' })
-  expect((await read(legacy.id))!.widgetMetadata).toEqual({
+  expect((await read(teammate.id))!.clientMetadata).toEqual({ source: 'widget' })
+  expect((await read(legacy.id))!.clientMetadata).toEqual({
     test: 'true',
     onboardingGenerated: 'true',
   })

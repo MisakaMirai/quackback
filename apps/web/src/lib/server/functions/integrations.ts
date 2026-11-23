@@ -162,11 +162,6 @@ export const deleteIntegrationFn = createServerFn({ method: 'POST' })
           log.error({ err, integration_type: current.integrationType }, 'onDisconnect failed')
         }
       }
-      const { unregisterInstall } = await import('@/lib/server/integrations/install-registry')
-      await unregisterInstall(
-        current.integrationType,
-        (current.config ?? {}) as Record<string, unknown>
-      )
       await tx.delete(integrations).where(eq(integrations.id, integrationId))
     })
 

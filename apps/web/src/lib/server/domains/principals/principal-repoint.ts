@@ -40,7 +40,6 @@ import {
   conversationMessages,
   files,
   conversationParticipants,
-  conversationSummaries,
   postSubscriptions,
   inAppNotifications,
   emailLog,
@@ -53,9 +52,6 @@ import {
   tickets,
   ticketActivity,
   ticketSubscriptions,
-  ticketSummaries,
-  workflowRuns,
-  workflowRunEvents,
   changelogSubscriptions,
   statusSubscriptions,
   principal,
@@ -306,24 +302,6 @@ export const REPOINT_STEPS: RepointStep[] = [
     ['conversation_id'],
     'Added customers on a group thread (§4.8). An anonymous lead an agent added by email keeps receiving replies after identifying; unique (conversation_id, principal_id), so a collision (the identified principal is already a participant) drops the anon row and the identified participation wins. ON DELETE CASCADE: a missed re-point would silently drop the row at teardown.'
   ),
-  simpleRepoint(
-    'conversation_summaries',
-    conversationSummaries,
-    'visitor_principal_id',
-    'Denormalized from conversations.visitor_principal_id for Quinn past-conversation grounding (P2-A.4) scoping. ON DELETE RESTRICT, same as conversations: a missed re-point would both strand the summary under the old identity (breaking the customer-scoped retrieval it exists for) and abort the merge at teardown.'
-  ),
-  simpleRepoint(
-    'workflow_runs',
-    workflowRuns,
-    'subject_principal_id',
-    'The person a workflow run acted on — usually the conversation visitor, so it follows them on merge like their conversations do (ON DELETE SET NULL would otherwise strand the run).'
-  ),
-  simpleRepoint(
-    'workflow_run_events',
-    workflowRunEvents,
-    'subject_principal_id',
-    'Freq-cap ledger subject: re-pointing keeps a once-per-person workflow capped after the visitor identifies (else the merge nulls the history and the cap resets).'
-  ),
   collisionRepoint(
     'post_subscriptions',
     postSubscriptions,
@@ -392,12 +370,6 @@ export const REPOINT_STEPS: RepointStep[] = [
     'requester_principal_id',
     'Ticket requester. A ticket filed while anonymous (portal/Messenger) follows the person on merge. Unlike conversations.visitor_principal_id (ON DELETE RESTRICT), this FK is ON DELETE SET NULL, so this re-point step (not the constraint) is what keeps the ticket attributed when the anonymous principal is torn down.'
   ),
-  simpleRepoint(
-    'ticket_summaries',
-    ticketSummaries,
-    'requester_principal_id',
-    'Denormalized tickets.requester_principal_id on the resolution-grounding snapshot: follows the person for the same reason the ticket itself does.'
-  ),
   collisionRepoint(
     'ticket_subscriptions',
     ticketSubscriptions,
@@ -415,17 +387,13 @@ export const REPOINT_STEPS: RepointStep[] = [
     'contact_email',
     'Attribute consolidation, not a re-point: contact_email fills the target only when the target has none (user wins, lead fills gaps).'
   ),
-  fillIfEmpty(
-    'company_id',
-    'Attribute consolidation, not a re-point: company_id fills the target only when the target has none (user wins, source fills gaps), mirroring contact_email.'
-  ),
   // A block follows the person: if a blocked anonymous visitor identifies, the
   // block must transfer so they cannot escape it by signing in. Fill-if-empty
   // (user wins) — an already-blocked target keeps its own record; an unblocked
   // target inherits the source's. `blocked_at` and `blocked_by` move together so
   // the "who blocked them" trail survives. Both live on the `principal` table,
-  // which the completeness walk skips, so they are steps (like contact_email /
-  // company_id), never REPOINT_EXEMPTIONS entries.
+  // which the completeness walk skips, so they are steps (like contact_email),
+  // never REPOINT_EXEMPTIONS entries.
   fillIfEmpty(
     'blocked_at',
     'Attribute consolidation, not a re-point: a blocked source blocks the target when the target is not already blocked (user wins). Stops a merged visitor from shedding a block by identifying. Skipped when the target is a teammate (team members cannot be blocked).',
@@ -462,8 +430,6 @@ export const REPOINT_STEPS: RepointStep[] = [
  * merge source.
  */
 export const REPOINT_EXEMPTIONS: Record<string, string> = {
-  'workspace_assistant_threads.owner_principal_id':
-    'Private Copilot threads belong to authenticated team users with copilot.use; anonymous visitor merges cannot own them.',
   'integration_sync_actions.principal_id':
     'Integration recovery requires INTEGRATION_MANAGE; anonymous principals cannot own these immutable action receipts.',
   'onboarding_emails.principal_id':
@@ -500,19 +466,9 @@ export const REPOINT_EXEMPTIONS: Record<string, string> = {
     'incidents/maintenance windows are authored by team members with status_page.publish; the merge source is always anonymous',
   'status_incident_updates.created_by':
     'incident updates are posted by team members with status_page.publish (same reasoning as status_incidents.created_by)',
-  'workflow_versions.created_by':
-    'workflow versions are saved by authenticated team members; anonymous principals cannot author them',
-  'assistant_events.principal_id':
-    'assistant event attribution is the acting teammate; customer subjects are carried by conversation or ticket instead',
-  'assistant_documents.created_by_id':
-    'knowledge documents are ingested by team members with ai.customer.manage or ai.teammate.manage; ON DELETE SET NULL, so teardown detaches the uploader (same reasoning as assistant_snippets.created_by_id)',
-  'assistant_web_sources.created_by_id':
-    'web sources are added by team members with ai.customer.manage or ai.teammate.manage; ON DELETE SET NULL, so teardown detaches the author (same reasoning as assistant_snippets.created_by_id)',
-  'post_merge_suggestions.resolved_by_principal_id': 'suggestion resolution is a team action',
   'principal_role_assignments.principal_id':
     'role assignments are team-only; anonymous principals hold none',
   'principal_role_assignments.granted_by_principal_id': 'grant actor is a team member',
-  'push_devices.principal_id': 'push devices belong to agents',
   // Service-principal identity columns
   'api_keys.principal_id': 'API keys are backed by service principals',
   'api_keys.created_by_id': 'key creator is a team member',
@@ -539,23 +495,6 @@ export const REPOINT_EXEMPTIONS: Record<string, string> = {
   'conversation_view_pins.principal_id':
     'view pins belong to team members; the merge source is always anonymous',
   'macros.created_by_principal_id': 'macro authors are team members, never anonymous',
-  'workflows.created_by': 'workflow authors are team members, never anonymous',
-  'assistant_guidance_rules.created_by_id':
-    'guidance rule authors are team members, never anonymous',
-  'assistant_snippets.created_by_id':
-    'snippet authors are team members with ai.customer.manage or ai.teammate.manage, never anonymous',
-  'connectors.created_by_principal_id':
-    'connector authors are team members with ai.customer.manage or ai.teammate.manage, never anonymous',
-  'agent_skills.created_by_principal_id':
-    'skill authors are team members with ai.customer.manage or ai.teammate.manage, never anonymous',
-  'assistant_pending_actions.decided_by_id':
-    'the agent who approves/rejects a pending action is a team member, never anonymous',
-  'assistant_pending_actions.requested_by_id':
-    'who filed an approval request: an API key service principal, the assistant or a signed-in teammate with the permission to ask, never the anonymous merge source; the row records history and is never rewritten',
-  'assistant_pending_actions.on_behalf_of_principal_id':
-    'the person whose authority the request borrows: a key creator, an OAuth grant holder or a teammate, never the anonymous merge source; the row records history and is never rewritten',
-  'assistant_tool_calls.principal_id':
-    'the actor attributed to a tool call is a team member or the assistant itself, never the anonymous merge source',
   'import_runs.initiated_by_principal_id':
     'import runs are launched by admins (route requires the admin role); the merge source is always anonymous',
   'export_runs.initiated_by_principal_id':

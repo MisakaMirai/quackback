@@ -172,7 +172,6 @@ export async function publishConversationUpdate(
       snoozedUntil: null,
       assignedTeamId: null,
       customAttributes: {},
-      translation: null,
       spamReason: null,
     },
   })

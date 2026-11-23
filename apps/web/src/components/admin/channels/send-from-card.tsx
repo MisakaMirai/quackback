@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { useSetEmailSender } from '@/lib/client/mutations/channel-accounts'
 import type { EmailSenderChoiceDTO, EmailSendersDTO } from '@/lib/server/functions/channel-accounts'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 
 /** An address the page can offer, already named and checked. */
 export type SenderIdentity = {
@@ -49,12 +50,19 @@ export const SENDER_SURFACE_NAMES: Record<SenderSurfaceKey, string> = {
   status: 'Status page',
 }
 
+/** The translated label for each kind of email, for this card's own copy. */
+export const SURFACE_LABEL: Record<SenderSurfaceKey, { id: string; defaultMessage: string }> = {
+  support: { id: 'admin.channels.sendFrom.surfaceSupport', defaultMessage: 'Support' },
+  feedback: { id: 'admin.channels.sendFrom.surfaceFeedback', defaultMessage: 'Feedback board' },
+  changelog: { id: 'admin.channels.sendFrom.surfaceChangelog', defaultMessage: 'Changelog' },
+  status: { id: 'admin.channels.sendFrom.surfaceStatus', defaultMessage: 'Status page' },
+}
+
 /** The kinds of email with their own sender, in the order shown. */
 export const SENDER_SURFACES = Object.keys(SENDER_SURFACE_NAMES) as SenderSurfaceKey[]
 
-const OVERRIDES = SENDER_SURFACES.map((surface) => ({
+const OVERRIDES: readonly { surface: SenderSurfaceKey }[] = SENDER_SURFACES.map((surface) => ({
   surface,
-  label: SENDER_SURFACE_NAMES[surface],
 }))
 
 const ALL_ROWS: readonly Surface[] = ['default', ...OVERRIDES.map((o) => o.surface)]
@@ -88,14 +96,6 @@ const addressOf = (label: string): string => /<([^<>]+)>\s*$/.exec(label)?.[1] ?
 /** The domain of an address, which is what gets verified. */
 const domainOf = (address: string): string => address.slice(address.lastIndexOf('@') + 1)
 
-/** How long a stand-in lasts: a new address is waiting, a lapsed one needs a fix. */
-const untilWhen = (identity: SenderIdentity): string =>
-  identity.lapsed ? "until it's fixed" : 'for now'
-
-/** "help@acme.com isn't verified yet", or "is no longer verified" once it was. */
-const cannotSend = (identity: SenderIdentity): string =>
-  `${addressOf(identity.label)} ${identity.lapsed ? 'is no longer verified' : "isn't verified yet"}`
-
 export function SendFromCard({
   senders,
   identities,
@@ -106,8 +106,8 @@ export function SendFromCard({
   forwardingTargetPermitted,
   hasInboundRoute,
   rows = ALL_ROWS,
-  title = 'Send from',
-  description = 'The address your email comes from.',
+  title,
+  description,
   action,
   id,
   onError,
@@ -140,7 +140,32 @@ export function SendFromCard({
   id?: string
   onError: (error: unknown) => void
 }) {
+  const intl = useOptionalIntl()
   const setSender = useSetEmailSender()
+
+  /** How long a stand-in lasts: a new address is waiting, a lapsed one needs a fix. */
+  const untilWhen = (identity: SenderIdentity): string =>
+    identity.lapsed
+      ? intl.formatMessage({
+          id: 'admin.channels.sendFrom.untilFixed',
+          defaultMessage: "until it's fixed",
+        })
+      : intl.formatMessage({ id: 'admin.channels.sendFrom.forNow', defaultMessage: 'for now' })
+
+  /** "help@acme.com isn't verified yet", or "is no longer verified" once it was. */
+  const cannotSend = (identity: SenderIdentity): string =>
+    intl.formatMessage(
+      identity.lapsed
+        ? {
+            id: 'admin.channels.sendFrom.noLongerVerified',
+            defaultMessage: '{address} is no longer verified',
+          }
+        : {
+            id: 'admin.channels.sendFrom.notVerifiedYet',
+            defaultMessage: "{address} isn't verified yet",
+          },
+      { address: addressOf(identity.label) }
+    )
 
   // Verified addresses, plus whatever is chosen now so a demoted one still reads.
   const optionsFor = (surface: Surface) => {
@@ -162,8 +187,17 @@ export function SendFromCard({
   const defaultHint = defaultChoice
     ? undefined
     : platformFrom
-      ? `Email comes from ${platformFrom}.`
-      : "No default address is set, so email can't be sent until you choose one."
+      ? intl.formatMessage(
+          {
+            id: 'admin.channels.sendFrom.emailComesFrom',
+            defaultMessage: 'Email comes from {address}.',
+          },
+          { address: platformFrom }
+        )
+      : intl.formatMessage({
+          id: 'admin.channels.sendFrom.defaultMissing',
+          defaultMessage: "No default address is set, so email can't be sent until you choose one.",
+        })
   // A chosen address whose domain stopped verifying (or never finished) is
   // still shown as chosen; this says what mail goes out from meanwhile.
   const notLiveHint = (surface: Surface): string | undefined => {
@@ -172,7 +206,13 @@ export function SendFromCard({
     const identity = identities.find((i) => i.id === choice.id)
     const fallback = surface === 'default' ? platformFrom : resolvedDefault
     if (!identity || identity.live || !fallback) return undefined
-    return `${cannotSend(identity)}, so email comes from ${fallback} ${untilWhen(identity)}.`
+    return intl.formatMessage(
+      {
+        id: 'admin.channels.sendFrom.notLive',
+        defaultMessage: '{state}, so email comes from {fallback} {until}.',
+      },
+      { state: cannotSend(identity), fallback, until: untilWhen(identity) }
+    )
   }
   // The address behind the inbox, when support replies from the inbox and has
   // one: support email that is not a reply to the inbox leaves from it.
@@ -195,14 +235,37 @@ export function SendFromCard({
     forwardingTarget &&
     forwardingTargetPermitted === false &&
     inboxFallback
-      ? `${domainOf(forwardingTarget)} isn't verified, so replies come from ${inboxFallback}.`
+      ? intl.formatMessage(
+          {
+            id: 'admin.channels.sendFrom.repliesNotVerified',
+            defaultMessage: "{domain} isn't verified, so replies come from {fallback}.",
+          },
+          { domain: domainOf(forwardingTarget), fallback: inboxFallback }
+        )
       : undefined
   const behindInboxHint = !behindInbox
     ? undefined
     : behindInbox.live
-      ? `Conversations not started by email use ${behindInbox.label}.`
+      ? intl.formatMessage(
+          {
+            id: 'admin.channels.sendFrom.inboxUses',
+            defaultMessage: 'Conversations not started by email use {address}.',
+          },
+          { address: behindInbox.label }
+        )
       : resolvedDefault
-        ? `${cannotSend(behindInbox)}, so conversations not started by email use ${resolvedDefault} ${untilWhen(behindInbox)}.`
+        ? intl.formatMessage(
+            {
+              id: 'admin.channels.sendFrom.inboxNotLive',
+              defaultMessage:
+                '{state}, so conversations not started by email use {fallback} {until}.',
+            },
+            {
+              state: cannotSend(behindInbox),
+              fallback: resolvedDefault,
+              until: untilWhen(behindInbox),
+            }
+          )
         : undefined
 
   const showDefault = rows.includes('default')
@@ -235,12 +298,19 @@ export function SendFromCard({
     if (senders[surface]) setSender.mutate({ surface, choice: null }, { onError })
   }
 
-  const row = ({ surface, label }: (typeof OVERRIDES)[number]) => {
+  const row = ({ surface }: (typeof OVERRIDES)[number]) => {
     const id = `send-from-${surface}`
     const exception = isException(surface)
+    const surfaceLabel = intl.formatMessage(SURFACE_LABEL[surface])
     // On its own page the row is the card's one setting, named for what it
     // does; beside the default it is named for the kind of email.
-    const rowLabel = !showDefault && surface === 'support' ? 'Reply from' : label
+    const rowLabel =
+      !showDefault && surface === 'support'
+        ? intl.formatMessage({
+            id: 'admin.channels.sendFrom.replyFrom',
+            defaultMessage: 'Reply from',
+          })
+        : surfaceLabel
     const value = exception
       ? valueOf(senders[surface], surface)
       : showDefault
@@ -256,7 +326,21 @@ export function SendFromCard({
           (surface === 'support' ? (supportHint ?? behindInboxHint) : undefined) ??
           notLiveHint(surface) ??
           (!showDefault && !exception && resolvedDefault
-            ? `${surface === 'support' ? 'Replies come' : 'Email comes'} from ${resolvedDefault}.`
+            ? surface === 'support'
+              ? intl.formatMessage(
+                  {
+                    id: 'admin.channels.sendFrom.repliesComeFrom',
+                    defaultMessage: 'Replies come from {address}.',
+                  },
+                  { address: resolvedDefault }
+                )
+              : intl.formatMessage(
+                  {
+                    id: 'admin.channels.sendFrom.emailComesFrom',
+                    defaultMessage: 'Email comes from {address}.',
+                  },
+                  { address: resolvedDefault }
+                )
             : undefined)
         }
         control={
@@ -267,13 +351,30 @@ export function SendFromCard({
               onValueChange={(v) => choose(surface, String(v))}
             >
               <SelectTrigger id={id} className={TRIGGER} aria-label={rowLabel}>
-                <SelectValue placeholder="Choose an address" />
+                <SelectValue
+                  placeholder={intl.formatMessage({
+                    id: 'admin.channels.sendFrom.chooseAddress',
+                    defaultMessage: 'Choose an address',
+                  })}
+                />
               </SelectTrigger>
               <SelectContent>
                 {offersInbox(surface) && (
-                  <SelectItem value={INBOX}>Address the customer wrote to</SelectItem>
+                  <SelectItem value={INBOX}>
+                    {intl.formatMessage({
+                      id: 'admin.channels.sendFrom.customerAddress',
+                      defaultMessage: 'Address the customer wrote to',
+                    })}
+                  </SelectItem>
                 )}
-                {!showDefault && <SelectItem value={SAME_AS_DEFAULT}>Workspace default</SelectItem>}
+                {!showDefault && (
+                  <SelectItem value={SAME_AS_DEFAULT}>
+                    {intl.formatMessage({
+                      id: 'admin.channels.sendFrom.workspaceDefault',
+                      defaultMessage: 'Workspace default',
+                    })}
+                  </SelectItem>
+                )}
                 {optionsFor(surface).map((i) => (
                   <SelectItem key={i.id} value={i.id}>
                     {i.label}
@@ -285,7 +386,13 @@ export function SendFromCard({
               <Button
                 variant="ghost"
                 size="icon-sm"
-                aria-label={`Use the default for ${label}`}
+                aria-label={intl.formatMessage(
+                  {
+                    id: 'admin.channels.sendFrom.useDefaultAria',
+                    defaultMessage: 'Use the default for {label}',
+                  },
+                  { label: surfaceLabel }
+                )}
                 className="text-muted-foreground"
                 disabled={setSender.isPending}
                 onClick={() => drop(surface)}
@@ -299,13 +406,26 @@ export function SendFromCard({
     )
   }
 
+  const cardTitle =
+    title ??
+    intl.formatMessage({ id: 'admin.channels.sendFrom.title', defaultMessage: 'Send from' })
+  const cardDescription =
+    description ??
+    intl.formatMessage({
+      id: 'admin.channels.sendFrom.description',
+      defaultMessage: 'The address your email comes from.',
+    })
+
   return (
-    <SettingsCard id={id} title={title} description={description} action={action}>
+    <SettingsCard id={id} title={cardTitle} description={cardDescription} action={action}>
       <SettingRows>
         {showDefault && (
           <SettingRow
             stackOnPhone
-            label="Default"
+            label={intl.formatMessage({
+              id: 'admin.channels.sendFrom.default',
+              defaultMessage: 'Default',
+            })}
             htmlFor="send-from-default"
             description={notLiveHint('default') ?? defaultHint}
             control={
@@ -314,7 +434,14 @@ export function SendFromCard({
                 disabled={setSender.isPending}
                 onValueChange={(v) => choose('default', String(v))}
               >
-                <SelectTrigger id="send-from-default" className={TRIGGER} aria-label="Default">
+                <SelectTrigger
+                  id="send-from-default"
+                  className={TRIGGER}
+                  aria-label={intl.formatMessage({
+                    id: 'admin.channels.sendFrom.default',
+                    defaultMessage: 'Default',
+                  })}
+                >
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -324,7 +451,21 @@ export function SendFromCard({
                     </SelectItem>
                   ))}
                   <SelectItem value={PLATFORM}>
-                    {`${platformName} (${platformFrom ?? 'not set'})`}
+                    {intl.formatMessage(
+                      {
+                        id: 'admin.channels.sendFrom.platformOption',
+                        defaultMessage: '{platform} ({address})',
+                      },
+                      {
+                        platform: platformName,
+                        address:
+                          platformFrom ??
+                          intl.formatMessage({
+                            id: 'admin.channels.sendFrom.notSet',
+                            defaultMessage: 'not set',
+                          }),
+                      }
+                    )}
                   </SelectItem>
                 </SelectContent>
               </Select>
@@ -333,7 +474,12 @@ export function SendFromCard({
         )}
         {showDefault && listed.length > 0 && (
           <div className="py-3.5">
-            <h3 className="text-xs font-medium text-muted-foreground">Except</h3>
+            <h3 className="text-xs font-medium text-muted-foreground">
+              {intl.formatMessage({
+                id: 'admin.channels.sendFrom.except',
+                defaultMessage: 'Except',
+              })}
+            </h3>
             <SettingRows className="mt-3">{listed.map(row)}</SettingRows>
           </div>
         )}
@@ -342,16 +488,19 @@ export function SendFromCard({
           <div className="py-3.5">
             <DropdownMenu>
               <DropdownMenuTrigger render={<Button variant="outline" size="sm" />}>
-                Use a different address for
+                {intl.formatMessage({
+                  id: 'admin.channels.sendFrom.useDifferent',
+                  defaultMessage: 'Use a different address for',
+                })}
                 <ChevronDownIcon className="size-3.5" aria-hidden="true" />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start">
-                {addable.map(({ surface, label }) => (
+                {addable.map(({ surface }) => (
                   <DropdownMenuItem
                     key={surface}
                     onClick={() => setPicked((current) => [...current, surface])}
                   >
-                    {label}
+                    {intl.formatMessage(SURFACE_LABEL[surface])}
                   </DropdownMenuItem>
                 ))}
               </DropdownMenuContent>

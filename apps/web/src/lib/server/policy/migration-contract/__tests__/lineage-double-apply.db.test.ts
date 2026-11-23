@@ -51,7 +51,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import postgres from 'postgres'
 import { runMigrations } from '@quackback/db/migrate'
 import { BUNDLED_MIGRATIONS, MIGRATIONS_DIR } from '@quackback/db/schema-version'
-import { REPLAY_OVERRIDES, assessReplaySafety } from '../replay-safety'
+import { REPLAY_OVERRIDES, REPLAY_RETIRED, assessReplaySafety } from '../replay-safety'
 
 const ADMIN_URL =
   process.env.DRIFT_CHECK_DATABASE_URL ?? 'postgresql://postgres:password@localhost:5432/postgres'
@@ -87,7 +87,7 @@ const sqlOf = (tag: string) => readFileSync(join(MIGRATIONS_DIR, `${tag}.sql`), 
  * *becomes* `safe` is checked here without anyone remembering to add it.
  */
 const REPLAY_SAFE = BUNDLED_MIGRATIONS.filter(
-  (m) => assessReplaySafety(m.tag, sqlOf(m.tag)).verdict === 'safe'
+  (m) => !REPLAY_RETIRED.has(m.tag) && assessReplaySafety(m.tag, sqlOf(m.tag)).verdict === 'safe'
 ).map((m) => m.tag)
 
 /**
@@ -216,7 +216,7 @@ describe('the second application of the lineage', () => {
     // Floors, not measurements: they answer "did anything run", so they sit
     // well below the current 35 files / 90 statements rather than tracking them.
     expect(REPLAY_SAFE.length).toBeGreaterThan(30)
-    expect(REPLAY_SAFE).toContain('0256_workspace_key_columns')
+    expect(REPLAY_SAFE).toContain('0012_green_northstar')
     expect(statements).toBeGreaterThan(50)
 
     // And the pass above only means anything because the overridden migrations
@@ -300,62 +300,6 @@ describe('the second application of the lineage', () => {
         )
     )
     expect(error).not.toBeNull()
-    expect(error!.message).toMatch(/already exists/i)
-  }, 120_000)
-})
-
-describe('the guarded rename, both directions', () => {
-  /**
-   * The assertion that a rename this test performed is undone, rather than the
-   * weaker one that a column happens to be present.
-   *
-   * `0258` is `safe` only because a `-- @replay: guarded-by` annotation says its
-   * `DO` block is a no-op once the old names are gone. Two things have to be
-   * true for that to be a claim worth honouring, and asserting only the second
-   * would pass against a migration that does nothing at all:
-   *
-   * 1. it renames when the old name is there, and
-   * 2. it does nothing when it is not.
-   */
-  it('renames a column this test renamed back, then leaves it alone', async () => {
-    const db = await scratch()
-    const migrated = await catalogueDigest(db)
-
-    await withSql(db, (sql) =>
-      sql.unsafe(`ALTER TABLE presence_stream RENAME COLUMN workspace_key TO tenant_id`)
-    )
-    const undone = await catalogueDigest(db)
-    // The instrument sees a rename at all. Without this the two comparisons
-    // below could both pass over a digest that reports the same string for
-    // every schema.
-    expect(undone).not.toBe(migrated)
-
-    await withSql(db, (sql) => applyAgain(sql, '0256_workspace_key_columns'))
-    expect(await catalogueDigest(db)).toBe(migrated)
-
-    // And the second run over its own effects — the claim the annotation makes.
-    await withSql(db, (sql) => applyAgain(sql, '0256_workspace_key_columns'))
-    expect(await catalogueDigest(db)).toBe(migrated)
-  }, 120_000)
-
-  it('carries the primary key and the partial index with the renamed column', async () => {
-    // `0258` says renaming carries constraints and indexes because Postgres
-    // stores them against the attribute. Read back, rather than assumed: these
-    // two are the ones whose definitions name the column.
-    const db = await scratch()
-    const defs = await withSql(db, (sql) =>
-      sql.unsafe<{ name: string; def: string }[]>(`
-        SELECT conname AS name, pg_get_constraintdef(oid) AS def
-          FROM pg_constraint WHERE conname = 'kv_store_pkey'
-        UNION ALL
-        SELECT indexname AS name, indexdef AS def
-          FROM pg_indexes WHERE indexname = 'presence_stream_agents_idx'
-      `)
-    )
-    expect(defs).toHaveLength(2)
-    for (const d of defs) {
-      expect(d.def).toContain('workspace_key')
-      expect(d.def).not.toContain('tenant_id')
-    }
+    expect(error!.message).toMatch(/already exists|已存在/i)
   }, 120_000)
 })

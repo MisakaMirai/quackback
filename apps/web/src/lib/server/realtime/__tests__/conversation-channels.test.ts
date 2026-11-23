@@ -53,7 +53,6 @@ const agentDto = {
   snoozedUntil: '2026-01-02T00:00:00.000Z',
   assignedTeamId: 'team_1',
   customAttributes: { internalNote: 'Account review needed' },
-  translation: { enabled: true, detectedCustomerLanguage: 'fr', suggestionDismissed: false },
   spamReason: 'manual',
   tags: [{ id: 'conversation_tag_1', name: 'VIP', color: '#ff0000' }],
   sla: {
@@ -146,7 +145,6 @@ describe('publishConversationUpdate', () => {
     expect(inboxConv.endNote).toBe('internal end note')
     expect(inboxConv.sla?.policyName).toBe('Gold')
     expect(inboxConv.customAttributes).toEqual(agentDto.customAttributes)
-    expect(inboxConv.translation).toEqual(agentDto.translation)
 
     // ...the visitor copy must have every agent-only field stripped.
     const visitorConv = (visitor![1] as { conversation: ConversationDTO }).conversation
@@ -157,7 +155,6 @@ describe('publishConversationUpdate', () => {
     expect(visitorConv.snoozedUntil).toBeNull()
     expect(visitorConv.assignedTeamId).toBeNull()
     expect(visitorConv.customAttributes).toEqual({})
-    expect(visitorConv.translation).toBeNull()
     expect(visitorConv.spamReason).toBeNull()
   })
 

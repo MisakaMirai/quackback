@@ -379,7 +379,7 @@ async function searchPosts(args: SearchArgs, auth: McpAuthContext): Promise<Call
       authorName: p.authorName,
       ownerPrincipalId: p.ownerPrincipalId,
       tags: p.tags?.map((t) => ({ id: t.id, name: t.name })),
-      summary: p.summaryJson?.summary ?? null,
+      summary: null,
       canonicalPostId: p.canonicalPostId ?? null,
       isCommentsLocked: p.isCommentsLocked,
       createdAt: p.createdAt,
@@ -552,8 +552,6 @@ async function getPostDetails(postId: PostId): Promise<CallToolResult> {
           createdAt: post.pinnedComment.createdAt,
         }
       : null,
-    summaryJson: post.summaryJson ?? null,
-    summaryUpdatedAt: post.summaryUpdatedAt ?? null,
     canonicalPostId: post.canonicalPostId ?? null,
     mergedAt: post.mergedAt ?? null,
     isCommentsLocked: post.isCommentsLocked,

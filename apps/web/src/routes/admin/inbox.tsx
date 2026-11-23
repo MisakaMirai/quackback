@@ -2,13 +2,14 @@ import { createFileRoute, Navigate, redirect } from '@tanstack/react-router'
 import { useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
+import type { MessageDescriptor } from 'react-intl'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { ChatBubbleLeftRightIcon, TicketIcon } from '@heroicons/react/24/solid'
 import { isValidTypeId } from '@quackback/ids'
 import type {
   ConversationId,
   ConversationMessageId,
   ConversationViewId,
-  CompanyId,
   TicketId,
   TicketStatusId,
 } from '@quackback/ids'
@@ -25,7 +26,6 @@ import {
   AgentConversationThread,
   type ThreadComposerHandle,
 } from '@/components/conversation/agent-conversation-thread'
-import type { ComposerMode } from '@/components/conversation/composer-ai-actions'
 import {
   agentEventChangesInboxCounts,
   agentEventChangesInboxList,
@@ -108,7 +108,6 @@ import {
   type InboxItemDTO,
   type InboxTriageFacet,
 } from '@/lib/shared/inbox/items'
-import { listCompaniesFn } from '@/lib/server/functions/companies'
 import type { TicketDTO } from '@/lib/server/domains/tickets'
 import { useConversationStream } from '@/lib/client/hooks/use-conversation-stream'
 import { useConversationTyping } from '@/lib/client/hooks/use-conversation-typing'
@@ -116,7 +115,6 @@ import { useDebouncedValue } from '@/lib/client/hooks/use-debounced-value'
 import { useStableCallback } from '@/lib/client/hooks/use-stable-callback'
 import { useInboxListSource } from '@/lib/client/hooks/use-inbox-list-source'
 import { useMediaQuery } from '@/lib/client/hooks/use-media-query'
-import { useCopilotTabGate } from '@/lib/client/hooks/use-copilot-tab-gate'
 import { EmptyState } from '@/components/shared/empty-state'
 import { cn } from '@/lib/shared/utils'
 import {
@@ -125,7 +123,6 @@ import {
   type FeatureFlags,
 } from '@/lib/shared/types/settings'
 import { useFeatureFlag, useWorkspaceSettings } from '@/lib/client/hooks/use-root-context'
-import { QuinnViewHeader } from '@/components/admin/conversation/quinn-view-header'
 import { TestViewHeader } from '@/components/admin/conversation/test-view-header'
 
 // URL is the source of truth for open item + filters (refresh-safe, shareable).
@@ -181,11 +178,6 @@ function validateInboxSearch(search: Record<string, unknown>): InboxSearch {
     // ticket_type id is accepted (a junk value is dropped, never reaching
     // the uuid-backed ticket query).
     ttype: coerceTicketTypeId(typeof search.ttype === 'string' ? search.ttype : undefined),
-    // Quinn-view sub-filter by involvement outcome; only the canonical buckets.
-    ai:
-      search.ai === 'resolved' || search.ai === 'escalated' || search.ai === 'pending'
-        ? search.ai
-        : undefined,
     q:
       typeof search.q === 'string' && search.q
         ? search.q
@@ -200,15 +192,10 @@ function validateInboxSearch(search: Record<string, unknown>): InboxSearch {
       typeof search.post === 'string' && isValidTypeId(search.post, 'post')
         ? search.post
         : undefined,
-    // Company refinement (deep-linked from the conversation CompanyCard). Only a
-    // well-formed company id is accepted — a malformed `?company=` would reach a
-    // uuid-backed subquery and 500 the conversation list.
-    company:
-      typeof search.company === 'string' && isValidTypeId(search.company, 'company')
-        ? search.company
-        : undefined,
   }
 }
+
+type ComposerMode = 'reply' | 'note'
 
 export const Route = createFileRoute('/admin/inbox')({
   validateSearch: validateInboxSearch,
@@ -247,9 +234,6 @@ export const Route = createFileRoute('/admin/inbox')({
     // views list), so — like Saved — it hydrates client-side, not here.
     const skipListPrefetch = isSaved || nav.kind === 'custom'
     const useUnified = usesUnifiedInboxList(nav)
-    // A `?company=` deep link SSR-prefetches the FILTERED list under the same
-    // factory key the component reads, so the filtered view hydrates too.
-    const company = search.company as CompanyId | undefined
     // Best-effort: a failed prefetch (e.g. a stale `?i=`) must never break the
     // page — each is caught independently and the component's useQuery still
     // fetches client-side.
@@ -267,7 +251,6 @@ export const Route = createFileRoute('/admin/inbox')({
               facet,
               priority,
               searchTerm,
-              company,
               sort,
               undefined,
               search.ttype,
@@ -284,17 +267,15 @@ export const Route = createFileRoute('/admin/inbox')({
             facetToStatusFilter(facet),
             priority,
             searchTerm,
-            company,
             sort,
             undefined,
-            search.ai,
             search.channel
           )
         )
       )
     }
-    // Nav badges, the company and ticket-type pickers, the team roster and
-    // the attribute definitions are read on every load whatever is selected.
+    // Nav badges, the ticket-type picker, the team roster and the attribute
+    // definitions are read on every load whatever is selected.
     // Prefetched here, they arrive with the document rather than as one
     // client round trip (and one more session resolution) each.
     const showTickets = !!flags?.supportTickets
@@ -305,12 +286,6 @@ export const Route = createFileRoute('/admin/inbox')({
       warm(queryClient.ensureQueryData(conversationInboxQueries.views())),
       warm(queryClient.ensureQueryData(inboxQueries.counts())),
       warm(queryClient.ensureQueryData(inboxTeamsQueryOptions())),
-      warm(
-        queryClient.ensureQueryData({
-          queryKey: ['admin', 'companies'],
-          queryFn: () => listCompaniesFn(),
-        })
-      ),
       warm(queryClient.ensureQueryData(conversationAttributeQueries.live())),
       // The status catalogue backs every ticket-kind row's badge, not just a
       // tickets-scoped view, so it's warmed whenever tickets are on at all.
@@ -411,6 +386,7 @@ function patchTicketInInboxLists(queryClient: QueryClient, ticket: TicketDTO): v
 }
 
 function InboxPage() {
+  const intl = useOptionalIntl()
   const queryClient = useQueryClient()
   const navigate = Route.useNavigate()
   const {
@@ -427,8 +403,6 @@ function InboxPage() {
     ttype: urlTicketType,
     q: urlQ,
     channel: urlChannel,
-    company: urlCompany,
-    ai: urlAi,
     post: urlPost,
   } = Route.useSearch()
 
@@ -482,9 +456,6 @@ function InboxPage() {
         segment: item.kind === 'segment' ? item.segmentId : undefined,
         team: item.kind === 'team' ? item.teamId : undefined,
         viewId: item.kind === 'custom' ? item.viewId : undefined,
-        // A scope without refinements has no company control, so the filter
-        // does not follow the agent into it.
-        ...(!inboxScopeHasRefinements(item) && { company: undefined }),
         i: scopeMemory.current.get(inboxNavKey(item)),
         m: undefined,
       }),
@@ -503,7 +474,7 @@ function InboxPage() {
   )
   // The tickets-branch registry-type dropdown (Phase 4). Selecting a type
   // clears the open item (it may fall outside the filtered list), mirroring
-  // the company filter's `i: undefined` behavior.
+  // the channel filter's `i: undefined` behavior.
   const setTicketTypeFilter = useCallback(
     (id: string | undefined) => updateSearch({ ttype: id, i: undefined, m: undefined }),
     [updateSearch]
@@ -565,7 +536,7 @@ function InboxPage() {
   const { data: navSegments } = useInboxSegmentsWithCounts()
   const { data: navTeams } = useInboxTeams()
   const { data: navViews } = useConversationViews()
-  const scopeLabel = scopeLabelFor(nav, navTags, navSegments, navTeams, navViews)
+  const scopeLabel = scopeLabelFor(nav, navTags, navSegments, navTeams, navViews, intl)
 
   // The active custom view (if any): its saved rules become the list-query
   // params, and its own sort is the default until the user re-sorts. The
@@ -595,26 +566,6 @@ function InboxPage() {
   // conversation-list query is idle there. The query options come from the shared
   // factory so the route loader's SSR prefetch (same key) hydrates this read.
   const isSaved = nav.kind === 'view' && nav.view === 'saved'
-
-  // Company refinement: a picker in the list header + the deep-link from the
-  // conversation CompanyCard. The picker only appears when companies exist.
-  const { data: companies } = useQuery({
-    queryKey: ['admin', 'companies'],
-    queryFn: () => listCompaniesFn(),
-    staleTime: 60_000,
-  })
-  // A deep link can carry `?company=` into a scope that cannot filter by it.
-  useEffect(() => {
-    if (urlCompany && !showRefinements) updateSearch({ company: undefined })
-  }, [urlCompany, showRefinements, updateSearch])
-  // Drop a stale `?company=` (deleted / no longer visible) so the filter never
-  // strands the list on an unselectable company — mirrors the tag/segment
-  // scope-cleanup effect.
-  useEffect(() => {
-    if (urlCompany && companies && !companies.some((co) => co.id === urlCompany)) {
-      updateSearch({ company: undefined })
-    }
-  }, [urlCompany, companies, updateSearch])
 
   // Targeted cache refresh, split so each surface only pays for what actually
   // moved (a broad invalidate-everything on every SSE event/solo mutation was
@@ -738,19 +689,14 @@ function InboxPage() {
 
       // Thread caches: the open thread and any hover-prefetched (or previously
       // opened) thread for this event. Unvisited rows stay untouched. Ephemeral
-      // typing / assistant frames have nothing in the cache to patch.
+      // typing frames have nothing in the cache to patch.
       const conversationId =
         evt.kind === 'conversation'
           ? evt.conversation.id
           : 'conversationId' in evt
             ? evt.conversationId
             : undefined
-      if (
-        conversationId &&
-        evt.kind !== 'typing' &&
-        evt.kind !== 'assistant_activity' &&
-        evt.kind !== 'assistant_delta'
-      ) {
+      if (conversationId && evt.kind !== 'typing') {
         reconcileCachedThread<AgentThreadCache>(
           queryClient,
           conversationKeys.agentThread(conversationId),
@@ -790,23 +736,15 @@ function InboxPage() {
     facet,
     priorityFilter,
     search,
-    companyId: urlCompany as CompanyId | undefined,
     sort,
     ticketTypeId: urlTicketType,
     activeViewFilters: activeView?.filters,
-    aiBucket: nav.kind === 'view' && nav.view === 'quinn' ? urlAi : undefined,
     isSaved,
     streamConnected,
     channel: urlChannel,
   })
 
-  // Quinn-view sub-filter counts (only fetched while that view is open).
-  const isQuinnView = nav.kind === 'view' && nav.view === 'quinn'
   const isTestView = nav.kind === 'view' && nav.view === 'test'
-  const { data: assistantCounts } = useQuery({
-    ...conversationInboxQueries.assistantCounts(),
-    enabled: isQuinnView,
-  })
 
   // The ticket status catalogue, needed to resolve "close" → the default
   // closed-category status for a ticket target (§3.4). Gated on the same flag
@@ -836,14 +774,7 @@ function InboxPage() {
     return (registryTypes ?? []).filter((t) => !scopeCategory || t.category === scopeCategory)
   }, [isTicketScope, nav, registryTypes])
 
-  // Whether the detail panel's Copilot tab exists for this viewer right now —
-  // the SAME gate InboxDetailPanel renders the tab from (useCopilotTabGate:
-  // copilot.use) plus the ≥xl viewport that renders the panel at all. Gates
-  // the Ask Copilot command-bar row and makes the `q` shortcut a no-op when
-  // there is no panel to open.
-  const copilotTabGate = useCopilotTabGate()
   const isDetailPanelViewport = useMediaQuery(DETAIL_PANEL_MEDIA_QUERY)
-  const copilotAvailable = copilotTabGate && isDetailPanelViewport
 
   // Keep the active scope's memory in sync with what's open, so it's current the
   // moment you switch away. Only remember an item that's actually IN this
@@ -925,22 +856,6 @@ function InboxPage() {
   // target, see `isInboxActionEnabled`).
   const [createTicketToken, setCreateTicketToken] = useState(0)
   const [standaloneCreateTicketOpen, setStandaloneCreateTicketOpen] = useState(false)
-  // Ask Copilot ping (`q` / command bar): the open thread's detail panel
-  // switches to its Copilot tab and focuses the ask input on a bump — the
-  // same token idiom as `createTicketToken`, since only that subtree owns the
-  // tab state and the input node.
-  const [openCopilotToken, setOpenCopilotToken] = useState(0)
-  // A bump aimed at one item must never auto-open Copilot on the NEXT one, so
-  // the token resets to 0 whenever the selection changes. Reset during render
-  // (the adjust-state-while-rendering pattern), not in an effect: the detail
-  // subtree remounts under `key={selectedRef.id}` in this same commit, and its
-  // mount effects would otherwise observe the stale token before an effect
-  // here could clear it. The panel treats 0 as "no pending bump".
-  const copilotTokenItemRef = useRef(selectedId)
-  if (copilotTokenItemRef.current !== selectedId) {
-    copilotTokenItemRef.current = selectedId
-    if (openCopilotToken !== 0) setOpenCopilotToken(0)
-  }
   // Anchor for shift-click range selection.
   const selectAnchor = useRef<string | null>(null)
   // The open thread's composer seam, so the reply/note actions can put the
@@ -962,9 +877,9 @@ function InboxPage() {
   }, [])
 
   // Reset the selection when the visible list changes (scope / facet / priority
-  // / company / search) — the checked ids belong to the previous list. The
-  // first-mount clear is harmless (the selection starts empty).
-  const selectionScopeKey = `${inboxNavKey(nav)}|${facet}|${priorityFilter}|${urlCompany ?? ''}|${search}`
+  // / search) — the checked ids belong to the previous list. The first-mount
+  // clear is harmless (the selection starts empty).
+  const selectionScopeKey = `${inboxNavKey(nav)}|${facet}|${priorityFilter}|${search}`
   useEffect(() => {
     clearSelection()
   }, [selectionScopeKey, clearSelection])
@@ -993,21 +908,40 @@ function InboxPage() {
   )
 
   // Toast the bulk summary: a clean line on full success, a partial-failure count
-  // otherwise. Verb is the past-tense action word ("Closed", "Snoozed", …).
-  const summarize = useCallback((verb: string, ok: number, fail: number) => {
-    if (fail === 0) {
-      toast.success(`${verb} ${ok} ${ok === 1 ? 'item' : 'items'}`)
-    } else {
-      toast.warning(`${ok} updated, ${fail} failed`)
-    }
-  }, [])
+  // otherwise. `verb` is the past-tense action word ("Closed", "Snoozed", …).
+  const summarize = useCallback(
+    (verb: MessageDescriptor, ok: number, fail: number) => {
+      if (fail === 0) {
+        toast.success(
+          intl.formatMessage(
+            {
+              id: 'admin.inbox.bulkSummary',
+              defaultMessage: '{verb} {count, plural, one {# item} other {# items}}',
+            },
+            { verb: intl.formatMessage(verb), count: ok }
+          )
+        )
+      } else {
+        toast.warning(
+          intl.formatMessage(
+            {
+              id: 'admin.inbox.bulkPartial',
+              defaultMessage: '{ok} updated, {fail} failed',
+            },
+            { ok, fail }
+          )
+        )
+      }
+    },
+    [intl]
+  )
 
   /** Apply a conversation-only bulk action, filtering the selection down to
    *  conversation ids (silently dropping any ticket ids — used by snooze/reopen,
    *  which have no ticket-row equivalent). No-ops when nothing conversation-kind
    *  is selected. */
   const runConversationOnlyBulk = useCallback(
-    async (action: BulkConversationAction, verb: string) => {
+    async (action: BulkConversationAction, verb: MessageDescriptor) => {
       const { conversationIds } = splitByKind(selectedIds)
       if (conversationIds.length === 0) return
       try {
@@ -1016,10 +950,15 @@ function InboxPage() {
         if (res.failed.length === 0) clearSelection()
         else setBulkMenu(null)
       } catch {
-        toast.error('Bulk action failed')
+        toast.error(
+          intl.formatMessage({
+            id: 'admin.inbox.bulkActionFailed',
+            defaultMessage: 'Bulk action failed',
+          })
+        )
       }
     },
-    [selectedIds, bulk, summarize, clearSelection]
+    [selectedIds, bulk, summarize, clearSelection, intl]
   )
 
   /** Apply a bulk action to a mixed selection: conversation ids via the shared
@@ -1029,7 +968,7 @@ function InboxPage() {
    *  conversation failures. */
   const runMixedBulk = useCallback(
     async (
-      verb: string,
+      verb: MessageDescriptor,
       conversationAction: BulkConversationAction | null,
       ticketAction: BulkTicketActionInput | null
     ): Promise<{
@@ -1060,17 +999,20 @@ function InboxPage() {
   // server fn, refresh the inbox, and toast the outcome. Always dismisses any
   // open value menu so every control behaves the same.
   const runSolo = useCallback(
-    async (fn: () => Promise<unknown>, msg: { success: string; error: string }) => {
+    async (
+      fn: () => Promise<unknown>,
+      msg: { success: MessageDescriptor; error: MessageDescriptor }
+    ) => {
       setBulkMenu(null)
       try {
         await fn()
         refreshInbox()
-        toast.success(msg.success)
+        toast.success(intl.formatMessage(msg.success))
       } catch {
-        toast.error(msg.error)
+        toast.error(intl.formatMessage(msg.error))
       }
     },
-    [refreshInbox]
+    [refreshInbox, intl]
   )
 
   /** One "assign / assignTeam / priority"-shaped verb: a selection routes
@@ -1085,14 +1027,14 @@ function InboxPage() {
     async <TArgs,>(
       args: TArgs,
       opts: {
-        verb: string
+        verb: MessageDescriptor
         bulkAction: (args: TArgs) => BulkConversationAction
         ticketBulkAction: (args: TArgs) => BulkTicketActionInput
         soloTicket: (ticketId: TicketId, args: TArgs) => Promise<unknown>
         soloConversation: (conversationId: ConversationId, args: TArgs) => Promise<unknown>
         messages: {
-          ticket: { success: string; error: string }
-          conversation: { success: string; error: string }
+          ticket: { success: MessageDescriptor; error: MessageDescriptor }
+          conversation: { success: MessageDescriptor; error: MessageDescriptor }
         }
       }
     ) => {
@@ -1112,7 +1054,7 @@ function InboxPage() {
   const applyAssign = useCallback(
     (assignTo: string | null) =>
       applyVerb(assignTo, {
-        verb: 'Assigned',
+        verb: { id: 'admin.inbox.verbAssigned', defaultMessage: 'Assigned' },
         bulkAction: (a) => ({ type: 'assign', assignTo: a }),
         ticketBulkAction: (a) => ({ type: 'assign', assignTo: a }),
         soloTicket: (id, a) =>
@@ -1120,10 +1062,22 @@ function InboxPage() {
         soloConversation: (id, a) =>
           assignConversationFn({ data: { conversationId: id, assignTo: a } }),
         messages: {
-          ticket: { success: 'Ticket assigned', error: 'Failed to assign ticket' },
+          ticket: {
+            success: { id: 'admin.inbox.ticketAssigned', defaultMessage: 'Ticket assigned' },
+            error: {
+              id: 'admin.inbox.ticketAssignFailed',
+              defaultMessage: 'Failed to assign ticket',
+            },
+          },
           conversation: {
-            success: 'Conversation assigned',
-            error: 'Failed to assign conversation',
+            success: {
+              id: 'admin.inbox.conversationAssigned',
+              defaultMessage: 'Conversation assigned',
+            },
+            error: {
+              id: 'admin.inbox.conversationAssignFailed',
+              defaultMessage: 'Failed to assign conversation',
+            },
           },
         },
       }),
@@ -1133,7 +1087,7 @@ function InboxPage() {
   const applyAssignTeam = useCallback(
     (teamId: string) =>
       applyVerb(teamId, {
-        verb: 'Assigned',
+        verb: { id: 'admin.inbox.verbAssigned', defaultMessage: 'Assigned' },
         bulkAction: (t) => ({ type: 'assign_team', teamId: t }),
         ticketBulkAction: (t) => ({ type: 'assign_team', teamId: t }),
         soloTicket: (id, t) =>
@@ -1141,8 +1095,14 @@ function InboxPage() {
         soloConversation: (id, t) =>
           assignConversationTeamFn({ data: { conversationId: id, teamId: t } }),
         messages: {
-          ticket: { success: 'Assigned to team', error: 'Failed to assign team' },
-          conversation: { success: 'Assigned to team', error: 'Failed to assign team' },
+          ticket: {
+            success: { id: 'admin.inbox.assignedToTeam', defaultMessage: 'Assigned to team' },
+            error: { id: 'admin.inbox.assignTeamFailed', defaultMessage: 'Failed to assign team' },
+          },
+          conversation: {
+            success: { id: 'admin.inbox.assignedToTeam', defaultMessage: 'Assigned to team' },
+            error: { id: 'admin.inbox.assignTeamFailed', defaultMessage: 'Failed to assign team' },
+          },
         },
       }),
     [applyVerb, assignTicketMutation]
@@ -1151,15 +1111,21 @@ function InboxPage() {
   const applyPriority = useCallback(
     (priority: ConversationPriority) =>
       applyVerb(priority, {
-        verb: 'Updated',
+        verb: { id: 'admin.inbox.verbUpdated', defaultMessage: 'Updated' },
         bulkAction: (p) => ({ type: 'priority', priority: p }),
         ticketBulkAction: (p) => ({ type: 'priority', priority: p }),
         soloTicket: (id, p) => priorityTicketMutation.mutateAsync({ ticketId: id, priority: p }),
         soloConversation: (id, p) =>
           setConversationPriorityFn({ data: { conversationId: id, priority: p } }),
         messages: {
-          ticket: { success: 'Priority updated', error: 'Failed to set priority' },
-          conversation: { success: 'Priority updated', error: 'Failed to set priority' },
+          ticket: {
+            success: { id: 'admin.inbox.priorityUpdated', defaultMessage: 'Priority updated' },
+            error: { id: 'admin.inbox.priorityFailed', defaultMessage: 'Failed to set priority' },
+          },
+          conversation: {
+            success: { id: 'admin.inbox.priorityUpdated', defaultMessage: 'Priority updated' },
+            error: { id: 'admin.inbox.priorityFailed', defaultMessage: 'Failed to set priority' },
+          },
         },
       }),
     [applyVerb, priorityTicketMutation]
@@ -1171,12 +1137,24 @@ function InboxPage() {
   const applySnooze = useCallback(
     async (until: string | null) => {
       if (hasSelection) {
-        return runConversationOnlyBulk({ type: 'snooze', until }, 'Snoozed')
+        return runConversationOnlyBulk(
+          { type: 'snooze', until },
+          { id: 'admin.inbox.verbSnoozed', defaultMessage: 'Snoozed' }
+        )
       }
       if (!selectedRef || selectedRef.kind === 'ticket') return
       return runSolo(
         () => snoozeConversationFn({ data: { conversationId: selectedRef.id, until } }),
-        { success: 'Conversation snoozed', error: 'Failed to snooze conversation' }
+        {
+          success: {
+            id: 'admin.inbox.conversationSnoozed',
+            defaultMessage: 'Conversation snoozed',
+          },
+          error: {
+            id: 'admin.inbox.conversationSnoozeFailed',
+            defaultMessage: 'Failed to snooze conversation',
+          },
+        }
       )
     },
     [hasSelection, selectedRef, runConversationOnlyBulk, runSolo]
@@ -1191,7 +1169,10 @@ function InboxPage() {
   const applyTag = useCallback(
     async (tagId: string) => {
       if (hasSelection) {
-        await runConversationOnlyBulk({ type: 'tag', tagId }, 'Tagged')
+        await runConversationOnlyBulk(
+          { type: 'tag', tagId },
+          { id: 'admin.inbox.verbTagged', defaultMessage: 'Tagged' }
+        )
         refreshInbox()
         return
       }
@@ -1205,7 +1186,10 @@ function InboxPage() {
           })
           void queryClient.invalidateQueries({ queryKey: CONVERSATION_TAGS_KEY })
         },
-        { success: 'Tag added', error: 'Failed to add tag' }
+        {
+          success: { id: 'admin.inbox.tagAdded', defaultMessage: 'Tag added' },
+          error: { id: 'admin.inbox.tagAddFailed', defaultMessage: 'Failed to add tag' },
+        }
       )
     },
     [hasSelection, selectedRef, runConversationOnlyBulk, runSolo, refreshInbox, queryClient]
@@ -1220,7 +1204,10 @@ function InboxPage() {
   const applyMacroReply = useCallback(
     async (macroId: string) => {
       if (hasSelection) {
-        await runConversationOnlyBulk({ type: 'macro', macroId }, 'Replied')
+        await runConversationOnlyBulk(
+          { type: 'macro', macroId },
+          { id: 'admin.inbox.verbReplied', defaultMessage: 'Replied' }
+        )
         refreshInbox()
         return
       }
@@ -1234,7 +1221,13 @@ function InboxPage() {
           })
           if (res.failed.length > 0) throw new Error(res.failed[0].reason)
         },
-        { success: 'Reply sent', error: 'Failed to send macro reply' }
+        {
+          success: { id: 'admin.inbox.replySent', defaultMessage: 'Reply sent' },
+          error: {
+            id: 'admin.inbox.macroReplyFailed',
+            defaultMessage: 'Failed to send macro reply',
+          },
+        }
       )
     },
     [hasSelection, selectedRef, runConversationOnlyBulk, runSolo, refreshInbox, bulk]
@@ -1245,7 +1238,12 @@ function InboxPage() {
     if (hasSelection) {
       const { ticketIds } = splitByKind(selectedIds)
       if (ticketIds.length > 0 && !closedStatusId) {
-        toast.error('No closed ticket status is configured')
+        toast.error(
+          intl.formatMessage({
+            id: 'admin.inbox.noClosedStatus',
+            defaultMessage: 'No closed ticket status is configured',
+          })
+        )
       }
       try {
         // `runMixedBulk` already does the succeeded/failed merge, the summary
@@ -1257,7 +1255,7 @@ function InboxPage() {
         // when there's no closed status configured — mirrors the pre-shared
         // behavior of silently skipping ticket ids in that case.
         const { conversationResult } = await runMixedBulk(
-          'Closed',
+          { id: 'admin.inbox.verbClosed', defaultMessage: 'Closed' },
           { type: 'close' },
           closedStatusId ? { type: 'set_status', statusId: closedStatusId } : null
         )
@@ -1275,19 +1273,36 @@ function InboxPage() {
             isMissingRequiredAttributesMessage(f.reason)
           ).length
           setCloseBlocked([
-            `${count} ${count === 1 ? 'conversation is' : 'conversations are'} missing required attributes.`,
+            intl.formatMessage(
+              {
+                id: 'admin.inbox.closeMissingAttributes',
+                defaultMessage:
+                  '{count, plural, one {# conversation is} other {# conversations are}} missing required attributes.',
+              },
+              { count }
+            ),
             ...blocked,
           ])
         }
       } catch {
-        toast.error('Bulk action failed')
+        toast.error(
+          intl.formatMessage({
+            id: 'admin.inbox.bulkActionFailed',
+            defaultMessage: 'Bulk action failed',
+          })
+        )
       }
       return
     }
     if (!selectedRef) return
     if (selectedRef.kind === 'ticket') {
       if (!closedStatusId) {
-        toast.error('No closed ticket status is configured')
+        toast.error(
+          intl.formatMessage({
+            id: 'admin.inbox.noClosedStatus',
+            defaultMessage: 'No closed ticket status is configured',
+          })
+        )
         return
       }
       return runSolo(
@@ -1296,18 +1311,35 @@ function InboxPage() {
             ticketId: selectedRef.id,
             statusId: closedStatusId as TicketStatusId,
           }),
-        { success: 'Ticket resolved', error: 'Failed to resolve ticket' }
+        {
+          success: { id: 'admin.inbox.ticketResolved', defaultMessage: 'Ticket resolved' },
+          error: {
+            id: 'admin.inbox.ticketResolveFailed',
+            defaultMessage: 'Failed to resolve ticket',
+          },
+        }
       )
     }
     setBulkMenu(null)
     try {
       await setConversationStatusFn({ data: { conversationId: selectedRef.id, status: 'closed' } })
       refreshInbox()
-      toast.success('Conversation closed')
+      toast.success(
+        intl.formatMessage({
+          id: 'admin.inbox.conversationClosed',
+          defaultMessage: 'Conversation closed',
+        })
+      )
     } catch (error) {
       const message = error instanceof Error ? error.message : null
       if (message && isMissingRequiredAttributesMessage(message)) setCloseBlocked([message])
-      else toast.error('Failed to close conversation')
+      else
+        toast.error(
+          intl.formatMessage({
+            id: 'admin.inbox.conversationCloseFailed',
+            defaultMessage: 'Failed to close conversation',
+          })
+        )
     }
   }, [
     hasSelection,
@@ -1318,6 +1350,7 @@ function InboxPage() {
     statusTicketMutation,
     runSolo,
     refreshInbox,
+    intl,
   ])
 
   // Reopen stays conversation-only for M2 — the ticket capability matrix (§2.5)
@@ -1325,12 +1358,24 @@ function InboxPage() {
   // status control), so a ticket-only target is a no-op here.
   const applyReopen = useCallback(async () => {
     if (hasSelection) {
-      return runConversationOnlyBulk({ type: 'reopen' }, 'Reopened')
+      return runConversationOnlyBulk(
+        { type: 'reopen' },
+        { id: 'admin.inbox.verbReopened', defaultMessage: 'Reopened' }
+      )
     }
     if (!selectedRef || selectedRef.kind === 'ticket') return
     return runSolo(
       () => setConversationStatusFn({ data: { conversationId: selectedRef.id, status: 'open' } }),
-      { success: 'Conversation reopened', error: 'Failed to reopen conversation' }
+      {
+        success: {
+          id: 'admin.inbox.conversationReopened',
+          defaultMessage: 'Conversation reopened',
+        },
+        error: {
+          id: 'admin.inbox.conversationReopenFailed',
+          defaultMessage: 'Failed to reopen conversation',
+        },
+      }
     )
   }, [hasSelection, selectedRef, runConversationOnlyBulk, runSolo])
 
@@ -1427,12 +1472,6 @@ function InboxPage() {
           // thread the same way a cross-scope deep-link would.
           if (activeLinkedTicket) setSelectedId(activeLinkedTicket.id)
           break
-        case 'copilot':
-          // No-op unless the Copilot tab actually exists for this viewer and
-          // an item is open — never a broken state (mirrors the palette gate
-          // in isInboxActionEnabled).
-          if (copilotAvailable && selectedRef) setOpenCopilotToken((t) => t + 1)
-          break
       }
     },
     [
@@ -1448,7 +1487,6 @@ function InboxPage() {
       setSelectedId,
       applyClose,
       applyReopen,
-      copilotAvailable,
     ]
   )
 
@@ -1476,13 +1514,7 @@ function InboxPage() {
   // (memoized) list header as it was.
   const listHeaderSlot = useMemo(
     () =>
-      isQuinnView ? (
-        <QuinnViewHeader
-          value={urlAi}
-          counts={assistantCounts}
-          onChange={(ai) => updateSearch({ ai, i: undefined, m: undefined })}
-        />
-      ) : isTestView ? (
+      isTestView ? (
         <TestViewHeader
           onDeleted={() => {
             refreshInbox()
@@ -1490,22 +1522,7 @@ function InboxPage() {
           }}
         />
       ) : undefined,
-    [isQuinnView, isTestView, urlAi, assistantCounts, updateSearch, refreshInbox, setNav]
-  )
-
-  // The company refinement, offered only when the workspace has companies.
-  // Memoized for the same reason as the header slot.
-  const companyFilter = useMemo(
-    () =>
-      companies && companies.length > 0
-        ? {
-            companies,
-            value: urlCompany,
-            onChange: (id: string | undefined) =>
-              updateSearch({ company: id, i: undefined, m: undefined }),
-          }
-        : undefined,
-    [companies, urlCompany, updateSearch]
+    [isTestView, refreshInbox, setNav]
   )
 
   // The floating bar shows for a real multi-selection, or when a value menu was
@@ -1545,7 +1562,6 @@ function InboxPage() {
           scopeLabel={scopeLabel}
           showRefinements={showRefinements}
           headerSlot={listHeaderSlot}
-          companyFilter={companyFilter}
           searchInput={searchInput}
           onSearchInput={setSearchInput}
           facet={facet}
@@ -1580,7 +1596,6 @@ function InboxPage() {
             onOpenPost={openPost}
             isVisitorTyping={false}
             isOtherAgentTyping={false}
-            openCopilotToken={openCopilotToken}
             composerRef={composerHandleRef}
             detailPanelShown={isDetailPanelViewport}
           />
@@ -1596,7 +1611,6 @@ function InboxPage() {
             isVisitorTyping={visitorTyping}
             isOtherAgentTyping={otherAgentTyping}
             createTicketToken={createTicketToken}
-            openCopilotToken={openCopilotToken}
             composerRef={composerHandleRef}
             detailPanelShown={isDetailPanelViewport}
           />
@@ -1604,11 +1618,27 @@ function InboxPage() {
           <div className="hidden h-full items-center justify-center md:flex">
             <EmptyState
               icon={isTicketScope ? TicketIcon : ChatBubbleLeftRightIcon}
-              title={isTicketScope ? 'Select a ticket' : 'Select a conversation'}
+              title={
+                isTicketScope
+                  ? intl.formatMessage({
+                      id: 'admin.inbox.selectTicketTitle',
+                      defaultMessage: 'Select a ticket',
+                    })
+                  : intl.formatMessage({
+                      id: 'admin.inbox.selectConversationTitle',
+                      defaultMessage: 'Select a conversation',
+                    })
+              }
               description={
                 isTicketScope
-                  ? 'Choose a ticket from the list to view and reply.'
-                  : 'Choose a conversation from the list to view and reply.'
+                  ? intl.formatMessage({
+                      id: 'admin.inbox.selectTicketDescription',
+                      defaultMessage: 'Choose a ticket from the list to view and reply.',
+                    })
+                  : intl.formatMessage({
+                      id: 'admin.inbox.selectConversationDescription',
+                      defaultMessage: 'Choose a conversation from the list to view and reply.',
+                    })
               }
             />
           </div>
@@ -1634,8 +1664,18 @@ function InboxPage() {
           disableTag={hasTicketTarget}
           disableMacro={hasTicketTarget}
           spam={nav.kind === 'view' && nav.view === 'spam'}
-          onRestore={() => runConversationOnlyBulk({ type: 'restore_spam' }, 'Restored')}
-          onDeleteForever={() => runConversationOnlyBulk({ type: 'delete_forever' }, 'Deleted')}
+          onRestore={() =>
+            runConversationOnlyBulk(
+              { type: 'restore_spam' },
+              { id: 'admin.inbox.verbRestored', defaultMessage: 'Restored' }
+            )
+          }
+          onDeleteForever={() =>
+            runConversationOnlyBulk(
+              { type: 'delete_forever' },
+              { id: 'admin.inbox.verbDeleted', defaultMessage: 'Deleted' }
+            )
+          }
         />
       )}
 
@@ -1648,13 +1688,8 @@ function InboxPage() {
         hasTicketTarget={hasTicketTarget}
         hasLinkedTicket={!!activeLinkedTicket}
         linkedTicketNumber={activeLinkedTicket?.number}
-        copilotAvailable={copilotAvailable}
       />
-      <ShortcutHelpPanel
-        open={helpOpen}
-        onOpenChange={setHelpOpen}
-        copilotAvailable={copilotAvailable}
-      />
+      <ShortcutHelpPanel open={helpOpen} onOpenChange={setHelpOpen} />
     </div>
   )
 }

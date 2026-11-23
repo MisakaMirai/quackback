@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { EyeIcon } from '@heroicons/react/24/outline'
 import { changelogQueries } from '@/lib/client/queries/changelog'
 import { useFormatNumber } from '@/components/ui/format-number'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import type { ChangelogId } from '@quackback/ids'
 
 interface ChangelogTopViewedProps {
@@ -18,6 +19,7 @@ interface ChangelogTopViewedProps {
  * provider webhooks the in-app counter doesn't have.
  */
 export function ChangelogTopViewed({ onSelect }: ChangelogTopViewedProps) {
+  const intl = useOptionalIntl()
   const { data, isLoading } = useQuery(changelogQueries.topViewed())
   const formatNumber = useFormatNumber()
 
@@ -28,7 +30,12 @@ export function ChangelogTopViewed({ onSelect }: ChangelogTopViewedProps) {
   return (
     <div className="rounded-xl border border-border/50 bg-card overflow-hidden">
       <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border/50">
-        <h3 className="text-sm font-semibold">Most viewed</h3>
+        <h3 className="text-sm font-semibold">
+          {intl.formatMessage({
+            id: 'admin.changelog.topViewed.title',
+            defaultMessage: 'Most viewed',
+          })}
+        </h3>
       </div>
 
       <div className="divide-y divide-border/50">

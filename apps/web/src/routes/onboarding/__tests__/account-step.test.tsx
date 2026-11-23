@@ -33,6 +33,7 @@ import {
 import { IntlProvider } from 'react-intl'
 import { DEFAULT_AUTH_CONFIG } from '@/lib/shared/types/settings'
 import { loadMessages } from '@/lib/shared/i18n'
+import zhCn from '@/locales/zh-cn.json'
 
 const navigate = vi.fn()
 const invalidate = vi.fn(async () => {})
@@ -85,8 +86,6 @@ vi.mock('@/components/ui/input-otp', () => ({
 }))
 
 import { AccountStep, type AccountStepProps } from '../-account-step'
-const track = vi.hoisted(() => vi.fn())
-vi.mock('@/lib/client/analytics', () => ({ track }))
 
 import { postAuthSuccess } from '@/lib/client/hooks/use-auth-broadcast'
 
@@ -422,7 +421,6 @@ describe('account step — a self-hosted first user', () => {
       })
     )
     await waitFor(() => expect(navigate).toHaveBeenCalledWith({ to: '/onboarding' }))
-    expect(track).toHaveBeenCalledWith('onboarding_account_created')
   })
 
   // The name is what customers see on replies and updates; an account created
@@ -663,33 +661,29 @@ describe('account step — a self-hosted first user', () => {
 // A translated visitor sees each screen in one language: every string the
 // first-user form and its way back in render is in the catalogue.
 describe('account step: in a translated locale', () => {
-  it('renders the first-user screen and the way back in from the German catalogue', async () => {
-    const de = await loadMessages('de')
+  it('renders the first-user screen and the way back in from the Chinese catalogue', async () => {
+    const messages = await loadMessages('zh-cn')
     const props = preStamped()
     // Passwords off, so the first-user screen is the emailed-link one.
     props.authConfig.oauth = { ...DEFAULT_AUTH_CONFIG.oauth, password: false, magicLink: true }
     props.authConfig.signInOAuth = { password: true, github: true }
     rtlRender(
-      <IntlProvider locale="de" defaultLocale="en" messages={de} onError={() => {}}>
+      <IntlProvider locale="zh-cn" defaultLocale="en" messages={messages} onError={() => {}}>
         <AccountStep {...props} />
       </IntlProvider>
     )
 
-    expect(
-      screen.getByText('Erstelle dein Admin-Konto, um diesen Workspace einzurichten.')
-    ).toBeInTheDocument()
-    expect(screen.getByText(/Schon mit der Einrichtung begonnen\?/)).toBeInTheDocument()
+    expect(screen.getByText(zhCn['onboarding.account.methodsDescription'])).toBeInTheDocument()
+    expect(screen.getByText(zhCn['onboarding.account.startedSetup'])).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Anmelden' }))
+    fireEvent.click(screen.getByRole('button', { name: zhCn['onboarding.account.signIn'] }))
 
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Willkommen zurück')
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
+      zhCn['onboarding.account.returning.title']
+    )
+    expect(screen.getByText(zhCn['onboarding.account.returning.lead'])).toBeInTheDocument()
     expect(
-      screen.getByText(
-        'Melde dich mit dem Konto an, das du hier erstellt hast, um die Einrichtung abzuschließen.'
-      )
-    ).toBeInTheDocument()
-    expect(
-      screen.getByRole('button', { name: 'Stattdessen ein neues Konto erstellen' })
+      screen.getByRole('button', { name: zhCn['onboarding.account.returning.back'] })
     ).toBeInTheDocument()
   })
 })
@@ -739,14 +733,6 @@ describe('account step — an install whose first account has claimed setup', ()
 
     expect(screen.queryByText(/restart setup/i)).toBeNull()
   })
-
-  it('records the owner coming back as a sign-in', async () => {
-    track.mockClear()
-    renderStep(selfHostedClaimed())
-    act(() => postAuthSuccess())
-    await waitFor(() => expect(track).toHaveBeenCalledWith('onboarding_signed_in'))
-    expect(track).not.toHaveBeenCalledWith('onboarding_account_created')
-  })
 })
 
 describe('account step — after a sign-in completes', () => {
@@ -769,7 +755,6 @@ describe('account step — after a sign-in completes', () => {
       navigate.mock.invocationCallOrder[0]!
     )
   })
-
   it('answers on the first-user surface too, not only the claimed one', async () => {
     const props = selfHosted()
     props.authConfig.oauth = { ...DEFAULT_AUTH_CONFIG.oauth, password: false, magicLink: true }
@@ -778,30 +763,5 @@ describe('account step — after a sign-in completes', () => {
     act(() => postAuthSuccess())
 
     await waitFor(() => expect(navigate).toHaveBeenCalledWith({ to: '/onboarding' }))
-  })
-
-  it('records an account created only where one is created', async () => {
-    renderStep(selfHosted())
-    act(() => postAuthSuccess())
-    await waitFor(() => expect(track).toHaveBeenCalledWith('onboarding_account_created'))
-  })
-
-  // Someone who already started setup signs back in from the first-user
-  // screen. No account is created, so the funnel must not count one.
-  it('records a returning sign-in from the first-user screen as a sign-in', async () => {
-    track.mockClear()
-    renderStep(preStamped())
-    fireEvent.click(screen.getByRole('button', { name: /^sign in$/i }))
-    act(() => postAuthSuccess())
-    await waitFor(() => expect(track).toHaveBeenCalledWith('onboarding_signed_in'))
-    expect(track).not.toHaveBeenCalledWith('onboarding_account_created')
-  })
-
-  it('records an owner signing in to a claimed workspace as a sign-in', async () => {
-    track.mockClear()
-    renderStep(provisioned())
-    act(() => postAuthSuccess())
-    await waitFor(() => expect(track).toHaveBeenCalledWith('onboarding_signed_in'))
-    expect(track).not.toHaveBeenCalledWith('onboarding_account_created')
   })
 })

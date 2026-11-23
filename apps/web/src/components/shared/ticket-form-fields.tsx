@@ -27,7 +27,7 @@ export interface TicketFormFieldsProps {
   /** Per-key validation messages (from validateTicketIntakeValues). */
   errors?: Record<string, string>
   /** Convergence Phase 5 (create-dialog auto-fill): keys whose current value
-   *  came from the copilot's suggestion — rendered with a "✨ suggested"
+   *  came from a suggestion — rendered with a "✨ suggested"
    *  marker. Omit on the intake surfaces (no suggestions exist there). */
   suggestedKeys?: ReadonlySet<string>
   /** Whether a suggestion run completed; with `suggestedKeys`, unmarked keys
@@ -42,13 +42,28 @@ export interface TicketFormFieldsProps {
 function suggestionMarker(
   field: TicketFormField,
   suggestedKeys: ReadonlySet<string> | undefined,
-  suggestionRun: boolean | undefined
+  suggestionRun: boolean | undefined,
+  intl: ReturnType<typeof useIntl>
 ): ReactNode {
   if (suggestedKeys?.has(field.key)) {
-    return <span className="ms-1 font-normal text-primary">✨ suggested</span>
+    return (
+      <span className="ms-1 font-normal text-primary">
+        {intl.formatMessage({
+          id: 'common.ticketFields.suggested',
+          defaultMessage: '✨ suggested',
+        })}
+      </span>
+    )
   }
   if (suggestionRun) {
-    return <span className="ms-1 font-normal text-muted-foreground/70">— not suggested</span>
+    return (
+      <span className="ms-1 font-normal text-muted-foreground/70">
+        {intl.formatMessage({
+          id: 'common.ticketFields.notSuggested',
+          defaultMessage: 'Not suggested',
+        })}
+      </span>
+    )
   }
   return null
 }
@@ -76,7 +91,7 @@ export function TicketFormFields({
   return (
     <>
       {fields.map((field) => {
-        const marker = suggestionMarker(field, suggestedKeys, suggestionRun)
+        const marker = suggestionMarker(field, suggestedKeys, suggestionRun, intl)
         return (
           <div key={field.key} className="space-y-1.5">
             {field.type !== 'checkbox' && <FieldLabel field={field} marker={marker} />}

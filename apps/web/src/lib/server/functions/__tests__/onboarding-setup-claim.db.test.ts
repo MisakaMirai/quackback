@@ -13,7 +13,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach, afterAll } from 'vitest'
 import { createId, type PrincipalId, type UserId } from '@quackback/ids'
 import { createDbTestFixture, testDb } from '@/lib/server/__tests__/db-test-fixture'
-import { principal, user, settings, eq, sql, getSetupState } from '@/lib/server/db'
+import { principal, user, settings, eq, getSetupState } from '@/lib/server/db'
 import { mergeSetupState } from '@/lib/server/config-file/reconciler'
 import { ANON_EMAIL_DOMAIN } from '@/lib/shared/anonymous-email'
 
@@ -115,12 +115,6 @@ async function seedSettings(setupState: string): Promise<void> {
     createdAt: new Date(),
     setupState,
   })
-}
-
-/** What a control plane writes on a workspace it created. */
-async function seedProvisionedWorkspace(): Promise<void> {
-  await seedSettings(JSON.stringify(mergeSetupState(null, { name: 'Acme' })))
-  await testDb.execute(sql`UPDATE settings SET cloud_workspace_key = 'ws_acme'`)
 }
 
 const NOT_OWNER = { ok: false, refusal: 'not_owner' }
@@ -336,20 +330,6 @@ describe.skipIf(!fixture.available)('the workspace step', () => {
 
     // The variable is read on every workspace a process serves. It must not
     // open one a control plane created for a customer.
-    it('opens no provisioned workspace', async () => {
-      await seedProvisionedWorkspace()
-      const arrivalId = await seedAccount('owner@acme.example')
-
-      signIn(arrivalId)
-      const result = await saveWorkspaceAndGoalFn({ data: { workspaceName: 'Taken' } })
-
-      expect(result).toEqual(NOT_OWNER)
-      expect(await roleOf(arrivalId)).toBe('user')
-      await expect(getWorkspaceClaimFn()).resolves.toMatchObject({
-        claimed: false,
-        openToClaim: false,
-      })
-    })
   })
 
   describe('where the first account does not claim setup', () => {
@@ -373,22 +353,6 @@ describe.skipIf(!fixture.available)('the workspace step', () => {
 
     // Its owner is recorded where it was created; an account here claims
     // nothing, and the screen keeps saying so.
-    it('leaves a provisioned workspace closed to every arrival', async () => {
-      await seedProvisionedWorkspace()
-      const arrivalId = await seedAccount('first@evil.example')
-
-      signIn(arrivalId)
-      const result = await saveWorkspaceAndGoalFn({ data: { workspaceName: 'Taken' } })
-
-      expect(result).toEqual(NOT_OWNER)
-      expect(await roleOf(arrivalId)).toBe('user')
-      await expect(getWorkspaceClaimFn()).resolves.toMatchObject({
-        claimed: false,
-        openToClaim: false,
-        closedReason: 'provisioned',
-      })
-    })
-
     it('leaves a finished workspace with accounts on it reading unclaimed and closed', async () => {
       const ownerId = await seedAccount('owner@acme.example')
       signIn(ownerId)

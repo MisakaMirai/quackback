@@ -6,7 +6,7 @@ const mocks = vi.hoisted(() => ({
   running: vi.fn(),
 }))
 
-vi.mock('@/lib/server/fleet/internal-auth', () => ({
+vi.mock('@/lib/server/jobs/internal-auth', () => ({
   authorizeFleetInternal: mocks.authorize,
 }))
 vi.mock('@/lib/server/jobs/worker', () => ({
@@ -33,18 +33,17 @@ beforeEach(() => {
 
 describe('POST /api/internal/job-wake', () => {
   it('refuses a missing fleet token without touching the worker', async () => {
-    const response = await handleJobWakeRequest(request({ workspaceKey: 'inst_a' }, false))
+    const response = await handleJobWakeRequest(request({}, false))
     expect(response.status).toBe(401)
     expect(mocks.handle).not.toHaveBeenCalled()
   })
 
   it('accepts job ids and returns 202', async () => {
     const response = await handleJobWakeRequest(
-      request({ workspaceKey: 'inst_a', jobIds: ['job_01aaaaaaaaaaaaaaaaaaaaaaaa'] })
+      request({ jobIds: ['job_01aaaaaaaaaaaaaaaaaaaaaaaa'] })
     )
     expect(response.status).toBe(202)
     expect(mocks.handle).toHaveBeenCalledWith({
-      workspaceKey: 'inst_a',
       jobIds: ['job_01aaaaaaaaaaaaaaaaaaaaaaaa'],
       abort: undefined,
     })
@@ -53,7 +52,6 @@ describe('POST /api/internal/job-wake', () => {
   it('forwards an abort payload', async () => {
     const response = await handleJobWakeRequest(
       request({
-        workspaceKey: 'inst_a',
         abort: { team: 'T1', channel: 'C1', thread: '1.2' },
       })
     )
@@ -65,7 +63,7 @@ describe('POST /api/internal/job-wake', () => {
 
   it('returns 503 when this process is not running workers', async () => {
     mocks.running.mockReturnValue(false)
-    const response = await handleJobWakeRequest(request({ workspaceKey: 'inst_a' }))
+    const response = await handleJobWakeRequest(request({}))
     expect(response.status).toBe(503)
     expect(mocks.handle).not.toHaveBeenCalled()
   })

@@ -28,10 +28,7 @@ import { TicketStatusChip, TICKET_TYPE_CLASS } from '@/components/admin/inbox/ti
 import { NewButton } from '@/components/shared/new-button'
 import { ActivationActionButton } from '@/components/admin/activation-action-button'
 import { SearchInput } from '@/components/shared/search-input'
-import {
-  ConversationListToolbar,
-  type CompanyFilter,
-} from '@/components/admin/conversation/conversation-list-toolbar'
+import { ConversationListToolbar } from '@/components/admin/conversation/conversation-list-toolbar'
 import { Avatar } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 
@@ -40,7 +37,8 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { TimeAgo } from '@/components/ui/time-ago'
 import { cn } from '@/lib/shared/utils'
 import { useActivationAction } from '@/lib/client/hooks/use-activation-action'
-import { FormattedMessage, useIntl } from 'react-intl'
+import { FormattedMessage, type IntlShape } from 'react-intl'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 
 /** Ignore scroll-by hovers; only warm a thread the pointer actually rests on. */
 const PREFETCH_DELAY_MS = 120
@@ -50,41 +48,38 @@ function itemId(item: InboxItemDTO): string {
   return item.kind === 'conversation' ? item.conversation.id : item.ticket.id
 }
 
-/** The empty-list message for the active scope + facet. */
-function emptyStateMessage(nav: InboxNavItem, facet: InboxTriageFacet, scopeLabel: string): string {
-  if (nav.kind === 'tag') return `No conversations labelled ${scopeLabel}`
-  if (nav.kind === 'segment') {
-    const part = facet === 'all' ? '' : `${facet} `
-    return `No ${part}conversations from ${scopeLabel}`
-  }
-  if (nav.kind === 'team') {
-    const part = facet === 'all' ? '' : `${facet} `
-    return `No ${part}conversations for ${scopeLabel}`
-  }
-  if (nav.kind === 'custom') return `No conversations match ${scopeLabel}`
+/** The empty-list message for the active scope. */
+function emptyStateMessage(nav: InboxNavItem, scopeLabel: string, intl: IntlShape): string {
+  const text = (id: string, defaultMessage: string, values?: Record<string, string>) =>
+    intl.formatMessage({ id, defaultMessage }, values)
+  if (nav.kind === 'tag')
+    return text('inbox.empty.tag', 'No conversations labelled {label}', { label: scopeLabel })
+  if (nav.kind === 'segment')
+    return text('inbox.empty.segment', 'No conversations from {label}', { label: scopeLabel })
+  if (nav.kind === 'team')
+    return text('inbox.empty.team', 'No conversations for {label}', { label: scopeLabel })
+  if (nav.kind === 'custom')
+    return text('inbox.empty.custom', 'No conversations match {label}', { label: scopeLabel })
   if (nav.kind === 'view') {
-    const facetPart = facet === 'all' ? '' : `${facet} `
     switch (nav.view) {
       case 'mentions':
-        return 'No conversations mention you yet'
+        return text('inbox.empty.mentions', 'No conversations mention you yet')
       case 'mine':
-        return `No ${facetPart}conversations assigned to you`
+        return text('inbox.empty.mine', 'No conversations assigned to you')
       case 'unassigned':
-        return `No ${facetPart}unassigned conversations`
+        return text('inbox.empty.unassigned', 'No unassigned conversations')
       case 'tickets_all':
-        return `No ${facetPart}tickets`
+        return text('inbox.empty.tickets', 'No tickets')
       case 'tickets_customer':
-        return `No ${facetPart}customer tickets`
+        return text('inbox.empty.customerTickets', 'No customer tickets')
       case 'tickets_back_office':
-        return `No ${facetPart}back office tickets`
+        return text('inbox.empty.backOfficeTickets', 'No back office tickets')
       case 'tickets_tracker':
-        return `No ${facetPart}trackers`
+        return text('inbox.empty.trackers', 'No trackers')
     }
-    return `No ${facetPart}conversations`
+    return text('inbox.empty.conversations', 'No conversations')
   }
-  // Unscoped empty inbox — first-run friendly, not filter-blame.
-  if (facet === 'all') return 'No conversations yet'
-  return `No ${facet} conversations`
+  return text('inbox.empty.conversations', 'No conversations')
 }
 
 const TICKET_TYPE_ICON: Record<TicketType, typeof TicketIcon> = {
@@ -140,8 +135,8 @@ interface ConversationListColumnProps {
   nav: InboxNavItem
   onSelectNav: (item: InboxNavItem) => void
   scopeLabel: string
-  /** Optional content rendered directly under the header (e.g. the company
-   *  filter), above the search + refinement chips. */
+  /** Optional content rendered directly under the header, above the search +
+   *  refinement chips. */
   headerSlot?: ReactNode
   /** Whether to show the status/priority filter chips (hidden for the Mentions feed). */
   showRefinements: boolean
@@ -163,8 +158,6 @@ interface ConversationListColumnProps {
   ticketTypeOptions?: Array<{ id: string; name: string; icon: string | null; color: string }>
   channelFilter?: Channel
   onChannelFilter?: (value: Channel | undefined) => void
-  /** The company refinement; offered only when the workspace has companies. */
-  companyFilter?: CompanyFilter
   sort: ConversationSort
   onSort: (value: ConversationSort) => void
   loading: boolean
@@ -198,7 +191,6 @@ export function ConversationListColumn({
   ticketTypeOptions,
   channelFilter,
   onChannelFilter,
-  companyFilter,
   sort,
   onSort,
   loading,
@@ -256,7 +248,6 @@ export function ConversationListColumn({
         ticketTypeOptions={ticketTypeOptions}
         channelFilter={channelFilter}
         onChannelFilter={onChannelFilter}
-        companyFilter={companyFilter}
         sort={sort}
         onSort={onSort}
       />
@@ -331,10 +322,10 @@ const ConversationListHeader = memo(function ConversationListHeader({
   ticketTypeOptions,
   channelFilter,
   onChannelFilter,
-  companyFilter,
   sort,
   onSort,
 }: ConversationListHeaderProps) {
+  const intl = useOptionalIntl()
   const [composeOpen, setComposeOpen] = useState(false)
   const searching = searchInput.trim().length > 0
   return (
@@ -348,7 +339,12 @@ const ConversationListHeader = memo(function ConversationListHeader({
         <div className="min-w-0 lg:hidden">
           <InboxScopeMenu nav={nav} onSelect={onSelectNav} />
         </div>
-        <NewButton noun="conversation" onClick={() => setComposeOpen(true)} className="shrink-0" />
+        <NewButton noun="conversation" onClick={() => setComposeOpen(true)} className="shrink-0">
+          {intl.formatMessage({
+            id: 'inbox.newConversation',
+            defaultMessage: 'New conversation',
+          })}
+        </NewButton>
       </div>
       {headerSlot}
       <NewConversationDialog open={composeOpen} onOpenChange={setComposeOpen} />
@@ -356,8 +352,14 @@ const ConversationListHeader = memo(function ConversationListHeader({
         <SearchInput
           value={searchInput}
           onChange={onSearchInput}
-          placeholder="Search conversations..."
-          aria-label="Search the inbox"
+          placeholder={intl.formatMessage({
+            id: 'inbox.search.placeholder',
+            defaultMessage: 'Search conversations...',
+          })}
+          aria-label={intl.formatMessage({
+            id: 'inbox.search.aria',
+            defaultMessage: 'Search the inbox',
+          })}
           data-search-input
         />
       </div>
@@ -373,7 +375,6 @@ const ConversationListHeader = memo(function ConversationListHeader({
         ticketTypeOptions={ticketTypeOptions}
         channelFilter={channelFilter}
         onChannelFilter={onChannelFilter}
-        companyFilter={companyFilter}
         sort={sort}
         onSort={onSort}
       />
@@ -399,7 +400,7 @@ function EmptyList({
   ConversationListColumnProps,
   'nav' | 'facet' | 'scopeLabel' | 'searchInput' | 'priorityFilter' | 'channelFilter'
 >) {
-  const intl = useIntl()
+  const intl = useOptionalIntl()
   const activationAction = useActivationAction('conversation_empty')
 
   const isMainConversationQueue =
@@ -435,7 +436,7 @@ function EmptyList({
             id: 'inbox.empty.allClear.title',
             defaultMessage: 'Nothing to review',
           })
-        : emptyStateMessage(nav, facet, scopeLabel)
+        : emptyStateMessage(nav, scopeLabel, intl)
   // First-run CTA on the unfiltered main queues (not tickets/labels).
   const showMessengerCta = isMainConversationQueue && !isFiltered && !isAllClear
   return (
@@ -524,22 +525,27 @@ function RowShell({ selected, children }: { selected: boolean; children: ReactNo
  *  thread renders an explicit "Unassigned" label in the same slot — the
  *  column is always present, never collapsing with row content. Kept tiny
  *  and muted so it scans as metadata, never as a second row identity. */
-function assigneeColumn(c: ConversationDTO) {
+function assigneeColumn(c: ConversationDTO, intl: IntlShape) {
   if (!c.assignedAgent) {
     return (
       <span className="flex w-24 shrink-0 items-center text-xs text-muted-foreground/70">
-        Unassigned
+        {intl.formatMessage({ id: 'inbox.assignee.unassigned', defaultMessage: 'Unassigned' })}
       </span>
     )
   }
-  const fullName = c.assignedAgent.displayName ?? 'teammate'
+  const fullName =
+    c.assignedAgent.displayName ??
+    intl.formatMessage({ id: 'inbox.assignee.teammate', defaultMessage: 'teammate' })
   // First name only: the column is a fixed 96px, so a full name would
   // ellipsis-truncate into noise; the full name stays one hover away on the
   // title.
   const firstName = fullName.split(' ')[0]
   return (
     <span
-      title={`Assigned to ${fullName}`}
+      title={intl.formatMessage(
+        { id: 'inbox.assignee.assignedTo', defaultMessage: 'Assigned to {name}' },
+        { name: fullName }
+      )}
       className="flex w-24 shrink-0 items-center gap-1 text-xs text-muted-foreground"
     >
       <Avatar
@@ -567,6 +573,7 @@ export const ConversationRow = memo(function ConversationRow({
   onPrefetch?: (id: string) => void
   onPrefetchCancel?: () => void
 }) {
+  const intl = useOptionalIntl()
   const c = item.conversation
   return (
     <RowShell selected={selected}>
@@ -610,7 +617,7 @@ export const ConversationRow = memo(function ConversationRow({
                   <TimeAgo date={c.lastMessageAt} short className="text-xs text-muted-foreground" />
                   {/* Rightmost on the row, so the column's left edge is the
                       same constant offset from the right edge on every row. */}
-                  {assigneeColumn(c)}
+                  {assigneeColumn(c, intl)}
                 </>
               )}
             </span>
@@ -648,7 +655,7 @@ export const ConversationRow = memo(function ConversationRow({
                 <TimeAgo date={c.lastMessageAt} short className="text-xs text-muted-foreground" />
                 {/* Rightmost on the row, so the column's left edge is the
                     same constant offset from the right edge on every row. */}
-                {assigneeColumn(c)}
+                {assigneeColumn(c, intl)}
               </span>
             </div>
           )}

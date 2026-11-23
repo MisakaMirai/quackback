@@ -60,9 +60,6 @@ export const ID_PREFIXES = {
   kb_article_translation: 'kb_article_translation',
   kb_category_translation: 'kb_category_translation',
 
-  // Companies (B2B customer accounts)
-  company: 'company',
-
   // Teams (inbox assignment groups)
   team: 'team',
   team_member: 'team_member',
@@ -104,8 +101,6 @@ export const ID_PREFIXES = {
   channel_account: 'channel_account',
   channel_thread: 'channel_thread',
   sending_domain: 'sending_domain',
-  // A domain added by name on Settings > Domains (`domain` is the SSO table's).
-  workspace_domain: 'workspace_domain',
 
   // Workflows + SLA + office hours (support platform §4.6)
   office_hours: 'office_hours',
@@ -134,9 +129,6 @@ export const ID_PREFIXES = {
   unsub_token: 'unsub_token',
   notification: 'notification',
 
-  // Push devices (mobile agent app — APNs/FCM token registry)
-  push_device: 'push_device',
-
   // RBAC (roles + permissions)
   role: 'role',
   permission: 'perm',
@@ -146,7 +138,6 @@ export const ID_PREFIXES = {
   // Users
   segment: 'segment',
   user_attr: 'user_attr',
-  company_attr: 'company_attr',
   user_tag: 'user_tag',
 
   // AI

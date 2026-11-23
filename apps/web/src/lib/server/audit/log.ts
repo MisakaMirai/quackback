@@ -49,8 +49,6 @@ export type { JsonValue }
 export type AuditEventType =
   | 'branding.website.applied'
   | 'branding.website.undone'
-  | 'copilot.settings.applied'
-  | 'copilot.settings.undone'
   // Settings registry: a direct write to one area, and its undo. The audit row
   // of a write is the receipt the undo names.
   | 'settings.applied'
@@ -117,11 +115,6 @@ export type AuditEventType =
   | 'team.invite.expired'
   // v1 portal segment allowlist
   | 'portal.allowed_segments.changed'
-  // v1 portal widget sign-in toggle
-  | 'portal.widget_signin.changed'
-  // v1 widget OTT handoff
-  | 'portal.widget_handshake.consumed'
-  | 'portal.widget_handshake.invalid'
   // v1 audit-log observability
   | 'portal.access.denied' // OWASP authz_fail — gate denied an authenticated visitor
   | 'auth.signin.failed' // OWASP authn_login_fail — twin of auth.signin.success
@@ -131,33 +124,6 @@ export type AuditEventType =
   // Workspace data export (async ZIP): requested from the hub, artifact downloaded
   | 'export.workspace.requested'
   | 'export.workspace.downloaded'
-  // AI config changelog: assistant customization mutations surfaced together
-  // on the assistant admin page.
-  | 'assistant.guidance.created'
-  | 'assistant.guidance.updated'
-  | 'assistant.guidance.reordered'
-  | 'assistant.guidance.deleted'
-  | 'assistant.custom_action.created'
-  | 'assistant.custom_action.updated'
-  | 'assistant.custom_action.deleted'
-  | 'assistant.connector.created'
-  | 'assistant.connector.updated'
-  | 'assistant.connector.deleted'
-  | 'assistant.connector.refreshed'
-  | 'assistant.skill.created'
-  | 'assistant.skill.updated'
-  | 'assistant.skill.deleted'
-  | 'assistant.tool_controls.changed'
-  | 'assistant.surfaces.changed'
-  | 'assistant.basics.changed'
-  | 'assistant.identity.changed'
-  | 'assistant.voice.changed'
-  | 'assistant.instructions.changed'
-  | 'assistant.knowledge.changed'
-  | 'assistant.capabilities.changed'
-  | 'assistant.tools.changed'
-  | 'assistant.channels.changed'
-  | 'assistant.deployment.changed'
   // Verified-email assertion. `emailVerified: true` is a trust decision, not a
   // data field — it grants the same portal access as a confirmed email
   // (domain-match, invite claim, segment portal-access grants). Every path

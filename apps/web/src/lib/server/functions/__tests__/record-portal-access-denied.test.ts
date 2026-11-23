@@ -65,9 +65,6 @@ vi.mock('@/lib/server/domains/settings/settings.service', () => ({
   getPortalConfig: vi.fn(),
   updatePortalConfig: vi.fn(),
 }))
-vi.mock('@/lib/server/domains/settings/settings.widget', () => ({
-  getWidgetConfig: vi.fn(),
-}))
 vi.mock('@/lib/server/domains/settings/portal-access', () => ({
   evaluatePortalAccess: vi.fn(),
 }))

@@ -42,8 +42,6 @@ function renderStep() {
   return render(
     <IntlProvider locale="en" defaultLocale="en" messages={{}}>
       <WorkspaceStep
-        isCloudProvisioned={false}
-        cloudIdentity={null}
         existingWorkspaceName=""
         managedFieldPaths={[]}
         setupGoals={{ goals: ['product_feedback'] }}

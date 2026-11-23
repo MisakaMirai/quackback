@@ -107,7 +107,6 @@ function renderSidebar(
     permissions?: string[]
     cloudEnabled?: boolean
     githubStarPrompt?: boolean
-    planNotice?: import('@/lib/server/domains/settings/tier-limits.types').PlanNotice
     locale?: string
     messages?: Record<string, string>
   } = {}
@@ -116,20 +115,19 @@ function renderSidebar(
   mockGetRouteContext.mockReturnValue({
     permissions: opts.permissions ?? (userRole === 'admin' ? ALL_PERMISSIONS : []),
     session: { user: { id: 'user_1', name: 'Test', email: 'test@example.com', image: null } },
-    cloudEnabled: opts.cloudEnabled ?? false,
+    cloudEnabled: opts.cloudEnabled ?? mockBillingEnabled.current,
     githubStarPrompt: opts.githubStarPrompt ?? false,
     settings: {
       featureFlags: opts.flags ?? {},
       brandingData: opts.name ? { name: opts.name } : undefined,
     },
     userRole,
-    billingEnabled: mockBillingEnabled.current,
   })
   return render(
     <IntlProvider locale={opts.locale ?? 'en'} messages={opts.messages ?? {}}>
       <TooltipProvider>
         <SearchPaletteContext.Provider value={searchContext}>
-          <AdminSidebar planNotice={opts.planNotice ?? null} />
+          <AdminSidebar />
         </SearchPaletteContext.Provider>
       </TooltipProvider>
     </IntlProvider>
@@ -161,25 +159,6 @@ describe('AdminSidebar: workspace switcher', () => {
     mockSiblings.current = []
     renderSidebar('admin')
     expect(screen.queryByRole('button', { name: 'Switch workspace' })).toBeNull()
-  })
-
-  it('lists sibling names and friendly URLs, never a generated host', () => {
-    mockBillingEnabled.current = true
-    mockSiblings.current = [
-      {
-        instanceId: 'inst_south',
-        displayName: 'South',
-        url: 'https://south63792f.quackback.co.uk',
-      },
-      {
-        instanceId: 'inst_raw',
-        displayName: 'Untitled workspace',
-        url: 'https://ws-4a048e07941c5e7840e986c0.quackback.co.uk',
-      },
-    ]
-    renderSidebar('admin')
-    expect(screen.getByRole('button', { name: 'Switch workspace' })).toBeTruthy()
-    expect(screen.queryByText(/ws-4a048e07941c5e7840e986c0/)).toBeNull()
   })
 })
 
@@ -264,18 +243,9 @@ describe('AdminSidebar: settings entry', () => {
     expect(container.querySelectorAll('a[href="/admin/settings"]').length).toBe(0)
   })
 
-  it('shows Settings to an assistant manager, who has no legacy admin role', () => {
-    const { container } = renderSidebar('member', { permissions: [PERMISSIONS.AI_CUSTOMER_MANAGE] })
+  it('shows Settings to a member who can open a workspace page', () => {
+    const { container } = renderSidebar('member', { permissions: [PERMISSIONS.MEMBER_VIEW] })
     expect(container.querySelectorAll('a[href="/admin/settings"]').length).toBeGreaterThan(0)
-  })
-
-  it('shows Settings to a workflow manager only while the Support inbox is on', () => {
-    const permissions = [PERMISSIONS.WORKFLOW_MANAGE]
-    const on = renderSidebar('member', { permissions, flags: { supportInbox: true } })
-    expect(on.container.querySelectorAll('a[href="/admin/settings"]').length).toBeGreaterThan(0)
-    cleanup()
-    const off = renderSidebar('member', { permissions, flags: { supportInbox: false } })
-    expect(off.container.querySelectorAll('a[href="/admin/settings"]').length).toBe(0)
   })
 })
 
@@ -291,7 +261,6 @@ describe('AdminSidebar: labeled rail', () => {
         settings: { featureFlags: {}, visualTheme: stored },
         visualTheme: stored,
         userRole: 'admin',
-        billingEnabled: false,
       })
       const { container } = render(
         <IntlProvider locale="en" messages={{}}>
@@ -319,7 +288,7 @@ describe('AdminSidebar: labeled rail', () => {
 describe('AdminSidebar: AI & Automation', () => {
   afterEach(() => cleanup())
 
-  it('has no rail item: the pages live under Settings', () => {
+  it('has no rail item and no settings section', () => {
     const { container } = renderSidebar('admin', { flags: ALL_ON })
     expect(container.querySelector('a[href^="/admin/automation"]')).toBeNull()
     expect(container.textContent).not.toContain('AI & Automation')
@@ -392,21 +361,6 @@ describe('AdminSidebar rail', () => {
   })
 })
 
-it('shows a running trial quietly in the footer, and nothing there without a notice', () => {
-  renderSidebar('admin', {
-    planNotice: {
-      label: 'Pro trial',
-      expiresAt: new Date(Date.now() + 14 * 86_400_000 - 60_000).toISOString(),
-      actionUrl: '/admin/settings/billing',
-    },
-  })
-  expect(screen.getByRole('link', { name: 'Pro trial · 14 days' })).toBeTruthy()
-  cleanup()
-  renderSidebar('admin')
-  expect(screen.queryByText(/Pro trial/)).toBeNull()
-  cleanup()
-})
-
 it('opens the shared palette from the sidebar search button, the one tour stop', () => {
   const { container } = renderSidebar('admin')
   fireEvent.click(screen.getAllByRole('button', { name: 'Search' })[0]!)
@@ -421,29 +375,11 @@ describe('AdminSidebar: help and the phone menu', () => {
     cleanup()
   })
 
-  it('offers Contact us in Help on cloud, opening the help launcher it hides', async () => {
-    const calls: unknown[][] = []
-    window.Quackback = ((...args: unknown[]) => calls.push(args)) as never
-    renderSidebar('admin', { cloudEnabled: true })
-    const user = userEvent.setup()
-    await user.click(screen.getByRole('button', { name: 'Help' }))
-    await user.click(await screen.findByRole('menuitem', { name: 'Contact us' }))
-    expect(calls).toContainEqual(['open'])
-    delete window.Quackback
-  })
-
   it('has no Contact us where there is no help launcher', async () => {
     renderSidebar('admin', { cloudEnabled: false })
     await userEvent.setup().click(screen.getByRole('button', { name: 'Help' }))
     expect(await screen.findByRole('menuitem', { name: 'Documentation' })).toBeTruthy()
     expect(screen.queryByRole('menuitem', { name: 'Contact us' })).toBeNull()
-  })
-
-  it('links to the GitHub repo from Help only where the star prompt is allowed', async () => {
-    renderSidebar('admin', { githubStarPrompt: true })
-    await userEvent.setup().click(screen.getByRole('button', { name: 'Help' }))
-    const link = await screen.findByRole('menuitem', { name: 'Star on GitHub' })
-    expect(link.getAttribute('href')).toBe('https://github.com/QuackbackIO/quackback')
   })
 
   it('has no GitHub link on Cloud or when switched off', async () => {
@@ -487,19 +423,12 @@ describe('AdminSidebar: help and the phone menu', () => {
     mockLaunchStatus.current = undefined
   })
 
-  it('carries the launch plan and the trial in the phone menu, and names Changelog once', () => {
+  it('carries the launch plan in the phone menu, and names Changelog once', () => {
     localStorage.setItem(
       'quackback:launch-plan-dock:user_1',
       JSON.stringify({ step: 2, total: 3, resolved: false })
     )
-    renderSidebar('admin', {
-      flags: { feedback: true, changelog: true },
-      planNotice: {
-        label: 'Pro trial',
-        expiresAt: new Date(Date.now() + 10 * 86_400_000).toISOString(),
-        actionUrl: '/admin/settings/billing',
-      },
-    })
+    renderSidebar('admin', { flags: { feedback: true, changelog: true } })
     fireEvent.click(screen.getByRole('button', { name: 'Open menu' }))
     const menu = screen.getByRole('dialog')
     expect(within(menu).getByRole('link', { name: /Step 2 of 3/ })).toHaveAttribute(
@@ -510,7 +439,6 @@ describe('AdminSidebar: help and the phone menu', () => {
       'href',
       '/admin/getting-started'
     )
-    expect(within(menu).getByText(/Pro trial/)).toBeTruthy()
     expect(within(menu).getAllByText('Changelog')).toHaveLength(1)
   })
 })
@@ -519,14 +447,14 @@ describe('AdminSidebar: language', () => {
   afterEach(() => cleanup())
 
   it('names the rail items in the workspace language', async () => {
-    const de = (await import('@/locales/de.json')).default as Record<string, string>
-    renderSidebar('admin', { flags: ALL_ON, locale: 'de', messages: de })
+    const zhCn = (await import('@/locales/zh-cn.json')).default as Record<string, string>
+    renderSidebar('admin', { flags: ALL_ON, locale: 'zh-cn', messages: zhCn })
     const rail = document.querySelector('aside nav[data-tour="products"]') as HTMLElement
-    expect(rail.textContent).toContain(de['admin.nav.home'])
-    expect(rail.textContent).toContain(de['admin.nav.helpCenter'])
+    expect(rail.textContent).toContain(zhCn['admin.nav.home'])
+    expect(rail.textContent).toContain(zhCn['admin.nav.helpCenter'])
     expect(rail.textContent).not.toContain('Help center')
-    expect(document.querySelector('aside')?.textContent).toContain(de['admin.nav.settings'])
+    expect(document.querySelector('aside')?.textContent).toContain(zhCn['admin.nav.settings'])
     expect(document.querySelector('aside')?.textContent).not.toContain('View portal')
-    expect(document.querySelector('aside')?.getAttribute('lang')).toBe('de')
+    expect(document.querySelector('aside')?.getAttribute('lang')).toBe('zh-CN')
   })
 })

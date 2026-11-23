@@ -14,9 +14,9 @@ import { join } from 'node:path'
  * cwd, which is right for a checkout and wrong for a bundle: `bun build
  * --bundle` collapses every module into one file, so `import.meta.url` becomes
  * the bundle's path and `../drizzle` lands a directory ABOVE the SQL. That is
- * exactly the layout the production image ships (`/app/fleet-migrator.mjs`
- * beside `/app/drizzle`), and it failed on the first file read: every workspace
- * migration in the fleet, stopped by a path.
+ * exactly the layout the production image ships (`/app/migrate.mjs`
+ * beside `/app/drizzle`), and it failed on the first file read: every migration
+ * stopped by a path.
  *
  * Hence the override. Both branches are pinned here because deleting either one
  * breaks a real deployment shape and neither breaks the other's.

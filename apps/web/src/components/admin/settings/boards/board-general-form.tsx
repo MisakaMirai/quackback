@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/form'
 import { useNavigate } from '@tanstack/react-router'
 import { useUpdateBoard } from '@/lib/client/mutations'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import type { BoardId } from '@quackback/ids'
 
 interface Board {
@@ -27,6 +28,7 @@ interface BoardGeneralFormProps {
 }
 
 export function BoardGeneralForm({ board }: BoardGeneralFormProps) {
+  const intl = useOptionalIntl()
   const mutation = useUpdateBoard()
   const navigate = useNavigate()
 
@@ -76,7 +78,12 @@ export function BoardGeneralForm({ board }: BoardGeneralFormProps) {
           name="name"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Name</FormLabel>
+              <FormLabel>
+                {intl.formatMessage({
+                  id: 'admin.settings.boards.general.name',
+                  defaultMessage: 'Name',
+                })}
+              </FormLabel>
               <FormControl>
                 <Input {...field} />
               </FormControl>
@@ -90,7 +97,12 @@ export function BoardGeneralForm({ board }: BoardGeneralFormProps) {
           name="description"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Description</FormLabel>
+              <FormLabel>
+                {intl.formatMessage({
+                  id: 'admin.settings.boards.general.description',
+                  defaultMessage: 'Description',
+                })}
+              </FormLabel>
               <FormControl>
                 <Textarea rows={3} {...field} />
               </FormControl>

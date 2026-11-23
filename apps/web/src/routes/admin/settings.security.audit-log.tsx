@@ -3,7 +3,7 @@ import { adminPageHead } from '@/lib/client/admin-head'
 
 /** Retired route: the audit log is a tab of Access & Security. */
 export const Route = createFileRoute('/admin/settings/security/audit-log')({
-  head: adminPageHead('Audit log'),
+  head: adminPageHead('Audit log', 'admin.pageTitle.auditLog'),
   beforeLoad: () => {
     throw redirect({
       to: '/admin/settings/security/authentication',

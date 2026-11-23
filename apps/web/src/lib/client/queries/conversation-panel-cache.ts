@@ -43,20 +43,11 @@ export const conversationPanelEntries = {
     queryKey: conversationKeys.agentUserConversationsFor(principalId),
     staleTime: 30_000,
   }),
-  company: (principalId: string) => ({
-    queryKey: ['admin', 'company', 'for-principal', principalId] as const,
-    staleTime: 60_000,
-  }),
-  assistantActivity: (conversationId: ConversationId) => ({
-    queryKey: conversationKeys.agentAssistantActivity(conversationId),
-    staleTime: 30_000,
-  }),
   languagePreference: () => ({
     queryKey: ['teammate', 'language-preference'] as const,
     staleTime: 5 * 60_000,
   }),
   macros: () => ({ queryKey: ['macros', 'support'] as const, staleTime: 60_000 }),
-  runnableWorkflows: () => ({ queryKey: ['workflows', 'runnable'] as const, staleTime: 60_000 }),
   teamMembers: () => ({ queryKey: ['admin', 'team-members'] as const, staleTime: 60_000 }),
 }
 
@@ -90,11 +81,8 @@ function panelEntries(
     blockStatus: forVisitor(e.blockStatus),
     contact: shown ? forVisitor(e.contact) : 'skip',
     history: shown ? forVisitor(e.history) : 'skip',
-    company: shown ? forVisitor(e.company) : 'skip',
-    assistantActivity: shown ? e.assistantActivity(conversationId) : 'skip',
     languagePreference: e.languagePreference(),
     macros: e.macros(),
-    runnableWorkflows: e.runnableWorkflows(),
     teamMembers: e.teamMembers(),
   }
 }
@@ -124,11 +112,8 @@ export function seedConversationPanels(
       blockStatus: e.blockStatus(visitor),
       contact: e.contact(visitor),
       history: e.history(visitor),
-      company: e.company(visitor),
-      assistantActivity: e.assistantActivity(conversationId),
       languagePreference: e.languagePreference(),
       macros: e.macros(),
-      runnableWorkflows: e.runnableWorkflows(),
       teamMembers: e.teamMembers(),
     },
     loaded

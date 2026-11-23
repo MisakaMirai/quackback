@@ -25,7 +25,6 @@ const OPEN_TO_EVERY_CALLER = [
   'react_to_comment',
   'update_comment',
   'vote_post',
-  'widget_install_status',
 ]
 
 function registeredTools() {
@@ -49,7 +48,7 @@ describe('MCP tool permission declarations', () => {
   it('registers every tool through registerTool, so the guard covers all of them', () => {
     const { tools, direct } = registeredTools()
     expect(direct).toEqual([])
-    expect(tools.length).toBeGreaterThan(40)
+    expect(tools).toHaveLength(39)
   })
 
   it('declares permissions on every tool', () => {

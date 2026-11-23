@@ -1,15 +1,15 @@
 import { FORM_WIDTH_CLASS } from '@/components/admin/settings/settings-page'
 import { useNavigate } from '@tanstack/react-router'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { PortalAuthTab } from './portal-auth-tab'
 import { SignInProvidersTab } from './sign-in-providers-tab'
 import { AuditLogPage } from './audit-log-page'
-import { UpgradeScreen } from '@/components/admin/upgrade'
 import type { AuthConfig, PortalConfig } from '@/lib/shared/types/settings'
 
 /**
  * The Access & Security page tabs split by concern, not by surface:
- *  - `portal-access` — who can view the portal (visibility, domains, invites, segments, widget)
+ *  - `portal-access` — who can view the portal (visibility, domains, invites, segments)
  *  - `sign-in`       — authentication providers for both surfaces in one place
  *                       (password + 2FA enforcement, magic link, social, custom OIDC)
  *                       with per-surface toggles inline.
@@ -26,10 +26,6 @@ interface AuthSettingsProps {
   /** Full portal config — needed for the visibility card inside PortalAuthTab. */
   portalConfig: PortalConfig
   credentialStatus: Record<string, boolean> & { _emailConfigured?: boolean }
-  /** Tier flag for portal custom OIDC — passed through to <SignInProvidersTab>. */
-  customOidcProviderTier: boolean
-  /** When false the audit tab stays mounted as an upgrade notice, not a throwing list. */
-  auditEntitled: boolean
 }
 
 /**
@@ -45,13 +41,12 @@ export function AuthSettings({
   teamAuthConfig,
   portalConfig,
   credentialStatus,
-  customOidcProviderTier,
-  auditEntitled,
 }: AuthSettingsProps) {
   // No `from` — passes an absolute `to`, so binding the navigate hook
   // to a route would just append paths under TanStack Router's
   // relative-resolution rules. Same goes for useSearch.
   const navigate = useNavigate()
+  const intl = useOptionalIntl()
 
   return (
     <Tabs
@@ -73,9 +68,24 @@ export function AuthSettings({
       className="space-y-6"
     >
       <TabsList className={FORM_WIDTH_CLASS}>
-        <TabsTrigger value="portal-access">Portal access</TabsTrigger>
-        <TabsTrigger value="sign-in">Sign-in</TabsTrigger>
-        <TabsTrigger value="audit-log">Audit log</TabsTrigger>
+        <TabsTrigger value="portal-access">
+          {intl.formatMessage({
+            id: 'admin.settings.security.tabs.portalAccess',
+            defaultMessage: 'Portal access',
+          })}
+        </TabsTrigger>
+        <TabsTrigger value="sign-in">
+          {intl.formatMessage({
+            id: 'admin.settings.security.tabs.signIn',
+            defaultMessage: 'Sign-in',
+          })}
+        </TabsTrigger>
+        <TabsTrigger value="audit-log">
+          {intl.formatMessage({
+            id: 'admin.settings.security.tabs.auditLog',
+            defaultMessage: 'Audit log',
+          })}
+        </TabsTrigger>
       </TabsList>
 
       <TabsContent value="portal-access">
@@ -86,12 +96,11 @@ export function AuthSettings({
         <SignInProvidersTab
           initialTeamAuthConfig={teamAuthConfig}
           credentialStatus={credentialStatus}
-          customOidcProviderTier={customOidcProviderTier}
         />
       </TabsContent>
 
       <TabsContent value="audit-log">
-        {auditEntitled ? <AuditLogPage /> : <UpgradeScreen entitlement="auditLog" />}
+        <AuditLogPage />
       </TabsContent>
     </Tabs>
   )

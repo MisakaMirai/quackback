@@ -3,6 +3,7 @@ import { ArrowPathIcon, CheckCircleIcon, ExclamationCircleIcon } from '@heroicon
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { useDeleteIntegration } from '@/lib/client/mutations'
 import { saveNtfyFn } from '@/integrations/ntfy/server/functions'
@@ -14,6 +15,7 @@ interface NtfyConnectionActionsProps {
 }
 
 export function NtfyConnectionActions({ integrationId, isConnected }: NtfyConnectionActionsProps) {
+  const intl = useOptionalIntl()
   const deleteMutation = useDeleteIntegration()
   const [url, setUrl] = useState('')
   const [token, setToken] = useState('')
@@ -47,7 +49,15 @@ export function NtfyConnectionActions({ integrationId, isConnected }: NtfyConnec
       if (successTimer.current) clearTimeout(successTimer.current)
       successTimer.current = setTimeout(() => setShowSuccess(false), 3000)
     } catch (err) {
-      setError(errorText(err, 'Failed to save ntfy settings'))
+      setError(
+        errorText(
+          err,
+          intl.formatMessage({
+            id: 'admin.integrations.ntfy.saveFailed',
+            defaultMessage: 'Failed to save ntfy settings',
+          })
+        )
+      )
     } finally {
       setSaving(false)
     }
@@ -72,18 +82,37 @@ export function NtfyConnectionActions({ integrationId, isConnected }: NtfyConnec
           {disconnecting ? (
             <>
               <ArrowPathIcon className="mr-2 h-4 w-4 animate-spin" />
-              Disconnecting...
+              {intl.formatMessage({
+                id: 'admin.integrations.connection.disconnecting',
+                defaultMessage: 'Disconnecting...',
+              })}
             </>
           ) : (
-            'Disconnect'
+            intl.formatMessage({
+              id: 'admin.integrations.connection.disconnect',
+              defaultMessage: 'Disconnect',
+            })
           )}
         </Button>
         <ConfirmDialog
           open={disconnectDialogOpen}
           onOpenChange={setDisconnectDialogOpen}
-          title="Disconnect ntfy?"
-          description="This will remove the ntfy integration and stop all push notifications. You can reconnect at any time."
-          confirmLabel="Disconnect"
+          title={intl.formatMessage(
+            {
+              id: 'admin.integrations.connection.disconnectTitle',
+              defaultMessage: 'Disconnect {name}?',
+            },
+            { name: 'ntfy' }
+          )}
+          description={intl.formatMessage({
+            id: 'admin.integrations.ntfy.disconnectDescription',
+            defaultMessage:
+              'This will remove the ntfy integration and stop all push notifications. You can reconnect at any time.',
+          })}
+          confirmLabel={intl.formatMessage({
+            id: 'admin.integrations.connection.disconnect',
+            defaultMessage: 'Disconnect',
+          })}
           isPending={disconnecting}
           onConfirm={handleDisconnect}
         />
@@ -96,7 +125,12 @@ export function NtfyConnectionActions({ integrationId, isConnected }: NtfyConnec
       {showSuccess && (
         <div className="flex items-center gap-2 rounded-lg border border-green-500/30 bg-green-500/10 px-3 py-2 text-sm text-green-600 dark:text-green-400">
           <CheckCircleIcon className="h-4 w-4" />
-          <span>ntfy connected and verified!</span>
+          <span>
+            {intl.formatMessage({
+              id: 'admin.integrations.ntfy.connected',
+              defaultMessage: 'ntfy connected and verified!',
+            })}
+          </span>
         </div>
       )}
 
@@ -110,7 +144,10 @@ export function NtfyConnectionActions({ integrationId, isConnected }: NtfyConnec
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-2">
           <Label htmlFor="ntfy-url" className="text-sm">
-            ntfy Topic URL
+            {intl.formatMessage({
+              id: 'admin.integrations.ntfy.topicUrlLabel',
+              defaultMessage: 'ntfy Topic URL',
+            })}
           </Label>
           <Input
             id="ntfy-url"
@@ -121,25 +158,42 @@ export function NtfyConnectionActions({ integrationId, isConnected }: NtfyConnec
             disabled={saving}
           />
           <p className="text-xs text-muted-foreground">
-            The full URL of your ntfy topic, e.g. https://ntfy.sh/my-topic
+            {intl.formatMessage({
+              id: 'admin.integrations.ntfy.topicUrlHint',
+              defaultMessage: 'The full URL of your ntfy topic, e.g. https://ntfy.sh/my-topic',
+            })}
           </p>
         </div>
 
         <div className="flex flex-col gap-2">
           <Label htmlFor="ntfy-token" className="text-sm">
-            Access token
-            <span className="ml-1 text-muted-foreground font-normal">(optional)</span>
+            {intl.formatMessage({
+              id: 'admin.integrations.ntfy.accessTokenLabel',
+              defaultMessage: 'Access token',
+            })}
+            <span className="ml-1 text-muted-foreground font-normal">
+              {intl.formatMessage({
+                id: 'admin.integrations.ntfy.optional',
+                defaultMessage: '(optional)',
+              })}
+            </span>
           </Label>
           <Input
             id="ntfy-token"
             type="password"
-            placeholder="tk_… (optional, for protected topics)"
+            placeholder={intl.formatMessage({
+              id: 'admin.integrations.ntfy.tokenPlaceholder',
+              defaultMessage: 'tk_… (optional, for protected topics)',
+            })}
             value={token}
             onChange={(e) => setToken(e.target.value)}
             disabled={saving}
           />
           <p className="text-xs text-muted-foreground">
-            Required only for protected or self-hosted topics
+            {intl.formatMessage({
+              id: 'admin.integrations.ntfy.tokenHint',
+              defaultMessage: 'Required only for protected or self-hosted topics',
+            })}
           </p>
         </div>
 
@@ -147,10 +201,16 @@ export function NtfyConnectionActions({ integrationId, isConnected }: NtfyConnec
           {saving ? (
             <>
               <ArrowPathIcon className="mr-2 h-4 w-4 animate-spin" />
-              Saving...
+              {intl.formatMessage({
+                id: 'admin.integrations.config.saving',
+                defaultMessage: 'Saving...',
+              })}
             </>
           ) : (
-            'Save'
+            intl.formatMessage({
+              id: 'admin.integrations.connection.save',
+              defaultMessage: 'Save',
+            })
           )}
         </Button>
       </div>

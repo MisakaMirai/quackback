@@ -1,20 +1,6 @@
 export const DEFAULT_LOCALE = 'en' as const
 
-export const SUPPORTED_LOCALES = [
-  'en',
-  'de',
-  'fr',
-  'es',
-  'ar',
-  'ru',
-  'pt-br',
-  'zh-cn',
-  'zh-tw',
-  'nl',
-  'pl',
-  'th',
-  'uk',
-] as const
+export const SUPPORTED_LOCALES = ['en', 'zh-cn', 'zh-tw'] as const
 
 export type SupportedLocale = (typeof SUPPORTED_LOCALES)[number]
 
@@ -34,7 +20,7 @@ export function normalizeLocale(locale: string): SupportedLocale | null {
     return lower as SupportedLocale
   }
 
-  // Strip region subtag (e.g. "fr-FR" -> "fr"), but only accept 2-letter base codes
+  // Strip region subtag (e.g. "en-GB" -> "en"), but only accept 2-letter base codes
   const parts = lower.split('-')
 
   // Chinese is script-sensitive: Simplified (zh-cn) and Traditional (zh-tw) are
@@ -51,10 +37,6 @@ export function normalizeLocale(locale: string): SupportedLocale | null {
       return 'zh-cn'
     }
   }
-
-  // Portuguese ships a single catalog, Brazilian. Without this, a bare "pt" or a
-  // European tag ("pt-PT") strips to an unsupported "pt" and falls back to English.
-  if (parts[0] === 'pt') return 'pt-br'
 
   if (parts.length >= 2) {
     const base = parts[0]
@@ -452,8 +434,7 @@ export async function loadLaunchMessages(locale: SupportedLocale): Promise<Recor
 
 /**
  * Key prefixes formatted on the server and never rendered by a page: email copy,
- * and the page a hostname that is not serving answers with
- * (`lib/server/workspaces/unavailable-page.ts`). No page seeds them.
+ * and the copy for a host that is not serving this install. No page seeds them.
  */
 export const SERVER_ONLY_MESSAGE_PREFIXES = ['email.', 'workspaceUnavailable.'] as const
 
@@ -493,33 +474,6 @@ export async function loadAdminMessages(locale: SupportedLocale): Promise<Record
 }
 
 /**
- * Key prefixes the widget surface renders (widget views plus the shared
- * Ask-AI / ui / common / files strings they embed). Everything else in the
- * catalog is portal/admin copy the iframe never shows.
- */
-const WIDGET_MESSAGE_PREFIXES = ['widget.', 'helpAskAi.', 'ui.', 'common.', 'files.']
-
-/**
- * The widget's slice of the message catalog. Loaded in the widget layout
- * loader (server-side) and serialized into loader data so the iframe's first
- * client render is already translated — the widget route is `ssr:
- * 'data-only'`, so without this seed the IntlProvider mounts empty, flashes
- * English defaults, and pays a post-mount catalog-chunk fetch. Filtering
- * keeps the serialized payload to the ~200 keys the widget can actually show.
- * None in English, which renders from the code (see {@link loadAdminMessages}).
- */
-export async function loadWidgetMessages(locale: SupportedLocale): Promise<Record<string, string>> {
-  if (locale === DEFAULT_LOCALE) return {}
-  const all = await loadMessages(locale)
-  const subset: Record<string, string> = {}
-  for (const [key, value] of Object.entries(all)) {
-    if (isPageScopedMessage(key)) continue
-    if (WIDGET_MESSAGE_PREFIXES.some((prefix) => key.startsWith(prefix))) subset[key] = value
-  }
-  return subset
-}
-
-/**
  * Key prefixes the onboarding wizard renders. Ids authored under
  * `routes/onboarding` and `components/onboarding` live under `onboarding.`;
  * `portal.auth.` joins them because the account step renders the shared
@@ -535,9 +489,9 @@ export const ONBOARDING_MESSAGE_PREFIX_LIST: readonly string[] = ONBOARDING_MESS
 
 /**
  * The onboarding wizard's slice of the message catalog, loaded in the
- * `/onboarding` layout loader. Mirrors {@link loadPortalMessages} and
- * {@link loadWidgetMessages}: the wizard renders only `onboarding.` ids, so
- * seeding the whole (portal + admin + widget) catalog would add ~80KB to the
+ * `/onboarding` layout loader. Mirrors {@link loadPortalMessages}: the wizard
+ * renders only `onboarding.` ids, so
+ * seeding the whole (portal + admin) catalog would add ~80KB to the
  * SSR document of the first screen a new workspace ever sees. Slicing keeps
  * that at the handful of keys the wizard can actually show, and the moment
  * translated onboarding copy lands in the catalogs it is picked up here with no
@@ -591,7 +545,7 @@ export const PORTAL_MESSAGE_PREFIX_LIST: readonly string[] = PORTAL_MESSAGE_PREF
 /**
  * The portal's slice of the message catalog. Loaded in the portal layout loader
  * (server-side) and serialized into loader data so the portal's first render is
- * already translated during SSR. Mirrors {@link loadWidgetMessages}: filtering
+ * already translated during SSR: filtering
  * to the portal prefixes keeps the serialized payload to the strings the portal
  * can actually show, instead of the whole (admin-inclusive) catalog — a large
  * chunk of the portal SSR HTML. See {@link PORTAL_MESSAGE_PREFIXES}. The

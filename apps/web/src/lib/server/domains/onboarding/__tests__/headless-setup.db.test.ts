@@ -8,16 +8,7 @@
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createId, type PrincipalId, type UserId } from '@quackback/ids'
 import { createDbTestFixture, testDb } from '@/lib/server/__tests__/db-test-fixture'
-import {
-  auditLog,
-  eq,
-  principal,
-  session,
-  settings,
-  sql,
-  user,
-  postStatuses,
-} from '@/lib/server/db'
+import { auditLog, eq, principal, session, settings, user, postStatuses } from '@/lib/server/db'
 import { getSetupState, isOnboardingComplete } from '@/lib/shared/db-types'
 
 vi.hoisted(() => {
@@ -253,19 +244,6 @@ describe.skipIf(!fixture.available)('POST /api/v1/setup (real DB, rolled back)',
     const res = await handleSetupRequest(setupRequest())
     const { data } = (await res.json()) as { data: { reusedExistingAccount: boolean } }
     expect(data.reusedExistingAccount).toBe(false)
-  })
-
-  it('is not there for a workspace a control plane provisioned', async () => {
-    await testDb.insert(settings).values({
-      id: createId('workspace'),
-      name: 'Provisioned',
-      slug: 'provisioned',
-      createdAt: new Date(),
-    })
-    await testDb.execute(sql`UPDATE settings SET cloud_workspace_key = 'ws_acme'`)
-    const res = await handleSetupRequest(setupRequest())
-    expect(res.status).toBe(404)
-    expect(await auditEvents('workspace.setup.rejected')).toHaveLength(0)
   })
 
   it('counts only failed attempts toward the overall budget', async () => {

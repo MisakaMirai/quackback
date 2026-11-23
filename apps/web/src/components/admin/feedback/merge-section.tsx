@@ -26,14 +26,40 @@ import {
 } from '@/components/ui/dialog'
 import { Checkbox } from '@/components/ui/checkbox'
 import { StatusBadge } from '@/components/ui/status-badge'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
+import type { IntlShape } from 'react-intl'
 import { useMergePost, useUnmergePost } from '@/lib/client/mutations/post-merge'
-import { findSimilarPostsFn, type SimilarPost } from '@/lib/server/functions/public-posts'
+import {
+  findSimilarPostsFn,
+  type MatchStrength,
+  type SimilarPost,
+} from '@/lib/server/functions/public-posts'
 import { getMergedPostsFn } from '@/lib/server/functions/post-merge'
-import { mergeSuggestionQueries } from '@/lib/client/queries/signals'
 import { inboxKeys } from '@/lib/client/hooks/use-inbox-query'
 import type { PostId } from '@quackback/ids'
 import type { MergedPostItem } from '@/lib/shared/types/inbox'
 import { toastError } from '@/lib/client/error-notice'
+
+/** "Strong match" / "Good match" / "Possible match" for a suggestion row. */
+function matchStrengthLabel(intl: IntlShape, strength: MatchStrength): string {
+  switch (strength) {
+    case 'strong':
+      return intl.formatMessage({
+        id: 'admin.feedback.merge.matchStrong',
+        defaultMessage: 'Strong match',
+      })
+    case 'good':
+      return intl.formatMessage({
+        id: 'admin.feedback.merge.matchGood',
+        defaultMessage: 'Good match',
+      })
+    default:
+      return intl.formatMessage({
+        id: 'admin.feedback.merge.matchPossible',
+        defaultMessage: 'Possible match',
+      })
+  }
+}
 
 // ============================================================================
 // Merged Posts List (shown on canonical posts)
@@ -45,6 +71,7 @@ interface MergedPostsListProps {
 }
 
 export function MergedPostsList({ postId, mergedPosts: initialMergedPosts }: MergedPostsListProps) {
+  const intl = useOptionalIntl()
   const queryClient = useQueryClient()
   const unmerge = useUnmergePost()
   const [confirmUnmergeId, setConfirmUnmergeId] = useState<PostId | null>(null)
@@ -67,9 +94,20 @@ export function MergedPostsList({ postId, mergedPosts: initialMergedPosts }: Mer
     try {
       await unmerge.mutateAsync(confirmUnmergeId)
       queryClient.invalidateQueries({ queryKey: ['merged-posts', postId] })
-      toast.success('Post unmerged successfully')
+      toast.success(
+        intl.formatMessage({
+          id: 'admin.feedback.merge.unmerged',
+          defaultMessage: 'Post unmerged successfully',
+        })
+      )
     } catch (err) {
-      toastError(err, 'Failed to unmerge post')
+      toastError(
+        err,
+        intl.formatMessage({
+          id: 'admin.feedback.merge.unmergeFailed',
+          defaultMessage: 'Failed to unmerge post',
+        })
+      )
     } finally {
       setConfirmUnmergeId(null)
     }
@@ -78,7 +116,13 @@ export function MergedPostsList({ postId, mergedPosts: initialMergedPosts }: Mer
   return (
     <div className="border-t border-border/40 px-6 py-4">
       <h3 className="text-sm font-medium text-foreground mb-3">
-        Merged Feedback ({mergedPosts.length})
+        {intl.formatMessage(
+          {
+            id: 'admin.feedback.merge.mergedTitle',
+            defaultMessage: 'Merged Feedback ({count})',
+          },
+          { count: mergedPosts.length }
+        )}
       </h3>
       <div className="space-y-2">
         {mergedPosts.map((merged) => (
@@ -89,8 +133,19 @@ export function MergedPostsList({ postId, mergedPosts: initialMergedPosts }: Mer
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-foreground truncate">{merged.title}</p>
               <p className="text-xs text-muted-foreground mt-0.5">
-                {merged.voteCount} vote{merged.voteCount !== 1 ? 's' : ''}
-                {merged.authorName ? ` · by ${merged.authorName}` : ''}
+                {intl.formatMessage(
+                  {
+                    id: 'admin.feedback.merge.voteCount',
+                    defaultMessage: '{count, plural, one {# vote} other {# votes}}',
+                  },
+                  { count: merged.voteCount }
+                )}
+                {merged.authorName
+                  ? ` · ${intl.formatMessage(
+                      { id: 'admin.feedback.merge.byAuthor', defaultMessage: 'by {author}' },
+                      { author: merged.authorName }
+                    )}`
+                  : ''}
               </p>
             </div>
             <Button
@@ -100,7 +155,10 @@ export function MergedPostsList({ postId, mergedPosts: initialMergedPosts }: Mer
               disabled={unmerge.isPending}
               className="shrink-0"
             >
-              Unmerge
+              {intl.formatMessage({
+                id: 'admin.feedback.merge.unmerge',
+                defaultMessage: 'Unmerge',
+              })}
             </Button>
           </div>
         ))}
@@ -112,22 +170,44 @@ export function MergedPostsList({ postId, mergedPosts: initialMergedPosts }: Mer
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Unmerge this post?</AlertDialogTitle>
+            <AlertDialogTitle>
+              {intl.formatMessage({
+                id: 'admin.feedback.merge.unmergeTitle',
+                defaultMessage: 'Unmerge this post?',
+              })}
+            </AlertDialogTitle>
             <AlertDialogDescription>
               {confirmTarget ? (
                 <>
-                  <span className="font-medium text-foreground">{confirmTarget.title}</span> will be
-                  restored as independent feedback. Its votes will no longer count toward this post.
+                  <span className="font-medium text-foreground">{confirmTarget.title}</span>{' '}
+                  {intl.formatMessage({
+                    id: 'admin.feedback.merge.unmergeDescription',
+                    defaultMessage:
+                      'will be restored as independent feedback. Its votes will no longer count toward this post.',
+                  })}
                 </>
               ) : (
-                'This post will be restored as independent feedback.'
+                intl.formatMessage({
+                  id: 'admin.feedback.merge.unmergeDescriptionPlain',
+                  defaultMessage: 'This post will be restored as independent feedback.',
+                })
               )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={unmerge.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={unmerge.isPending}>
+              {intl.formatMessage({ id: 'common.cancel', defaultMessage: 'Cancel' })}
+            </AlertDialogCancel>
             <AlertDialogAction onClick={handleUnmerge} disabled={unmerge.isPending}>
-              {unmerge.isPending ? 'Unmerging...' : 'Unmerge'}
+              {unmerge.isPending
+                ? intl.formatMessage({
+                    id: 'admin.feedback.merge.unmerging',
+                    defaultMessage: 'Unmerging...',
+                  })
+                : intl.formatMessage({
+                    id: 'admin.feedback.merge.unmerge',
+                    defaultMessage: 'Unmerge',
+                  })}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -148,6 +228,7 @@ interface MergeIntoDialogProps {
 }
 
 export function MergeIntoDialog({ postId, postTitle, open, onOpenChange }: MergeIntoDialogProps) {
+  const intl = useOptionalIntl()
   const [searchQuery, setSearchQuery] = useState(postTitle)
   const [confirmTarget, setConfirmTarget] = useState<SimilarPost | null>(null)
   const [mergingId, setMergingId] = useState<string | null>(null)
@@ -181,10 +262,21 @@ export function MergeIntoDialog({ postId, postTitle, open, onOpenChange }: Merge
         canonicalPostId: confirmTarget.id as PostId,
       })
       queryClient.invalidateQueries({ queryKey: ['merged-posts'] })
-      toast.success('Post merged successfully')
+      toast.success(
+        intl.formatMessage({
+          id: 'admin.feedback.merge.merged',
+          defaultMessage: 'Post merged successfully',
+        })
+      )
       onOpenChange(false)
     } catch (err) {
-      toastError(err, 'Failed to merge post')
+      toastError(
+        err,
+        intl.formatMessage({
+          id: 'admin.feedback.merge.mergeFailed',
+          defaultMessage: 'Failed to merge post',
+        })
+      )
     } finally {
       setMergingId(null)
       setConfirmTarget(null)
@@ -196,14 +288,27 @@ export function MergeIntoDialog({ postId, postTitle, open, onOpenChange }: Merge
       <Dialog open={open && !confirmTarget} onOpenChange={onOpenChange}>
         <DialogContent className="sm:max-w-lg p-0 gap-0">
           <DialogHeader className="px-5 pt-5 pb-3">
-            <DialogTitle className="text-base">Merge into another</DialogTitle>
-            <DialogDescription>Select the post to merge this feedback into.</DialogDescription>
+            <DialogTitle className="text-base">
+              {intl.formatMessage({
+                id: 'admin.feedback.merge.intoAnother',
+                defaultMessage: 'Merge into another',
+              })}
+            </DialogTitle>
+            <DialogDescription>
+              {intl.formatMessage({
+                id: 'admin.feedback.merge.intoAnotherDescription',
+                defaultMessage: 'Select the post to merge this feedback into.',
+              })}
+            </DialogDescription>
           </DialogHeader>
 
           <div className="px-5 pb-3">
             <Input
               type="text"
-              placeholder="Search for similar feedback..."
+              placeholder={intl.formatMessage({
+                id: 'admin.feedback.merge.searchPlaceholder',
+                defaultMessage: 'Search for similar feedback...',
+              })}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               autoFocus
@@ -212,7 +317,12 @@ export function MergeIntoDialog({ postId, postTitle, open, onOpenChange }: Merge
 
           <div className="min-h-[200px] max-h-[400px] overflow-y-auto border-t border-border/50">
             {isLoading && searchQuery.length >= 3 && (
-              <p className="text-sm text-muted-foreground py-6 text-center">Searching...</p>
+              <p className="text-sm text-muted-foreground py-6 text-center">
+                {intl.formatMessage({
+                  id: 'admin.feedback.merge.searching',
+                  defaultMessage: 'Searching...',
+                })}
+              </p>
             )}
 
             {suggestions && suggestions.length > 0 && (
@@ -248,11 +358,7 @@ export function MergeIntoDialog({ postId, postTitle, open, onOpenChange }: Merge
                       </div>
                       <div className="flex items-center gap-2 text-xs text-muted-foreground">
                         <span className="text-muted-foreground/60">
-                          {suggestion.matchStrength === 'strong'
-                            ? 'Strong match'
-                            : suggestion.matchStrength === 'good'
-                              ? 'Good match'
-                              : 'Possible match'}
+                          {matchStrengthLabel(intl, suggestion.matchStrength)}
                         </span>
                       </div>
                     </div>
@@ -263,13 +369,19 @@ export function MergeIntoDialog({ postId, postTitle, open, onOpenChange }: Merge
 
             {suggestions && suggestions.length === 0 && searchQuery.length >= 3 && !isLoading && (
               <p className="text-sm text-muted-foreground py-6 text-center">
-                No similar feedback found.
+                {intl.formatMessage({
+                  id: 'admin.feedback.merge.noMatches',
+                  defaultMessage: 'No similar feedback found.',
+                })}
               </p>
             )}
 
             {searchQuery.length < 3 && !isLoading && (
               <p className="text-sm text-muted-foreground py-6 text-center">
-                Type at least 3 characters to search.
+                {intl.formatMessage({
+                  id: 'admin.feedback.merge.minChars',
+                  defaultMessage: 'Type at least 3 characters to search.',
+                })}
               </p>
             )}
           </div>
@@ -280,10 +392,21 @@ export function MergeIntoDialog({ postId, postTitle, open, onOpenChange }: Merge
       <AlertDialog open={!!confirmTarget} onOpenChange={(o) => !o && setConfirmTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Merge this post?</AlertDialogTitle>
+            <AlertDialogTitle>
+              {intl.formatMessage({
+                id: 'admin.feedback.merge.confirmTitle',
+                defaultMessage: 'Merge this post?',
+              })}
+            </AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div className="space-y-3">
-                <p>This post will be merged into the selected post. Votes will be combined.</p>
+                <p>
+                  {intl.formatMessage({
+                    id: 'admin.feedback.merge.confirmDescription',
+                    defaultMessage:
+                      'This post will be merged into the selected post. Votes will be combined.',
+                  })}
+                </p>
                 <div className="flex items-center gap-2 rounded-lg bg-muted/50 p-3 text-sm overflow-hidden">
                   <span className="truncate flex-1 min-w-0 font-medium text-foreground">
                     {postTitle}
@@ -297,9 +420,19 @@ export function MergeIntoDialog({ postId, postTitle, open, onOpenChange }: Merge
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={merge.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={merge.isPending}>
+              {intl.formatMessage({ id: 'common.cancel', defaultMessage: 'Cancel' })}
+            </AlertDialogCancel>
             <AlertDialogAction onClick={handleMerge} disabled={merge.isPending}>
-              {mergingId ? 'Merging...' : 'Merge'}
+              {mergingId
+                ? intl.formatMessage({
+                    id: 'admin.feedback.merge.merging',
+                    defaultMessage: 'Merging...',
+                  })
+                : intl.formatMessage({
+                    id: 'portal.postDetail.metadata.merge',
+                    defaultMessage: 'Merge',
+                  })}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -325,6 +458,7 @@ export function MergeOthersDialog({
   open,
   onOpenChange,
 }: MergeOthersDialogProps) {
+  const intl = useOptionalIntl()
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [isMerging, setIsMerging] = useState(false)
@@ -339,12 +473,6 @@ export function MergeOthersDialog({
     }
   }, [open])
 
-  // AI-suggested duplicates
-  const { data: aiSuggestions } = useQuery({
-    ...mergeSuggestionQueries.forPost(postId),
-    enabled: open,
-  })
-
   // Manual search results
   const { data: searchResults, isLoading } = useQuery({
     queryKey: ['merge-suggestions', 'search-others', postId, searchQuery],
@@ -355,32 +483,6 @@ export function MergeOthersDialog({
     enabled: open && searchQuery.length >= 3,
     staleTime: 30_000,
   })
-
-  // Build AI suggestion post list (deduplicated against search results)
-  const aiPosts: Array<{
-    id: string
-    title: string
-    voteCount: number
-    status: { name: string; color: string } | null
-    reasoning?: string
-  }> = (aiSuggestions ?? [])
-    .filter((suggestion) => suggestion.targetPostId === postId)
-    .map((suggestion) => ({
-      id: suggestion.sourcePostId,
-      title: suggestion.sourcePostTitle,
-      voteCount: suggestion.sourcePostVoteCount,
-      status: suggestion.sourcePostStatusName
-        ? {
-            name: suggestion.sourcePostStatusName,
-            color: suggestion.sourcePostStatusColor ?? '',
-          }
-        : null,
-      reasoning: suggestion.llmReasoning ?? undefined,
-    }))
-
-  // Filter out AI-suggested IDs from search results to avoid duplication
-  const aiPostIds = new Set(aiPosts.map((p) => p.id))
-  const filteredSearchResults = searchResults?.filter((p) => !aiPostIds.has(p.id))
 
   const toggleSelection = (id: string) => {
     setSelectedIds((prev) => {
@@ -406,33 +508,60 @@ export function MergeOthersDialog({
       queryClient.invalidateQueries({ queryKey: ['merged-posts'] })
       queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
       queryClient.invalidateQueries({ queryKey: ['merge-suggestions'] })
-      toast.success(`Merged ${selectedIds.size} post${selectedIds.size > 1 ? 's' : ''}`)
+      toast.success(
+        intl.formatMessage(
+          {
+            id: 'admin.feedback.merge.mergedCount',
+            defaultMessage: 'Merged {count, plural, one {# post} other {# posts}}',
+          },
+          { count: selectedIds.size }
+        )
+      )
       onOpenChange(false)
     } catch (err) {
-      toastError(err, 'Failed to merge posts')
+      toastError(
+        err,
+        intl.formatMessage({
+          id: 'admin.feedback.merge.mergeManyFailed',
+          defaultMessage: 'Failed to merge posts',
+        })
+      )
     } finally {
       setIsMerging(false)
     }
   }
 
-  const hasAiSuggestions = aiPosts.length > 0
-  const hasSearchResults = filteredSearchResults && filteredSearchResults.length > 0
+  const hasSearchResults = searchResults && searchResults.length > 0
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg p-0 gap-0">
         <DialogHeader className="px-5 pt-5 pb-3">
-          <DialogTitle className="text-base">Merge into this</DialogTitle>
+          <DialogTitle className="text-base">
+            {intl.formatMessage({
+              id: 'portal.postDetail.metadata.mergeIntoThis',
+              defaultMessage: 'Merge into this',
+            })}
+          </DialogTitle>
           <DialogDescription>
-            Select posts to merge into &ldquo;{postTitle}&rdquo;. Votes and comments will be
-            combined.
+            {intl.formatMessage(
+              {
+                id: 'admin.feedback.merge.intoThisDescription',
+                defaultMessage:
+                  'Select posts to merge into “{title}”. Votes and comments will be combined.',
+              },
+              { title: postTitle }
+            )}
           </DialogDescription>
         </DialogHeader>
 
         <div className="px-5 pb-3">
           <Input
             type="text"
-            placeholder="Search for similar feedback..."
+            placeholder={intl.formatMessage({
+              id: 'admin.feedback.merge.searchPlaceholder',
+              defaultMessage: 'Search for similar feedback...',
+            })}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             autoFocus
@@ -440,55 +569,32 @@ export function MergeOthersDialog({
         </div>
 
         <div className="min-h-[200px] max-h-[400px] overflow-y-auto border-t border-border/50">
-          {/* AI Suggested section */}
-          {hasAiSuggestions && (
-            <>
-              <div className="px-4 py-2 text-xs font-medium text-muted-foreground/60 uppercase tracking-wider bg-muted/20">
-                AI Suggested
-              </div>
-              <div className="divide-y divide-border/50">
-                {aiPosts.map((post) => (
-                  <MergeOthersRow
-                    key={post.id}
-                    title={post.title}
-                    voteCount={post.voteCount}
-                    status={post.status}
-                    subtitle={post.reasoning}
-                    selected={selectedIds.has(post.id)}
-                    disabled={isMerging}
-                    onToggle={() => toggleSelection(post.id)}
-                  />
-                ))}
-              </div>
-            </>
-          )}
-
           {/* Search results section */}
           {isLoading && searchQuery.length >= 3 && (
-            <p className="text-sm text-muted-foreground py-6 text-center">Searching...</p>
+            <p className="text-sm text-muted-foreground py-6 text-center">
+              {intl.formatMessage({
+                id: 'admin.feedback.merge.searching',
+                defaultMessage: 'Searching...',
+              })}
+            </p>
           )}
 
           {hasSearchResults && (
             <>
-              {(hasAiSuggestions || searchQuery.length >= 3) && (
-                <div className="px-4 py-2 text-xs font-medium text-muted-foreground/60 uppercase tracking-wider bg-muted/20">
-                  Search results
-                </div>
-              )}
+              <div className="px-4 py-2 text-xs font-medium text-muted-foreground/60 uppercase tracking-wider bg-muted/20">
+                {intl.formatMessage({
+                  id: 'admin.feedback.merge.searchResults',
+                  defaultMessage: 'Search results',
+                })}
+              </div>
               <div className="divide-y divide-border/50">
-                {filteredSearchResults.map((post) => (
+                {searchResults.map((post) => (
                   <MergeOthersRow
                     key={post.id}
                     title={post.title}
                     voteCount={post.voteCount}
                     status={post.status}
-                    subtitle={
-                      post.matchStrength === 'strong'
-                        ? 'Strong match'
-                        : post.matchStrength === 'good'
-                          ? 'Good match'
-                          : 'Possible match'
-                    }
+                    subtitle={matchStrengthLabel(intl, post.matchStrength)}
                     selected={selectedIds.has(post.id)}
                     disabled={isMerging}
                     onToggle={() => toggleSelection(post.id)}
@@ -498,15 +604,21 @@ export function MergeOthersDialog({
             </>
           )}
 
-          {!hasAiSuggestions && !hasSearchResults && searchQuery.length >= 3 && !isLoading && (
+          {!hasSearchResults && searchQuery.length >= 3 && !isLoading && (
             <p className="text-sm text-muted-foreground py-6 text-center">
-              No similar feedback found.
+              {intl.formatMessage({
+                id: 'admin.feedback.merge.noMatches',
+                defaultMessage: 'No similar feedback found.',
+              })}
             </p>
           )}
 
-          {!hasAiSuggestions && searchQuery.length < 3 && !isLoading && (
+          {!hasSearchResults && searchQuery.length < 3 && !isLoading && (
             <p className="text-sm text-muted-foreground py-6 text-center">
-              Type at least 3 characters to search.
+              {intl.formatMessage({
+                id: 'admin.feedback.merge.minChars',
+                defaultMessage: 'Type at least 3 characters to search.',
+              })}
             </p>
           )}
         </div>
@@ -519,14 +631,26 @@ export function MergeOthersDialog({
             onClick={() => onOpenChange(false)}
             disabled={isMerging}
           >
-            Cancel
+            {intl.formatMessage({ id: 'common.cancel', defaultMessage: 'Cancel' })}
           </Button>
           <Button size="sm" onClick={handleMerge} disabled={selectedIds.size === 0 || isMerging}>
             {isMerging
-              ? 'Merging...'
+              ? intl.formatMessage({
+                  id: 'admin.feedback.merge.merging',
+                  defaultMessage: 'Merging...',
+                })
               : selectedIds.size === 0
-                ? 'Select posts to merge'
-                : `Merge ${selectedIds.size} post${selectedIds.size > 1 ? 's' : ''}`}
+                ? intl.formatMessage({
+                    id: 'admin.feedback.merge.selectPosts',
+                    defaultMessage: 'Select posts to merge',
+                  })
+                : intl.formatMessage(
+                    {
+                      id: 'admin.feedback.merge.mergeMany',
+                      defaultMessage: 'Merge {count, plural, one {# post} other {# posts}}',
+                    },
+                    { count: selectedIds.size }
+                  )}
           </Button>
         </div>
       </DialogContent>
@@ -592,10 +716,14 @@ interface MergeInfoBannerProps {
 }
 
 export function MergeInfoBanner({ mergeInfo, onNavigateToPost }: MergeInfoBannerProps) {
+  const intl = useOptionalIntl()
   return (
     <div className="mx-6 mt-4 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/40">
       <p className="text-sm text-amber-800 dark:text-amber-200">
-        This feedback has been merged into{' '}
+        {intl.formatMessage({
+          id: 'portal.postDetail.mergeBanner.mergedInto',
+          defaultMessage: 'This feedback has been merged into',
+        })}{' '}
         <button
           type="button"
           onClick={() => onNavigateToPost?.(mergeInfo.canonicalPostId)}

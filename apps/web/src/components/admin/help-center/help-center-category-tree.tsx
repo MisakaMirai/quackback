@@ -3,6 +3,7 @@ import { ChevronRightIcon } from '@heroicons/react/20/solid'
 import { CategoryIcon } from '@/components/help-center/category-icon'
 import { PencilIcon, TrashIcon, FolderPlusIcon } from '@heroicons/react/16/solid'
 import { MENU_ROW } from '@/components/ui/menu'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { cn } from '@/lib/shared/utils'
 import { buildAncestorChain, MAX_CATEGORY_DEPTH } from '@/lib/shared/help-center-tree'
 import type { KbCategoryId } from '@quackback/ids'
@@ -66,6 +67,7 @@ export function HelpCenterCategoryTree({
   onNavigate,
   actions,
 }: HelpCenterCategoryTreeProps) {
+  const intl = useOptionalIntl()
   const tree = useMemo(() => buildTree(categories), [categories])
 
   // Ancestor chain of the selected category — used for auto-expansion.
@@ -125,7 +127,14 @@ export function HelpCenterCategoryTree({
 
   return (
     <div className="space-y-0.5">
-      <div role="tree" aria-label="Help center categories" className="space-y-0.5">
+      <div
+        role="tree"
+        aria-label={intl.formatMessage({
+          id: 'admin.helpCenter.category.treeAria',
+          defaultMessage: 'Help center categories',
+        })}
+        className="space-y-0.5"
+      >
         {tree.map(renderNode)}
       </div>
     </div>
@@ -159,6 +168,40 @@ function TreeRow({
   onEdit,
   onDelete,
 }: TreeRowProps) {
+  const intl = useOptionalIntl()
+  const toggleLabel = intl.formatMessage(
+    isExpanded
+      ? { id: 'admin.helpCenter.category.collapse', defaultMessage: 'Collapse' }
+      : { id: 'admin.helpCenter.category.expand', defaultMessage: 'Expand' }
+  )
+  const countTitle =
+    category.articleCount === category.recursiveArticleCount
+      ? intl.formatMessage(
+          {
+            id: 'admin.helpCenter.articleCount',
+            defaultMessage: '{count, plural, one {# article} other {# articles}}',
+          },
+          { count: category.articleCount }
+        )
+      : intl.formatMessage(
+          {
+            id: 'admin.helpCenter.category.treeBreakdown',
+            defaultMessage: '{direct} direct, {total} in subtree',
+          },
+          { direct: category.articleCount, total: category.recursiveArticleCount }
+        )
+  const newSubLabel = intl.formatMessage({
+    id: 'admin.helpCenter.category.newSub',
+    defaultMessage: 'New sub-category',
+  })
+  const editLabel = intl.formatMessage({
+    id: 'admin.helpCenter.category.editTitle',
+    defaultMessage: 'Edit category',
+  })
+  const deleteLabel = intl.formatMessage({
+    id: 'admin.helpCenter.category.deleteTitle',
+    defaultMessage: 'Delete category',
+  })
   return (
     <div
       role="treeitem"
@@ -188,7 +231,7 @@ function TreeRow({
           type="button"
           onClick={onToggle}
           className="shrink-0 flex items-center justify-center h-5 w-5 text-muted-foreground hover:text-foreground"
-          aria-label={isExpanded ? 'Collapse' : 'Expand'}
+          aria-label={toggleLabel}
         >
           <ChevronRightIcon
             className={cn('h-3.5 w-3.5 transition-transform', isExpanded && 'rotate-90')}
@@ -197,11 +240,7 @@ function TreeRow({
       )}
       <span
         className="shrink-0 tabular-nums text-[11px] text-muted-foreground group-hover:opacity-0 transition-opacity"
-        title={
-          category.articleCount === category.recursiveArticleCount
-            ? `${category.articleCount} article${category.articleCount === 1 ? '' : 's'}`
-            : `${category.articleCount} direct, ${category.recursiveArticleCount} in subtree`
-        }
+        title={countTitle}
       >
         {formatCategoryCount(category.articleCount, category.recursiveArticleCount)}
       </span>
@@ -214,8 +253,8 @@ function TreeRow({
               onAddSub()
             }}
             className="h-5 w-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted"
-            aria-label="New sub-category"
-            title="New sub-category"
+            aria-label={newSubLabel}
+            title={newSubLabel}
           >
             <FolderPlusIcon className="h-3 w-3" />
           </button>
@@ -227,8 +266,8 @@ function TreeRow({
             onEdit()
           }}
           className="h-5 w-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted"
-          aria-label="Edit category"
-          title="Edit category"
+          aria-label={editLabel}
+          title={editLabel}
         >
           <PencilIcon className="h-3 w-3" />
         </button>
@@ -239,8 +278,8 @@ function TreeRow({
             onDelete()
           }}
           className="h-5 w-5 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-          aria-label="Delete category"
-          title="Delete category"
+          aria-label={deleteLabel}
+          title={deleteLabel}
         >
           <TrashIcon className="h-3 w-3" />
         </button>

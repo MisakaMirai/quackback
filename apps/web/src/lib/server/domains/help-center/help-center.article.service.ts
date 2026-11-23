@@ -17,13 +17,11 @@ import { rehostExternalImages } from '@/lib/server/content/rehost-images'
 import { slugify } from '@/lib/shared/utils/slugify'
 import { uniqueHelpCenterSlug } from './help-center.slug'
 import { deleteRedirectRulesForTarget } from './help-center-redirect-rules.service'
-import { cancelPendingAutoTranslations } from './help-center-translate-jobs'
 import type {
   HelpCenterArticleWithCategory,
   CreateArticleInput,
   UpdateArticleInput,
 } from './help-center.types'
-import { generateArticleEmbedding } from './help-center-embedding.service'
 import { ensureDefaultHelpCategory } from './help-center.default-category'
 import { helpCenterVisibilityConditions } from './help-center-search.service'
 import { resolveUserAvatarUrl } from '@/lib/server/domains/principals/principal-display'
@@ -244,11 +242,6 @@ export async function createArticle(
 
   const resolved = await resolveArticleWithCategory(article)
 
-  // Fire-and-forget: generate embedding for the new article
-  generateArticleEmbedding(article.id, title, content, resolved.category?.name).catch((err) =>
-    log.error({ article_id: article.id, err }, 'article embedding generation failed')
-  )
-
   return resolved
 }
 
@@ -315,13 +308,6 @@ export async function updateArticle(
 
   const resolved = await resolveArticleWithCategory(updated)
 
-  // Fire-and-forget: re-generate embedding when title or content changed
-  if (input.title || input.content || input.contentJson !== undefined) {
-    generateArticleEmbedding(id, resolved.title, resolved.content, resolved.category?.name).catch(
-      (err) => log.error({ article_id: id, err }, 'article embedding generation failed')
-    )
-  }
-
   return resolved
 }
 
@@ -333,11 +319,6 @@ export async function publishArticle(id: KbArticleId): Promise<HelpCenterArticle
     .returning()
   if (!updated) throw new NotFoundError('ARTICLE_NOT_FOUND', `Article ${id} not found`)
   const resolved = await resolveArticleWithCategory(updated)
-
-  // Auto-translate (domains/languages §H3): fire-and-forget, off by default.
-  import('./help-center-auto-translate.service')
-    .then((m) => m.queueAutoTranslateOnPublish(resolved))
-    .catch((err) => log.error({ article_id: id, err }, 'auto-translate queue import failed'))
 
   return resolved
 }
@@ -366,8 +347,6 @@ export async function deleteArticle(id: KbArticleId): Promise<void> {
   // No DB-level FK on redirect rules (polymorphic target) -- remove any rule
   // pointing at this article explicitly (domains/languages §2).
   await deleteRedirectRulesForTarget('article', id)
-  // Nothing left to translate.
-  await cancelPendingAutoTranslations(id)
 }
 
 export async function restoreArticle(id: KbArticleId): Promise<HelpCenterArticleWithCategory> {

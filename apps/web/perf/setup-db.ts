@@ -6,6 +6,7 @@
  * Usage: bun perf/setup-db.ts            (PERF_DATABASE_URL overrides the target)
  */
 import postgres from 'postgres'
+import { fileURLToPath } from 'node:url'
 import { BENCH_DATABASE_URL } from './config'
 
 const target = new URL(BENCH_DATABASE_URL)
@@ -13,7 +14,7 @@ const dbName = target.pathname.slice(1)
 const admin = new URL(target)
 admin.pathname = '/postgres'
 
-const root = new URL('../../../', import.meta.url).pathname
+const root = fileURLToPath(new URL('../../../', import.meta.url))
 const env = { ...process.env, DATABASE_URL: BENCH_DATABASE_URL }
 
 function run(label: string, cmd: string[], cwd = root): string {
@@ -34,12 +35,12 @@ await sql.end()
 const scripts = 'apps/web/e2e/scripts'
 run('migrate', ['bun', 'run', '--cwd', 'packages/db', 'db:migrate'])
 run('seed (pinned generator)', ['bun', 'apps/web/perf/seed.ts'])
-run('enable widget, support, help center and changelog', [
+run('enable support, help center and changelog', [
   'bun',
-  `${scripts}/set-widget-surfaces.ts`,
+  `${scripts}/set-support-surfaces.ts`,
   'on',
+  'all',
 ])
-run('seed identified-customer fixtures', ['bun', `${scripts}/seed-widget-identified.ts`])
 for (let i = 1; i <= 5; i++) {
   run(`seed conversation ${i}`, [
     'bun',

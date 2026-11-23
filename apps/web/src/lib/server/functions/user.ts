@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { assertNotWidgetScope, toSessionScope, type Role } from '@/lib/shared/roles'
+import type { Role } from '@/lib/shared/roles'
 import { createServerFn, createServerOnlyFn } from '@tanstack/react-start'
 import { type UserId, type PrincipalId } from '@quackback/ids'
 import { getSession } from '@/lib/server/auth/session'
@@ -181,24 +181,22 @@ export const getProfileFn = createServerFn({ method: 'GET' }).handler(
   }
 )
 
-function requireNonWidgetSession(session: Awaited<ReturnType<typeof getSession>>) {
+function requireUserSession(session: Awaited<ReturnType<typeof getSession>>) {
   if (!session?.user) {
     throw new UnauthorizedError('Authentication required')
   }
-  assertNotWidgetScope(toSessionScope(session.session.scope))
   return session
 }
 
 /**
  * Update current user's display name.
- * Widget Bearers cannot rename a shared teammate row; portal-scoped
- * customers after widget handoff still can.
+ * Portal-scoped customers can rename their own row.
  */
 export const updateProfileNameFn = createServerFn({ method: 'POST' })
   .validator(updateProfileNameSchema)
   .handler(async ({ data }: { data: UpdateProfileNameInput }): Promise<UserProfile> => {
     log.debug('update profile name')
-    const session = requireNonWidgetSession(await getSession())
+    const session = requireUserSession(await getSession())
     const { name } = data
 
     const [updated] = await db
@@ -217,12 +215,12 @@ export const updateProfileNameFn = createServerFn({ method: 'POST' })
 
 /**
  * Remove custom avatar.
- * Widget Bearers cannot clear a teammate avatar; portal-scoped customers can.
+ * Portal-scoped customers can clear their own avatar.
  */
 export const removeAvatarFn = createServerFn({ method: 'POST' }).handler(
   async (): Promise<UserProfile> => {
     log.debug('remove avatar')
-    const session = requireNonWidgetSession(await getSession())
+    const session = requireUserSession(await getSession())
 
     await deleteExistingAvatar(session.user.id)
 
@@ -249,7 +247,7 @@ export const saveAvatarKeyFn = createServerFn({ method: 'POST' })
   .validator(saveAvatarKeySchema)
   .handler(async ({ data }: { data: z.infer<typeof saveAvatarKeySchema> }) => {
     log.debug('save avatar key')
-    const session = requireNonWidgetSession(await getSession())
+    const session = requireUserSession(await getSession())
 
     await deleteExistingAvatar(session.user.id)
 

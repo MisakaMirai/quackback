@@ -36,6 +36,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Avatar } from '@/components/ui/avatar'
 import { toastError } from '@/lib/client/error-notice'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 
 export interface NewConversationTarget {
   principalId: string
@@ -62,6 +63,7 @@ export function NewConversationDialog({
   onOpenChange,
   initialTarget,
 }: NewConversationDialogProps) {
+  const intl = useOptionalIntl()
   const navigate = useNavigate()
   const formatNumber = useFormatNumber()
   const [target, setTarget] = useState<NewConversationTarget | null>(initialTarget ?? null)
@@ -126,12 +128,23 @@ export function NewConversationDialog({
       attachments?: typeof attachments
     }) => startAgentConversationFn({ data: vars }),
     onSuccess: (result) => {
-      toast.success('Message sent')
+      toast.success(
+        intl.formatMessage({
+          id: 'admin.inbox.newConversation.sent',
+          defaultMessage: 'Message sent',
+        })
+      )
       onOpenChange(false)
       void navigate({ to: '/admin/inbox', search: { c: result.conversation.id } })
     },
     onError: (error) => {
-      toastError(error, 'Failed to send message')
+      toastError(
+        error,
+        intl.formatMessage({
+          id: 'admin.inbox.newConversation.sendFailed',
+          defaultMessage: 'Failed to send message',
+        })
+      )
     },
   })
 
@@ -146,7 +159,13 @@ export function NewConversationDialog({
     // enforced pre-submit instead.
     if (content.length > MAX_CONVERSATION_MESSAGE_LENGTH) {
       toast.error(
-        `Message must be ${formatNumber(MAX_CONVERSATION_MESSAGE_LENGTH)} characters or less`
+        intl.formatMessage(
+          {
+            id: 'admin.inbox.newConversation.tooLong',
+            defaultMessage: 'Message must be {count} characters or less',
+          },
+          { count: formatNumber(MAX_CONVERSATION_MESSAGE_LENGTH) }
+        )
       )
       return
     }
@@ -162,11 +181,23 @@ export function NewConversationDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>New conversation</DialogTitle>
+          <DialogTitle>
+            {intl.formatMessage({
+              id: 'portal.support.newConversation',
+              defaultMessage: 'New conversation',
+            })}
+          </DialogTitle>
           <DialogDescription>
             {target
-              ? 'The message opens a conversation and is also emailed to them.'
-              : 'Pick who to message. Users without an email address can’t be reached.'}
+              ? intl.formatMessage({
+                  id: 'admin.inbox.newConversation.descriptionWithTarget',
+                  defaultMessage: 'The message opens a conversation and is also emailed to them.',
+                })
+              : intl.formatMessage({
+                  id: 'admin.inbox.newConversation.descriptionPick',
+                  defaultMessage:
+                    'Pick who to message. Users without an email address can’t be reached.',
+                })}
           </DialogDescription>
         </DialogHeader>
 
@@ -187,18 +218,35 @@ export function NewConversationDialog({
                   type="button"
                   onClick={() => setTarget(null)}
                   className="text-muted-foreground hover:text-foreground transition-colors"
-                  aria-label="Choose a different user"
+                  aria-label={intl.formatMessage({
+                    id: 'admin.inbox.newConversation.changeUserAria',
+                    defaultMessage: 'Choose a different user',
+                  })}
                 >
                   <ArrowLeftIcon className="size-4" />
                 </button>
               )}
-              <Avatar src={target.image} name={target.name ?? 'User'} className="size-7 text-xs" />
+              <Avatar
+                src={target.image}
+                name={
+                  target.name ?? intl.formatMessage({ id: 'common.user', defaultMessage: 'User' })
+                }
+                className="size-7 text-xs"
+              />
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-sm text-foreground">
-                  {target.name || 'Unnamed user'}
+                  {target.name ||
+                    intl.formatMessage({
+                      id: 'common.userPicker.unnamed',
+                      defaultMessage: 'Unnamed user',
+                    })}
                 </span>
                 <span className="block truncate text-xs text-muted-foreground">
-                  {realEmail(target.email) ?? 'No email'}
+                  {realEmail(target.email) ??
+                    intl.formatMessage({
+                      id: 'common.userPicker.noEmail',
+                      defaultMessage: 'No email',
+                    })}
                 </span>
               </span>
             </div>
@@ -216,7 +264,10 @@ export function NewConversationDialog({
                   features={CONVERSATION_EDITOR_FEATURES}
                   autofocus
                   minHeight="100px"
-                  placeholder="Write your message…"
+                  placeholder={intl.formatMessage({
+                    id: 'admin.inbox.newConversation.placeholder',
+                    defaultMessage: 'Write your message…',
+                  })}
                 />
               </Suspense>
               <ComposerAttachmentTray
@@ -241,13 +292,24 @@ export function NewConversationDialog({
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 className="flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted disabled:opacity-40 transition-colors"
-                aria-label="Attach files"
+                aria-label={intl.formatMessage({
+                  id: 'widget.messenger.attach',
+                  defaultMessage: 'Attach files',
+                })}
               >
                 <PaperClipIcon className="h-4 w-4" />
               </button>
               <Button onClick={submit} disabled={!canSend}>
                 <PaperAirplaneIcon className="me-1.5 size-4" />
-                {send.isPending ? 'Sending…' : 'Send message'}
+                {send.isPending
+                  ? intl.formatMessage({
+                      id: 'admin.inbox.newConversation.sending',
+                      defaultMessage: 'Sending…',
+                    })
+                  : intl.formatMessage({
+                      id: 'admin.inbox.newConversation.send',
+                      defaultMessage: 'Send message',
+                    })}
               </Button>
             </div>
           </div>

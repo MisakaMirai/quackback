@@ -13,10 +13,7 @@ import { channelSettingsQueries } from '@/lib/client/queries/channel-settings'
 import { githubChannelStatusQuery } from '@/integrations/github/ui/github-channel-status-query'
 import { useUpdateConversationRouting } from '@/lib/client/mutations/channel-settings'
 import { getChannelDescriptor } from '@/lib/shared/channels'
-import {
-  isPortalSupportSurfaceEnabled,
-  isWidgetMessengerEnabled,
-} from '@/lib/shared/support-surfaces'
+import { isPortalSupportSurfaceEnabled } from '@/lib/shared/support-surfaces'
 import { useWorkspaceSettings } from '@/lib/client/hooks/use-root-context'
 
 // The hub's GitHub row may be up to a minute old, like its email row.
@@ -25,7 +22,6 @@ const HUB_STATUS_STALE_MS = 60_000
 export function ChannelsHubPage() {
   const settings = useWorkspaceSettings()
   const flags = settings?.featureFlags as FeatureFlags | undefined
-  const widget = useSuspenseQuery(settingsQueries.widgetConfig())
   const portal = useSuspenseQuery(settingsQueries.portalConfig())
   const emailStatusQuery = useQuery(channelSettingsQueries.emailStatus())
   const githubStatusQuery = useQuery({
@@ -42,8 +38,7 @@ export function ChannelsHubPage() {
   const email = getChannelDescriptor('email')
   const github = getChannelDescriptor('github')
   const messengerOn =
-    isWidgetMessengerEnabled(flags, widget.data) ||
-    isPortalSupportSurfaceEnabled(flags, portal.data)
+    Boolean(flags?.supportInbox) || isPortalSupportSurfaceEnabled(flags, portal.data)
   const emailSubtitle = emailStatusQuery.data?.inboundDomain ?? 'Add an inbound route'
   const githubStatus = githubStatusQuery.data
   const githubAttention =
@@ -64,7 +59,7 @@ export function ChannelsHubPage() {
             to="/admin/settings/channels/messenger"
             leading={<RowIcon icon={ChatBubbleLeftRightIcon} />}
             title={messenger?.label ?? 'Messenger'}
-            meta="Widget and portal"
+            meta="Portal live chat"
             badges={messengerOn ? undefined : <StateBadge state="off" />}
           />
           <SettingsListRow

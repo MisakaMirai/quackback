@@ -6,7 +6,7 @@ import { adminPageHead } from '@/lib/client/admin-head'
  * and the old e2e URL land on the MCP tab.
  */
 export const Route = createFileRoute('/admin/settings/mcp')({
-  head: adminPageHead('MCP settings'),
+  head: adminPageHead('MCP settings', 'admin.pageTitle.mcpSettings'),
   beforeLoad: () => {
     throw redirect({ to: '/admin/settings/developers', search: { tab: 'mcp' } })
   },

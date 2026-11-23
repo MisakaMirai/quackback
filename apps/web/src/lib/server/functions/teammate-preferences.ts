@@ -1,8 +1,7 @@
 /**
  * Per-teammate preferences that live on the `user` row but aren't part of
  * the shared profile (name/avatar) in user.ts -- kept in their own module so
- * future preferences (P2-D inbox translation and beyond) have a home that
- * isn't the general profile file.
+ * future preferences have a home that isn't the general profile file.
  *
  * Both functions below are self-scoped: `requireAuth()` establishes the
  * caller's identity (any authenticated teammate, no permission check --
@@ -28,9 +27,8 @@ const log = logger.child({ component: 'teammate-preferences' })
  * Loose BCP-47 language-tag shape check: a 2-3 letter primary subtag
  * followed by zero or more hyphenated subtags (script/region/variant), e.g.
  * "en", "fr", "pt-BR", "zh-Hans-CN". Deliberately not validated against a
- * fixed catalogue -- inbox translation needs to support any language a
- * teammate might read, not just the languages the product UI itself ships
- * translations for.
+ * fixed catalogue -- a teammate may prefer any language the product doesn't
+ * itself ship translations for.
  */
 const BCP47_TAG_REGEX = /^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})*$/
 

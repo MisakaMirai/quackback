@@ -340,9 +340,7 @@ describe('AddPeopleDialog', () => {
     const roleSelect = screen.getByLabelText('Role')
     expect(screen.queryByText(/Admins can change settings/)).toBeNull()
     fireEvent.change(roleSelect, { target: { value: 'admin' } })
-    expect(
-      screen.getByText('Admins can change settings, billing, members and sign-in.')
-    ).toBeInTheDocument()
+    expect(screen.getByText('Admins can change settings, members and sign-in.')).toBeInTheDocument()
     // Custom roles are listed under their own heading.
     expect(await screen.findByRole('option', { name: 'Editor' })).toBeInTheDocument()
 
@@ -352,7 +350,7 @@ describe('AddPeopleDialog', () => {
     expect(screen.getByRole('option', { name: /^Member - / })).not.toBeDisabled()
   })
 
-  it('stops at the seat limit: amber message, billing link, primary disabled', async () => {
+  it('stops at the seat limit: amber message, no upgrade link, primary disabled', async () => {
     fns.getTeamSeatsFn.mockResolvedValue({ used: 9, limit: 10 })
     renderDialog()
     expect(await screen.findByText('9 / 10')).toBeInTheDocument()
@@ -366,11 +364,8 @@ describe('AddPeopleDialog', () => {
     await pick(/Omar Haddad/)
     const alert = screen.getByRole('alert')
     expect(alert).toHaveTextContent(
-      'Adding 2 people needs 11 seats and the plan has 10. Remove 1, or add seats in Plan & billing.'
+      'Adding 2 people needs 11 seats and the plan has 10. Remove 1, or ask a workspace owner to add seats.'
     )
-    expect(
-      within(alert).getByRole('link', { name: 'add seats in Plan & billing' })
-    ).toHaveAttribute('href', '/admin/settings/billing')
     expect(primary()).toBeDisabled()
     // Nothing would happen, so nothing is summarised.
     expect(screen.queryByRole('list', { name: 'What happens' })).toBeNull()
@@ -496,7 +491,7 @@ describe('AddPeopleDialog', () => {
     fireEvent.click(primary())
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'Adding 1 person needs 1 seat, and 0 are free. Remove 1, or add seats in Plan & billing.'
+      'Adding 1 person needs 1 seat, and 0 are free. Remove 1, or ask a workspace owner to add seats.'
     )
     expect(fns.toastSuccess).not.toHaveBeenCalled()
   })

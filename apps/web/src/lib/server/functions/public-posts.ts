@@ -470,7 +470,7 @@ export const runCreatePublicPost = createServerOnlyFn(async function runCreatePu
       content,
       contentJson: contentJson ? sanitizeTiptapContent(contentJson) : undefined,
       statusId: defaultStatus?.id,
-      widgetMetadata: metadata,
+      clientMetadata: metadata,
       customFields,
     },
     author,
@@ -885,10 +885,8 @@ export const findSimilarPostsFn = createServerFn({ method: 'GET' })
         return []
       }
 
-      const { db, posts, boards, postStatuses, eq, and, isNull, desc, asc, sql, inArray } =
+      const { db, posts, boards, postStatuses, eq, and, isNull, desc, sql, inArray } =
         await import('@/lib/server/db')
-      const { generateEmbedding } =
-        await import('@/lib/server/domains/embeddings/embedding.service')
       const { postViewFilter } = await import('@/lib/server/policy')
 
       // Resolve the actor so the audience + moderation filter applies the
@@ -904,9 +902,7 @@ export const findSimilarPostsFn = createServerFn({ method: 'GET' })
       const limit = data.limit ?? 5
       const fetchLimit = limit * 2 // Fetch more for merging
 
-      // Run hybrid search: vector + full-text IN PARALLEL
-      // FTS runs immediately while embedding is generated (network call)
-      const ftsPromise = db
+      const ftsMatches = await db
         .select({
           id: posts.id,
           title: posts.title,
@@ -934,92 +930,12 @@ export const findSimilarPostsFn = createServerFn({ method: 'GET' })
           desc(posts.voteCount)
         )
         .limit(fetchLimit)
-
-      // Vector search: embedding generation + vector query
-      const vectorPromise = (async (): Promise<RawSearchResult[]> => {
-        try {
-          const embedding = await generateEmbedding(searchQuery)
-          if (!embedding) return []
-
-          const vectorStr = `[${embedding.join(',')}]`
-          const matches = await db
-            .select({
-              id: posts.id,
-              title: posts.title,
-              voteCount: posts.voteCount,
-              statusId: posts.statusId,
-              boardId: posts.boardId,
-              score: sql<number>`1 - (${posts.embedding} <=> ${vectorStr}::vector)`.as('score'),
-            })
-            .from(posts)
-            .innerJoin(boards, eq(posts.boardId, boards.id))
-            .where(
-              and(
-                isNull(posts.deletedAt),
-                isNull(posts.canonicalPostId),
-                isNull(boards.deletedAt),
-                visibilityFilter,
-                sql`${posts.embedding} IS NOT NULL`,
-                sql`1 - (${posts.embedding} <=> ${vectorStr}::vector) >= 0.35`
-              )
-            )
-            .orderBy(asc(sql`${posts.embedding} <=> ${vectorStr}::vector`))
-            .limit(fetchLimit)
-
-          log.debug({ count: matches.length }, 'vector search results')
-          return matches.map(toRawResult)
-        } catch (error) {
-          log.warn({ err: error }, 'vector search failed, using full-text only')
-          return []
-        }
-      })()
-
-      // Wait for both searches in parallel
-      const [ftsMatches, vectorResults] = await Promise.all([ftsPromise, vectorPromise])
-
-      // Normalize FTS score to 0-1 range (ts_rank typically returns 0-0.5)
-      const ftsResults = ftsMatches.map((r) => ({
-        ...toRawResult(r),
-        score: Math.min(Number(r.score) * 2, 1),
-      }))
-      log.debug({ count: ftsResults.length }, 'full-text search results')
-
-      // 3. Merge results (dedupe by ID, combine scores)
-      const scoreMap = new Map<
-        string,
-        { result: RawSearchResult; vectorScore: number; ftsScore: number }
-      >()
-
-      for (const r of vectorResults) {
-        scoreMap.set(r.id, { result: r, vectorScore: r.score, ftsScore: 0 })
-      }
-
-      for (const r of ftsResults) {
-        const existing = scoreMap.get(r.id)
-        if (existing) {
-          existing.ftsScore = r.score
-        } else {
-          scoreMap.set(r.id, { result: r, vectorScore: 0, ftsScore: r.score })
-        }
-      }
-
-      // Calculate hybrid score: boost when both searches match
-      const merged = Array.from(scoreMap.values())
-        .map(({ result, vectorScore, ftsScore }) => {
-          const score = ftsScore > 0 ? Math.min(vectorScore + ftsScore * 0.3, 1) : vectorScore
-          return { ...result, score }
-        })
-        .sort((a, b) => b.score - a.score)
+      const merged = ftsMatches
+        .map((r) => ({ ...toRawResult(r), score: Math.min(Number(r.score) * 2, 1) }))
         .slice(0, limit)
 
-      log.debug({ count: merged.length }, 'hybrid search merged results')
+      log.debug({ count: merged.length }, 'full-text search results')
 
-      if (merged.length === 0) {
-        log.debug('no matches found')
-        return []
-      }
-
-      // Fetch status and board info for matched posts
       const statusIds = [
         ...new Set(merged.filter((r) => r.statusId).map((r) => r.statusId!)),
       ] as PostStatusId[]

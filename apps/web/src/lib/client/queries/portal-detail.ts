@@ -85,7 +85,7 @@ export interface PublicPostDetailView {
   /**
    * Server-computed per-board capability for the requesting viewer (composes
    * the board's vote/comment tier with the workspace anonymous switch). The
-   * widget passes its Bearer identity to fetchPublicPostDetail and refetches on
+   * portal passes its cookie identity to fetchPublicPostDetail and refetches on
    * identify, so these reflect the real viewer. Undefined only on legacy/cached
    * payloads — consumers should treat undefined as "not allowed".
    */

@@ -16,10 +16,11 @@
  */
 import { chromium, type BrowserContext } from '@playwright/test'
 import postgres from 'postgres'
+import { fileURLToPath } from 'node:url'
 import { fromUuid } from '@quackback/ids'
 import { BENCH_DATABASE_URL, BENCH_URL, signedInContext, startBenchServer } from './config'
 
-const appDir = process.env.PERF_APP_DIR ?? new URL('..', import.meta.url).pathname
+const appDir = process.env.PERF_APP_DIR ?? fileURLToPath(new URL('..', import.meta.url))
 const baseURL = BENCH_URL
 
 /**
@@ -61,7 +62,7 @@ const PAGES: { path: string | (() => Promise<string>); as: 'anon' | 'admin' }[] 
   { path: '/roadmap', as: 'anon' },
   { path: '/changelog', as: 'anon' },
   { path: latestChangelogPath, as: 'anon' },
-  { path: '/hc', as: 'anon' },
+  { path: '/hc/en', as: 'anon' },
   { path: '/?sort=trending', as: 'admin' },
   { path: '/admin/feedback', as: 'admin' },
   // A date filter is a calendar day, the same for every visitor. The day is
@@ -77,15 +78,9 @@ const PAGES: { path: string | (() => Promise<string>); as: 'anon' | 'admin' }[] 
   { path: '/admin/feedback/moderation', as: 'admin' },
   { path: '/admin/notifications', as: 'admin' },
   { path: '/admin/analytics', as: 'admin' },
-  { path: '/admin/settings/agent', as: 'admin' },
-  { path: '/admin/settings/connectors', as: 'admin' },
-  { path: '/admin/settings/copilot', as: 'admin' },
-  { path: '/admin/settings/skills', as: 'admin' },
-  { path: '/admin/settings/workflows', as: 'admin' },
   { path: '/admin/settings/members', as: 'admin' },
   { path: '/admin/settings/security/audit-log', as: 'admin' },
   { path: '/admin/settings/portal', as: 'admin' },
-  { path: '/admin/settings/widget', as: 'admin' },
 ]
 
 // Hydration mismatch in React's minified production errors, or the

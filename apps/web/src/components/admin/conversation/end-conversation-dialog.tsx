@@ -21,6 +21,7 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/shared/utils'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 
 interface EndConversationDialogProps {
   conversationId: ConversationId
@@ -42,6 +43,7 @@ export const EndConversationDialog = memo(function EndConversationDialog({
   onOpenChange,
   onEnded,
 }: EndConversationDialogProps) {
+  const intl = useOptionalIntl()
   const [reason, setReason] = useState<ConversationEndReason | null>(null)
   const [note, setNote] = useState('')
 
@@ -63,26 +65,52 @@ export const EndConversationDialog = memo(function EndConversationDialog({
         },
       }),
     onSuccess: () => {
-      toast.success('Conversation ended')
+      toast.success(
+        intl.formatMessage({
+          id: 'widget.messenger.system.ended',
+          defaultMessage: 'Conversation ended',
+        })
+      )
       onOpenChange(false)
       onEnded()
     },
-    onError: () => toast.error('Failed to end conversation'),
+    onError: () =>
+      toast.error(
+        intl.formatMessage({
+          id: 'admin.inbox.end.failed',
+          defaultMessage: 'Failed to end conversation',
+        })
+      ),
   })
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>End conversation</DialogTitle>
+          <DialogTitle>
+            {intl.formatMessage({
+              id: 'admin.inbox.end.title',
+              defaultMessage: 'End conversation',
+            })}
+          </DialogTitle>
           <DialogDescription>
-            Pick a reason so this conversation counts toward your resolution stats. You can add an
-            optional note for the team.
+            {intl.formatMessage({
+              id: 'admin.inbox.end.description',
+              defaultMessage:
+                'Pick a reason so this conversation counts toward your resolution stats. You can add an optional note for the team.',
+            })}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
-          <div className="space-y-1.5" role="radiogroup" aria-label="End reason">
+          <div
+            className="space-y-1.5"
+            role="radiogroup"
+            aria-label={intl.formatMessage({
+              id: 'admin.inbox.end.reasonAria',
+              defaultMessage: 'End reason',
+            })}
+          >
             {CONVERSATION_END_REASONS.map((value) => {
               const selected = reason === value
               return (
@@ -107,13 +135,21 @@ export const EndConversationDialog = memo(function EndConversationDialog({
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="end-note">Note (optional)</Label>
+            <Label htmlFor="end-note">
+              {intl.formatMessage({
+                id: 'admin.inbox.end.noteLabel',
+                defaultMessage: 'Note (optional)',
+              })}
+            </Label>
             <Textarea
               id="end-note"
               value={note}
               maxLength={2000}
               rows={3}
-              placeholder="Add context for the team…"
+              placeholder={intl.formatMessage({
+                id: 'admin.inbox.end.notePlaceholder',
+                defaultMessage: 'Add context for the team…',
+              })}
               onChange={(e) => setNote(e.target.value)}
             />
           </div>
@@ -121,14 +157,17 @@ export const EndConversationDialog = memo(function EndConversationDialog({
 
         <DialogFooter>
           <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
-            Cancel
+            {intl.formatMessage({ id: 'common.cancel', defaultMessage: 'Cancel' })}
           </Button>
           <Button
             type="button"
             disabled={!reason || end.isPending}
             onClick={() => reason && end.mutate({ reason, note })}
           >
-            End conversation
+            {intl.formatMessage({
+              id: 'admin.inbox.end.title',
+              defaultMessage: 'End conversation',
+            })}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -1,18 +1,13 @@
-/** Message-family event declarations (WO-2). created/note_created are workflow triggers. */
+/** Message-family event declarations (WO-2). */
 import { decl } from './helpers'
 
 const S = 'conversation'
 
-export const messageCreated = decl(
-  'message.created',
-  'conversation_message',
-  { webhook: true, workflow: true },
-  S
-)
+export const messageCreated = decl('message.created', 'conversation_message', { webhook: true }, S)
 export const messageNoteCreated = decl(
   'message.note_created',
   'conversation_message',
-  { webhook: true, workflow: true },
+  { webhook: true },
   S
 )
 export const messageDeleted = decl('message.deleted', 'conversation_message', { webhook: true }, S)

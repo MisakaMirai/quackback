@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useId, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate } from '@tanstack/react-router'
 import { useSuspenseQuery, useQueryClient, type InfiniteData } from '@tanstack/react-query'
@@ -63,6 +63,7 @@ export function RoadmapAdmin() {
   const changeStatus = useChangePostStatusId()
   const setEta = useSetPostEta()
   const queryClient = useQueryClient()
+  const intl = useIntl()
 
   const handleCardClick = (postId: string) => {
     navigate({ search: { ...search, post: postId } })
@@ -79,6 +80,7 @@ export function RoadmapAdmin() {
 
   // Distance threshold: drag only starts after moving 8px (like Trello)
   // This allows click to work normally if pointer doesn't move much
+  const dndId = useId()
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
@@ -164,7 +166,12 @@ export function RoadmapAdmin() {
             // Restore the two column caches we hand-moved above.
             if (previousSource) queryClient.setQueryData(sourceKey, previousSource)
             if (previousTarget) queryClient.setQueryData(targetKey, previousTarget)
-            toast.error('Could not move the post. Try again.')
+            toast.error(
+              intl.formatMessage({
+                id: 'admin.roadmap.moveFailed',
+                defaultMessage: 'Could not move the post. Try again.',
+              })
+            )
           },
         }
       )
@@ -174,13 +181,20 @@ export function RoadmapAdmin() {
       if (bucket && (bucket.targetMonth ?? null) !== currentEta) {
         setEta.mutate(
           { postId: active.id as PostId, eta: bucket.targetMonth },
-          { onError: () => toast.error('Could not update the ETA. Try again.') }
+          {
+            onError: () =>
+              toast.error(
+                intl.formatMessage({
+                  id: 'admin.roadmap.etaUpdateFailed',
+                  defaultMessage: 'Could not update the ETA. Try again.',
+                })
+              ),
+          }
         )
       }
     }
   }
 
-  const intl = useIntl()
   const [createOpen, setCreateOpen] = useState(false)
   // Ideas reach the roadmap from Feedback, by their status or ETA.
   const moveIdeaAction = (
@@ -229,6 +243,7 @@ export function RoadmapAdmin() {
             </div>
 
             <DndContext
+              id={dndId}
               sensors={sensors}
               onDragStart={handleDragStart}
               onDragEnd={handleDragEnd}
@@ -262,12 +277,23 @@ export function RoadmapAdmin() {
                         title={bucket.label}
                         subtitle={
                           bucket.targetMonth
-                            ? `Sets ETA to ${new Intl.DateTimeFormat('en-US', {
-                                month: 'short',
-                                year: 'numeric',
-                                timeZone: 'UTC',
-                              }).format(new Date(bucket.targetMonth))}`
-                            : 'Clears ETA'
+                            ? intl.formatMessage(
+                                {
+                                  id: 'admin.roadmap.eta.sets',
+                                  defaultMessage: 'Sets ETA to {date}',
+                                },
+                                {
+                                  date: intl.formatDate(new Date(bucket.targetMonth), {
+                                    month: 'short',
+                                    year: 'numeric',
+                                    timeZone: 'UTC',
+                                  }),
+                                }
+                              )
+                            : intl.formatMessage({
+                                id: 'admin.roadmap.eta.clears',
+                                defaultMessage: 'Clears ETA',
+                              })
                         }
                         color={bucket.noEta ? '#6b7280' : '#3b82f6'}
                         filters={filters}
@@ -303,7 +329,13 @@ export function RoadmapAdmin() {
                 }
               />
             ) : (
-              <EmptyState icon={MapIcon} title="No roadmap selected" />
+              <EmptyState
+                icon={MapIcon}
+                title={intl.formatMessage({
+                  id: 'admin.empty.roadmap.noSelection',
+                  defaultMessage: 'No roadmap selected',
+                })}
+              />
             )}
           </div>
         )}

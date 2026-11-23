@@ -223,35 +223,10 @@ export const SIDE_EFFECT_LEDGER: readonly LedgerRegistration[] = [
       'Delivery history rendered in the webhooks settings list. Nothing schedules off it, and restoring it verbatim keeps it consistent with the restored events log it summarises. This is the rule for every display-only recency stamp here: preserve, because a restore should not destroy data it does not have to.',
   },
   {
-    column: schema.postSentiment.processedAt,
-    policy: 'preserve',
-    reason:
-      'Internal analysis stamp with no outbound effect; the pipeline keys on the row existing, not on this value. It is also NOT NULL, so it can be neither settled nor reset.',
-  },
-  {
     column: schema.emailSendingDomains.lastCheckedAt,
     policy: 'preserve',
     reason:
       'Written only alongside a successful DNS verification, and no sweep polls on it. It is a display companion to verified_at.',
-  },
-  {
-    column: schema.domains.lastCheckedAt,
-    policy: 'preserve',
-    reason:
-      'Stamped on every ownership check of a domain added by name, for the "Last checked" line. Nothing outbound reads it, and the ownership watch checks every verified row each day whatever it holds, using it only to order them, so a rewound value only shows an older check time until the next one.',
-  },
-  {
-    column: schema.domains.ownershipWarningSentAt,
-    policy: 'settle',
-    strategy: 'stamp-pending',
-    reason:
-      'The delivery receipt for the missing ownership record warning on a domain added by name, the same shape as email_sending_domains.ownership_warning_sent_at. Every watch check of a verified row in its grace period sends the warning while this is NULL, so a rewind warns the managers again about a period they were already warned about. Scoped to rows whose period had started by the restore.',
-    eligibleWhen: (restoredTo) =>
-      and(
-        eq(schema.domains.status, 'verified'),
-        isNotNull(schema.domains.ownershipMissingSince),
-        lte(schema.domains.ownershipMissingSince, restoredTo)
-      )!,
   },
   {
     column: schema.emailSendingDomains.ownershipWarningSentAt,
@@ -266,12 +241,6 @@ export const SIDE_EFFECT_LEDGER: readonly LedgerRegistration[] = [
         lte(schema.emailSendingDomains.ownershipMissingSince, restoredTo)
       )!,
   },
-  {
-    column: schema.assistantPendingActions.executedAt,
-    policy: 'preserve',
-    reason:
-      'The record of an action the assistant already carried out. Nothing scans for approved-but-unexecuted rows, so a rewind does not re-execute anything; the stamp is evidence, not a work queue.',
-  },
 
   {
     column: schema.integrations.lastOutboundAt,
@@ -283,12 +252,6 @@ export const SIDE_EFFECT_LEDGER: readonly LedgerRegistration[] = [
     column: schema.integrations.lastInboundAt,
     policy: 'preserve',
     reason: 'Inbound twin of last_outbound_at, feeding the same panel under the same rule.',
-  },
-  {
-    column: schema.connectors.lastSyncedAt,
-    policy: 'reset',
-    reason:
-      'When the remote MCP tool catalogue was last refreshed. Nothing outbound reads it — sync is operator-initiated or scheduled against the remote, not drained on IS NULL — so after a restore an older value merely reports the catalogue as staler than it is, and the next sync overwrites it.',
   },
 ]
 
@@ -302,11 +265,6 @@ export const SIDE_EFFECT_LEDGER: readonly LedgerRegistration[] = [
  * change gets reclassified instead of quietly inheriting the exemption.
  */
 export const SIDE_EFFECT_LEDGER_EXEMPTIONS: readonly LedgerExemption[] = [
-  {
-    column: schema.assistantInvolvements.escalationOfferedAt,
-    reason:
-      'Declared but not wired: no code writes it and no code reads it, so there is nothing for a restore to get wrong. Reclassify as settle with stamp-pending the moment an escalation path starts draining it, because a rewound stamp would then offer a human a second time to a conversation that already had the offer.',
-  },
   {
     column: schema.deviceCode.lastPolledAt,
     reason:

@@ -40,15 +40,6 @@ export async function createWebhook(
   createdById: PrincipalId
 ): Promise<CreateWebhookResult> {
   log.debug({ event_count: input.events.length, created_by_id: createdById }, 'create webhook')
-  // Two questions, asked in order: does this workspace's plan include webhooks,
-  // and has the operator capped the feature. Both refuse with a 402; only the
-  // first can name the plan that would grant it. No-op on any install without a
-  // plan, which is every self-hosted one — see domains/settings/cloud/entitlements.ts.
-  const { requireEntitlement } = await import('@/lib/server/domains/settings/cloud/entitlements')
-  await requireEntitlement('webhooks')
-  const { assertTierFeature } = await import('@/lib/server/domains/settings/tier-enforce')
-  await assertTierFeature('webhooks', 'Webhooks')
-
   // Validate URL
   if (!input.url?.trim()) {
     throw new ValidationError('VALIDATION_ERROR', 'Webhook URL is required')

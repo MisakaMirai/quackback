@@ -41,7 +41,6 @@ vi.mock('@/lib/server/domains/principals/principal.service', () => ({
 }))
 
 const { addTeamMembersFn, changeTeamRoleFn } = await import('../team-people')
-const { SeatLimitError } = await import('@/lib/server/domains/principals/seat-limit')
 
 const input = { principalIds: ['principal_a'], emails: ['x@example.com'], role: 'member' as const }
 
@@ -65,19 +64,6 @@ describe('addTeamMembersFn', () => {
       ok: true,
       added: [{ principalId: 'principal_a', name: 'A' }],
       invited: [],
-    })
-  })
-
-  it('returns a seat refusal with the needed and free counts', async () => {
-    hoisted.addTeamMembers.mockRejectedValue(
-      new SeatLimitError({ needed: 2, free: 1, used: 9, max: 10 })
-    )
-    expect(await addTeamMembersFn({ data: input })).toEqual({
-      ok: false,
-      code: 'SEAT_LIMIT',
-      message: expect.stringMatching(/needs 2 and 1 is free/),
-      needed: 2,
-      free: 1,
     })
   })
 
@@ -148,7 +134,6 @@ describe('changeTeamRoleFn', () => {
       new ForbiddenError('CANNOT_MODIFY_SELF', 'You cannot change your own role'),
       'CANNOT_MODIFY_SELF',
     ],
-    [new SeatLimitError({ needed: 1, free: 0, used: 3, max: 3 }), 'SEAT_LIMIT'],
     [new ValidationError('NOT_ELIGIBLE', 'has not signed in'), 'NOT_ELIGIBLE'],
     [new NotFoundError('MEMBER_NOT_FOUND', 'Team member not found'), 'NOT_FOUND'],
   ])('returns %s as a refusal', async (error, code) => {

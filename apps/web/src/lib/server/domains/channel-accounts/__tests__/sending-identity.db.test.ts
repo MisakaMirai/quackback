@@ -12,7 +12,7 @@ import { createId, type SendingDomainId, type TeamId } from '@quackback/ids'
 import type { SesDomainIdentity, SesIdentityCreation } from '@quackback/email/ses-identity'
 
 import { createDbTestFixture, testDb } from '@/lib/server/__tests__/db-test-fixture'
-import { eq, sql, teams, emailSendingDomains, type SendingDomainDnsRecord } from '@/lib/server/db'
+import { eq, teams, emailSendingDomains, type SendingDomainDnsRecord } from '@/lib/server/db'
 
 vi.mock('@/lib/server/db', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/server/db')>()),
@@ -141,24 +141,6 @@ function publish(domain: string, records: SendingDomainDnsRecord[]) {
   }
 }
 
-/**
- * The plan's cap on sending domains, settable per test.
- *
- * Mocked rather than written into settings because the real reader caches per
- * process, so a row written in one rolled-back transaction would leak its
- * answer into the next test.
- */
-const maxSendingDomains = vi.fn<() => number | null>(() => null)
-vi.mock('@/lib/server/domains/settings/tier-limits.service', async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import('@/lib/server/domains/settings/tier-limits.service')>()
-  const { OSS_TIER_LIMITS } = await import('@/lib/server/domains/settings/tier-limits.types')
-  return {
-    ...actual,
-    getTierLimits: async () => ({ ...OSS_TIER_LIMITS, maxSendingDomains: maxSendingDomains() }),
-  }
-})
-
 import { deleteSendingDomain, getSendingDomain } from '../channel-account.service'
 import {
   OWNERSHIP_VALUE_PREFIX,
@@ -242,7 +224,6 @@ describe.skipIf(!fixture.available)('sending-identity (real DB, rolled back)', (
     putDkimKey.mockReset().mockResolvedValue()
     checkedRecords.mockReset()
     ownershipResolves.mockReset().mockResolvedValue(false)
-    maxSendingDomains.mockReset().mockReturnValue(null)
     zone.clear()
   })
   afterEach(async () => {
@@ -839,47 +820,11 @@ describe.skipIf(!fixture.available)('sending-identity (real DB, rolled back)', (
     expect(await refreshSendingDomain(createId('sending_domain') as SendingDomainId)).toBeNull()
   })
 
-  describe('the plan cap on an account-wide resource', () => {
-    it('refuses past the cap before any provider call is made', async () => {
-      // The order is the point. The identity quota belongs to the provider
-      // account every workspace shares, so the create that must not happen is
-      // the one that consumes a slot of it.
-      const teamId = await seedTeam()
-      maxSendingDomains.mockReturnValue(1)
-      await provisionSendingDomain({ owningTeamId: teamId, domain: 'a.example' })
-      createIdentity.mockClear()
-
-      await expect(
-        provisionSendingDomain({ owningTeamId: teamId, domain: 'b.example' })
-      ).rejects.toThrow(/sending domains/i)
-      expect(createIdentity).not.toHaveBeenCalled()
-    })
-
-    it('counts and inserts under one lock, so concurrent adds cannot both pass', async () => {
-      // A read-compare-then-act check is honest about the count it saw and
-      // useless about the count that results: two callers read the same number,
-      // both pass, both consume a slot. What closes that window is the count
-      // and the insert sharing a transaction that holds a lock across both, so
-      // the lock's existence is the property worth asserting — behaviour cannot
-      // show it from one connection, and this can.
-      const teamId = await seedTeam()
-      maxSendingDomains.mockReturnValue(5)
-      await provisionSendingDomain({ owningTeamId: teamId, domain: 'a.example' })
-
-      const held = await testDb.execute<{ objid: number }>(
-        sql`SELECT objid FROM pg_locks
-            WHERE locktype = 'advisory'
-              AND pid = pg_backend_pid()
-              AND objid = (SELECT hashtext('quackback:sending_domain_slot')::bigint & 4294967295)`
-      )
-      expect([...(held as unknown as { objid: number }[])]).toHaveLength(1)
-    })
-
+  describe('failure handling for the account-wide provider identity', () => {
     it('releases the slot when the provider call fails', async () => {
       // Otherwise a provider outage costs the workspace a permanent slot and
       // leaves a row promising records that will never verify.
       const teamId = await seedTeam()
-      maxSendingDomains.mockReturnValue(1)
       createIdentity.mockRejectedValueOnce(new Error('provider unavailable'))
 
       await expect(
@@ -929,18 +874,6 @@ describe.skipIf(!fixture.available)('sending-identity (real DB, rolled back)', (
       ownershipResolves.mockResolvedValue(true)
       await refreshSendingDomain(row.id)
       expect(putMailFrom).toHaveBeenCalledWith('tenant-a.example', 'qb-bounce.tenant-a.example')
-    })
-
-    it('is unlimited when no cap has been written', async () => {
-      // The OSS default, and right for a self-hoster who owns the whole
-      // provider account. On a fleet the control plane writes the value; a
-      // tenant whose limits were never written has no ceiling, which is why
-      // writing it is part of provisioning a tenant rather than a default here.
-      const teamId = await seedTeam()
-      for (const domain of ['a.example', 'b.example', 'c.example']) {
-        await provisionSendingDomain({ owningTeamId: teamId, domain })
-      }
-      expect(await sweepSendingDomains()).toEqual({ checked: 0, demoted: 0 })
     })
   })
 

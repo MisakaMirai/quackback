@@ -1,9 +1,10 @@
-import { useCallback, useEffect, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, type ReactNode } from 'react'
 import { useInfiniteScroll } from '@/lib/client/hooks/use-infinite-scroll'
 import { useDebouncedSearch } from '@/lib/client/hooks/use-debounced-search'
 import { Spinner } from '@/components/shared/spinner'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { AdminListHeader } from '@/components/admin/admin-list-header'
 import { InboxEmptyState } from '@/components/admin/feedback/inbox-empty-state'
 import { ActiveFiltersBar, AddFilterButton } from '@/components/admin/feedback/active-filters-bar'
@@ -45,19 +46,29 @@ interface FeedbackTableViewProps {
   searchMode?: WidenedSearch
 }
 
-const SORT_OPTIONS = [
-  { value: 'newest', label: 'Newest' },
-  { value: 'oldest', label: 'Oldest' },
-  { value: 'votes', label: 'Top votes' },
-  { value: 'priority', label: 'Priority' },
-]
+const SORT_FIELDS = [
+  { value: 'newest', id: 'admin.changelog.sort.newest', defaultMessage: 'Newest' },
+  { value: 'oldest', id: 'admin.changelog.sort.oldest', defaultMessage: 'Oldest' },
+  { value: 'votes', id: 'admin.feedback.tableView.sortVotes', defaultMessage: 'Top votes' },
+  { value: 'priority', id: 'admin.inbox.toolbar.priority', defaultMessage: 'Priority' },
+] as const
 
 /** Best match leads the options while searching; it has nothing to rank otherwise. */
-const SEARCH_SORT_OPTIONS = [{ value: 'relevance', label: 'Best match' }, ...SORT_OPTIONS]
+const SEARCH_SORT_FIELD = {
+  value: 'relevance',
+  id: 'portal.feedback.toolbar.sortRelevance',
+  defaultMessage: 'Best match',
+} as const
 
-const WIDENED_SEARCH_NOTES: Record<WidenedSearch, string> = {
-  most: 'No post has all your words. Showing posts with most of them.',
-  similar: 'No exact matches. Showing posts with a similar spelling.',
+const WIDENED_SEARCH_NOTES: Record<WidenedSearch, { id: string; defaultMessage: string }> = {
+  most: {
+    id: 'admin.feedback.tableView.widenedMost',
+    defaultMessage: 'No post has all your words. Showing posts with most of them.',
+  },
+  similar: {
+    id: 'admin.feedback.tableView.widenedSimilar',
+    defaultMessage: 'No exact matches. Showing posts with a similar spelling.',
+  },
 }
 
 interface FeedbackListHeaderProps {
@@ -81,6 +92,16 @@ function FeedbackListHeader({
   action,
   children,
 }: FeedbackListHeaderProps) {
+  const intl = useOptionalIntl()
+  const sortOptions = useMemo(() => {
+    const fields: ReadonlyArray<{ value: string; id: string; defaultMessage: string }> = search
+      ? [SEARCH_SORT_FIELD, ...SORT_FIELDS]
+      : SORT_FIELDS
+    return fields.map((field) => ({
+      value: field.value,
+      label: intl.formatMessage({ id: field.id, defaultMessage: field.defaultMessage }),
+    }))
+  }, [intl, search])
   const handleSortChange = useCallback(
     (value: string) => onFiltersChange({ sort: value as InboxFilters['sort'] }),
     [onFiltersChange]
@@ -94,8 +115,11 @@ function FeedbackListHeader({
     <AdminListHeader
       searchValue={searchValue}
       onSearchChange={setSearchValue}
-      searchPlaceholder="Search posts..."
-      sortOptions={search ? SEARCH_SORT_OPTIONS : SORT_OPTIONS}
+      searchPlaceholder={intl.formatMessage({
+        id: 'portal.feedback.toolbar.searchPlaceholder',
+        defaultMessage: 'Search posts...',
+      })}
+      sortOptions={sortOptions}
       activeSort={sort === 'relevance' && !search ? 'newest' : sort}
       onSortChange={handleSortChange}
       filters={filters}
@@ -166,6 +190,7 @@ export function FeedbackTableView({
   onToggleSegment,
   searchMode,
 }: FeedbackTableViewProps): React.ReactElement {
+  const intl = useOptionalIntl()
   const loadMoreRef = useInfiniteScroll({
     hasMore,
     isFetching: isLoading || isLoadingMore,
@@ -280,7 +305,12 @@ export function FeedbackTableView({
         {headerContent}
         <div className="px-3 py-12 flex flex-col items-center justify-center gap-3 text-sm text-muted-foreground">
           <Spinner />
-          <p>Searching for posts with duplicate suggestions…</p>
+          <p>
+            {intl.formatMessage({
+              id: 'admin.feedback.tableView.searchingDuplicates',
+              defaultMessage: 'Searching for posts with duplicate suggestions…',
+            })}
+          </p>
         </div>
       </div>
     )
@@ -292,7 +322,7 @@ export function FeedbackTableView({
 
       {searchMode && (
         <p className="px-6 pt-3 text-sm text-muted-foreground">
-          {WIDENED_SEARCH_NOTES[searchMode]}
+          {intl.formatMessage(WIDENED_SEARCH_NOTES[searchMode])}
         </p>
       )}
 
@@ -328,7 +358,10 @@ export function FeedbackTableView({
               onClick={onLoadMore}
               className="text-muted-foreground"
             >
-              Load more
+              {intl.formatMessage({
+                id: 'admin.changelog.list.loadMore',
+                defaultMessage: 'Load more',
+              })}
             </Button>
           )}
         </div>

@@ -201,20 +201,6 @@ export const P = {
     submittedAt: z.string(),
   }),
   'conversation.note_mentioned': z.looseObject({ conversationId: id }).loose(),
-  'conversation.customer_unresponsive': z.looseObject({
-    conversationId: id,
-    conversation: conversationRef,
-    workflowId: id,
-    silenceMinutes: z.number(),
-    sinceAt: z.string(),
-  }),
-  'conversation.teammate_unresponsive': z.looseObject({
-    conversationId: id,
-    conversation: conversationRef,
-    workflowId: id,
-    silenceMinutes: z.number(),
-    sinceAt: z.string(),
-  }),
   // message
   'message.created': z.looseObject({ message: messageData, conversation: conversationRef }),
   'message.note_created': z.looseObject({ message: messageData, conversation: conversationRef }),
@@ -270,9 +256,7 @@ export const P = {
     externalStatus: z.string(),
     transition: z.enum(['closed', 'reopened']).nullable(),
   }),
-  // assistant + sla
-  'assistant.handed_off': z.looseObject({ conversationId: id, reason: z.string() }),
-  'assistant.resolved': z.looseObject({ conversationId: id, outcome: z.string() }),
+  // sla
   // SLA timer triggers (support platform §4.6). `ticketId`/`ticket` are
   // present only for the ticket-anchored time_to_resolve clock
   // (ticket-sla.service.ts); conversation clocks omit both.
@@ -307,8 +291,6 @@ export const P = {
   'article.updated': z.looseObject({ articleId: id, changedKeys: z.array(z.string()) }),
   'article.deleted': z.looseObject({ articleId: id }),
   // --- WO-6c: crm / ops plane (new, catalogue-only) ---
-  'company.created': z.looseObject({ companyId: id, name: z.string() }),
-  'company.deleted': z.looseObject({ companyId: id }),
 } as const
 
 export type PayloadFor<T extends keyof typeof P> = z.infer<(typeof P)[T]>

@@ -245,7 +245,6 @@ async function reactionJobFor(conversationId: ConversationId): Promise<ClaimedJo
     queue: EVENT_REACTIONS_QUEUE,
     dedupeKey: `${EVENT_REACTIONS_QUEUE}:${event.eventId}`,
     payload: row.payload,
-    workspaceKey: null,
     attempts: 1,
     maxAttempts: row.max_attempts,
     leaseToken: 'test',

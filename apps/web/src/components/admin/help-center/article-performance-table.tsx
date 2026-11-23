@@ -19,6 +19,7 @@ import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { EmptyState } from '@/components/shared/empty-state'
 import { AnalyticsStatRow } from '@/components/admin/analytics/analytics-stat-row'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { helpCenterQueries } from '@/lib/client/queries/help-center'
 import { Route } from '@/routes/admin/help-center'
 import type { ArticlePerformanceRow } from '@/lib/server/domains/help-center/help-center.article-performance.query'
@@ -66,6 +67,7 @@ function summarizePerformance(rows: ArticlePerformanceRow[]) {
 }
 
 export function ArticlePerformanceTable() {
+  const intl = useOptionalIntl()
   const navigate = useNavigate({ from: Route.fullPath })
   const { data: rows, isLoading } = useQuery(helpCenterQueries.articlePerformance())
   const summary = rows && rows.length > 0 ? summarizePerformance(rows) : null
@@ -77,7 +79,12 @@ export function ArticlePerformanceTable() {
   return (
     <div className="max-w-5xl w-full px-3 pb-4">
       <div className="flex items-center gap-2 px-1 py-3">
-        <h1 className="text-lg font-semibold">Article performance</h1>
+        <h1 className="text-lg font-semibold">
+          {intl.formatMessage({
+            id: 'admin.helpCenter.performance.title',
+            defaultMessage: 'Article performance',
+          })}
+        </h1>
       </div>
 
       {isLoading ? (
@@ -96,14 +103,32 @@ export function ArticlePerformanceTable() {
           <div className="rounded-xl border border-border/50 bg-card overflow-hidden mb-4">
             <AnalyticsStatRow
               stats={[
-                { label: 'Total views', value: numberFormatter.format(summary.totalViews) },
-                { label: 'Helpful votes', value: numberFormatter.format(summary.totalHelpful) },
                 {
-                  label: 'Not helpful votes',
+                  label: intl.formatMessage({
+                    id: 'admin.analytics.stat.totalViews',
+                    defaultMessage: 'Total views',
+                  }),
+                  value: numberFormatter.format(summary.totalViews),
+                },
+                {
+                  label: intl.formatMessage({
+                    id: 'admin.helpCenter.performance.helpfulVotes',
+                    defaultMessage: 'Helpful votes',
+                  }),
+                  value: numberFormatter.format(summary.totalHelpful),
+                },
+                {
+                  label: intl.formatMessage({
+                    id: 'admin.helpCenter.performance.notHelpfulVotes',
+                    defaultMessage: 'Not helpful votes',
+                  }),
                   value: numberFormatter.format(summary.totalNotHelpful),
                 },
                 {
-                  label: 'Overall helpful rate',
+                  label: intl.formatMessage({
+                    id: 'admin.helpCenter.performance.overallHelpfulRate',
+                    defaultMessage: 'Overall helpful rate',
+                  }),
                   value: summary.overallRate === null ? '-' : `${summary.overallRate}%`,
                 },
               ]}
@@ -122,14 +147,23 @@ export function ArticlePerformanceTable() {
           <ExclamationTriangleIcon className="size-5 shrink-0 text-amber-600 dark:text-amber-500" />
           <div className="min-w-0 flex-1">
             <p className="text-xs font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-500">
-              Needs attention
+              {intl.formatMessage({
+                id: 'common.state.needsAttention',
+                defaultMessage: 'Needs attention',
+              })}
             </p>
             <p className="truncate text-[13px] text-foreground">
               <span className="font-medium">{summary.worst.article.title}</span>
               <span className="text-muted-foreground">
                 {' '}
-                is at {summary.worst.rate}% helpful ({summary.worst.article.notHelpfulCount} not
-                helpful vote{summary.worst.article.notHelpfulCount === 1 ? '' : 's'})
+                {intl.formatMessage(
+                  {
+                    id: 'admin.helpCenter.performance.worstDetail',
+                    defaultMessage:
+                      'is at {rate}% helpful ({count, plural, one {# not helpful vote} other {# not helpful votes}})',
+                  },
+                  { rate: summary.worst.rate, count: summary.worst.article.notHelpfulCount }
+                )}
               </span>
             </p>
           </div>
@@ -139,11 +173,20 @@ export function ArticlePerformanceTable() {
       <div className="rounded-xl border border-border/50 bg-card overflow-hidden">
         <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border/50">
           <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Ranked by views
+            {intl.formatMessage({
+              id: 'admin.helpCenter.performance.rankedByViews',
+              defaultMessage: 'Ranked by views',
+            })}
           </span>
           {!isLoading && rows && rows.length > 0 && (
             <span className="text-xs text-muted-foreground ml-auto shrink-0">
-              {rows.length} article{rows.length === 1 ? '' : 's'}
+              {intl.formatMessage(
+                {
+                  id: 'admin.helpCenter.articleCount',
+                  defaultMessage: '{count, plural, one {# article} other {# articles}}',
+                },
+                { count: rows.length }
+              )}
             </span>
           )}
         </div>
@@ -158,20 +201,57 @@ export function ArticlePerformanceTable() {
           <div className="px-4 py-8">
             <EmptyState
               icon={ChartBarIcon}
-              title="No article activity yet"
-              description="Views and feedback show up here once visitors start reading your articles."
+              title={intl.formatMessage({
+                id: 'admin.helpCenter.performance.emptyTitle',
+                defaultMessage: 'No article activity yet',
+              })}
+              description={intl.formatMessage({
+                id: 'admin.helpCenter.performance.emptyDescription',
+                defaultMessage:
+                  'Views and feedback show up here once visitors start reading your articles.',
+              })}
             />
           </div>
         ) : (
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Article</TableHead>
-                <TableHead>Category</TableHead>
-                <TableHead className="text-right">Views</TableHead>
-                <TableHead className="text-right">Helpful</TableHead>
-                <TableHead className="text-right">Not helpful</TableHead>
-                <TableHead className="text-right">Helpful rate</TableHead>
+                <TableHead>
+                  {intl.formatMessage({
+                    id: 'admin.helpCenter.performance.columnArticle',
+                    defaultMessage: 'Article',
+                  })}
+                </TableHead>
+                <TableHead>
+                  {intl.formatMessage({
+                    id: 'admin.helpCenter.performance.columnCategory',
+                    defaultMessage: 'Category',
+                  })}
+                </TableHead>
+                <TableHead className="text-right">
+                  {intl.formatMessage({
+                    id: 'admin.helpCenter.performance.columnViews',
+                    defaultMessage: 'Views',
+                  })}
+                </TableHead>
+                <TableHead className="text-right">
+                  {intl.formatMessage({
+                    id: 'admin.helpCenter.performance.columnHelpful',
+                    defaultMessage: 'Helpful',
+                  })}
+                </TableHead>
+                <TableHead className="text-right">
+                  {intl.formatMessage({
+                    id: 'admin.helpCenter.performance.columnNotHelpful',
+                    defaultMessage: 'Not helpful',
+                  })}
+                </TableHead>
+                <TableHead className="text-right">
+                  {intl.formatMessage({
+                    id: 'admin.helpCenter.performance.columnHelpfulRate',
+                    defaultMessage: 'Helpful rate',
+                  })}
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -194,7 +274,15 @@ export function ArticlePerformanceTable() {
                               : undefined
                           }
                         >
-                          {article.status === 'published' ? 'Published' : 'Draft'}
+                          {article.status === 'published'
+                            ? intl.formatMessage({
+                                id: 'admin.helpCenter.status.published',
+                                defaultMessage: 'Published',
+                              })
+                            : intl.formatMessage({
+                                id: 'admin.helpCenter.status.draft',
+                                defaultMessage: 'Draft',
+                              })}
                         </Badge>
                         <span className="truncate font-medium text-foreground">
                           {article.title}

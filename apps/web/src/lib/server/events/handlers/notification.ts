@@ -13,7 +13,6 @@ import type { CreateNotificationInput, NotificationType } from '@/lib/server/dom
 import type { PrincipalId, PostId, PostCommentId, ConversationMessageId } from '@quackback/ids'
 import { truncate, isRetryableError } from '../hook-utils'
 import { logger } from '@/lib/server/logger'
-import { HANDOFF_REASON_LABELS } from '@/lib/shared/conversation/types'
 import {
   batchGetNotificationPreferences,
   type NotificationPreferencesData,
@@ -50,8 +49,6 @@ export interface NotificationConfig {
   // assignee; any other recipient in the target is a team member.
   ticketId?: string
   assignedPrincipalId?: string | null
-  // assistant.handed_off (WO-3 slice 1)
-  reason?: string
   // conversation.note_mentioned (WO-3 slice 3)
   conversationMessageId?: string
   authorName?: string
@@ -292,18 +289,6 @@ function buildNotifications(
         metadata: { ticketId },
       }
     })
-  }
-
-  if (event.type === 'assistant.handed_off') {
-    const { conversationId, reason } = config
-    return principalIds.map((principalId) => ({
-      principalId,
-      type: 'assistant_handed_off' as NotificationType,
-      title: 'The AI agent handed off a conversation',
-      // A reason is usually a fixed id; show its label when it has one.
-      body: truncate(reason ? (HANDOFF_REASON_LABELS[reason] ?? reason) : '', 150),
-      metadata: { conversationId },
-    }))
   }
 
   if (event.type === 'conversation.note_mentioned') {

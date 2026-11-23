@@ -6,7 +6,7 @@
  * binds `service_name` from the process role so a worker replica is not
  * ingested as "quackback-web". Because the context lives in the shared
  * package, logs from @quackback/db and @quackback/email emitted within a
- * request inherit the same request_id/workspace_key automatically.
+ * request inherit the same request_id automatically.
  *
  * Server-only: the Vite config aliases this module to logger.client-stub.ts for
  * the client environment so pino + node:async_hooks never enter the browser.

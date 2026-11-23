@@ -74,9 +74,8 @@ import {
   createEmailConversation,
   cleanupColdInboundLead,
 } from './conversation.email-cold-inbound'
-import { maybeAutoFileSpam } from './conversation.spam-filter'
 import { DEFAULT_LOCALE } from '@/lib/shared/i18n'
-import { senderAuthSpamSignal } from './conversation.spam-signals'
+import { senderAuthSpamSignal, maybeAutoFileSignaledSpam } from './conversation.spam-signals'
 
 export type IngestInboundResult =
   | { status: 'ingested'; conversationId: ConversationId }
@@ -774,22 +773,16 @@ async function ingestColdInbound(
     return { status: 'quarantined', conversationId, cause: quarantineCause }
   }
 
-  // Spam filter, after the thread exists so a filing has something to land
-  // on. Error-isolated inside (a classification failure leaves the thread in
-  // triage, never breaks ingestion); the workspace trust list bypasses it.
-  // The deterministic signals run first: auto-responder headers (this mail
-  // arrived already flagged machine-generated) and whatever the sender's
-  // authentication earned short of the quarantine above — either files to Spam
-  // without spending an AI completion.
-  await maybeAutoFileSpam(conversationId, {
+  // Deterministic signals that are accepted mail (auto-responder headers, a
+  // DMARC failure short of p=reject, a sender burst) file the thread to Spam
+  // after it exists. Error-isolated inside, so a filing failure leaves the
+  // thread in triage and never breaks ingestion.
+  await maybeAutoFileSignaledSpam(conversationId, {
     senderEmail,
-    subject: parsed.subject,
-    content,
-    signals: {
-      autoResponder: opts.autoResponder === true,
-      senderAuthSignal: authSignal,
-    },
+    autoResponder: opts.autoResponder === true,
+    senderAuthSignal: authSignal,
   })
+
   if (opts.autoResponder !== true) {
     // Fire-and-forget on purpose — the ack must not delay the ingest response —
     // but never unhandled: a failed ack is a log line, not a process-level

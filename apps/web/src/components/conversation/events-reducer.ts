@@ -434,8 +434,6 @@ export function applyTicketThreadEvent(
       contentJson: evt.message.contentJson,
       attachments: evt.message.attachments,
       editedAt: evt.message.editedAt ?? null,
-      // An edit replaces the sent text, so any pre-translation original is gone.
-      translatedFrom: null,
     }))
   }
   if (evt.kind !== 'ticket_message') return prev

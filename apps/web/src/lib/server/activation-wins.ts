@@ -70,7 +70,7 @@ export interface FirstWinResult {
 }
 
 const notGeneratedPost = and(
-  sql`coalesce(${posts.widgetMetadata}->>'onboardingGenerated', 'false') <> 'true'`,
+  sql`coalesce(${posts.clientMetadata}->>'onboardingGenerated', 'false') <> 'true'`,
   notTestPrincipal(posts.principalId)
 )!
 

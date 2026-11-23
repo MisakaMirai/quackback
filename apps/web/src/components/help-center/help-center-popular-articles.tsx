@@ -1,7 +1,6 @@
 import { Link } from '@tanstack/react-router'
 import { FormattedMessage } from 'react-intl'
 import { DocumentTextIcon, ChevronRightIcon } from '@heroicons/react/24/outline'
-import { DEFAULT_LOCALE } from '@/lib/shared/i18n'
 import { hcArticlePath } from '@/lib/shared/help-center-url'
 
 export interface PopularArticle {
@@ -15,9 +14,11 @@ export interface PopularArticle {
 
 interface HelpCenterPopularArticlesProps {
   articles: PopularArticle[]
+  /** Locale whose canonical article URLs the rows link to. */
+  locale: string
 }
 
-export function HelpCenterPopularArticles({ articles }: HelpCenterPopularArticlesProps) {
+export function HelpCenterPopularArticles({ articles, locale }: HelpCenterPopularArticlesProps) {
   if (articles.length === 0) return null
 
   return (
@@ -31,7 +32,7 @@ export function HelpCenterPopularArticles({ articles }: HelpCenterPopularArticle
             key={article.id}
             to={
               hcArticlePath({
-                locale: DEFAULT_LOCALE,
+                locale,
                 urlId: article.urlId,
                 slug: article.slug,
               }) as '/hc'

@@ -8,6 +8,7 @@
  */
 import { XMarkIcon, ChevronUpIcon } from '@heroicons/react/24/solid'
 import type { PostStatusEntity } from '@/lib/shared/db-types'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -38,34 +39,54 @@ export function FeedbackBulkActionBar({
   onClear,
   onChangeStatus,
 }: FeedbackBulkActionBarProps) {
+  const intl = useOptionalIntl()
   return (
     <div className="pointer-events-none fixed inset-x-0 bottom-4 z-40 flex justify-center px-4">
       <div
         role="toolbar"
-        aria-label="Bulk actions"
+        aria-label={intl.formatMessage({
+          id: 'inbox.bulk.aria',
+          defaultMessage: 'Bulk actions',
+        })}
         className="pointer-events-auto flex items-center gap-0.5 rounded-full border border-border bg-background/95 px-2 py-1.5 shadow-lg backdrop-blur"
       >
         <button
           type="button"
           onClick={onClear}
-          aria-label="Clear selection"
+          aria-label={intl.formatMessage({
+            id: 'inbox.bulk.clearSelection',
+            defaultMessage: 'Clear selection',
+          })}
           className="flex size-7 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
         >
           <XMarkIcon className="size-4" />
         </button>
-        <span className="px-1.5 text-xs font-semibold whitespace-nowrap">{count} selected</span>
+        <span className="px-1.5 text-xs font-semibold whitespace-nowrap">
+          {intl.formatMessage(
+            { id: 'inbox.bulk.selected', defaultMessage: '{count} selected' },
+            { count }
+          )}
+        </span>
         <span className="mx-1 h-5 w-px bg-border" />
 
         {/* Set status on every selected post */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button type="button" disabled={pending} className={triggerClass}>
-              Status
+              {intl.formatMessage({
+                id: 'admin.feedback.bulkBar.status',
+                defaultMessage: 'Status',
+              })}
               <ChevronUpIcon className="size-3" />
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="center" side="top" className="max-h-72 overflow-y-auto">
-            <DropdownMenuLabel className="text-muted-foreground">Set status</DropdownMenuLabel>
+            <DropdownMenuLabel className="text-muted-foreground">
+              {intl.formatMessage({
+                id: 'admin.feedback.bulkBar.setStatus',
+                defaultMessage: 'Set status',
+              })}
+            </DropdownMenuLabel>
             {statuses.map((s) => (
               <DropdownMenuItem
                 key={s.id}

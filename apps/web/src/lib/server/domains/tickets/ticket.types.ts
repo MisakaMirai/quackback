@@ -10,7 +10,6 @@ import type {
   TicketTypeId,
   PrincipalId,
   TeamId,
-  CompanyId,
   ConversationId,
 } from '@quackback/ids'
 import type {
@@ -55,7 +54,6 @@ export interface CreateTicketInput {
    *  conversation's assignee, else the creating agent — see `createTicket`). */
   assigneePrincipalId?: PrincipalId | null
   priority?: ConversationPriority
-  companyId?: CompanyId | null
   /** Set by the create-from-a-conversation flow (unified inbox §M5): the
    *  conversation the ticket is being opened from. Used by the agent-create
    *  defaults to inherit the conversation's assignee; the link row itself is
@@ -99,7 +97,6 @@ export interface TicketListFilter {
   assignee?: TicketAssigneeFilter
   teamId?: TeamId
   requesterPrincipalId?: PrincipalId
-  companyId?: CompanyId
   /** Free-text match over the ticket title + its messages' `search_vector`
    *  (same FTS primitive as `searchTickets`). A bare/`#`-prefixed integer
    *  (e.g. "42", "#42") also matches by ticket number, OR'd with the FTS match. */
@@ -168,12 +165,6 @@ export interface TicketAssigneeRef {
   teamName: string | null
 }
 
-/** The B2B company context shown inline on a ticket. */
-export interface TicketCompanyRef {
-  id: CompanyId
-  name: string
-}
-
 /**
  * The ticket's registry type (convergence Phase 4), flattened for display —
  * the type chip (icon + name + color) on the ticket card and list rows. Null
@@ -229,7 +220,6 @@ export interface TicketDTO {
   priority: ConversationPriority
   requester: TicketPrincipalRef | null
   assignee: TicketAssigneeRef
-  company: TicketCompanyRef | null
   firstResponseAt: string | null
   dueAt: string | null
   resolvedAt: string | null

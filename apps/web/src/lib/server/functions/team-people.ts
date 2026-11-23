@@ -144,10 +144,10 @@ export const addTeamMembersFn = createServerFn({ method: 'POST' })
  */
 export const getTeamSeatsFn = createServerFn({ method: 'GET' }).handler(async () => {
   await requireAuth({ permission: PERMISSIONS.MEMBER_VIEW })
-  const { getTierLimits } = await import('@/lib/server/domains/settings/tier-limits.service')
   const { countSeatUsage } = await import('@/lib/server/domains/principals/seat-usage')
-  const [limits, seats] = await Promise.all([getTierLimits(), countSeatUsage()])
-  return { used: seats.used, limit: limits.maxTeamSeats }
+  const seats = await countSeatUsage()
+  // A single-workspace install has no seat cap.
+  return { used: seats.used, limit: null }
 })
 
 const changeTeamRoleSchema = z.object({

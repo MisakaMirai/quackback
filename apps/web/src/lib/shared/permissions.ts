@@ -17,8 +17,6 @@ export const PERMISSIONS = {
   SETTINGS_BRANDING: 'settings.branding',
   SETTINGS_MODERATION: 'settings.moderation',
   SETTINGS_NOTIFICATIONS: 'settings.notifications',
-  SETTINGS_CUSTOM_DOMAIN: 'settings.custom_domain',
-  BILLING_MANAGE: 'billing.manage',
   ROLE_MANAGE: 'role.manage',
   API_KEY_MANAGE: 'api_key.manage',
   WEBHOOK_VIEW: 'webhook.view',
@@ -34,10 +32,6 @@ export const PERMISSIONS = {
   // people
   PEOPLE_VIEW: 'people.view',
   PEOPLE_MANAGE: 'people.manage',
-
-  // company
-  COMPANY_VIEW: 'company.view',
-  COMPANY_MANAGE: 'company.manage',
 
   // audience
   SEGMENT_VIEW: 'segment.view',
@@ -71,8 +65,6 @@ export const PERMISSIONS = {
   STATUS_MANAGE: 'status.manage',
   TAG_VIEW: 'tag.view',
   TAG_MANAGE: 'tag.manage',
-  SUGGESTION_VIEW: 'suggestion.view',
-  SUGGESTION_MANAGE: 'suggestion.manage',
   PRIORITIZATION_MANAGE: 'prioritization.manage',
 
   // changelog
@@ -119,13 +111,7 @@ export const PERMISSIONS = {
   OFFICE_HOURS_MANAGE: 'office_hours.manage',
   ROUTING_MANAGE: 'routing.manage',
   TEAM_MANAGE: 'team.manage',
-  WORKFLOW_MANAGE: 'workflow.manage',
   CHANNEL_ACCOUNT_MANAGE: 'channel_account.manage',
-
-  // ai
-  AI_CUSTOMER_MANAGE: 'ai.customer.manage',
-  AI_TEAMMATE_MANAGE: 'ai.teammate.manage',
-  COPILOT_USE: 'copilot.use',
 
   // status_page
   STATUS_PAGE_MANAGE: 'status_page.manage',
@@ -140,7 +126,6 @@ export const PERMISSION_CATEGORIES = [
   'workspace',
   'members',
   'people',
-  'company',
   'audience',
   'feedback',
   'changelog',
@@ -150,7 +135,6 @@ export const PERMISSION_CATEGORIES = [
   'analytics',
   'integration',
   'support',
-  'ai',
   'status_page',
 ] as const
 
@@ -176,8 +160,6 @@ export const WORKSPACE_ADMIN_PERMISSIONS: readonly PermissionKey[] = [
   PERMISSIONS.SETTINGS_BRANDING,
   PERMISSIONS.SETTINGS_MODERATION,
   PERMISSIONS.SETTINGS_NOTIFICATIONS,
-  PERMISSIONS.SETTINGS_CUSTOM_DOMAIN,
-  PERMISSIONS.BILLING_MANAGE,
   PERMISSIONS.MEMBER_MANAGE,
   PERMISSIONS.ROLE_MANAGE,
   PERMISSIONS.API_KEY_MANAGE,
@@ -191,26 +173,21 @@ export const WORKSPACE_ADMIN_PERMISSIONS: readonly PermissionKey[] = [
   PERMISSIONS.OFFICE_HOURS_MANAGE,
   PERMISSIONS.ROUTING_MANAGE,
   PERMISSIONS.TEAM_MANAGE,
-  PERMISSIONS.WORKFLOW_MANAGE,
   PERMISSIONS.CHANNEL_ACCOUNT_MANAGE,
-  PERMISSIONS.AI_CUSTOMER_MANAGE,
-  PERMISSIONS.AI_TEAMMATE_MANAGE,
   PERMISSIONS.STATUS_PAGE_MANAGE,
 ]
 
 export const SUPPORT_LEAD_EXTRA_PERMISSIONS: readonly PermissionKey[] = [
   PERMISSIONS.ROUTING_MANAGE,
-  PERMISSIONS.WORKFLOW_MANAGE,
   PERMISSIONS.SLA_MANAGE,
   PERMISSIONS.OFFICE_HOURS_MANAGE,
   PERMISSIONS.CHANNEL_ACCOUNT_MANAGE,
   PERMISSIONS.CUSTOM_FIELD_MANAGE,
-  PERMISSIONS.AI_CUSTOMER_MANAGE,
 ]
 
 export const SYSTEM_ROLE_PERMISSIONS: Record<SystemRoleKey, PermissionKey[]> = {
   owner: ALL_PERMISSIONS,
-  admin: ALL_PERMISSIONS.filter((p) => p !== PERMISSIONS.BILLING_MANAGE),
+  admin: ALL_PERMISSIONS,
   manager: ALL_PERMISSIONS.filter((p) => !WORKSPACE_ADMIN_PERMISSIONS.includes(p)),
   support_lead: ALL_PERMISSIONS.filter(
     (p) => !WORKSPACE_ADMIN_PERMISSIONS.includes(p) || SUPPORT_LEAD_EXTRA_PERMISSIONS.includes(p)
@@ -233,18 +210,14 @@ export const SYSTEM_ROLE_PERMISSIONS: Record<SystemRoleKey, PermissionKey[]> = {
     PERMISSIONS.CONVERSATION_ASSIGN,
     PERMISSIONS.CONVERSATION_SET_STATUS,
     PERMISSIONS.CONVERSATION_SET_TAGS,
-    PERMISSIONS.COPILOT_USE,
     PERMISSIONS.CHANGELOG_VIEW_DRAFT,
     PERMISSIONS.PEOPLE_VIEW,
-    PERMISSIONS.COMPANY_VIEW,
     PERMISSIONS.MEMBER_VIEW,
     PERMISSIONS.SEGMENT_VIEW,
     PERMISSIONS.INTEGRATION_VIEW,
     PERMISSIONS.ANALYTICS_VIEW,
     PERMISSIONS.STATUS_VIEW,
     PERMISSIONS.TAG_VIEW,
-    PERMISSIONS.SUGGESTION_VIEW,
-    PERMISSIONS.SUGGESTION_MANAGE,
     PERMISSIONS.STATUS_PAGE_PUBLISH,
   ],
 }
@@ -267,7 +240,6 @@ export const PERMISSION_CATALOGUE: ReadonlyArray<{
   category: PermissionCategory
 }> = [
   { key: PERMISSIONS.SETTINGS_MANAGE, category: 'workspace' },
-  { key: PERMISSIONS.BILLING_MANAGE, category: 'workspace' },
   { key: PERMISSIONS.ROLE_MANAGE, category: 'workspace' },
   { key: PERMISSIONS.API_KEY_MANAGE, category: 'workspace' },
   { key: PERMISSIONS.WEBHOOK_VIEW, category: 'workspace' },
@@ -277,14 +249,11 @@ export const PERMISSION_CATALOGUE: ReadonlyArray<{
   { key: PERMISSIONS.SETTINGS_BRANDING, category: 'workspace' },
   { key: PERMISSIONS.SETTINGS_MODERATION, category: 'workspace' },
   { key: PERMISSIONS.SETTINGS_NOTIFICATIONS, category: 'workspace' },
-  { key: PERMISSIONS.SETTINGS_CUSTOM_DOMAIN, category: 'workspace' },
   { key: PERMISSIONS.CUSTOM_FIELD_MANAGE, category: 'workspace' },
   { key: PERMISSIONS.MEMBER_VIEW, category: 'members' },
   { key: PERMISSIONS.MEMBER_MANAGE, category: 'members' },
   { key: PERMISSIONS.PEOPLE_VIEW, category: 'people' },
   { key: PERMISSIONS.PEOPLE_MANAGE, category: 'people' },
-  { key: PERMISSIONS.COMPANY_VIEW, category: 'company' },
-  { key: PERMISSIONS.COMPANY_MANAGE, category: 'company' },
   { key: PERMISSIONS.SEGMENT_VIEW, category: 'audience' },
   { key: PERMISSIONS.SEGMENT_MANAGE, category: 'audience' },
   { key: PERMISSIONS.USER_ATTRIBUTE_VIEW, category: 'audience' },
@@ -314,8 +283,6 @@ export const PERMISSION_CATALOGUE: ReadonlyArray<{
   { key: PERMISSIONS.STATUS_MANAGE, category: 'feedback' },
   { key: PERMISSIONS.TAG_VIEW, category: 'feedback' },
   { key: PERMISSIONS.TAG_MANAGE, category: 'feedback' },
-  { key: PERMISSIONS.SUGGESTION_VIEW, category: 'feedback' },
-  { key: PERMISSIONS.SUGGESTION_MANAGE, category: 'feedback' },
   { key: PERMISSIONS.PRIORITIZATION_MANAGE, category: 'feedback' },
   { key: PERMISSIONS.CHANGELOG_VIEW_DRAFT, category: 'changelog' },
   { key: PERMISSIONS.CHANGELOG_MANAGE, category: 'changelog' },
@@ -348,11 +315,7 @@ export const PERMISSION_CATALOGUE: ReadonlyArray<{
   { key: PERMISSIONS.OFFICE_HOURS_MANAGE, category: 'support' },
   { key: PERMISSIONS.ROUTING_MANAGE, category: 'support' },
   { key: PERMISSIONS.TEAM_MANAGE, category: 'support' },
-  { key: PERMISSIONS.WORKFLOW_MANAGE, category: 'support' },
   { key: PERMISSIONS.CHANNEL_ACCOUNT_MANAGE, category: 'support' },
-  { key: PERMISSIONS.AI_CUSTOMER_MANAGE, category: 'ai' },
-  { key: PERMISSIONS.AI_TEAMMATE_MANAGE, category: 'ai' },
-  { key: PERMISSIONS.COPILOT_USE, category: 'ai' },
   { key: PERMISSIONS.STATUS_PAGE_MANAGE, category: 'status_page' },
   { key: PERMISSIONS.STATUS_PAGE_PUBLISH, category: 'status_page' },
 ]

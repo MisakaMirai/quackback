@@ -1,9 +1,8 @@
 /**
- * Server functions for the support inbox: the messenger widget channel plus agent-side inbox operations.
+ * Server functions for the support inbox: the portal messenger channel plus agent-side inbox operations.
  *
  * Visitor-facing portal functions use cookie/site auth (`requireAuth` /
- * `getOptionalAuth`, which deny widget). The widget BFF in `widget/conversation.ts`
- * reuses the same `run*` helpers with `requireWidgetAuth`.
+ * `getOptionalAuth`).
  * Agent-facing functions are gated to team roles and re-checked independently
  * of the admin route guard.
  */
@@ -18,7 +17,6 @@ import type {
   BoardId,
   ConversationTagId,
   SegmentId,
-  CompanyId,
   TeamId,
   MacroId,
 } from '@quackback/ids'
@@ -26,7 +24,6 @@ import {
   MAX_CONVERSATION_MESSAGE_LENGTH,
   MAX_CONVERSATION_ATTACHMENTS,
   type ConversationAttachment,
-  type ConversationAssistantActivity,
 } from '@/lib/shared/conversation/types'
 import {
   conversationAttachmentSchema,
@@ -54,6 +51,7 @@ import {
   CONVERSATION_STATUSES,
   CONVERSATION_END_REASONS,
   REACTION_EMOJIS,
+  type TiptapContent,
 } from '@/lib/shared/db-types'
 import {
   getOptionalAuth,
@@ -66,7 +64,6 @@ import {
 import { isTeamMember } from '@/lib/shared/roles'
 import { PERMISSIONS } from '@/lib/shared/permissions'
 import type { RequesterTicketDTO, ConversationTicketSummary } from '@/lib/server/domains/tickets'
-import { AI_INBOX_BUCKETS } from '@/lib/server/domains/assistant/assistant.involvement'
 import { ConflictError, ForbiddenError, NotFoundError } from '@/lib/shared/errors'
 import { logger } from '@/lib/server/logger'
 
@@ -117,8 +114,6 @@ const listConversationsSchema = z.object({
   tagIds: z.array(z.string()).optional(),
   // Filter to conversations whose visitor is a member of ANY of these segments.
   segmentIds: z.array(z.string()).optional(),
-  // Restrict to conversations whose visitor belongs to this company.
-  companyId: z.string().optional(),
   // 'mentions' = only conversations whose internal notes @-mention the
   // requesting agent (the principal is resolved server-side from auth).
   // 'quinn' = only conversations Quinn engaged (see the `ai` bucket).
@@ -162,20 +157,6 @@ const agentSendSchema = z.object({
   // the plain `content` is the doc's text, kept for previews/notifications/search.
   contentJson: z.unknown().nullable().optional(),
   attachments: z.array(conversationAttachmentSchema).max(MAX_CONVERSATION_ATTACHMENTS).optional(),
-  // P2-D.1 inbox translation: the explicit "Send untranslated" fallback a
-  // teammate picks after a translated send is blocked (TRANSLATION_FAILED).
-  // Bypasses translation entirely for this one send.
-  skipTranslation: z.boolean().optional(),
-})
-
-const translateConversationMessagesSchema = z.object({
-  conversationId: z.string(),
-  messageIds: z.array(z.string()).min(1).max(50),
-})
-
-const setInboxTranslationEnabledSchema = z.object({
-  conversationId: z.string(),
-  enabled: z.boolean(),
 })
 
 const startConversationSchema = z.object({
@@ -257,13 +238,12 @@ async function assertConversationsEnabled(principalId: PrincipalId): Promise<voi
 
 /**
  * Shared gate for visitor-facing conversation endpoints: conversations must be
- * reachable. Portal-site callers also need portal access; widget-scoped
- * sessions (Bearer BFF) do not — the host app already admitted them.
- * Team members bypass the portal check (admin inbox).
+ * reachable and portal-site callers also need portal access. Team members
+ * bypass the portal check (admin inbox).
  */
 async function assertVisitorConversationAccess(ctx: AuthContext): Promise<void> {
   await assertConversationsEnabled(ctx.principal.id)
-  if (isTeamMember(ctx.principal.role) || ctx.scope === 'widget') return
+  if (isTeamMember(ctx.principal.role)) return
   const { resolvePortalAccessForRequest } = await import('./portal-access')
   const access = await resolvePortalAccessForRequest()
   if (!access.granted) throw new ForbiddenError('PORTAL_ACCESS_REQUIRED', 'Portal access required')
@@ -279,7 +259,7 @@ export const runSendConversationMessage = createServerOnlyFn(
     // Visitor-only ingress checks (agents send via sendAgentMessageFn).
     if (!isTeamMember(ctx.principal.role)) {
       // Blocked people cannot send (support platform §4.6). The same
-      // isBlocked read backs the widget identify gate and, per the integrator
+      // isBlocked read backs the messenger access gate and, per the integrator
       // TODO in blocking.ts, the email-inbound boundary.
       const { isBlocked } = await import('@/lib/server/domains/principals/blocking')
       if (await isBlocked(ctx.principal.id)) {
@@ -303,7 +283,8 @@ export const runSendConversationMessage = createServerOnlyFn(
       // unmatched one is functionally an ordinary free-text reply and must
       // still be refused here like any other.
       if (data.conversationId) {
-        const { getMessengerConfig } = await import('@/lib/server/domains/settings/settings.widget')
+        const { getMessengerConfig } =
+          await import('@/lib/server/domains/settings/settings.messenger')
         const messenger = await getMessengerConfig()
         if (messenger.preventRepliesWhenClosed) {
           const { getConversationForVisitor } =
@@ -372,8 +353,8 @@ export const sendConversationMessageFn = createServerFn({ method: 'POST' })
 /**
  * The team's availability verdict (live presence + office-hours snapshot),
  * WITHOUT loading the conversation or messages. Workspace-global — no visitor auth
- * needed. The widget polls this to keep the online/offline indicator fresh, and
- * the widget loader calls it server-side to SSR-seed the same value so the first
+ * needed. The messenger polls this to keep the online/offline indicator fresh, and
+ * the portal loader calls it server-side to SSR-seed the same value so the first
  * paint matches what the poll reports.
  *
  * The database reads stay INSIDE the handler so the server-fn transform strips
@@ -406,21 +387,21 @@ export const getConversationPresenceFn = createServerFn({ method: 'GET' }).handl
 )
 
 /**
- * Teammate avatars for the widget Home header cluster. Workspace-global and
+ * Teammate avatars for the messenger header cluster. Workspace-global and
  * public-safe by construction — the domain query exposes only name + image for
  * genuine teammates (never portal users, anonymous visitors, or service
  * principals), so no visitor auth is needed.
  */
-export const runGetWidgetTeamAvatars = createServerOnlyFn(
-  async function runGetWidgetTeamAvatars(): Promise<{ name: string; avatarUrl: string | null }[]> {
-    const { listTeamAvatars } = await import('@/lib/server/domains/principals/principal.service')
-    return listTeamAvatars(3)
-  }
-)
+export const runGetTeamAvatars = createServerOnlyFn(async function runGetTeamAvatars(): Promise<
+  { name: string; avatarUrl: string | null }[]
+> {
+  const { listTeamAvatars } = await import('@/lib/server/domains/principals/principal.service')
+  return listTeamAvatars(3)
+})
 
-export const getWidgetTeamAvatarsFn = createServerFn({ method: 'GET' }).handler(
+export const getTeamAvatarsFn = createServerFn({ method: 'GET' }).handler(
   async (): Promise<{ name: string; avatarUrl: string | null }[]> => {
-    return runGetWidgetTeamAvatars()
+    return runGetTeamAvatars()
   }
 )
 
@@ -429,31 +410,24 @@ export const runGetMyConversation = createServerOnlyFn(async function runGetMyCo
   ctx: AuthContext | null,
   data: MyConversationInput
 ) {
-  const { getMessengerConfig, getWidgetConfig } =
-    await import('@/lib/server/domains/settings/settings.widget')
+  const { getMessengerSettings } = await import('@/lib/server/domains/settings/settings.messenger')
   const { isConversationsEnabledFor } =
     await import('@/lib/server/domains/settings/settings.support')
   const { getSettings } = await import('./workspace')
   const { isEmailConfigured } = await import('@quackback/email')
   const { canEmailVisitor } = await import('@/lib/shared/conversation/reply-capability')
-  const { widgetTranslationFor } = await import('@/lib/shared/widget/translations')
-  const { assistantConfigSchema, DEFAULT_ASSISTANT_CONFIG } =
-    await import('@/lib/shared/assistant/config')
-  const [enabled, messengerConfig, appSettings, widgetConfig] = await Promise.all([
+  const { messengerTranslationFor } = await import('@/lib/shared/messenger/translations')
+  const [enabled, messengerSettings, appSettings] = await Promise.all([
     isConversationsEnabledFor(ctx?.principal.id),
-    getMessengerConfig(),
+    getMessengerSettings(),
     getSettings(),
-    getWidgetConfig(),
   ])
+  const messengerConfig = messengerSettings.messenger
   // Per-locale copy override for this visitor's language (base copy is the
   // fallback).
-  const t = widgetTranslationFor(widgetConfig.translations, data?.locale)
+  const t = messengerTranslationFor(messengerSettings.translations, data?.locale)
   const emailConfigured = isEmailConfigured()
-  const parsedAssistantConfig = assistantConfigSchema.safeParse(appSettings?.assistantConfig)
-  const assistantIdentity = parsedAssistantConfig.success
-    ? parsedAssistantConfig.data.identity
-    : DEFAULT_ASSISTANT_CONFIG.identity
-  // Note: team-availability presence is NOT returned here. The widget reads it
+  // Note: team-availability presence is NOT returned here. The messenger reads it
   // from the shared useConversationPresence query (getConversationPresenceFn) so every surface
   // agrees and only one poll runs — this fn is just the visitor's thread.
   const base = {
@@ -463,21 +437,12 @@ export const runGetMyConversation = createServerOnlyFn(async function runGetMyCo
     // Falls back to the workspace name (as the settings help text promises)
     // when no team name is set.
     teamName: messengerConfig.teamName?.trim() || appSettings?.name || null,
-    // AI-assistant display identity: fronts new conversations (greeting
-    // author + thread header) when enabled. Identity only — replies still
-    // come from the team until the integrated agent lands.
-    assistant: messengerConfig.assistant?.enabled
-      ? {
-          name: assistantIdentity.name,
-          avatarUrl: assistantIdentity.avatarUrl,
-        }
-      : null,
     // Whether we already have a contact email for this visitor.
     visitorHasEmail: false,
     // Whether an offline reply could actually reach this visitor by email —
-    // the widget shows a non-promising offline message when false.
+    // the messenger shows a non-promising offline message when false.
     canEmailVisitor: canEmailVisitor({ emailConfigured, visitorHasEmail: false }),
-    // Whether the surfaced conversation is closed (read-only) — the widget
+    // Whether the surfaced conversation is closed (read-only) — the messenger
     // then offers "start a new conversation" instead of a composer (P1.9).
     isReadOnly: false,
     // The pair's ticket (converged Messages surface): the thread header
@@ -490,8 +455,7 @@ export const runGetMyConversation = createServerOnlyFn(async function runGetMyCo
   }
 
   // Portal-site visitors need portal access (degrade to greeting-only).
-  // Widget-scoped sessions skip that — the host app already admitted them.
-  if (!isTeamMember(ctx.principal.role) && ctx.scope !== 'widget') {
+  if (!isTeamMember(ctx.principal.role)) {
     const { resolvePortalAccessForRequest } = await import('./portal-access')
     const access = await resolvePortalAccessForRequest()
     if (!access.granted) {
@@ -528,7 +492,7 @@ export const runGetMyConversation = createServerOnlyFn(async function runGetMyCo
     : await getActiveConversationForVisitor(ctx.principal.id)
   const conversation = active.conversation
   // Anonymous visitors carry a synthetic placeholder email — it must not count
-  // as a real address (else the widget promises an email reply it can't send).
+  // as a real address (else the messenger promises an email reply it can't send).
   const visitorHasEmail =
     Boolean(realEmail(ctx.user?.email)) || Boolean(realEmail(conversation?.visitorEmail))
   const canEmail = canEmailVisitor({ emailConfigured, visitorHasEmail })
@@ -584,7 +548,7 @@ export const runGetMyConversations = createServerOnlyFn(async function runGetMyC
     await import('@/lib/server/domains/settings/settings.support')
   if (!ctx?.principal || !(await isConversationsEnabledFor(ctx.principal.id))) return empty
 
-  if (!isTeamMember(ctx.principal.role) && ctx.scope !== 'widget') {
+  if (!isTeamMember(ctx.principal.role)) {
     const { resolvePortalAccessForRequest } = await import('./portal-access')
     const access = await resolvePortalAccessForRequest()
     if (!access.granted) return empty
@@ -641,7 +605,7 @@ export const runGetMessengerUnread = createServerOnlyFn(async function runGetMes
     await import('@/lib/server/domains/settings/settings.support')
   if (!ctx?.principal || !(await isConversationsEnabledFor(ctx.principal.id))) return zero
 
-  if (!isTeamMember(ctx.principal.role) && ctx.scope !== 'widget') {
+  if (!isTeamMember(ctx.principal.role)) {
     const { resolvePortalAccessForRequest } = await import('./portal-access')
     const access = await resolvePortalAccessForRequest()
     if (!access.granted) return zero
@@ -673,28 +637,19 @@ export const runListConversationMessages = createServerOnlyFn(
     // CONVERGENCE PHASE 0: the team branch also folds the linked customer
     // ticket's legacy rows into the page (includeLinkedTicket — see
     // listMessages); the visitor branch stays conversation-only in Phase 0.
-    // The agent-only `postSuggestions`/`pendingActionPointers`/`translatedFromPointers`
-    // maps are pulled out here so they're consumed by the enrichment and never
-    // serialized into the response (translatedFromPointers especially — it carries
-    // a teammate's pre-translation original, never meant for the visitor).
-    const { postSuggestions, pendingActionPointers, translatedFromPointers, ...page } =
-      await listMessages(data.conversationId as ConversationId, {
-        before: data.before,
-        includeInternal: isTeam,
-        includeLinkedTicket: isTeam,
-      })
-    // Team members get the agent-only reaction/flag/suggestion/pending-action
-    // enrichment on older messages too; the visitor path returns the clean base DTOs.
+    // The agent-only `postSuggestions` map is pulled out here so it's consumed
+    // by the enrichment and never serialized into the response.
+    const { postSuggestions, ...page } = await listMessages(data.conversationId as ConversationId, {
+      before: data.before,
+      includeInternal: isTeam,
+      includeLinkedTicket: isTeam,
+    })
+    // Team members get the agent-only reaction/flag/suggestion enrichment on
+    // older messages too; the visitor path returns the clean base DTOs.
     if (isTeam) {
       return {
         ...page,
-        messages: await enrichMessagesForAgent(
-          page.messages,
-          ctx.principal.id,
-          postSuggestions,
-          pendingActionPointers,
-          translatedFromPointers
-        ),
+        messages: await enrichMessagesForAgent(page.messages, ctx.principal.id, postSuggestions),
       }
     }
     return page
@@ -927,7 +882,6 @@ export const listConversationsFn = createServerFn({ method: 'GET' })
         search: data.search,
         tagIds: data.tagIds as ConversationTagId[] | undefined,
         segmentIds: data.segmentIds as SegmentId[] | undefined,
-        companyId: data.companyId as CompanyId | undefined,
         // Always the requesting agent — never trust a client-supplied id here.
         mentionedPrincipalId: data.view === 'mentions' ? ctx.principal.id : undefined,
         // Created-by-me view: same server-side resolution as mentions.
@@ -935,14 +889,6 @@ export const listConversationsFn = createServerFn({ method: 'GET' })
         // Spam view: the only scope that lists spam-ended conversations.
         spamOnly: data.view === 'spam',
         testOnly: data.view === 'test',
-        // Quinn view: a chosen bucket narrows to its statuses; none = any Quinn
-        // involvement (every bucket).
-        assistantStatuses:
-          data.view === 'quinn'
-            ? data.ai
-              ? AI_INBOX_BUCKETS[data.ai]
-              : Object.values(AI_INBOX_BUCKETS).flat()
-            : undefined,
         before: data.before,
         attributeFilters: data.attributeFilters,
       },
@@ -961,25 +907,6 @@ export const listConversationsFn = createServerFn({ method: 'GET' })
         )
       : {}
     return { ...page, searchSnippets }
-  })
-
-/** Conversation counts per Quinn-inbox bucket (Resolved / Escalated / Pending),
- *  for the inbox nav badges. */
-export const fetchAssistantInboxCountsFn = createServerFn({ method: 'GET' }).handler(async () => {
-  await requireAuth({ permission: PERMISSIONS.CONVERSATION_VIEW })
-  const { countAssistantInboxBuckets } =
-    await import('@/lib/server/domains/assistant/assistant.involvement')
-  return countAssistantInboxBuckets()
-})
-
-/** Quinn's activity on one conversation for the agent details panel: outcome,
- *  KB sources cited, escalation reason, CSAT. Null when Quinn never engaged. */
-export const getConversationAssistantActivityFn = createServerFn({ method: 'GET' })
-  .validator(z.object({ conversationId: z.string() }))
-  .handler(async ({ data }): Promise<ConversationAssistantActivity | null> => {
-    await requireAuth({ permission: PERMISSIONS.CONVERSATION_VIEW })
-    const { loadConversationAssistantActivity } = await import('./conversation-panels')
-    return loadConversationAssistantActivity(data.conversationId as ConversationId)
   })
 
 const userConversationsSchema = z.object({
@@ -1028,21 +955,6 @@ export const getConversationFn = createServerFn({ method: 'GET' })
       data.conversationId as ConversationId,
       actor
     )
-    // P2-D.1 inbox translation: lazy, once-per-conversation customer-
-    // language detection, so the auto-suggest banner has something to
-    // compare against. Fire-and-forget (like the summarize-on-close hook,
-    // events/process.ts) — this NEVER blocks opening the thread, even when
-    // AI is configured. The DTO below carries whatever is already stored; a
-    // detection that completes during (or after) this request simply lands
-    // on the NEXT read of this conversation.
-    void import('@/lib/server/domains/conversation/conversation-translation.service')
-      .then((m) => m.maybeDetectCustomerLanguage(conversation))
-      .catch((err) =>
-        log.error(
-          { err, conversation_id: conversation.id },
-          'customer language detection failed to load'
-        )
-      )
     const requestedPanels = data.before ? undefined : data.panels
     const [dto, page, panels] = await Promise.all([
       conversationToDTO(conversation, 'agent'),
@@ -1065,17 +977,14 @@ export const getConversationFn = createServerFn({ method: 'GET' })
           )
         : undefined,
     ])
-    // Upgrade to AgentConversationMessageDTO[] by attaching the agent-only reaction +
-    // flag + post-suggestion + pending-action + translated-from fields. This
-    // enrichment runs ONLY on the agent thread path; no visitor path calls it, so
-    // those fields can't reach the widget. All maps ride in-memory off
-    // `listMessages` (no re-read).
+    // Upgrade to AgentConversationMessageDTO[] by attaching the agent-only
+    // reaction + flag + post-suggestion fields. This enrichment runs ONLY on
+    // the agent thread path; no visitor path calls it, so those fields can't
+    // reach the messenger. The map rides in-memory off `listMessages` (no re-read).
     const messages = await enrichMessagesForAgent(
       page.messages,
       ctx.principal.id,
-      page.postSuggestions,
-      page.pendingActionPointers,
-      page.translatedFromPointers
+      page.postSuggestions
     )
     return { conversation: dto, messages, hasMore: page.hasMore, panels }
   })
@@ -1089,36 +998,9 @@ export const sendAgentMessageFn = createServerFn({ method: 'POST' })
     const { sendAgentMessage } =
       await import('@/lib/server/domains/conversation/conversation.service')
 
-    let content = data.content
-    let contentJson = (data.contentJson ?? null) as
-      import('@/lib/shared/db-types').TiptapContent | null
-    let translatedFrom: import('@/lib/shared/db-types').TranslatedFromMetadata | undefined
-
-    // P2-D.1 inbox translation: translate the reply into the customer's
-    // language BEFORE sending, so the stored/broadcast/emailed content is
-    // always what the customer should see. `skipTranslation` is the
-    // explicit "Send untranslated" fallback a teammate picks after a
-    // TRANSLATION_FAILED error — it bypasses this block entirely.
-    if (!data.skipTranslation) {
-      const { resolveOutgoingReplyTranslation } =
-        await import('@/lib/server/domains/conversation/conversation-translation.service')
-      // Any failure here (AI unconfigured, unparseable/empty response)
-      // throws TranslationUnavailableError, which propagates out of this
-      // handler and BLOCKS the send — never a silent untranslated fallback.
-      const resolved = await resolveOutgoingReplyTranslation({
-        conversationId: data.conversationId as ConversationId,
-        content,
-        contentJson,
-        teammateUserId: ctx.user.id,
-      })
-      content = resolved.content
-      contentJson = resolved.contentJson
-      translatedFrom = resolved.translatedFrom
-    }
-
     return await sendAgentMessage(
       data.conversationId as ConversationId,
-      content,
+      data.content,
       {
         principalId: ctx.principal.id,
         displayName: ctx.user.name,
@@ -1126,8 +1008,7 @@ export const sendAgentMessageFn = createServerFn({ method: 'POST' })
       },
       actor,
       data.attachments as ConversationAttachment[] | undefined,
-      contentJson,
-      translatedFrom ? { translatedFrom } : undefined
+      (data.contentJson ?? null) as TiptapContent | null
     )
   })
 
@@ -1652,15 +1533,6 @@ export const listFlaggedMessagesFn = createServerFn({ method: 'GET' }).handler(a
   return await listFlaggedMessages(actor)
 })
 
-export const getLinkedPostsForConversationFn = createServerFn({ method: 'GET' })
-  .validator(conversationIdSchema)
-  .handler(async ({ data }) => {
-    await requireAuth({ permission: PERMISSIONS.CONVERSATION_VIEW })
-    const { getLinkedPostsForConversation } =
-      await import('@/lib/server/domains/conversation/conversation.query')
-    return await getLinkedPostsForConversation(data.conversationId as ConversationId)
-  })
-
 export const getLinkedConversationsForPostFn = createServerFn({ method: 'GET' })
   .validator(z.object({ postId: z.string() }))
   .handler(async ({ data }) => {
@@ -1668,107 +1540,4 @@ export const getLinkedConversationsForPostFn = createServerFn({ method: 'GET' })
     const { getLinkedConversationsForPost } =
       await import('@/lib/server/domains/conversation/conversation.query')
     return await getLinkedConversationsForPost(data.postId as PostId)
-  })
-
-// ============================================
-// P2-D.1: two-way inbox translation
-// ============================================
-
-/**
- * Translate a page of INCOMING (customer) messages for display, cache-hit or
- * fresh. Display-only: never mutates the underlying messages. Gated on the
- * conversation's own translation being active — a per-conversation, on-demand
- * read, never an eager backfill of the whole history.
- */
-export const translateConversationMessagesFn = createServerFn({ method: 'GET' })
-  .validator(translateConversationMessagesSchema)
-  .handler(async ({ data }) => {
-    const ctx = await requireAuth({ permission: PERMISSIONS.CONVERSATION_VIEW })
-    const actor = await policyActorFromAuth(ctx)
-
-    const { assertConversationViewable } =
-      await import('@/lib/server/domains/conversation/conversation.service')
-    const conversation = await assertConversationViewable(
-      data.conversationId as ConversationId,
-      actor
-    )
-    const {
-      getInboxTranslationContext,
-      translateIncomingMessage,
-      inboxTranslationOverAllowance,
-      TranslationUnavailableError,
-    } = await import('@/lib/server/domains/conversation/conversation-translation.service')
-    const context = await getInboxTranslationContext(conversation.id)
-    if (!context?.enabled) return { translations: {}, overAllowance: false }
-
-    const {
-      db: appDb,
-      conversationMessages: messagesTable,
-      inArray: inArrayOp,
-    } = await import('@/lib/server/db')
-
-    const { readPreferredLanguage } = await import('./teammate-preferences')
-    const targetLocale = (await readPreferredLanguage(ctx.user.id)) ?? 'en'
-
-    const messages = await appDb
-      .select({
-        id: messagesTable.id,
-        content: messagesTable.content,
-        conversationId: messagesTable.conversationId,
-        isInternal: messagesTable.isInternal,
-        senderType: messagesTable.senderType,
-        contentJson: messagesTable.contentJson,
-      })
-      .from(messagesTable)
-      .where(inArrayOp(messagesTable.id, data.messageIds as ConversationMessageId[]))
-
-    const results: Record<string, { content: string; sourceLocale: string | null }> = {}
-    for (const message of messages) {
-      // Defense in depth: the client already only ever requests eligible
-      // ids (visitor-sent, non-internal, plain-text — see
-      // use-inbox-translation.ts's visitorMessageIds filter), but this is
-      // the trust boundary — never translate on a client's say-so alone.
-      // Skip (not error) anything ineligible so one bad id in a batch
-      // doesn't fail the whole request; a message outside the caller's
-      // authorized conversation is skipped the same way.
-      if (message.conversationId !== conversation.id) continue
-      if (message.isInternal || message.senderType !== 'visitor' || message.contentJson) continue
-      try {
-        const { content } = await translateIncomingMessage(message, targetLocale)
-        results[message.id] = { content, sourceLocale: context.customerLocale }
-      } catch (err) {
-        if (err instanceof TranslationUnavailableError) {
-          log.warn({ err, message_id: message.id }, 'inbox translation unavailable for message')
-          continue
-        }
-        throw err
-      }
-    }
-    // Past the AI allowance translation keeps running (and counting); the
-    // flag drives a one-line notice for the teammate.
-    return { translations: results, overAllowance: await inboxTranslationOverAllowance() }
-  })
-
-/** Manual per-conversation activation toggle (ACTIVATION). */
-export const setInboxTranslationEnabledFn = createServerFn({ method: 'POST' })
-  .validator(setInboxTranslationEnabledSchema)
-  .handler(async ({ data }) => {
-    const ctx = await requireAuth({ permission: PERMISSIONS.CONVERSATION_MANAGE })
-    const actor = await policyActorFromAuth(ctx)
-    const { setInboxTranslationEnabled } =
-      await import('@/lib/server/domains/conversation/conversation-translation.service')
-    await setInboxTranslationEnabled(data.conversationId as ConversationId, data.enabled, actor)
-    return { ok: true }
-  })
-
-/** Dismiss the auto-suggest translation banner for this conversation. */
-export const dismissInboxTranslationSuggestionFn = createServerFn({ method: 'POST' })
-  .validator(conversationIdSchema)
-  .handler(async ({ data }) => {
-    const ctx = await requireAuth({ permission: PERMISSIONS.CONVERSATION_MANAGE })
-    const actor = await policyActorFromAuth(ctx)
-    const { dismissInboxTranslationSuggestion } =
-      await import('@/lib/server/domains/conversation/conversation-translation.service')
-    await dismissInboxTranslationSuggestion(data.conversationId as ConversationId, actor)
-    return { ok: true }
   })

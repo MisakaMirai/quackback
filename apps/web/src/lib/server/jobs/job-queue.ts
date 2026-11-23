@@ -51,23 +51,11 @@
  *
  * ## Where the statements live
  *
- * The claim/heartbeat/complete/fail/reap statements moved to `lease.ts` so the
- * fleet migrator's claim loop is the same primitive rather than a second one
- * (SAAS-HOSTING-STACK.md §10.3: *"Fleet migration is its second consumer, not a
- * new subsystem"*). Nothing about the semantics moved with them — this file
- * still owns the queue's shape, the workspace assertion and the enqueue path, and
- * the kill-matrix proof still runs through here, which is what keeps `lease.ts`
- * honest.
- *
- * ## The workspace assertion
- *
- * The queue is per-workspace because the table lives in the workspace's own database —
- * there is no shared queue to route out of. That is a structural property, but
- * §3's whole point is that a wrong-workspace answer passes every other check in the
- * system without erroring, so structure alone is not evidence. Every claimed row
- * is checked against the ambient scope and a mismatch is refused loudly and made
- * terminal, never executed. The check lives inside `claimJobs` rather than in
- * each caller so there is no version of "forgot to assert".
+ * The claim/heartbeat/complete/fail/reap statements live in `lease.ts` so a
+ * second consumer (the one-time relocation) is the same primitive rather than a
+ * second one. Nothing about the semantics moved with them — this file owns the
+ * queue's shape and the enqueue path, and the kill-matrix proof runs through
+ * here, which is what keeps `lease.ts` honest.
  */
 import { randomUUID } from 'node:crypto'
 import { hostname } from 'node:os'
@@ -76,9 +64,7 @@ import { generateId } from '@quackback/ids'
 import { db } from '@/lib/server/db'
 import { getExecuteRows } from '@/lib/server/utils/execute-rows'
 import { logger } from '@/lib/server/logger'
-import { getCurrentWorkspace } from '@/lib/server/workspaces/workspace-context'
-import { isPooledTenancy } from '@/lib/server/workspaces/mode'
-import { noteDurableWork, SINGLE_WORKSPACE_KEY } from '@/lib/server/workspaces/after-commit'
+import { noteDurableWork } from '@/lib/server/jobs/after-commit'
 import { pausedQueues } from './definitions'
 import {
   leaseClaimGroupedSql,
@@ -87,7 +73,6 @@ import {
   leaseFailSql,
   leaseHeartbeatSql,
   leaseReapSql,
-  leaseTerminateSql,
 } from './lease'
 
 const log = logger.child({ component: 'job-queue' })
@@ -95,15 +80,15 @@ const log = logger.child({ component: 'job-queue' })
 /** The table the lease statements operate on. */
 const TABLE = 'job_queue'
 
-/** Postgres `undefined_table`. The workspace has not run migration 0253 yet. */
+/** Postgres `undefined_table`. The install has not run migration 0253 yet. */
 export const UNDEFINED_TABLE = '42P01'
 
 export class JobQueueMissingError extends Error {
   constructor() {
     super(
-      'job_queue does not exist in this database. Migration 0253 has not been applied here; ' +
-        'the queue tier skips this workspace rather than crash-looping (expand lands before the ' +
-        'code that reads it — SAAS-HOSTING-STACK.md §5, §10.5).'
+      'job_queue does not exist in this database. Migration 0253 has not been applied; ' +
+        'the queue tier skips this install rather than crash-looping (expand lands before the ' +
+        'code that reads it).'
     )
     this.name = 'JobQueueMissingError'
   }
@@ -245,7 +230,6 @@ export interface ClaimedJob {
    */
   dedupeKey: string | null
   payload: Record<string, unknown>
-  workspaceKey: string | null
   attempts: number
   maxAttempts: number
   leaseToken: string
@@ -260,7 +244,6 @@ interface ClaimRow {
   queue: string
   dedupe_key: string | null
   payload: Record<string, unknown> | null
-  workspace_key: string | null
   attempts: number
   max_attempts: number
   lease_token: string
@@ -268,7 +251,7 @@ interface ClaimRow {
   run_at: Date | string
 }
 
-const CLAIM_RETURNING = sql`j.id, j.job_id, j.queue, j.dedupe_key, j.payload, j.workspace_key,
+const CLAIM_RETURNING = sql`j.id, j.job_id, j.queue, j.dedupe_key, j.payload,
               j.attempts, j.max_attempts, j.lease_token, j.locked_until, j.run_at`
 
 /** Stable per-process identity, for `locked_by` and for reading logs. */
@@ -283,23 +266,13 @@ export function __resetJobWorkerIdForTests(): void {
   workerIdMemo = null
 }
 
-function currentWorkspaceKey(): string | null {
-  return getCurrentWorkspace()?.workspaceKey ?? null
-}
-
-/** Workspace the after-commit scheduler should ring for this insert. */
-function workKeyForSignal(): string | null {
-  return currentWorkspaceKey() ?? (isPooledTenancy() ? null : SINGLE_WORKSPACE_KEY)
-}
-
 function noteInsertedWork(executor: JobSqlExecutor | undefined, jobIds: readonly string[]): void {
-  const key = workKeyForSignal()
   const committed = !executor
   if (jobIds.length === 0) {
-    noteDurableWork(key, { committed })
+    noteDurableWork({ committed })
     return
   }
-  for (const jobId of jobIds) noteDurableWork(key, { committed, jobId })
+  for (const jobId of jobIds) noteDurableWork({ committed, jobId })
 }
 
 function asDate(value: Date | string): Date {
@@ -307,12 +280,10 @@ function asDate(value: Date | string): Date {
 }
 
 /**
- * Put a job on this workspace's queue.
+ * Put a job on the queue.
  *
- * `workspace_key` is stamped from the ambient scope, which is also what the claim
- * asserts against. There is no way to enqueue for a different workspace, because
- * there is no shared queue and no workspace parameter — you would have to open that
- * workspace's scope, at which point you are writing into its own database.
+ * There is no workspace parameter because there is one queue per install: this
+ * process's database.
  */
 export async function enqueueJob(input: EnqueueJobInput): Promise<EnqueueJobResult> {
   const jobId = generateId('job')
@@ -323,12 +294,11 @@ export async function enqueueJob(input: EnqueueJobInput): Promise<EnqueueJobResu
 
   const executor = input.executor ?? db
   const result = await executor.execute(sql`
-    INSERT INTO job_queue (job_id, queue, dedupe_key, workspace_key, payload, run_at, max_attempts)
+    INSERT INTO job_queue (job_id, queue, dedupe_key, payload, run_at, max_attempts)
     VALUES (
       ${jobId},
       ${input.queue},
       ${input.dedupeKey ?? null},
-      ${currentWorkspaceKey()},
       ${JSON.stringify(input.payload ?? {})}::jsonb,
       ${input.runAt ? input.runAt.toISOString() : sql`now()`},
       ${maxAttempts}
@@ -339,9 +309,9 @@ export async function enqueueJob(input: EnqueueJobInput): Promise<EnqueueJobResu
 
   const rows = getExecuteRows<{ job_id: string }>(result)
   const inserted = rows.length > 0
-  // Transactional inserts record the workspace and flush only after the
-  // outer commit. Auto-commit inserts are already visible, so they signal now.
-  // Only hint when a row was written — a dedupe hit must not start-by-id.
+  // Transactional inserts are flushed only after the outer commit. Auto-commit
+  // inserts are already visible, so they signal now. Only hint when a row was
+  // written — a dedupe hit must not start-by-id.
   if (inserted) noteInsertedWork(input.executor, [rows[0]!.job_id])
   return { jobId: inserted ? rows[0]!.job_id : jobId, inserted }
 }
@@ -390,8 +360,8 @@ export async function enqueueJobs(
 
   const executor = opts?.executor ?? db
   const result = await executor.execute(sql`
-    INSERT INTO job_queue (job_id, queue, dedupe_key, workspace_key, payload, run_at, max_attempts)
-    SELECT x.job_id, x.queue, x.dedupe_key, ${currentWorkspaceKey()}, x.payload, x.run_at, x.max_attempts
+    INSERT INTO job_queue (job_id, queue, dedupe_key, payload, run_at, max_attempts)
+    SELECT x.job_id, x.queue, x.dedupe_key, x.payload, x.run_at, x.max_attempts
     FROM jsonb_to_recordset(${JSON.stringify(rows)}::jsonb) AS x(
       job_id text, queue text, dedupe_key text, payload jsonb,
       run_at timestamptz, max_attempts int
@@ -506,7 +476,6 @@ function claimedFromRow(row: ClaimRow): ClaimedJob {
     queue: row.queue,
     dedupeKey: row.dedupe_key,
     payload: row.payload ?? {},
-    workspaceKey: row.workspace_key,
     attempts: row.attempts,
     maxAttempts: row.max_attempts,
     leaseToken: row.lease_token,
@@ -567,26 +536,7 @@ export async function claimById(jobId: string, leaseMs: number): Promise<Claimed
   )
   const row = getExecuteRows<ClaimRow>(result)[0]
   if (!row) return null
-  const job = claimedFromRow(row)
-  const expected = currentWorkspaceKey()
-  if (job.workspaceKey !== expected) {
-    log.error(
-      {
-        event: 'job.refused',
-        job_id: job.jobId,
-        queue: job.queue,
-        row_workspace_key: job.workspaceKey,
-        scope_workspace_key: expected,
-      },
-      'job REFUSED: row workspace does not match the workspace scope that claimed it'
-    )
-    await terminate(
-      job,
-      `workspace mismatch: row is stamped ${job.workspaceKey ?? 'null'}, scope is ${expected ?? 'null'}`
-    )
-    return null
-  }
-  return job
+  return claimedFromRow(row)
 }
 
 export interface ClaimJobsInput {
@@ -636,43 +586,7 @@ export async function claimJobs(input: ClaimJobsInput): Promise<ClaimedJob[]> {
   const rows = getExecuteRows<ClaimRow>(result).sort((a, b) =>
     BigInt(a.id) < BigInt(b.id) ? -1 : BigInt(a.id) > BigInt(b.id) ? 1 : 0
   )
-  const expected = currentWorkspaceKey()
-  const claimed: ClaimedJob[] = []
-
-  for (const row of rows) {
-    const job = claimedFromRow(row)
-
-    if (job.workspaceKey !== expected) {
-      // Refuse loudly and terminally. This row is not another workspace's job —
-      // it is a corrupt row in THIS workspace's database — but running it would be
-      // a cross-workspace execution, which is the one outcome the whole design
-      // exists to make impossible.
-      log.error(
-        {
-          event: 'job.refused',
-          job_id: job.jobId,
-          queue: job.queue,
-          row_workspace_key: job.workspaceKey,
-          scope_workspace_key: expected,
-        },
-        'job REFUSED: row workspace does not match the workspace scope that claimed it'
-      )
-      await terminate(
-        job,
-        `workspace mismatch: row is stamped ${job.workspaceKey ?? 'null'}, scope is ${expected ?? 'null'}`
-      )
-      continue
-    }
-
-    claimed.push(job)
-  }
-
-  return claimed
-}
-
-/** Terminal-fail a job outright, bypassing the retry decision. */
-async function terminate(job: ClaimedJob, reason: string): Promise<void> {
-  await db.execute(leaseTerminateSql(TABLE, job, reason))
+  return rows.map(claimedFromRow)
 }
 
 /**
@@ -762,11 +676,9 @@ export async function reapExpiredLeases(): Promise<ReapResult> {
   }>(result)
 
   const out: ReapResult = { requeued: 0, terminated: 0 }
-  const workspace_key = currentWorkspaceKey()
   for (const row of rows) {
     const fields = {
       event: 'job.lease_expired' as const,
-      workspace_key,
       job_id: row.job_id,
       queue: row.queue,
       attempt: row.attempts,

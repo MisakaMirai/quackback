@@ -1,7 +1,7 @@
 import { ReactIntlErrorCode, type IntlConfig } from 'react-intl'
 
 /**
- * Shared react-intl error handler for the portal and widget providers.
+ * Shared react-intl error handler for the portal provider.
  *
  * Locale catalogs are code-split and loaded asynchronously (see
  * `useIntlSetup`), so during SSR and the first client render the message

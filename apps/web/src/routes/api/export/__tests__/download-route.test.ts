@@ -8,7 +8,6 @@ import { createId } from '@quackback/ids'
 const hoisted = vi.hoisted(() => ({
   mockValidateAccess: vi.fn(),
   mockGetExportRun: vi.fn(),
-  mockGetTierLimits: vi.fn(),
   mockRecordAuditEvent: vi.fn(),
   mockGeneratePresignedGetUrl: vi.fn(),
   mockGetS3Object: vi.fn(),
@@ -37,10 +36,6 @@ vi.mock('@/lib/server/policy/permissions', async (importOriginal) => {
 
 vi.mock('@/lib/server/domains/export/export-run.service', () => ({
   getExportRun: hoisted.mockGetExportRun,
-}))
-
-vi.mock('@/lib/server/domains/settings/tier-limits.service', () => ({
-  getTierLimits: hoisted.mockGetTierLimits,
 }))
 
 vi.mock('@/lib/server/audit/log', () => ({
@@ -85,7 +80,6 @@ beforeEach(() => {
     user: { id: 'user_admin', email: 'admin@example.com' },
     settings: { slug: 'acme' },
   })
-  hoisted.mockGetTierLimits.mockResolvedValue({ features: { analyticsExports: true } })
   hoisted.mockRecordAuditEvent.mockResolvedValue(undefined)
   hoisted.mockGeneratePresignedGetUrl.mockResolvedValue('https://s3.test/presigned')
 })
@@ -100,12 +94,6 @@ describe('GET /api/export/runs/{runId}/download', () => {
     })
     const res = await handleDownloadExportRun(RUN_ID, makeRequest())
     expect(res.status).toBe(403)
-  })
-
-  it('rejects when the tier gate is off', async () => {
-    hoisted.mockGetTierLimits.mockResolvedValue({ features: { analyticsExports: false } })
-    const res = await handleDownloadExportRun(RUN_ID, makeRequest())
-    expect(res.status).toBe(402)
   })
 
   it('400s on a malformed run id', async () => {

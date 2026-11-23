@@ -17,6 +17,7 @@ import { settingsQueries } from '@/lib/client/queries/settings'
 import { readBatch } from '@/lib/client/queries/read-batch'
 import { useBaseUrl } from '@/lib/client/hooks/use-root-context'
 import { adminPageHead } from '@/lib/client/admin-head'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 
 // The two guides are long and sit on the Webhooks and MCP tabs, so they load
 // with their tab rather than with the Keys tab every visit opens on.
@@ -38,33 +39,25 @@ const searchSchema = z.object({
 type ApiTab = 'keys' | 'webhooks' | 'mcp'
 
 export const Route = createFileRoute('/admin/settings/developers')({
-  head: adminPageHead('Developers settings'),
+  head: adminPageHead('Developers settings', 'admin.pageTitle.developersSettings'),
   validateSearch: searchSchema,
   loader: async ({ context }) => {
     assertRoutePermission(context.permissions, PERMISSIONS.API_KEY_MANAGE)
 
-    const { queryClient } = context
     // All three tabs are preloaded so switching tabs never round-trips
     // for data: every payload is small and admin-only.
-    const { listEntitlementsFn } = await import('@/lib/server/functions/entitlement-status')
-    const { ensureBillingCatalogue } = await import('@/lib/client/queries/billing')
-    const ensure = readBatch(queryClient)
-    const [, entitlements] = await Promise.all([
-      Promise.all([
-        ensure(adminQueries.apiKeys()),
-        ensure(adminQueries.webhooks()),
-        ensure(settingsQueries.developerConfig()),
-      ]),
-      listEntitlementsFn(),
-      ensureBillingCatalogue(queryClient, context.billingEnabled),
+    const ensure = readBatch(context.queryClient)
+    await Promise.all([
+      ensure(adminQueries.apiKeys()),
+      ensure(adminQueries.webhooks()),
+      ensure(settingsQueries.developerConfig()),
     ])
-
-    return { webhooksEntitled: entitlements.webhooks, mcpEntitled: entitlements.mcpServer }
   },
   component: ApiPage,
 })
 
 function ApiPage() {
+  const intl = useOptionalIntl()
   const search = Route.useSearch()
   const tab: ApiTab = search.tab ?? 'keys'
   const navigate = useNavigate()
@@ -76,7 +69,6 @@ function ApiPage() {
   const developerConfigQuery = useSuspenseQuery(settingsQueries.developerConfig())
 
   const baseUrl = useBaseUrl()
-  const { webhooksEntitled, mcpEntitled } = Route.useLoaderData()
   const apiBaseUrl = baseUrl ? `${baseUrl}/api/v1` : '/api/v1'
   const mcpEndpointUrl = baseUrl ? `${baseUrl}/api/mcp` : '/api/mcp'
 
@@ -97,9 +89,24 @@ function ApiPage() {
         className="space-y-6"
       >
         <TabsList>
-          <TabsTrigger value="keys">Keys</TabsTrigger>
-          <TabsTrigger value="webhooks">Webhooks</TabsTrigger>
-          <TabsTrigger value="mcp">MCP</TabsTrigger>
+          <TabsTrigger value="keys">
+            {intl.formatMessage({
+              id: 'admin.settings.developers.tabKeys',
+              defaultMessage: 'Keys',
+            })}
+          </TabsTrigger>
+          <TabsTrigger value="webhooks">
+            {intl.formatMessage({
+              id: 'admin.settings.developers.tabWebhooks',
+              defaultMessage: 'Webhooks',
+            })}
+          </TabsTrigger>
+          <TabsTrigger value="mcp">
+            {intl.formatMessage({
+              id: 'admin.settings.developers.tabMcp',
+              defaultMessage: 'MCP',
+            })}
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="keys" className="space-y-6">
@@ -115,7 +122,7 @@ function ApiPage() {
         </TabsContent>
 
         <TabsContent value="webhooks" className="space-y-6">
-          <WebhooksSettings webhooks={webhooksQuery.data} entitled={webhooksEntitled} />
+          <WebhooksSettings webhooks={webhooksQuery.data} />
           <Suspense fallback={null}>
             <WebhookVerificationGuide />
           </Suspense>
@@ -124,7 +131,6 @@ function ApiPage() {
         <TabsContent value="mcp" className="space-y-6">
           <SettingsCard>
             <McpServerSettings
-              entitled={mcpEntitled}
               initialEnabled={developerConfigQuery.data.mcpEnabled}
               initialDynamicRegistrationEnabled={
                 developerConfigQuery.data.oauthDynamicClientRegistrationEnabled

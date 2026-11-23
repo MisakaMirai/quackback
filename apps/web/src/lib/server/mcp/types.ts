@@ -17,7 +17,6 @@ export type McpScope = ApiKeyScope
  */
 export interface McpAuthContext {
   /** Server-bound private workspace conversation, never supplied as tool arguments. */
-  workspaceThreadKey?: string
   /**
    * Ceiling on the caller's permissions, carried into every MCP policy actor.
    * API keys set their resolved authority here (the key's role preset

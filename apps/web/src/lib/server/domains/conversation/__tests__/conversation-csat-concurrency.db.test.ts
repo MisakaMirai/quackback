@@ -59,10 +59,6 @@ vi.mock('../conversation.query', async (importOriginal) => ({
   conversationToDTO: vi.fn(async (row: { id: string }) => ({ id: row.id })),
 }))
 
-vi.mock('@/lib/server/domains/assistant/assistant.orchestrator', () => ({
-  attributeCsatIfLastHandler: vi.fn(),
-}))
-
 // Same sanctioned direct client import as the db test fixture: this suite
 // builds its own connections rather than going through the global `db`.
 // oxlint-disable-next-line no-restricted-imports

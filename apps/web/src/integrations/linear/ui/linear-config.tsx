@@ -12,6 +12,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { useUpdateIntegration } from '@/lib/client/mutations'
 import { fetchLinearTeamsFn, type LinearTeam } from '@/integrations/linear/server/functions'
 import { fetchExternalStatusesFn } from '@/lib/server/functions/external-statuses'
@@ -38,8 +39,14 @@ interface LinearConfigProps {
 const EVENT_CONFIG = [
   {
     id: 'post.created' as const,
-    label: 'Create issue from new feedback',
-    description: 'Automatically create a Linear issue when new feedback is submitted',
+    label: {
+      id: 'admin.integrations.config.eventCreateIssue',
+      defaultMessage: 'Create issue from new feedback',
+    },
+    description: {
+      id: 'admin.integrations.linear.eventCreateIssueDescription',
+      defaultMessage: 'Automatically create a Linear issue when new feedback is submitted',
+    },
   },
 ]
 
@@ -49,6 +56,7 @@ export function LinearConfig({
   initialEventMappings,
   enabled,
 }: LinearConfigProps) {
+  const intl = useOptionalIntl()
   const updateMutation = useUpdateIntegration()
   const [teams, setTeams] = useState<LinearTeam[]>([])
   const [loadingTeams, setLoadingTeams] = useState(false)
@@ -72,11 +80,16 @@ export function LinearConfig({
       const result = await fetchLinearTeamsFn()
       setTeams(result)
     } catch {
-      setTeamError('Failed to load teams. Please try again.')
+      setTeamError(
+        intl.formatMessage({
+          id: 'admin.integrations.config.loadTeamsFailed',
+          defaultMessage: 'Failed to load teams. Please try again.',
+        })
+      )
     } finally {
       setLoadingTeams(false)
     }
-  }, [])
+  }, [intl])
 
   const fetchStatuses = useCallback(async () => {
     try {
@@ -121,10 +134,16 @@ export function LinearConfig({
       <div className="flex items-center justify-between">
         <div>
           <Label htmlFor="enabled-toggle" className="text-base font-medium">
-            Integration enabled
+            {intl.formatMessage({
+              id: 'admin.integrations.config.enabled',
+              defaultMessage: 'Integration enabled',
+            })}
           </Label>
           <p className="text-xs text-muted-foreground">
-            Turn off to pause all Linear issue syncing
+            {intl.formatMessage({
+              id: 'admin.integrations.linear.disableHint',
+              defaultMessage: 'Turn off to pause all Linear issue syncing',
+            })}
           </p>
         </div>
         <Switch
@@ -137,7 +156,12 @@ export function LinearConfig({
 
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <Label htmlFor="team-select">Team</Label>
+          <Label htmlFor="team-select">
+            {intl.formatMessage({
+              id: 'admin.integrations.config.team',
+              defaultMessage: 'Team',
+            })}
+          </Label>
           <Button
             variant="ghost"
             size="sm"
@@ -146,7 +170,10 @@ export function LinearConfig({
             className="h-8 gap-1.5 text-xs"
           >
             <ArrowPathIcon className={`h-3.5 w-3.5 ${loadingTeams ? 'animate-spin' : ''}`} />
-            Refresh
+            {intl.formatMessage({
+              id: 'admin.integrations.config.refresh',
+              defaultMessage: 'Refresh',
+            })}
           </Button>
         </div>
         {teamError ? (
@@ -161,10 +188,20 @@ export function LinearConfig({
               {loadingTeams ? (
                 <div className="flex items-center gap-2">
                   <ArrowPathIcon className="h-4 w-4 animate-spin" />
-                  <span>Loading teams...</span>
+                  <span>
+                    {intl.formatMessage({
+                      id: 'admin.integrations.config.loadingTeams',
+                      defaultMessage: 'Loading teams...',
+                    })}
+                  </span>
                 </div>
               ) : (
-                <SelectValue placeholder="Select a team" />
+                <SelectValue
+                  placeholder={intl.formatMessage({
+                    id: 'admin.integrations.config.selectTeam',
+                    defaultMessage: 'Select a team',
+                  })}
+                />
               )}
             </SelectTrigger>
             <SelectContent>
@@ -182,13 +219,26 @@ export function LinearConfig({
           </Select>
         )}
         <p className="text-xs text-muted-foreground">
-          New feedback issues will be created in this team.
+          {intl.formatMessage({
+            id: 'admin.integrations.linear.teamHint',
+            defaultMessage: 'New feedback issues will be created in this team.',
+          })}
         </p>
       </div>
 
       <div className="space-y-3">
-        <Label className="text-base font-medium">Events</Label>
-        <p className="text-xs text-muted-foreground">Choose which events trigger issue creation</p>
+        <Label className="text-base font-medium">
+          {intl.formatMessage({
+            id: 'admin.integrations.config.events',
+            defaultMessage: 'Events',
+          })}
+        </Label>
+        <p className="text-xs text-muted-foreground">
+          {intl.formatMessage({
+            id: 'admin.integrations.config.chooseEventsIssueCreation',
+            defaultMessage: 'Choose which events trigger issue creation',
+          })}
+        </p>
         <div className="space-y-3 pt-2">
           {EVENT_CONFIG.map((event) => (
             <div
@@ -196,8 +246,10 @@ export function LinearConfig({
               className="flex items-center justify-between rounded-lg border border-border/50 p-3"
             >
               <div>
-                <div className="font-medium text-sm">{event.label}</div>
-                <div className="text-xs text-muted-foreground">{event.description}</div>
+                <div className="font-medium text-sm">{intl.formatMessage(event.label)}</div>
+                <div className="text-xs text-muted-foreground">
+                  {intl.formatMessage(event.description)}
+                </div>
               </div>
               <Switch
                 checked={eventSettings[event.id] ?? false}
@@ -212,13 +264,22 @@ export function LinearConfig({
       {saving && (
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <ArrowPathIcon className="h-4 w-4 animate-spin" />
-          <span>Saving...</span>
+          <span>
+            {intl.formatMessage({
+              id: 'admin.integrations.config.saving',
+              defaultMessage: 'Saving...',
+            })}
+          </span>
         </div>
       )}
 
       {updateMutation.isError && (
         <div className="text-sm text-destructive">
-          {updateMutation.error?.message || 'Failed to save changes'}
+          {updateMutation.error?.message ||
+            intl.formatMessage({
+              id: 'admin.integrations.config.saveFailed',
+              defaultMessage: 'Failed to save changes',
+            })}
         </div>
       )}
 

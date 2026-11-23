@@ -72,7 +72,7 @@ async function seedPost(by: PrincipalId, ageDays = 0, meta: Record<string, strin
     title: 'Dark mode',
     content: 'Please',
     principalId: by,
-    widgetMetadata: meta,
+    clientMetadata: meta,
     createdAt: new Date(Date.now() - ageDays * DAY),
   })
   return id

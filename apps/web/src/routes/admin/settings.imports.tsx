@@ -15,13 +15,11 @@ import { adminPageHead } from '@/lib/client/admin-head'
  * experimental surface.
  */
 export const Route = createFileRoute('/admin/settings/imports')({
-  head: adminPageHead('Imports settings'),
+  head: adminPageHead('Imports settings', 'admin.pageTitle.importsSettings'),
   loader: async ({ context }) => {
     assertRoutePermission(context.permissions, PERMISSIONS.SETTINGS_MANAGE)
-    const { ensureBillingCatalogue } = await import('@/lib/client/queries/billing')
     const ensure = readBatch(context.queryClient)
     await Promise.all([
-      ensureBillingCatalogue(context.queryClient, context.billingEnabled),
       // The CSV import's board picker, warmed so it is in the document.
       warmQuery(ensure, adminQueries.boardsForSettings()),
       // Both histories, so they are in the document too. Import history is

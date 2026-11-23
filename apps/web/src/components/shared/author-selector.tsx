@@ -12,6 +12,7 @@ import { Avatar } from '@/components/ui/avatar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/shared/utils'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { adminQueries } from '@/lib/client/queries/admin'
 import type { TeamMember } from '@/lib/shared/types'
 
@@ -62,6 +63,7 @@ export function AuthorSelector({
   onEditUser,
   isCreating,
 }: AuthorSelectorProps) {
+  const intl = useOptionalIntl()
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
@@ -155,7 +157,10 @@ export function AuthorSelector({
     selectedFromResults?.name ||
     selectedFromResults?.email ||
     fallbackName ||
-    'Select author'
+    intl.formatMessage({
+      id: 'common.authorSelector.selectAuthor',
+      defaultMessage: 'Select author',
+    })
   const selectedMember = allMembers.find((m) => m.id === value)
   const isNew = createdIds.has(value)
 
@@ -168,7 +173,12 @@ export function AuthorSelector({
     if (!onCreateUser || !newName.trim()) return
     const trimmedEmail = newEmail.trim()
     if (trimmedEmail && !validateEmail(trimmedEmail)) {
-      setFormError('Invalid email address')
+      setFormError(
+        intl.formatMessage({
+          id: 'common.authorSelector.invalidEmail',
+          defaultMessage: 'Invalid email address',
+        })
+      )
       return
     }
     setFormError(null)
@@ -182,7 +192,15 @@ export function AuthorSelector({
       onChange(result.principalId)
       setOpen(false)
     } catch (err) {
-      setFormError(parseErrorMessage(err, 'Failed to create user'))
+      setFormError(
+        parseErrorMessage(
+          err,
+          intl.formatMessage({
+            id: 'common.authorSelector.createFailed',
+            defaultMessage: 'Failed to create user',
+          })
+        )
+      )
     }
   }
 
@@ -190,7 +208,12 @@ export function AuthorSelector({
     if (!onEditUser || !editingPrincipalId || !newName.trim()) return
     const trimmedEmail = newEmail.trim()
     if (trimmedEmail && !validateEmail(trimmedEmail)) {
-      setFormError('Invalid email address')
+      setFormError(
+        intl.formatMessage({
+          id: 'common.authorSelector.invalidEmail',
+          defaultMessage: 'Invalid email address',
+        })
+      )
       return
     }
     setFormError(null)
@@ -204,7 +227,15 @@ export function AuthorSelector({
       setMode('list')
       setEditingPrincipalId(null)
     } catch (err) {
-      setFormError(parseErrorMessage(err, 'Failed to update user'))
+      setFormError(
+        parseErrorMessage(
+          err,
+          intl.formatMessage({
+            id: 'common.authorSelector.updateFailed',
+            defaultMessage: 'Failed to update user',
+          })
+        )
+      )
     }
   }
 
@@ -217,15 +248,24 @@ export function AuthorSelector({
   }
 
   const handleFormSubmit = mode === 'edit' ? handleEdit : handleCreate
-  const formTitle = mode === 'edit' ? 'Edit user' : 'New user'
+  const formTitle =
+    mode === 'edit'
+      ? intl.formatMessage({ id: 'common.authorSelector.editTitle', defaultMessage: 'Edit user' })
+      : intl.formatMessage({ id: 'common.authorSelector.newTitle', defaultMessage: 'New user' })
   const formButton =
     mode === 'edit'
       ? isCreating
-        ? 'Saving...'
-        : 'Save'
+        ? intl.formatMessage({ id: 'common.authorSelector.saving', defaultMessage: 'Saving...' })
+        : intl.formatMessage({ id: 'common.authorSelector.save', defaultMessage: 'Save' })
       : isCreating
-        ? 'Creating...'
-        : 'Create & select'
+        ? intl.formatMessage({
+            id: 'common.authorSelector.creating',
+            defaultMessage: 'Creating...',
+          })
+        : intl.formatMessage({
+            id: 'common.authorSelector.createSelect',
+            defaultMessage: 'Create & select',
+          })
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -250,7 +290,7 @@ export function AuthorSelector({
               variant="outline"
               className="text-[11px] px-1.5 py-0 bg-emerald-500/10 text-emerald-600 border-emerald-500/30 shrink-0"
             >
-              New
+              {intl.formatMessage({ id: 'common.new', defaultMessage: 'New' })}
             </Badge>
           )}
           <ChevronUpDownIcon className="h-3.5 w-3.5 text-muted-foreground/60 ml-auto shrink-0" />
@@ -266,7 +306,10 @@ export function AuthorSelector({
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search members..."
+                placeholder={intl.formatMessage({
+                  id: 'common.authorSelector.searchPlaceholder',
+                  defaultMessage: 'Search members...',
+                })}
                 className="flex-1 text-[13px] bg-transparent border-0 outline-none placeholder:text-muted-foreground/50"
               />
             </div>
@@ -276,7 +319,10 @@ export function AuthorSelector({
             >
               {allMembers.length === 0 ? (
                 <p className="text-xs text-muted-foreground/60 text-center py-4">
-                  No members found
+                  {intl.formatMessage({
+                    id: 'common.authorSelector.noMembers',
+                    defaultMessage: 'No members found',
+                  })}
                 </p>
               ) : (
                 allMembers.map((member) => {
@@ -309,13 +355,17 @@ export function AuthorSelector({
                         />
                         <div className="min-w-0 flex-1">
                           <div className="font-medium truncate flex items-center gap-1.5">
-                            {member.name || 'Unnamed'}
+                            {member.name ||
+                              intl.formatMessage({
+                                id: 'common.authorSelector.unnamed',
+                                defaultMessage: 'Unnamed',
+                              })}
                             {memberIsNew && (
                               <Badge
                                 variant="outline"
                                 className="text-xs px-1 py-0 bg-emerald-500/10 text-emerald-600 border-emerald-500/30"
                               >
-                                New
+                                {intl.formatMessage({ id: 'common.new', defaultMessage: 'New' })}
                               </Badge>
                             )}
                           </div>
@@ -332,7 +382,10 @@ export function AuthorSelector({
                             startEdit(member)
                           }}
                           className="shrink-0 p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors"
-                          title="Edit user"
+                          title={intl.formatMessage({
+                            id: 'common.authorSelector.editTitle',
+                            defaultMessage: 'Edit user',
+                          })}
                         >
                           <PencilIcon className="h-3.5 w-3.5" />
                         </button>
@@ -352,7 +405,10 @@ export function AuthorSelector({
                   className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-left text-[13px] text-muted-foreground hover:bg-muted/60 hover:text-foreground transition-colors"
                 >
                   <PlusIcon className="size-4" />
-                  Create new user
+                  {intl.formatMessage({
+                    id: 'common.authorSelector.createNewUser',
+                    defaultMessage: 'Create new user',
+                  })}
                 </button>
               </div>
             )}
@@ -379,7 +435,10 @@ export function AuthorSelector({
                 type="text"
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
-                placeholder="Name"
+                placeholder={intl.formatMessage({
+                  id: 'common.authorSelector.namePlaceholder',
+                  defaultMessage: 'Name',
+                })}
                 className="w-full text-xs px-2.5 py-1.5 rounded-md border border-border/50 bg-transparent outline-none placeholder:text-muted-foreground/50 focus:border-border"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
@@ -392,7 +451,10 @@ export function AuthorSelector({
                 type="email"
                 value={newEmail}
                 onChange={(e) => setNewEmail(e.target.value)}
-                placeholder="Email (optional)"
+                placeholder={intl.formatMessage({
+                  id: 'common.authorSelector.emailOptional',
+                  defaultMessage: 'Email (optional)',
+                })}
                 className="w-full text-xs px-2.5 py-1.5 rounded-md border border-border/50 bg-transparent outline-none placeholder:text-muted-foreground/50 focus:border-border"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {

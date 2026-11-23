@@ -1,6 +1,7 @@
 import { SettingRow } from '@/components/admin/settings/setting-row'
 import { Switch } from '@/components/ui/switch'
 import { useUpdateIntegration } from '@/lib/client/mutations'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 
 export function CustomerContextConfig({
   integrationId,
@@ -9,13 +10,20 @@ export function CustomerContextConfig({
   integrationId: string
   enabled: boolean
 }) {
+  const intl = useOptionalIntl()
   const update = useUpdateIntegration()
   return (
     <div className="space-y-3">
       <SettingRow
-        label="Customer context"
+        label={intl.formatMessage({
+          id: 'admin.integrations.customerContext.label',
+          defaultMessage: 'Customer context',
+        })}
         htmlFor={`context-${integrationId}`}
-        description="Look up customer details by email when you open customer context."
+        description={intl.formatMessage({
+          id: 'admin.integrations.customerContext.description',
+          defaultMessage: 'Look up customer details by email when you open customer context.',
+        })}
         control={
           <Switch
             id={`context-${integrationId}`}

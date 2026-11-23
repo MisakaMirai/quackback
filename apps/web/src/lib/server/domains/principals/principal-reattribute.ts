@@ -28,7 +28,6 @@ import type { PrincipalId } from '@quackback/ids'
 import {
   conversationMessages,
   conversations,
-  conversationSummaries,
   eq,
   exportRuns,
   helpCenterArticles,
@@ -137,12 +136,6 @@ export const REATTRIBUTE_STEPS: ReattributeStep[] = [
     conversationMessages,
     'principal_id',
     'Message authorship, for the same reason as the conversation that holds it.'
-  ),
-  reattribute(
-    'conversation_summaries',
-    conversationSummaries,
-    'visitor_principal_id',
-    'Denormalized from conversations.visitor_principal_id; it follows the conversation so the customer-scoped retrieval it exists for keeps matching.'
   ),
   reattribute(
     'export_runs',

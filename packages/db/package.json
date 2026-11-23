@@ -21,9 +21,7 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit -p tsconfig.check.json",
-    "db:generate": "drizzle-kit generate",
     "db:migrate": "bun run src/migrate.ts",
-    "db:migrate:cli": "drizzle-kit migrate",
     "db:check-drift": "bun scripts/check-drift.ts",
     "db:permissions": "bun scripts/generate-permissions-mirror.ts",
     "db:studio": "drizzle-kit studio",
@@ -32,15 +30,14 @@
     "db:sync-counts": "bun src/sync-counts.ts"
   },
   "dependencies": {
+    "@opentelemetry/api": "^1.9.1",
     "@quackback/ids": "workspace:*",
     "drizzle-orm": "^0.45.2",
     "postgres": "^3.4.9"
   },
   "devDependencies": {
     "@faker-js/faker": "^10.6.0",
-    "@types/bcryptjs": "^3.0.0",
     "@types/bun": "^1.4.2",
-    "bcryptjs": "^3.0.3",
     "dotenv": "^18.0.8",
     "drizzle-kit": "^0.31.10"
   }

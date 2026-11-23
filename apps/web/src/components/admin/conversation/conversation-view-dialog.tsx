@@ -57,6 +57,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { cn } from '@/lib/shared/utils'
 import { toastError } from '@/lib/client/error-notice'
 
@@ -98,19 +99,22 @@ const ATTRIBUTE_OPERATORS_BY_TYPE: Record<
   date: ['is_set', 'is_empty'],
 }
 
-const ATTRIBUTE_OPERATOR_LABELS: Record<ConversationAttributeOperator, string> = {
-  eq: 'is',
-  neq: 'is not',
-  contains: 'contains',
-  not_contains: "doesn't contain",
-  gt: 'is more than',
-  gte: 'is at least',
-  lt: 'is less than',
-  lte: 'is at most',
-  includes_any: 'includes any of',
-  excludes_all: 'includes none of',
-  is_set: 'is set',
-  is_empty: 'is empty',
+const ATTRIBUTE_OPERATOR_LABELS: Record<
+  ConversationAttributeOperator,
+  { id: string; defaultMessage: string }
+> = {
+  eq: { id: 'inbox.view.operator.eq', defaultMessage: 'is' },
+  neq: { id: 'inbox.view.operator.neq', defaultMessage: 'is not' },
+  contains: { id: 'inbox.view.operator.contains', defaultMessage: 'contains' },
+  not_contains: { id: 'inbox.view.operator.notContains', defaultMessage: "doesn't contain" },
+  gt: { id: 'inbox.view.operator.gt', defaultMessage: 'is more than' },
+  gte: { id: 'inbox.view.operator.gte', defaultMessage: 'is at least' },
+  lt: { id: 'inbox.view.operator.lt', defaultMessage: 'is less than' },
+  lte: { id: 'inbox.view.operator.lte', defaultMessage: 'is at most' },
+  includes_any: { id: 'inbox.view.operator.includesAny', defaultMessage: 'includes any of' },
+  excludes_all: { id: 'inbox.view.operator.excludesAll', defaultMessage: 'includes none of' },
+  is_set: { id: 'inbox.view.operator.isSet', defaultMessage: 'is set' },
+  is_empty: { id: 'inbox.view.operator.isEmpty', defaultMessage: 'is empty' },
 }
 
 /** The default draft for a freshly-picked attribute — first operator for its
@@ -129,30 +133,30 @@ function defaultAttributeRule(key: string, def?: ConversationAttributeItem): Att
   return { field: 'attribute', key, operator, value }
 }
 
-const FIELD_LABELS: Record<ConversationViewRuleField, string> = {
-  status: 'Status',
-  priority: 'Priority',
-  assignee: 'Assignee',
-  team: 'Team',
-  tag: 'Tag',
-  source: 'Channel',
-  waiting: 'Waiting',
-  kind: 'Item kind',
-  ticket_type: 'Ticket type',
-  ticket_status_category: 'Ticket status',
-  ticket_stage: 'Ticket stage',
+const FIELD_LABELS: Record<ConversationViewRuleField, { id: string; defaultMessage: string }> = {
+  status: { id: 'inbox.view.field.status', defaultMessage: 'Status' },
+  priority: { id: 'inbox.view.field.priority', defaultMessage: 'Priority' },
+  assignee: { id: 'inbox.view.field.assignee', defaultMessage: 'Assignee' },
+  team: { id: 'inbox.view.field.team', defaultMessage: 'Team' },
+  tag: { id: 'inbox.view.field.tag', defaultMessage: 'Tag' },
+  source: { id: 'inbox.view.field.channel', defaultMessage: 'Channel' },
+  waiting: { id: 'inbox.view.field.waiting', defaultMessage: 'Waiting' },
+  kind: { id: 'inbox.view.field.kind', defaultMessage: 'Item kind' },
+  ticket_type: { id: 'inbox.view.field.ticketType', defaultMessage: 'Ticket type' },
+  ticket_status_category: { id: 'inbox.view.field.ticketStatus', defaultMessage: 'Ticket status' },
+  ticket_stage: { id: 'inbox.view.field.ticketStage', defaultMessage: 'Ticket stage' },
 }
 
 const STATUS_OPTIONS = ['open', 'snoozed', 'closed']
 const PRIORITY_OPTIONS = ['none', 'low', 'medium', 'high', 'urgent']
-const ASSIGNEE_OPTIONS: Array<{ value: string; label: string }> = [
-  { value: 'me', label: 'Me' },
-  { value: 'unassigned', label: 'Unassigned' },
+const ASSIGNEE_OPTIONS: Array<{ value: string; id: string; defaultMessage: string }> = [
+  { value: 'me', id: 'inbox.view.assigneeMe', defaultMessage: 'Me' },
+  { value: 'unassigned', id: 'inbox.assign.unassigned', defaultMessage: 'Unassigned' },
 ]
-const SOURCE_OPTIONS = ['widget', 'email']
-const KIND_OPTIONS: Array<{ value: string; label: string }> = [
-  { value: 'conversation', label: 'Conversation' },
-  { value: 'ticket', label: 'Ticket' },
+const SOURCE_OPTIONS = ['portal', 'email']
+const KIND_OPTIONS: Array<{ value: string; id: string; defaultMessage: string }> = [
+  { value: 'conversation', id: 'inbox.view.kindConversation', defaultMessage: 'Conversation' },
+  { value: 'ticket', id: 'inbox.view.kindTicket', defaultMessage: 'Ticket' },
 ]
 const TICKET_TYPE_OPTIONS: Array<{ value: string; label: string }> = TICKET_TYPES.map((t) => ({
   value: t,
@@ -175,7 +179,7 @@ function defaultValueFor(field: ConversationViewRuleField): string {
     case 'assignee':
       return 'me'
     case 'source':
-      return 'widget'
+      return 'portal'
     case 'waiting':
       return 'true'
     case 'kind':
@@ -246,6 +250,7 @@ export const ConversationViewDialog = memo(function ConversationViewDialog({
   onSaved,
 }: Props) {
   const queryClient = useQueryClient()
+  const intl = useOptionalIntl()
   const { data: tags } = useConversationTagsWithCounts()
   const { data: teams } = useInboxTeams()
   const supportTickets = useSupportTicketsEnabled()
@@ -297,7 +302,13 @@ export const ConversationViewDialog = memo(function ConversationViewDialog({
       const parsed = conversationViewFiltersSchema.safeParse({
         rules: rules.map(draftToRule).filter((r): r is ConversationViewRule => r !== null),
       })
-      if (!parsed.success) throw new Error('This view has an invalid rule')
+      if (!parsed.success)
+        throw new Error(
+          intl.formatMessage({
+            id: 'inbox.view.invalidRule',
+            defaultMessage: 'This view has an invalid rule',
+          })
+        )
       const filters = parsed.data
       const sortValue = sort === '' ? null : sort
       if (editing) {
@@ -313,12 +324,19 @@ export const ConversationViewDialog = memo(function ConversationViewDialog({
     },
     onSuccess: (viewId) => {
       invalidate()
-      toast.success(editing ? 'View updated' : 'View created')
+      toast.success(
+        editing
+          ? intl.formatMessage({ id: 'inbox.view.updated', defaultMessage: 'View updated' })
+          : intl.formatMessage({ id: 'inbox.view.created', defaultMessage: 'View created' })
+      )
       onOpenChange(false)
       onSaved?.(viewId)
     },
     onError: (error) => {
-      toastError(error, 'Failed to save view')
+      toastError(
+        error,
+        intl.formatMessage({ id: 'inbox.view.saveFailed', defaultMessage: 'Failed to save view' })
+      )
     },
   })
 
@@ -353,27 +371,42 @@ export const ConversationViewDialog = memo(function ConversationViewDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>{editing ? 'Edit view' : 'New view'}</DialogTitle>
+          <DialogTitle>
+            {editing
+              ? intl.formatMessage({ id: 'inbox.view.editTitle', defaultMessage: 'Edit view' })
+              : intl.formatMessage({ id: 'inbox.view.newTitle', defaultMessage: 'New view' })}
+          </DialogTitle>
           <DialogDescription>
-            A saved set of filters over the inbox. Shared views are visible to the whole team.
+            {intl.formatMessage({
+              id: 'inbox.view.description',
+              defaultMessage:
+                'A saved set of filters over the inbox. Shared views are visible to the whole team.',
+            })}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
           <div className="space-y-1.5">
-            <Label htmlFor="view-name">Name</Label>
+            <Label htmlFor="view-name">
+              {intl.formatMessage({ id: 'inbox.view.nameLabel', defaultMessage: 'Name' })}
+            </Label>
             <Input
               id="view-name"
               autoFocus
               value={name}
               maxLength={80}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Urgent & unassigned"
+              placeholder={intl.formatMessage({
+                id: 'inbox.view.namePlaceholder',
+                defaultMessage: 'e.g. Urgent & unassigned',
+              })}
             />
           </div>
 
           <div className="space-y-1.5">
-            <Label>Rules</Label>
+            <Label>
+              {intl.formatMessage({ id: 'inbox.view.rulesLabel', defaultMessage: 'Rules' })}
+            </Label>
             <div className="space-y-2">
               {rules.map((rule, i) => (
                 <div key={i} className="flex items-center gap-2">
@@ -388,13 +421,18 @@ export const ConversationViewDialog = memo(function ConversationViewDialog({
                       <SelectGroup>
                         {visibleFields.map((f) => (
                           <SelectItem key={f} value={f}>
-                            {FIELD_LABELS[f]}
+                            {intl.formatMessage(FIELD_LABELS[f])}
                           </SelectItem>
                         ))}
                       </SelectGroup>
                       {attributes.length > 0 && (
                         <SelectGroup>
-                          <SelectLabel>Conversation attribute</SelectLabel>
+                          <SelectLabel>
+                            {intl.formatMessage({
+                              id: 'inbox.view.conversationAttribute',
+                              defaultMessage: 'Conversation attribute',
+                            })}
+                          </SelectLabel>
                           {attributes.map((d) => (
                             <SelectItem key={d.key} value={attrFieldValue(d.key)}>
                               {d.label}
@@ -429,7 +467,10 @@ export const ConversationViewDialog = memo(function ConversationViewDialog({
                   <button
                     type="button"
                     onClick={() => removeRule(i)}
-                    aria-label="Remove rule"
+                    aria-label={intl.formatMessage({
+                      id: 'inbox.view.removeRule',
+                      defaultMessage: 'Remove rule',
+                    })}
                     className="flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-destructive"
                   >
                     <TrashIcon className="size-4" />
@@ -443,14 +484,15 @@ export const ConversationViewDialog = memo(function ConversationViewDialog({
                 onClick={addRule}
                 className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
               >
-                <PlusIcon className="size-3.5" /> Add rule
+                <PlusIcon className="size-3.5" />{' '}
+                {intl.formatMessage({ id: 'inbox.view.addRule', defaultMessage: 'Add rule' })}
               </button>
             )}
           </div>
 
           <div className="flex items-center gap-3">
             <Label htmlFor="view-sort" className="shrink-0">
-              Sort
+              {intl.formatMessage({ id: 'inbox.view.sortLabel', defaultMessage: 'Sort' })}
             </Label>
             <Select
               value={sort || 'recent'}
@@ -471,9 +513,17 @@ export const ConversationViewDialog = memo(function ConversationViewDialog({
 
           <div className="flex items-center justify-between">
             <div>
-              <Label htmlFor="view-shared">Shared with the team</Label>
+              <Label htmlFor="view-shared">
+                {intl.formatMessage({
+                  id: 'inbox.view.sharedLabel',
+                  defaultMessage: 'Shared with the team',
+                })}
+              </Label>
               <p className="text-xs text-muted-foreground">
-                Off keeps the view visible only to you.
+                {intl.formatMessage({
+                  id: 'inbox.view.sharedDescription',
+                  defaultMessage: 'Off keeps the view visible only to you.',
+                })}
               </p>
             </div>
             <Switch id="view-shared" checked={isShared} onCheckedChange={setIsShared} />
@@ -482,10 +532,17 @@ export const ConversationViewDialog = memo(function ConversationViewDialog({
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
+            {intl.formatMessage({ id: 'common.cancel', defaultMessage: 'Cancel' })}
           </Button>
           <Button onClick={() => save.mutate()} disabled={!canSave}>
-            {save.isPending ? 'Saving…' : editing ? 'Save changes' : 'Create view'}
+            {save.isPending
+              ? intl.formatMessage({ id: 'inbox.view.saving', defaultMessage: 'Saving…' })
+              : editing
+                ? intl.formatMessage({
+                    id: 'inbox.view.saveChanges',
+                    defaultMessage: 'Save changes',
+                  })
+                : intl.formatMessage({ id: 'inbox.view.create', defaultMessage: 'Create view' })}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -506,8 +563,16 @@ function RuleValue({
   teams: Array<{ id: string; name: string }>
   onChange: (value: string) => void
 }) {
+  const intl = useOptionalIntl()
   if (rule.field === 'waiting') {
-    return <span className="flex-1 text-xs text-muted-foreground">is waiting on a reply</span>
+    return (
+      <span className="flex-1 text-xs text-muted-foreground">
+        {intl.formatMessage({
+          id: 'inbox.view.isWaiting',
+          defaultMessage: 'is waiting on a reply',
+        })}
+      </span>
+    )
   }
   const options: Array<{ value: string; label: string }> =
     rule.field === 'status'
@@ -515,13 +580,13 @@ function RuleValue({
       : rule.field === 'priority'
         ? PRIORITY_OPTIONS.map((v) => ({ value: v, label: v }))
         : rule.field === 'assignee'
-          ? ASSIGNEE_OPTIONS
+          ? ASSIGNEE_OPTIONS.map((o) => ({ value: o.value, label: intl.formatMessage(o) }))
           : rule.field === 'source'
             ? SOURCE_OPTIONS.map((v) => ({ value: v, label: v }))
             : rule.field === 'tag'
               ? tags.map((t) => ({ value: t.id, label: t.name }))
               : rule.field === 'kind'
-                ? KIND_OPTIONS
+                ? KIND_OPTIONS.map((o) => ({ value: o.value, label: intl.formatMessage(o) }))
                 : rule.field === 'ticket_type'
                   ? TICKET_TYPE_OPTIONS
                   : rule.field === 'ticket_status_category'
@@ -534,7 +599,16 @@ function RuleValue({
   return (
     <Select value={rule.value} onValueChange={onChange} disabled={empty}>
       <SelectTrigger className="min-w-0 flex-1 capitalize">
-        <SelectValue placeholder={empty ? 'None available' : 'Choose…'} />
+        <SelectValue
+          placeholder={
+            empty
+              ? intl.formatMessage({
+                  id: 'inbox.view.noneAvailable',
+                  defaultMessage: 'None available',
+                })
+              : intl.formatMessage({ id: 'inbox.view.choose', defaultMessage: 'Choose…' })
+          }
+        />
       </SelectTrigger>
       <SelectContent>
         {options.map((o) => (
@@ -563,6 +637,7 @@ function AttributeRuleControls({
   attributes: ConversationAttributeItem[]
   onChange: (rule: AttributeDraftRule) => void
 }) {
+  const intl = useOptionalIntl()
   const def = attributes.find((d) => d.key === rule.key)
   const operators = def
     ? ATTRIBUTE_OPERATORS_BY_TYPE[def.fieldType]
@@ -588,7 +663,7 @@ function AttributeRuleControls({
         <SelectContent>
           {operators.map((op) => (
             <SelectItem key={op} value={op}>
-              {ATTRIBUTE_OPERATOR_LABELS[op]}
+              {intl.formatMessage(ATTRIBUTE_OPERATOR_LABELS[op])}
             </SelectItem>
           ))}
         </SelectContent>
@@ -605,7 +680,10 @@ function AttributeRuleControls({
           <Input
             value={typeof rule.value === 'string' ? rule.value : ''}
             onChange={(e) => onChange({ ...rule, value: e.target.value })}
-            placeholder="Value"
+            placeholder={intl.formatMessage({
+              id: 'inbox.view.valuePlaceholder',
+              defaultMessage: 'Value',
+            })}
             className="h-8 min-w-0 flex-1 text-sm"
           />
         ))}

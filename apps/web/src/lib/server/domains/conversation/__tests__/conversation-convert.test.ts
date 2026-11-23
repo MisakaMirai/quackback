@@ -207,7 +207,7 @@ describe('createPostFromConversation create-new path', () => {
       boardId,
       title: 'Add dark mode', // trimmed
       content: 'from the transcript',
-      widgetMetadata: { source: 'live_chat', conversationId },
+      clientMetadata: { source: 'live_chat', conversationId },
     })
     // Attribution: author is the VISITOR, but the agent actor satisfies moderation.
     expect(postCtx).toEqual({ principalId: visitorPrincipalId, actor: agentActor })

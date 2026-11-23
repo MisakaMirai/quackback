@@ -1,5 +1,5 @@
 import { MagnifyingGlassIcon, DocumentIcon, SparklesIcon } from '@heroicons/react/24/solid'
-import { useIntl } from 'react-intl'
+import { useOptionalIntl } from '@/components/ui/use-optional-intl'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/shared/empty-state'
 import { useActivationAction } from '@/lib/client/hooks/use-activation-action'
@@ -12,7 +12,7 @@ interface InboxEmptyStateProps {
 }
 
 export function InboxEmptyState({ type, onClearFilters }: InboxEmptyStateProps) {
-  const intl = useIntl()
+  const intl = useOptionalIntl()
   const userRole = useUserRole()
   const activationAction = useActivationAction('feedback_empty')
   const isAdmin = userRole === 'admin'
@@ -21,12 +21,21 @@ export function InboxEmptyState({ type, onClearFilters }: InboxEmptyStateProps) 
     return (
       <EmptyState
         icon={MagnifyingGlassIcon}
-        title="No results for these filters"
-        description="Try adjusting your search or filter criteria."
+        title={intl.formatMessage({
+          id: 'admin.feedback.empty.noResultsTitle',
+          defaultMessage: 'No results for these filters',
+        })}
+        description={intl.formatMessage({
+          id: 'admin.feedback.empty.noResultsDescription',
+          defaultMessage: 'Try adjusting your search or filter criteria.',
+        })}
         action={
           onClearFilters && (
             <Button variant="outline" onClick={onClearFilters}>
-              Clear all filters
+              {intl.formatMessage({
+                id: 'admin.helpCenter.finder.clearFilters',
+                defaultMessage: 'Clear all filters',
+              })}
             </Button>
           )
         }
@@ -63,8 +72,14 @@ export function InboxEmptyState({ type, onClearFilters }: InboxEmptyStateProps) 
   return (
     <EmptyState
       icon={DocumentIcon}
-      title="Select a post"
-      description="Choose a post from the list to view its details."
+      title={intl.formatMessage({
+        id: 'admin.feedback.empty.selectPostTitle',
+        defaultMessage: 'Select a post',
+      })}
+      description={intl.formatMessage({
+        id: 'admin.feedback.empty.selectPostDescription',
+        defaultMessage: 'Choose a post from the list to view its details.',
+      })}
       className="h-full"
     />
   )

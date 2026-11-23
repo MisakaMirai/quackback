@@ -7,7 +7,7 @@ import { adminPageHead } from '@/lib/client/admin-head'
  * bookmarks and old deep links keep working.
  */
 export const Route = createFileRoute('/admin/settings/branding')({
-  head: adminPageHead('Branding settings'),
+  head: adminPageHead('Branding settings', 'admin.pageTitle.brandingSettings'),
   beforeLoad: () => {
     throw redirect({ to: '/admin/settings/portal' })
   },

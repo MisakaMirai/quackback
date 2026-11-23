@@ -1,8 +1,8 @@
 /**
  * Real-Postgres coverage for custom-role CRUD (role.service.ts): the rails
  * that make role.manage safe — system presets read-only, the grant ceiling
- * (structural block on transitive self-elevation), the held-role lock, the
- * in-use delete + reassignment, and the tier cap seam.
+ * (structural block on transitive self-elevation), the held-role lock, and
+ * the in-use delete + reassignment.
  */
 import { describe, it, expect, vi, beforeEach, afterEach, afterAll } from 'vitest'
 import { createId, type PrincipalId, type RoleId, type UserId } from '@quackback/ids'
@@ -20,7 +20,6 @@ import {
 } from '@/lib/server/db'
 import { PERMISSIONS, SYSTEM_ROLES, ALL_PERMISSIONS } from '@/lib/shared/permissions'
 import { ForbiddenError, NotFoundError, ValidationError } from '@/lib/shared/errors'
-import { TierLimitError } from '@/lib/server/errors/tier-limit-error'
 
 vi.mock('@/lib/server/db', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/server/db')>()),
@@ -28,12 +27,7 @@ vi.mock('@/lib/server/db', async (importOriginal) => ({
 }))
 
 const hoisted = vi.hoisted(() => ({
-  maxCustomRoles: null as number | null,
   recordAuditEvent: vi.fn(),
-}))
-
-vi.mock('@/lib/server/domains/settings/tier-limits.service', () => ({
-  getTierLimits: async () => ({ maxCustomRoles: hoisted.maxCustomRoles }),
 }))
 
 vi.mock('@/lib/server/audit/log', () => ({
@@ -77,7 +71,6 @@ async function roleByKey(key: string) {
 
 if (fixture.available) {
   beforeEach(() => {
-    hoisted.maxCustomRoles = null
     hoisted.recordAuditEvent.mockClear()
     return fixture.begin()
   })
@@ -132,7 +125,7 @@ describe.skipIf(!fixture.available)('role.service (real Postgres)', () => {
       permissions: [PERMISSIONS.POST_VIEW_PRIVATE],
     }
     await expect(
-      createRole({ name: 'Too much', permissionKeys: [PERMISSIONS.BILLING_MANAGE] }, limited)
+      createRole({ name: 'Too much', permissionKeys: [PERMISSIONS.AUDIT_VIEW] }, limited)
     ).rejects.toThrow(/permissions you don't hold/)
   })
 
@@ -140,24 +133,17 @@ describe.skipIf(!fixture.available)('role.service (real Postgres)', () => {
     const owner = await roleByKey(SYSTEM_ROLES.OWNER)
     const editor: RoleEditor = {
       principalId: await seedPrincipal(),
-      // An Admin-grade editor: everything except billing.
-      permissions: ALL_PERMISSIONS.filter((k) => k !== PERMISSIONS.BILLING_MANAGE),
+      // An Admin-grade editor: everything except audit.view.
+      permissions: ALL_PERMISSIONS.filter((k) => k !== PERMISSIONS.AUDIT_VIEW),
     }
 
     const { role, droppedKeys } = await createRole(
       { name: 'Almost Owner', duplicateFromRoleId: owner.id },
       editor
     )
-    expect(droppedKeys).toEqual([PERMISSIONS.BILLING_MANAGE])
-    expect(role.permissionKeys).not.toContain(PERMISSIONS.BILLING_MANAGE)
+    expect(droppedKeys).toEqual([PERMISSIONS.AUDIT_VIEW])
+    expect(role.permissionKeys).not.toContain(PERMISSIONS.AUDIT_VIEW)
     expect(role.permissionKeys).toContain(PERMISSIONS.MEMBER_MANAGE)
-  })
-
-  it('enforces the maxCustomRoles tier cap', async () => {
-    hoisted.maxCustomRoles = 1
-    const editor = ownerEditor(await seedPrincipal())
-    await createRole({ name: 'First' }, editor)
-    await expect(createRole({ name: 'Second' }, editor)).rejects.toThrow(TierLimitError)
   })
 
   it('updates name and permission set, bumping updatedAt', async () => {
@@ -220,7 +206,7 @@ describe.skipIf(!fixture.available)('role.service (real Postgres)', () => {
     const { role } = await createRole({ name: 'Limited edit' }, limited)
 
     await expect(
-      updateRole(role.id, { permissionKeys: [PERMISSIONS.BILLING_MANAGE] }, limited)
+      updateRole(role.id, { permissionKeys: [PERMISSIONS.AUDIT_VIEW] }, limited)
     ).rejects.toThrow(/can't grant permissions you don't hold/)
   })
 

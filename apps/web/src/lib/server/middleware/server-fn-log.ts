@@ -69,7 +69,7 @@ function isSerializedIssueList(error: object): boolean {
 
 /**
  * Some errors carry an HTTP status without extending DomainException — e.g.
- * CopilotUnavailableError. The status is the classification, so read it
+ * The status is the classification, so read it
  * structurally rather than requiring a particular base class.
  */
 function statusCodeOf(error: unknown): number | undefined {

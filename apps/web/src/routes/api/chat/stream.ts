@@ -23,7 +23,6 @@ import {
 } from '@/lib/server/realtime/conversation-channels'
 import { subscribe } from '@/lib/server/realtime/pubsub'
 import { markPresent, refreshPresence, clearPresence } from '@/lib/server/realtime/presence'
-import { readActivitySnapshot } from '@/lib/server/domains/assistant/assistant-activity-snapshot'
 import { canViewConversation } from '@/lib/server/policy/conversation'
 import { assertTicketVisible } from '@/lib/server/domains/tickets/ticket.service'
 import { NotFoundError } from '@/lib/shared/errors'
@@ -43,9 +42,6 @@ import { createSseStream, SSE_RESPONSE_HEADERS } from '@/lib/server/utils/sse'
 import { streamLimiter } from '@/lib/server/realtime/stream-connection-limit'
 import { startStreamHeartbeat } from '@/lib/server/realtime/stream-heartbeat'
 import { getClientIp } from '@/lib/server/domains/api/rate-limit'
-import { getWorkspaceScope, runWithWorkspaceScope } from '@/lib/server/workspaces/workspace-context'
-import { withWorkspaceScopeById } from '@/lib/server/workspaces/fleet'
-import { isPooledTenancy } from '@/lib/server/workspaces/mode'
 import { logger } from '@/lib/server/logger'
 
 const log = logger.child({ component: 'chat-stream' })
@@ -261,29 +257,16 @@ export const Route = createFileRoute('/api/chat/stream')({
         let unsubscribe: (() => Promise<void>) | null = null
 
         // The abort listener and the stream's cancel hook are invoked by the
-        // runtime, outside the request's AsyncLocalStorage context, so under
-        // pooled tenancy `clearPresence` (and the requeue behind it) would run
-        // with no workspace scope and throw. Capture the scope now and re-enter
-        // it for teardown — the same pattern the auth stash sweeps use.
-        const workspaceScope = getWorkspaceScope()
-        // The captured scope's pool does not live as long as the stream: under
-        // pooled tenancy the pool cache ends a pool that has gone unused, or that
-        // its LRU cap pushes out, and a stream checks out only once. So presence
-        // writes after start re-acquire the workspace by key, which replaces an
-        // evicted pool. A single-workspace install runs them as they are.
-        const pooledWorkspaceKey =
-          workspaceScope && isPooledTenancy() ? workspaceScope.workspace.workspaceKey : null
+        // runtime, outside the request's AsyncLocalStorage context. Teardown is
+        // written to need no ambient context.
         const withLivePool = async (body: () => Promise<void>): Promise<void> => {
-          if (!pooledWorkspaceKey) return body()
           try {
-            await withWorkspaceScopeById(pooledWorkspaceKey, 'request', body)
+            await body()
           } catch (err) {
-            log.warn(
-              { err, stream_id: streamId, workspace_key: pooledWorkspaceKey },
-              'chat stream presence update failed'
-            )
+            log.warn({ err, stream_id: streamId }, 'chat stream presence update failed')
           }
         }
+
         const teardown = async () => {
           if (cleanedUp) return
           cleanedUp = true
@@ -313,8 +296,7 @@ export const Route = createFileRoute('/api/chat/stream')({
           }
           slot.release()
         }
-        cleanup = () =>
-          workspaceScope ? runWithWorkspaceScope(workspaceScope, teardown) : teardown()
+        cleanup = () => teardown()
 
         const run = async () => {
           try {
@@ -357,20 +339,6 @@ export const Route = createFileRoute('/api/chat/stream')({
               return
             }
             unsubscribe = unsub
-
-            // Replay Quinn's in-flight activity trace, if any: a subscriber
-            // connecting mid-turn (most visibly a brand-new conversation,
-            // where the stream opens after the turn already started) would
-            // otherwise miss every "thinking" / "searching" frame published
-            // before it subscribed. Kicked off AFTER subscribing (no gap) but
-            // awaited past the backfill below so the snapshot read overlaps the
-            // backfill round trips; sent before the live-buffer flush so an activity
-            // frame that arrived during backfill is flushed after it and wins.
-            // Only for a conversation-scoped stream — the trace is never
-            // inbox-wide.
-            const activitySnapshot = backfillConversationId
-              ? readActivitySnapshot(backfillConversationId)
-              : null
 
             // Backfill messages the client missed while disconnected. Mirror
             // the canonical read path: skip soft-deleted rows and use the
@@ -431,13 +399,6 @@ export const Route = createFileRoute('/api/chat/stream')({
               } catch (err) {
                 log.warn({ err }, 'chat stream backfill failed')
               }
-            }
-
-            const snapshot = activitySnapshot ? await activitySnapshot : null
-            if (snapshot) {
-              const json = JSON.stringify(snapshot)
-              const { frame } = formatFrame(json, parseConversationFrame(json))
-              sse.sendRaw(frame)
             }
 
             // Flush live events buffered during backfill, skipping any message

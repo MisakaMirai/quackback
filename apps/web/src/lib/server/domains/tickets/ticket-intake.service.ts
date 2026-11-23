@@ -71,10 +71,10 @@ export async function publishTicketUpdated(row: Ticket): Promise<TicketDTO> {
  * TICKET_CREATE via createTicket, or requester self-creation via createMyTicket).
  * Resolves the default status; `number` auto-increments.
  *
- * The input's assignee/company are stored as given — the AGENT defaulting
- * rules (inherit the source conversation's assignee, else the creating agent;
- * propagate the requester's company) live in `createTicket`, so the requester
- * intake (`createMyTicket`) keeps its born-unassigned, company-less shape.
+ * The input's assignee is stored as given — the AGENT defaulting rules
+ * (inherit the source conversation's assignee, else the creating agent) live
+ * in `createTicket`, so the requester intake (`createMyTicket`) keeps its
+ * born-unassigned shape.
  * The watcher set is resolved here, though, in the create transaction: the
  * requester (reason 'requester'), a distinct assignee ('assignee'), and the
  * creating principal when they are neither ('manual') — the last skipped when
@@ -239,7 +239,6 @@ export async function createTicketCore(input: CreateTicketInput, actor: Actor): 
         priority: input.priority ?? 'none',
         requesterPrincipalId: input.requesterPrincipalId ?? null,
         assigneePrincipalId: input.assigneePrincipalId ?? null,
-        companyId: input.companyId ?? null,
         customAttributes: input.customAttributes ?? {},
       })
       .returning()

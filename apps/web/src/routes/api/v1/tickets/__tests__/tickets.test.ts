@@ -42,7 +42,6 @@ const ticketDTO = {
   priority: 'high',
   requester: { principalId: 'principal_r', displayName: 'Ada', avatarUrl: null },
   assignee: { principalId: 'principal_a', displayName: 'Grace', teamId: null, teamName: null },
-  company: { id: 'company_1', name: 'Acme' },
   firstResponseAt: null,
   dueAt: null,
   resolvedAt: null,
@@ -73,7 +72,6 @@ describe('GET /api/v1/tickets', () => {
       stage: 'in_progress',
       requesterPrincipalId: 'principal_r',
       assigneePrincipalId: 'principal_a',
-      companyId: 'company_1',
     })
     // gated on ticket.view; the filter + a service actor reach the domain
     expect(mockAuth).toHaveBeenCalledWith(expect.anything(), { permission: 'ticket.view' })
