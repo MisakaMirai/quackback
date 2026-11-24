@@ -43,6 +43,9 @@ coverage
 # Playwright
 playwright-report/
 test-results/
+# Per-run result directories, so shards can run side by side (see
+# docs/e2e-coverage.md): --output=test-results-<port>
+test-results-*/
 apps/web/e2e/.auth/
 
 # Turbo

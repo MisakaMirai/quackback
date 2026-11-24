@@ -27,6 +27,36 @@ The dev server must be running (`bun run dev`) with the e2e database migrated
 and seeded (`bun run db:migrate`, `bun run db:seed`). `PLAYWRIGHT_REUSE_SERVER=1`
 reuses the running server instead of starting a second one.
 
+### Running the suite the way CI does
+
+CI runs the full suite against the **built** app, not the dev server, and splits
+it across shards. The two knobs that make that reproducible locally:
+
+| Variable                    | Effect                                                                                                                                                                                                                                                                                                           |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `E2E_SERVER=production`     | Playwright starts `bun .output/server/index.mjs` (run `bun run build` first) instead of `vite dev`. This is what CI's `e2e-full` job uses; the dev server transforms each route on first request and is most of the suite's wall clock.                                                                          |
+| `PLAYWRIGHT_AUTH_STATE`     | Where the `setup` project saves the signed-in admin state (default `e2e/.auth/admin.json`). Point two runs at different files and they no longer overwrite each other's session.                                                                                                                                 |
+| `DISABLE_AUTH_RATE_LIMIT=1` | Turns off Better-Auth's own per-IP rate limiter, which otherwise spends its budget on the suite's own sign-ins and 429s whichever spec runs next. The app's own sign-in limiters (`auth/signin-rate-limit.ts`) stay on — several auth specs assert their exact shape. `e2e-full` sets this; nothing else should. |
+
+So two shards can run side by side on one machine against their own databases —
+each gets its own port, database, auth file and results directory:
+
+```bash
+# shard 1 of 2
+cd apps/web
+E2E_SERVER=production PLAYWRIGHT_BASE_URL=http://localhost:3111 \
+  PLAYWRIGHT_AUTH_STATE=e2e/.auth/admin-3111.json \
+  DATABASE_URL=postgresql://postgres:password@localhost:5432/quackback_e2e_1 \
+  ./node_modules/.bin/playwright test --shard=1/2 --reporter=line --output=test-results-3111
+
+# shard 2 of 2, in another terminal
+cd apps/web
+E2E_SERVER=production PLAYWRIGHT_BASE_URL=http://localhost:3112 \
+  PLAYWRIGHT_AUTH_STATE=e2e/.auth/admin-3112.json \
+  DATABASE_URL=postgresql://postgres:password@localhost:5432/quackback_e2e_2 \
+  ./node_modules/.bin/playwright test --shard=2/2 --reporter=line --output=test-results-3112
+```
+
 ## Coverage by area
 
 | Area                        | Specs                                                                                                                                                                                                               |
