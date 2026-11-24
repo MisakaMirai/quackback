@@ -10,13 +10,14 @@ on:
   # instead of waiting for the cron when a change needs the slow gates now.
   workflow_dispatch:
 
-# Scope the group by event so the nightly full-suite run does not share a group
-# with push runs on the same ref. Only a newer PR push supersedes an in-flight
-# run: a main/nightly run is the only CI signal for that commit, so cancelling
-# it (or letting it cancel the nightly) would leave the commit unverified.
+# Scope the group by event so the nightly full-suite run never shares a group
+# with push runs on the same ref. Within an event, a new PR commit or a push to
+# a feature branch supersedes the in-flight run; a push to the long-lived
+# main/dev branches and the scheduled run finish instead, since nothing newer
+# will verify those commits and cancelling would drop their only signal.
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref_name != 'main' && github.ref_name != 'dev') }}
 
 permissions:
   contents: read
