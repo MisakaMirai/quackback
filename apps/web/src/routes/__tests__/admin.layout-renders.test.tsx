@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 /**
- * The admin layout (rail, banners, the entity modals' slot) wraps every admin
+ * The admin layout (rail, the entity modals' slot) wraps every admin
  * page. Every navigation hands the tree a fresh route context and location, a
  * search-only one included (opening a conversation), and the layout shows
  * none of what changed, so it renders nothing again for one; its loader's
@@ -61,10 +61,6 @@ vi.mock('@/lib/server/functions/workspace-utils', () => ({
 }))
 vi.mock('@/lib/server/functions/portal', () => ({
   fetchUserAvatar: async () => ({ avatarUrl: shell.avatarUrl }),
-}))
-vi.mock('@/lib/server/functions/version', () => ({
-  getLatestVersion: async () => null,
-  isNewerVersion: () => false,
 }))
 const dialogs = vi.hoisted(() => ({ mounts: 0 }))
 vi.mock('@/components/ui/dialog', async (importOriginal) => {

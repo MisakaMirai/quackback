@@ -44,7 +44,6 @@ export interface RouterContext {
   managedFieldPaths?: string[]
   registeredAuthProviders?: string[]
   acceptLanguageLocale?: SupportedLocale
-  updateBannerDismissedVersion?: BootstrapData['updateBannerDismissedVersion']
 }
 
 // Paths that are allowed before onboarding is complete

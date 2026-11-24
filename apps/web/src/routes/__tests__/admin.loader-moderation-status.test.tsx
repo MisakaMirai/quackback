@@ -20,10 +20,6 @@ vi.mock('@/lib/server/functions/notifications', () => ({
 vi.mock('@/lib/server/functions/portal', () => ({
   fetchUserAvatar: async () => ({ avatarUrl: null }),
 }))
-vi.mock('@/lib/server/functions/version', () => ({
-  getLatestVersion: async () => null,
-  isNewerVersion: () => false,
-}))
 const { Route } = await import('../admin')
 const { adminQueries } = await import('@/lib/client/queries/admin')
 

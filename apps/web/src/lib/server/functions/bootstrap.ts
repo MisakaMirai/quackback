@@ -7,7 +7,6 @@ import {
   parsePrefersColorScheme,
   type Theme,
 } from '@/lib/shared/theme'
-import { getUpdateBannerDismissedVersionCookie } from '@/lib/shared/update-banner-cookie'
 import { resolveLocale, type SupportedLocale } from '@/lib/shared/i18n'
 import { redactSettingsForClient } from '@/lib/shared/redact-portal-config'
 import {
@@ -54,11 +53,6 @@ export interface BootstrapData {
    *  root document to set `<html lang>`/`dir` during SSR. Resolved here so it
    *  rides the bootstrap request without a separate round-trip. */
   acceptLanguageLocale: SupportedLocale
-  /** Version string the admin update banner was dismissed for, read from the
-   *  `update_banner_dismissed_version` cookie, or null if never dismissed.
-   *  Threaded into the admin route the same way `themeCookie` is, so the
-   *  banner renders in its final expanded/collapsed state on first paint. */
-  updateBannerDismissedVersion: string | null
 }
 
 // Returns both the session (with principalType) AND the user role from one
@@ -162,9 +156,6 @@ const getBootstrapDataInternal = createServerOnlyFn(async (): Promise<BootstrapD
 
   const headers = getRequestHeaders()
   const themeCookie = getThemeCookie(headers.get('cookie') ?? null)
-  const updateBannerDismissedVersion = getUpdateBannerDismissedVersionCookie(
-    headers.get('cookie') ?? null
-  )
   const acceptLanguageLocale = resolveLocale(headers.get('accept-language'))
 
   // Ask for the prefers-color-scheme client hint, so Chromium sends the OS
@@ -208,7 +199,6 @@ const getBootstrapDataInternal = createServerOnlyFn(async (): Promise<BootstrapD
     managedFieldPaths: settings?.managedFieldPaths ?? [],
     registeredAuthProviders,
     acceptLanguageLocale,
-    updateBannerDismissedVersion,
   }
 })
 

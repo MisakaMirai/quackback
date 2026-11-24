@@ -9,12 +9,10 @@ import { fetchUserAvatar } from '@/lib/server/functions/portal'
 import { adminQueries } from '@/lib/client/queries/admin'
 import { isProductEnabled } from '@/lib/shared/types/settings'
 import { unreadCountQuery } from '@/lib/client/hooks/use-notifications-queries'
-import { getLatestVersion, isNewerVersion } from '@/lib/server/functions/version'
 import { AdminProductTourProvider } from '@/components/onboarding/admin-product-tour'
 import { AdminSidebar } from '@/components/admin/admin-sidebar'
 import { ArticleModal, ChangelogModal, PostModal } from '@/components/admin/entity-modals'
 import { TooltipProvider } from '@/components/ui/tooltip'
-import { UpdateBanner } from '@/components/admin/update-banner'
 import { FileViewerProvider, scrollToMessage } from '@/components/shared/files/file-viewer-context'
 import { PERMISSIONS } from '@/lib/shared/permissions'
 import { createRouteContextMemo } from '@/lib/client/route-context-memo'
@@ -85,8 +83,6 @@ export const Route = createFileRoute('/admin')({
       return {
         user: null,
         initialUserData: null,
-        latestVersion: null,
-        updateBannerDismissedVersion: null,
         currentUser: null,
         locale: DEFAULT_LOCALE,
         messages: await loadAdminMessages(DEFAULT_LOCALE),
@@ -104,11 +100,10 @@ export const Route = createFileRoute('/admin')({
       (context.permissions ?? []).includes(PERMISSIONS.POST_APPROVE)
 
     const locale = context.acceptLanguageLocale ?? DEFAULT_LOCALE
-    const [avatarData, latestRelease, messages] = await Promise.all([
+    const [avatarData, messages] = await Promise.all([
       fetchUserAvatar({
         data: { userId: user.id, fallbackImageUrl: user.image },
       }),
-      getLatestVersion(),
       loadAdminMessages(locale),
       // The rail's unread badge rides the document rather than a request of
       // its own after hydration. Unreadable now, it is left to the bell.
@@ -118,9 +113,6 @@ export const Route = createFileRoute('/admin')({
         ? context.queryClient.ensureQueryData(adminQueries.moderationStatus()).catch(() => null)
         : null,
     ])
-
-    const latestVersion =
-      latestRelease && isNewerVersion(__APP_VERSION__, latestRelease.version) ? latestRelease : null
 
     const initialUserData = {
       name: user.name,
@@ -132,8 +124,6 @@ export const Route = createFileRoute('/admin')({
     return {
       user,
       initialUserData,
-      latestVersion,
-      updateBannerDismissedVersion: context.updateBannerDismissedVersion ?? null,
       locale,
       messages,
       currentUser: {
@@ -213,14 +203,7 @@ function useSeedAdminGuard() {
 }
 
 function AdminLayout() {
-  const {
-    initialUserData,
-    latestVersion,
-    updateBannerDismissedVersion,
-    currentUser,
-    locale,
-    messages,
-  } = Route.useLoaderData()
+  const { initialUserData, currentUser, locale, messages } = Route.useLoaderData()
   useSeedAdminGuard()
   useToasterLocale(locale)
 
@@ -239,12 +222,7 @@ function AdminLayout() {
       <SearchPaletteProvider>
         <AdminProductTourProvider>
           <TooltipProvider delay={0}>
-            <AdminContent
-              initialUserData={initialUserData}
-              latestVersion={latestVersion}
-              updateBannerDismissedVersion={updateBannerDismissedVersion}
-              currentUser={currentUser}
-            />
+            <AdminContent initialUserData={initialUserData} currentUser={currentUser} />
           </TooltipProvider>
         </AdminProductTourProvider>
       </SearchPaletteProvider>
@@ -254,29 +232,12 @@ function AdminLayout() {
 
 function AdminContent({
   initialUserData,
-  latestVersion,
-  updateBannerDismissedVersion,
   currentUser,
-}: Pick<
-  ReturnType<typeof Route.useLoaderData>,
-  'initialUserData' | 'latestVersion' | 'updateBannerDismissedVersion' | 'currentUser'
->) {
+}: Pick<ReturnType<typeof Route.useLoaderData>, 'initialUserData' | 'currentUser'>) {
   return (
     <>
       <AdminWorkspaceFrame
-        sidebar={
-          initialUserData && (
-            <AdminSidebar initialUserData={initialUserData} latestVersion={latestVersion} />
-          )
-        }
-        notices={
-          <>
-            <UpdateBanner
-              latestVersion={latestVersion}
-              dismissedVersion={updateBannerDismissedVersion}
-            />
-          </>
-        }
+        sidebar={initialUserData && <AdminSidebar initialUserData={initialUserData} />}
       >
         <FileViewerProvider onJumpToMessage={scrollToMessage}>
           <Outlet />

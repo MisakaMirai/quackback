@@ -7,11 +7,9 @@ export const ADMIN_MAIN_ID = 'admin-main'
 /** The admin shell: the sidebar beside an inset page sheet. */
 export function AdminWorkspaceFrame({
   sidebar,
-  notices,
   children,
 }: {
   sidebar: ReactNode
-  notices: ReactNode
   children: ReactNode
 }) {
   // Formatted in place: a message component would render once more on every page.
@@ -36,7 +34,6 @@ export function AdminWorkspaceFrame({
           data-admin-canvas=""
           className="flex h-full flex-col overflow-hidden bg-background pt-14 text-foreground sm:rounded-[14px] sm:border sm:border-chrome-hairline sm:pt-0 sm:shadow-chrome-canvas"
         >
-          {notices}
           <div className="min-h-0 flex-1 overflow-hidden">{children}</div>
         </div>
       </main>

@@ -28,7 +28,7 @@ describe('admin landmarks', () => {
   it('offers a skip link to the one main region', () => {
     render(
       <IntlProvider locale="en">
-        <AdminWorkspaceFrame sidebar={<nav>rail</nav>} notices={null}>
+        <AdminWorkspaceFrame sidebar={<nav>rail</nav>}>
           <p>page</p>
         </AdminWorkspaceFrame>
       </IntlProvider>

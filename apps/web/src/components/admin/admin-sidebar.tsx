@@ -37,7 +37,6 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/co
 import { NotificationBell } from '@/components/notifications'
 import { cn } from '@/lib/shared/utils'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import type { LatestVersionResult } from '@/lib/server/functions/version'
 import type { SettingsBrandingData } from '@/lib/server/domains/settings/settings.types'
 import { setAgentAvailabilityFn } from '@/lib/server/functions/conversation'
 import { usePermission } from '@/lib/client/hooks/use-permission'
@@ -79,7 +78,6 @@ interface AdminSidebarProps {
     avatarUrl: string | null
     chatAvailability?: 'online' | 'away'
   }
-  latestVersion?: LatestVersionResult | null
 }
 
 type RailIcon = ComponentType<{ className?: string }>
@@ -276,7 +274,7 @@ function MobileNavLink({
   )
 }
 
-export function AdminSidebar({ initialUserData, latestVersion }: AdminSidebarProps) {
+export function AdminSidebar({ initialUserData }: AdminSidebarProps) {
   const intl = useIntl()
   const router = useRouter()
   const onNotificationsPage = useRouterState({
@@ -434,9 +432,6 @@ export function AdminSidebar({ initialUserData, latestVersion }: AdminSidebarPro
                     <span className="min-w-0 flex-1 truncate text-left">
                       {intl.formatMessage({ id: 'admin.help.label', defaultMessage: 'Help' })}
                     </span>
-                    {latestVersion && (
-                      <span className="size-2 rounded-full bg-primary" aria-hidden="true" />
-                    )}
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" side="right" sideOffset={8} className="w-52">
@@ -477,18 +472,8 @@ export function AdminSidebar({ initialUserData, latestVersion }: AdminSidebarPro
                     </a>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <div className="px-2 py-1.5 flex flex-col gap-1">
+                  <div className="px-2 py-1.5">
                     <span className="text-xs text-muted-foreground/60">v{__APP_VERSION__}</span>
-                    {latestVersion && (
-                      <a
-                        href={latestVersion.releaseUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-xs text-primary hover:underline"
-                      >
-                        Update available · v{latestVersion.version}
-                      </a>
-                    )}
                   </div>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -658,18 +643,8 @@ export function AdminSidebar({ initialUserData, latestVersion }: AdminSidebarPro
                 <DocumentTextIcon className="h-5 w-5" />
                 <FormattedMessage id="admin.help.whatsNew" defaultMessage="What's new" />
               </a>
-              <div className="px-4 py-2 flex flex-col gap-1">
+              <div className="px-4 py-2">
                 <span className="text-xs text-muted-foreground/50">v{__APP_VERSION__}</span>
-                {latestVersion && (
-                  <a
-                    href={latestVersion.releaseUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs text-primary hover:underline"
-                  >
-                    Update available · v{latestVersion.version}
-                  </a>
-                )}
               </div>
             </nav>
           </SheetContent>
