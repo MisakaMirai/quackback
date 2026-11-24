@@ -282,7 +282,7 @@
     },
     "sweep:doc:admin:/admin/notifications": {
       "dbQueries": 6,
-      "htmlKB": 43.5
+      "htmlKB": 45.9
     },
     "sweep:ui:admin:/admin/notifications": {
       "dbQueries": 14,
