@@ -418,6 +418,12 @@ async function createAuth() {
     // library's own window arithmetic (`lastRequest` vs the rule's window), so
     // this only has to hold and bound; the cache evicts oldest-first.
     rateLimit: {
+      // The e2e suite drives every auth endpoint from one address in one
+      // process, so the library's per-IP budget is spent by the suite's own
+      // sign-ins and its 429s land on whichever test runs next. The e2e-full
+      // job sets this to '1'; nothing else should, because it removes a real
+      // protection (see docs/e2e-coverage.md).
+      enabled: process.env.DISABLE_AUTH_RATE_LIMIT !== '1',
       customStorage: workspaceRateLimitStorage,
       // Requesting a device code is unauthenticated and mints a row, so it gets
       // its own small budget per address. The rest of the device endpoints are

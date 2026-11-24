@@ -10,6 +10,9 @@ import { auth } from '@/lib/server/auth'
 import { getRequestHeaders } from '@tanstack/react-start/server'
 import { isSafeCallbackUrl } from '@/lib/shared/routing'
 import { signinErrorLanding } from '@/lib/shared/auth-prompt'
+import { logger } from '@/lib/server/logger'
+
+const log = logger.child({ component: 'instant-sso' })
 
 /**
  * Server-side: returns `{ url }` to the IdP when the workspace's ONLY sign-in
@@ -52,14 +55,24 @@ export const resolveInstantSsoRedirectFn = createServerFn({ method: 'GET' })
     // errorCallbackURL: without it a failed callback strands the visitor on
     // Better-Auth's bare /api/auth/error page. Land on the sign-in dialog
     // instead, which also runs link-conflict recovery for account_not_linked.
-    const result = await auth.api.signInSocial({
-      body: {
-        provider: providerId,
-        callbackURL: safeCallback,
-        errorCallbackURL: signinErrorLanding(safeCallback),
-        disableRedirect: true,
-      },
-      headers,
-    })
-    return result?.url ? { url: result.url } : null
+    try {
+      const result = await auth.api.signInSocial({
+        body: {
+          provider: providerId,
+          callbackURL: safeCallback,
+          errorCallbackURL: signinErrorLanding(safeCallback),
+          disableRedirect: true,
+        },
+        headers,
+      })
+      return result?.url ? { url: result.url } : null
+    } catch (err) {
+      // A registered IdP whose discovery document can't be fetched (offline,
+      // DNS failure, an unreachable or misconfigured issuer) is a sign-in
+      // problem, not a reason for the public portal's root to render an error
+      // page: fall back to the normal sign-in dialog, which surfaces the
+      // failure when the visitor actually tries the provider.
+      log.warn({ err, providerId }, 'instant SSO redirect unavailable')
+      return null
+    }
   })
