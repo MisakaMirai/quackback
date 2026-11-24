@@ -14,7 +14,12 @@ import { execFileSync } from 'child_process'
 import { dirname, resolve } from 'path'
 import { fileURLToPath } from 'url'
 import { expect, type BrowserContext } from '@playwright/test'
-import { getMagicLinkToken, ensureTestUserHasRole, clearSigninRateLimit } from './db-helpers'
+import {
+  getMagicLinkToken,
+  ensureTestUserHasRole,
+  clearSigninRateLimit,
+  enableMagicLinkMethod,
+} from './db-helpers'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
@@ -160,20 +165,36 @@ export async function loginViaMagicLink(
   email: string,
   opts: { role?: 'admin' | 'member' | 'user' } = {}
 ): Promise<void> {
-  // The magic-link endpoint is rate limited per address and per IP, and one
-  // shard signs several identities in through it. Clear the buckets and retry a
-  // throttled send instead of failing the test on the limiter's schedule: the
-  // specs that test the limiter drive the endpoint themselves.
+  // The whole exchange is retried, not just the send:
+  //
+  // - The endpoint is rate limited per address and per IP, and one shard signs
+  //   several identities in through it; a throttled send must not fail the test
+  //   on the limiter's schedule (the specs that assert the limiter's shape drive
+  //   the endpoint themselves).
+  // - Enabling the method writes `settings.auth_config` and bumps its version,
+  //   and a server that has already built its auth instance for this workspace
+  //   keeps serving the previous provider set until it re-reads. A send inside
+  //   that window is answered 2xx without a verification row being written —
+  //   which is what a public-only shard hit: `getMagicLinkToken` found nothing
+  //   for demo@example.com after a successful send (e2e-full shard 8 of run
+  //   45405832661). Re-enabling and re-sending until the row exists converts
+  //   that window into a bounded wait.
+  let token = ''
+  let lastStatus: number | string = 'no attempt'
   await expect(async () => {
+    enableMagicLinkMethod()
     flushMagicLinkRateLimit()
     const send = await context.request.post('/api/auth/sign-in/magic-link', {
       data: { email, callbackURL: '/' },
     })
+    lastStatus = send.status()
     expect(send.ok(), `magic-link send for ${email}`).toBeTruthy()
-  }).toPass({ timeout: 30_000 })
-
-  const token = getMagicLinkToken(email)
-  expect(token.length).toBeGreaterThan(8)
+    token = getMagicLinkToken(email)
+    expect(
+      token.length,
+      `magic-link verification row for ${email} (last send ${lastStatus})`
+    ).toBeGreaterThan(8)
+  }).toPass({ timeout: 60_000 })
 
   const verify = await context.request.get(
     `/api/auth/magic-link/verify?token=${encodeURIComponent(token)}&callbackURL=${encodeURIComponent('/')}`,

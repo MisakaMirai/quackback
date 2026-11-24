@@ -20,6 +20,11 @@ const serverPort = new URL(baseURL).port || '80'
 export default defineConfig({
   testDir: './e2e',
 
+  // Workspace state every shard needs before its first test, enabled once per
+  // `playwright test` invocation — including shards that contain no test from
+  // the `setup` project (see e2e/global-boot.ts).
+  globalSetup: './e2e/global-boot.ts',
+
   /* Run tests in files in parallel */
   fullyParallel: true,
 
