@@ -1,77 +1,64 @@
-import { test, expect, Page, BrowserContext } from '@playwright/test'
-import { getOtpCode } from '../../utils/db-helpers'
+import { waitForNetworkIdle } from '../../utils/helpers'
+import { test, expect, BrowserContext } from '@playwright/test'
+import { execFileSync } from 'node:child_process'
+import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { loginViaMagicLink, setWorkspaceAnon } from '../../utils/access-helpers'
+import { enableMagicLinkMethod, clearSigninRateLimit } from '../../utils/db-helpers'
 
-const TEST_EMAIL = 'demo@example.com'
-const TEST_HOST = 'acme.localhost:3000'
+const APPS_WEB_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..')
 
 /**
- * Helper to authenticate a user via OTP flow
- * This function attempts to handle rate limiting gracefully
+ * Drop the cached workspace settings row so a just-written portal config takes
+ * effect without waiting for the cache to expire. Same suite script the
+ * board-access fixtures use; kept local because it is not a db-helper export.
  */
-async function authenticateViaOTP(page: Page, maxRetries = 8) {
-  for (let attempt = 0; attempt < maxRetries; attempt++) {
-    try {
-      // Request OTP code
-      const sendResponse = await page.request.post('/api/auth/email-otp/send-verification-otp', {
-        headers: { 'Content-Type': 'application/json' },
-        data: {
-          email: TEST_EMAIL,
-          type: 'sign-in',
-        },
-      })
-
-      // If rate limited, wait and retry with exponential backoff
-      if (sendResponse.status() === 429) {
-        const waitTime = Math.min(2000 * Math.pow(2, attempt), 20000) // Max 20 seconds per attempt
-        console.log(
-          `Rate limited on attempt ${attempt + 1}/${maxRetries}, waiting ${waitTime}ms...`
-        )
-        await page.waitForTimeout(waitTime)
-        continue
-      }
-
-      if (!sendResponse.ok()) {
-        const errorData = await sendResponse.json()
-        console.error('Failed to send OTP:', errorData)
-        throw new Error(`Failed to send OTP: ${JSON.stringify(errorData)}`)
-      }
-
-      // Get OTP code from database
-      const otpCode = getOtpCode(TEST_EMAIL, TEST_HOST)
-
-      // Verify OTP code - Better-auth sets session cookie automatically
-      const verifyResponse = await page.request.post('/api/auth/sign-in/email-otp', {
-        headers: { 'Content-Type': 'application/json' },
-        data: {
-          email: TEST_EMAIL,
-          otp: otpCode,
-        },
-      })
-
-      if (!verifyResponse.ok()) {
-        const errorData = await verifyResponse.json()
-        console.error('Failed to verify OTP:', errorData)
-        throw new Error(`Failed to verify OTP: ${JSON.stringify(errorData)}`)
-      }
-
-      // Session cookie is now set by Better-auth
-      // Navigate to any page to verify authentication
-      await page.goto('/')
-      await page.waitForLoadState('networkidle')
-      console.log('Authentication successful!')
-      return // Success!
-    } catch (error) {
-      if (attempt === maxRetries - 1) {
-        console.error(`All ${maxRetries} authentication attempts failed.`)
-        throw error // Last attempt failed, re-throw
-      }
-      console.log(`Auth attempt ${attempt + 1} failed, retrying...`)
-      await page.waitForTimeout(3000)
+function bustSettingsCache(): void {
+  execFileSync(
+    'bun',
+    ['--env-file=../../.env', 'e2e/scripts/bust-caches.ts', 'settings:workspace'],
+    {
+      cwd: APPS_WEB_ROOT,
+      encoding: 'utf-8',
     }
-  }
+  )
+}
+
+const TEST_EMAIL = 'demo@example.com'
+
+/**
+ * Sign a browser context in through the magic-link flow that global setup and
+ * the rest of the suite use.
+ *
+ * Magic link is opt-in per workspace and the seed leaves it off; the admin
+ * project's global setup enables it, but a public-only run does not depend on
+ * that project, so provision it here. The per-address sign-in budget the
+ * limiter keeps (3 sends per 15 minutes) is cleared too — the old OTP retry
+ * loop spent it and then span until the beforeAll timeout.
+ */
+async function authenticateViaMagicLink(context: BrowserContext) {
+  enableMagicLinkMethod()
+  clearSigninRateLimit()
+  await loginViaMagicLink(context, TEST_EMAIL)
 }
 
 test.describe.configure({ mode: 'serial' })
+
+// Anonymous voting is the workspace `features.allowAnonymous` master switch over
+// the boards' anonymous vote tier. The seed ships the switch OFF (so an
+// anonymous click raises sign-in), while the seed boards do allow the anonymous
+// tier — the anonymous and rapid-click suites below need it on. Turn it on once
+// for the file and put it back at the end; the settings row is cached
+// server-side, hence the cache bust.
+test.beforeAll(async () => {
+  setWorkspaceAnon(true)
+  bustSettingsCache()
+})
+
+test.afterAll(async () => {
+  setWorkspaceAnon(false)
+  bustSettingsCache()
+})
 
 test.describe('Public Voting', () => {
   let sharedContext: BrowserContext
@@ -82,12 +69,9 @@ test.describe('Public Voting', () => {
 
   test.beforeAll(async ({ browser }) => {
     // Create a shared context and authenticate once for all tests
-    // Note: This may take longer if rate limits are active
     sharedContext = await browser.newContext()
-    const page = await sharedContext.newPage()
-    await authenticateViaOTP(page)
+    await authenticateViaMagicLink(sharedContext)
     isAuthenticated = true
-    await page.close()
   })
 
   test.afterAll(async () => {
@@ -106,7 +90,7 @@ test.describe('Public Voting', () => {
       // Navigate to the public portal
       await page.goto('/')
       // Wait for posts to load
-      await page.waitForLoadState('networkidle')
+      await waitForNetworkIdle(page)
 
       // Look for vote buttons using data-testid
       const voteButtons = page.getByTestId('vote-button')
@@ -127,7 +111,7 @@ test.describe('Public Voting', () => {
     const page = await sharedContext.newPage()
     try {
       await page.goto('/')
-      await page.waitForLoadState('networkidle')
+      await waitForNetworkIdle(page)
 
       // Use 6th post to avoid conflicts with other tests
       const voteButtons = page.getByTestId('vote-button')
@@ -146,7 +130,7 @@ test.describe('Public Voting', () => {
         await voteButton.click()
         // Wait for unvoted state to be reflected
         await expect(voteButton).not.toHaveClass(/post-card__vote--voted/, { timeout: 5000 })
-        await page.waitForLoadState('networkidle')
+        await waitForNetworkIdle(page)
       }
 
       // Now get the baseline count (user has not voted)
@@ -170,7 +154,7 @@ test.describe('Public Voting', () => {
     const page = await sharedContext.newPage()
     try {
       await page.goto('/')
-      await page.waitForLoadState('networkidle')
+      await waitForNetworkIdle(page)
 
       // Use 7th post to avoid conflicts with other tests
       const voteButtons = page.getByTestId('vote-button')
@@ -189,7 +173,7 @@ test.describe('Public Voting', () => {
         await voteButton.click()
         // Wait for voted state to be reflected
         await expect(voteButton).toHaveClass(/post-card__vote--voted/, { timeout: 5000 })
-        await page.waitForLoadState('networkidle')
+        await waitForNetworkIdle(page)
       }
 
       // Now get the baseline count (user has voted)
@@ -213,7 +197,7 @@ test.describe('Public Voting', () => {
     const page = await sharedContext.newPage()
     try {
       await page.goto('/')
-      await page.waitForLoadState('networkidle')
+      await waitForNetworkIdle(page)
 
       // Use 8th post to avoid conflicts with other tests
       const voteButtons = page.getByTestId('vote-button')
@@ -252,7 +236,7 @@ test.describe('Public Voting', () => {
     const page = await sharedContext.newPage()
     try {
       await page.goto('/')
-      await page.waitForLoadState('networkidle')
+      await waitForNetworkIdle(page)
 
       // Navigate to 9th post detail page to avoid conflicts with other tests
       const postLinks = page.locator('a[href*="/posts/"]')
@@ -263,6 +247,13 @@ test.describe('Public Voting', () => {
 
       // Wait for URL to change to post detail page
       await page.waitForURL(/\/posts\//)
+
+      // Wait for the detail page itself (its comments heading): reading the vote
+      // button while the list was still mounted measured the list's count and
+      // missed the sidebar's own vote state.
+      await expect(page.getByRole('heading', { name: /\d+ comments?/i })).toBeVisible({
+        timeout: 15000,
+      })
 
       // Wait for detail page vote button specifically.
       // The VoteSidebar vote button is in a Suspense boundary; use aria-pressed to confirm it loaded.
@@ -278,7 +269,7 @@ test.describe('Public Voting', () => {
         await detailVoteButton.click()
         // Wait for unvoted state
         await expect(detailVoteButton).toHaveAttribute('aria-pressed', 'false', { timeout: 5000 })
-        await page.waitForLoadState('networkidle')
+        await waitForNetworkIdle(page)
       }
 
       // Get baseline count from the detail page vote button
@@ -300,13 +291,12 @@ test.describe('Public Voting', () => {
 })
 
 test.describe('Anonymous Voting (unauthenticated)', () => {
-  // Anonymous voting is enabled by default — unauthenticated users can vote
-  // without seeing an auth dialog (a silent anonymous session is created).
+  // The anonymous switch is enabled for the file (see the file-level hooks).
   test.setTimeout(60000)
 
   test.beforeEach(async ({ page }) => {
     await page.goto('/')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
   })
 
   test('shows vote count for unauthenticated users', async ({ page }) => {
@@ -334,7 +324,7 @@ test.describe('Anonymous Voting (unauthenticated)', () => {
     if (isAlreadyVoted) {
       await voteButton.click()
       await expect(voteButton).not.toHaveClass(/post-card__vote--voted/, { timeout: 10000 })
-      await page.waitForLoadState('networkidle')
+      await waitForNetworkIdle(page)
     }
 
     const baselineCountText = await voteCountSpan.textContent()
@@ -367,7 +357,7 @@ test.describe('Anonymous Voting (unauthenticated)', () => {
     if (isAlreadyVoted) {
       await voteButton.click()
       await expect(voteButton).not.toHaveClass(/post-card__vote--voted/, { timeout: 10000 })
-      await page.waitForLoadState('networkidle')
+      await waitForNetworkIdle(page)
     }
 
     const baselineCountText = await voteCountSpan.textContent()
@@ -389,7 +379,7 @@ test.describe('Voting — count display and accessibility', () => {
 
   test.beforeEach(async ({ page }) => {
     await page.goto('/')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
   })
 
   test('vote count is shown as a plain number (not empty or NaN)', async ({ page }) => {
@@ -427,30 +417,9 @@ test.describe('Voting — independence and persistence', () => {
 
   test.beforeAll(async ({ browser }) => {
     sharedContext = await browser.newContext()
-    const page = await sharedContext.newPage()
-    // Use the OTP auth helper already tested in the Public Voting suite
-    // (relies on the same demo@example.com account and db-helpers)
-    const { getOtpCode } = await import('../../utils/db-helpers')
-
-    const TEST_EMAIL = 'demo@example.com'
-    const TEST_HOST = 'acme.localhost:3000'
-
-    const sendResponse = await page.request.post('/api/auth/email-otp/send-verification-otp', {
-      headers: { 'Content-Type': 'application/json' },
-      data: { email: TEST_EMAIL, type: 'sign-in' },
-    })
-    if (!sendResponse.ok()) throw new Error('Failed to send OTP for persistence tests')
-
-    const otpCode = getOtpCode(TEST_EMAIL, TEST_HOST)
-    const verifyResponse = await page.request.post('/api/auth/sign-in/email-otp', {
-      headers: { 'Content-Type': 'application/json' },
-      data: { email: TEST_EMAIL, otp: otpCode },
-    })
-    if (!verifyResponse.ok()) throw new Error('Failed to verify OTP for persistence tests')
-
-    await page.goto('/')
-    await page.waitForLoadState('networkidle')
-    await page.close()
+    // Same magic-link sign-in as the suite above, so votes persist across
+    // navigation without depending on the rate-limited OTP send.
+    await authenticateViaMagicLink(sharedContext)
   })
 
   test.afterAll(async () => {
@@ -461,7 +430,7 @@ test.describe('Voting — independence and persistence', () => {
     const page = await sharedContext.newPage()
     try {
       await page.goto('/')
-      await page.waitForLoadState('networkidle')
+      await waitForNetworkIdle(page)
 
       const voteButtons = page.getByTestId('vote-button')
       await expect(voteButtons.first()).toBeVisible({ timeout: 10000 })
@@ -479,7 +448,7 @@ test.describe('Voting — independence and persistence', () => {
         if (voted) {
           await btn.click()
           await expect(btn).not.toHaveClass(/post-card__vote--voted/, { timeout: 5000 })
-          await page.waitForLoadState('networkidle')
+          await waitForNetworkIdle(page)
         }
       }
 
@@ -511,18 +480,20 @@ test.describe('Voting — independence and persistence', () => {
     const page = await sharedContext.newPage()
     try {
       await page.goto('/')
-      await page.waitForLoadState('networkidle')
+      await waitForNetworkIdle(page)
 
       // Use post 14 to avoid conflicts
       const voteButton = page.getByTestId('vote-button').nth(14)
       await expect(voteButton).toBeVisible({ timeout: 10000 })
 
       // Normalise to unvoted state
-      const isVoted = await voteButton.evaluate((el) => el.classList.contains('post-card__vote--voted'))
+      const isVoted = await voteButton.evaluate((el) =>
+        el.classList.contains('post-card__vote--voted')
+      )
       if (isVoted) {
         await voteButton.click()
         await expect(voteButton).not.toHaveClass(/post-card__vote--voted/, { timeout: 5000 })
-        await page.waitForLoadState('networkidle')
+        await waitForNetworkIdle(page)
       }
 
       // Vote
@@ -531,9 +502,9 @@ test.describe('Voting — independence and persistence', () => {
 
       // Navigate away to a different page then come back
       await page.goto('/admin/feedback')
-      await page.waitForLoadState('networkidle')
+      await waitForNetworkIdle(page)
       await page.goto('/')
-      await page.waitForLoadState('networkidle')
+      await waitForNetworkIdle(page)
 
       // The vote should still be reflected (button shows voted state)
       const returnedButton = page.getByTestId('vote-button').nth(14)
@@ -548,7 +519,7 @@ test.describe('Voting — independence and persistence', () => {
     const page = await sharedContext.newPage()
     try {
       await page.goto('/')
-      await page.waitForLoadState('networkidle')
+      await waitForNetworkIdle(page)
 
       // Use post 15 to avoid conflicts
       const voteButtons = page.getByTestId('vote-button')
@@ -562,7 +533,12 @@ test.describe('Voting — independence and persistence', () => {
       const postLinks = page.locator('a[href*="/posts/"]')
       await postLinks.nth(15).click()
       await page.waitForURL(/\/posts\//)
-      await page.waitForLoadState('networkidle')
+      await waitForNetworkIdle(page)
+      // The detail page has rendered once its comments heading is there; compare
+      // counts only then, so the list's card is not measured.
+      await expect(page.getByRole('heading', { name: /\d+ comments?/i })).toBeVisible({
+        timeout: 15000,
+      })
 
       // Detail page vote button — use first vote button (VoteSidebar, in DOM order)
       const detailVoteButton = page.getByTestId('vote-button').first()
@@ -582,7 +558,7 @@ test.describe('Voting — debounce / rapid clicks', () => {
 
   test('rapid clicks do not cause double-voting', async ({ page }) => {
     await page.goto('/')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     // Use an anonymous session (no auth setup needed for this test)
     const voteButtons = page.getByTestId('vote-button')
@@ -593,11 +569,13 @@ test.describe('Voting — debounce / rapid clicks', () => {
     const countSpan = voteButton.getByTestId('vote-count')
 
     // Normalise to unvoted
-    const isVoted = await voteButton.evaluate((el) => el.classList.contains('post-card__vote--voted'))
+    const isVoted = await voteButton.evaluate((el) =>
+      el.classList.contains('post-card__vote--voted')
+    )
     if (isVoted) {
       await voteButton.click()
       await expect(voteButton).not.toHaveClass(/post-card__vote--voted/, { timeout: 10000 })
-      await page.waitForLoadState('networkidle')
+      await waitForNetworkIdle(page)
     }
 
     const baseCount = parseInt((await countSpan.textContent()) || '0', 10)
@@ -621,7 +599,7 @@ test.describe('Voting — filtered board context', () => {
 
   test('voting on a post works when a board filter is active', async ({ page }) => {
     await page.goto('/')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     // Click the first board filter tab if any exist
     const boardTabs = page.locator('[data-testid="board-tab"], button[data-board]')
@@ -629,13 +607,13 @@ test.describe('Voting — filtered board context', () => {
 
     if (tabCount > 0) {
       await boardTabs.first().click()
-      await page.waitForLoadState('networkidle')
+      await waitForNetworkIdle(page)
     } else {
       // No explicit board tabs — use URL query parameter for the first available board
       const firstBoardLink = page.locator('a[href*="?board="], a[href*="&board="]').first()
       if ((await firstBoardLink.count()) > 0) {
         await firstBoardLink.click()
-        await page.waitForLoadState('networkidle')
+        await waitForNetworkIdle(page)
       }
     }
 
@@ -652,11 +630,13 @@ test.describe('Voting — filtered board context', () => {
     const countSpan = voteButton.getByTestId('vote-count')
 
     // Normalise to unvoted
-    const isVoted = await voteButton.evaluate((el) => el.classList.contains('post-card__vote--voted'))
+    const isVoted = await voteButton.evaluate((el) =>
+      el.classList.contains('post-card__vote--voted')
+    )
     if (isVoted) {
       await voteButton.click()
       await expect(voteButton).not.toHaveClass(/post-card__vote--voted/, { timeout: 10000 })
-      await page.waitForLoadState('networkidle')
+      await waitForNetworkIdle(page)
     }
 
     const baseCount = parseInt((await countSpan.textContent()) || '0', 10)

@@ -9,21 +9,28 @@
  * (supportTickets, helpCenter, changelog, feedback) so its pages render instead
  * of redirecting. Plain "on" leaves those flags alone for e2e specs.
  *
- * "off" flips the flag and portal support back off.
+ * "off" flips the flag and portal support back off; "off all" also turns those
+ * neighbouring products off.
+ *
+ * "seed" puts every product flag back to the value a fresh seed writes, for a
+ * spec that turned several of them on and wants to hand the workspace back
+ * unchanged. The values mirror `DEFAULT_FEATURE_FLAGS` in
+ * `src/lib/server/domains/settings/settings.types.ts`; keep the two in step.
  *
  * The settings JSON columns are *text*, so we read -> patch -> write, then
  * drop the Redis-cached workspace settings (settings:workspace) so the running dev
  * server sees the change immediately instead of after the 1h cache TTL.
  *
- * Usage: bun set-support-surfaces.ts <on|off>
+ * Usage: bun set-support-surfaces.ts <on|off|seed> [all]
  */
 import { openDb, bustWorkspaceSettings, parseJson } from './_lib'
 
 const mode = (process.argv[2] || 'on').toLowerCase()
-if (mode !== 'on' && mode !== 'off') {
-  console.error('Usage: bun set-support-surfaces.ts <on|off>')
+if (mode !== 'on' && mode !== 'off' && mode !== 'seed') {
+  console.error('Usage: bun set-support-surfaces.ts <on|off|seed> [all]')
   process.exit(1)
 }
+const restoringSeed = mode === 'seed'
 const enabled = mode === 'on'
 /** The performance bench visits every product page, so it enables them all. */
 const allSurfaces = (process.argv[3] || '').toLowerCase() === 'all'
@@ -37,16 +44,29 @@ try {
   const id = rows[0].id as string
 
   const flags = parseJson(rows[0].feature_flags)
-  flags.supportInbox = enabled
-  if (enabled && allSurfaces) {
-    flags.supportTickets = true
-    flags.helpCenter = true
-    flags.changelog = true
+  if (restoringSeed) {
+    // Mirror of DEFAULT_FEATURE_FLAGS (settings.types.ts).
     flags.feedback = true
+    flags.changelog = true
+    flags.helpCenter = false
+    flags.supportInbox = false
+    flags.supportTickets = false
+    flags.statusPage = false
+  } else {
+    flags.supportInbox = enabled
+    if (allSurfaces) {
+      flags.supportTickets = enabled
+      flags.helpCenter = enabled
+      flags.changelog = enabled
+      flags.feedback = enabled
+    }
   }
 
   const portal = parseJson(rows[0].portal_config)
-  portal.support = { ...((portal.support as object) ?? {}), enabled }
+  portal.support = {
+    ...((portal.support as object) ?? {}),
+    enabled: restoringSeed ? false : enabled,
+  }
 
   await sql`
     UPDATE settings

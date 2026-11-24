@@ -43,9 +43,22 @@ test.describe('Portal Support tab', { tag: '@smoke' }, () => {
     )
     expect(verifyResponse.ok()).toBeTruthy()
 
-    // A fresh user has no conversations: the empty state renders.
-    await page.goto('/support')
-    await expect(page.getByRole('heading', { name: 'Support' })).toBeVisible({ timeout: 10000 })
+    // A fresh user has no conversations: the empty state renders. `beforeAll`
+    // writes the support flags as raw SQL and the running server keeps its
+    // settings copy for a few seconds, so reload until the tab renders instead
+    // of asserting on one load that may still see Support off.
+    // `.first()`: when support surfaces are also enabled elsewhere in the run,
+    // the portal chrome renders its own smaller "Support" heading next to the
+    // page's. The page heading comes first in the DOM, and the empty state below
+    // is what proves the page (not the chrome) rendered.
+    await expect(async () => {
+      await page.goto('/support')
+      await expect(page.getByRole('heading', { name: 'Support', exact: true }).first()).toBeVisible(
+        {
+          timeout: 3_000,
+        }
+      )
+    }).toPass({ timeout: 30_000 })
     await expect(page.getByText('No conversations yet')).toBeVisible({ timeout: 10000 })
 
     // Seed a conversation owned by this user and confirm list + thread render.

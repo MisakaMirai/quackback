@@ -1,10 +1,11 @@
+import { waitForNetworkIdle } from '../../utils/helpers'
 import { test, expect } from '@playwright/test'
 
 test.describe('Admin Post Management', () => {
   test.beforeEach(async ({ page }) => {
     // Navigate to admin feedback inbox
     await page.goto('/admin/feedback')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
   })
 
   test('displays list of posts in inbox', async ({ page }) => {
@@ -64,7 +65,7 @@ test.describe('Admin Post Management', () => {
       await expect(page.getByRole('dialog')).toBeHidden({ timeout: 10000 })
 
       // New post should appear in the list (page refreshes)
-      await page.waitForLoadState('networkidle')
+      await waitForNetworkIdle(page)
     }
   })
 
@@ -151,7 +152,7 @@ test.describe('Admin Post Management', () => {
       await postList.first().click()
 
       // Detail panel should show - wait for network
-      await page.waitForLoadState('networkidle')
+      await waitForNetworkIdle(page)
     }
   })
 
@@ -169,7 +170,7 @@ test.describe('Admin Post Management', () => {
       const boardOptions = page.getByRole('option')
       if ((await boardOptions.count()) > 0) {
         await boardOptions.first().click()
-        await page.waitForLoadState('networkidle')
+        await waitForNetworkIdle(page)
       }
     }
   })
@@ -188,7 +189,7 @@ test.describe('Admin Post Management', () => {
       const statusOptions = page.getByRole('option')
       if ((await statusOptions.count()) > 0) {
         await statusOptions.first().click()
-        await page.waitForLoadState('networkidle')
+        await waitForNetworkIdle(page)
       }
     }
   })
@@ -202,7 +203,7 @@ test.describe('Admin Post Management', () => {
       await searchInput.press('Enter')
 
       // Wait for search results
-      await page.waitForLoadState('networkidle')
+      await waitForNetworkIdle(page)
     }
   })
 
@@ -217,44 +218,43 @@ test.describe('Admin Post Management', () => {
       const sortOptions = page.getByRole('option')
       if ((await sortOptions.count()) > 1) {
         await sortOptions.nth(1).click()
-        await page.waitForLoadState('networkidle')
+        await waitForNetworkIdle(page)
       }
     }
   })
 
   test('can vote on a post in detail view', async ({ page }) => {
-    // First, select a post to view details
-    const postCards = page.locator('[class*="cursor-pointer"]').filter({
-      has: page.locator('h3'),
+    // The admin detail view has no self-vote control any more: voting happens on
+    // the list row, and the detail sidebar reports the count it lands on. Vote
+    // from the row, then open the detail and check its Upvotes count agrees.
+    const firstRow = page.locator('[data-post-id]').first()
+    await expect(firstRow).toBeVisible({ timeout: 10000 })
+
+    const voteButton = firstRow.getByTestId('vote-button')
+    const voteCount = firstRow.getByTestId('vote-count')
+    const before = Number(await voteCount.textContent())
+    const wasVoted = (await voteButton.getAttribute('aria-pressed')) === 'true'
+
+    await voteButton.click()
+    const expected = before + (wasVoted ? -1 : 1)
+    await expect(voteButton).toHaveAttribute('aria-pressed', wasVoted ? 'false' : 'true', {
+      timeout: 10000,
     })
+    await expect(voteCount).toHaveText(String(expected), { timeout: 10000 })
 
-    if ((await postCards.count()) > 0) {
-      await postCards.first().click()
+    // The detail panel opens in a modal dialog and shows the same count.
+    await firstRow.click()
+    const modal = page.getByRole('dialog')
+    await expect(modal).toBeVisible({ timeout: 10000 })
 
-      // Wait for detail panel to load
-      await page.waitForLoadState('networkidle')
+    const upvotesRow = modal
+      .locator('aside')
+      .locator('div')
+      .filter({ hasText: /^Upvotes/ })
+      .first()
+    await expect(upvotesRow).toContainText(String(expected), { timeout: 10000 })
 
-      // The post opens in a modal dialog
-      const modal = page.getByRole('dialog')
-      await expect(modal).toBeVisible({ timeout: 10000 })
-
-      // Look for the vote button in the detail panel
-      const voteButton = page.getByTestId('vote-button')
-
-      if ((await voteButton.count()) > 0) {
-        // Get initial vote count scoped to the modal to avoid strict-mode violation
-        const voteCount = modal.getByTestId('vote-count')
-        const initialCount = await voteCount.textContent()
-
-        // Click to vote
-        await voteButton.click()
-
-        // Vote count should change
-        await page.waitForTimeout(500)
-        const newCount = await voteCount.textContent()
-        expect(newCount).not.toBe(initialCount)
-      }
-    }
+    await page.keyboard.press('Escape')
   })
 
   test('can open edit dialog from post detail', async ({ page }) => {
@@ -267,7 +267,7 @@ test.describe('Admin Post Management', () => {
       await postCards.first().click()
 
       // Wait for detail panel to load
-      await page.waitForLoadState('networkidle')
+      await waitForNetworkIdle(page)
 
       // Look for the edit button (pencil icon in header)
       const editButton = page.locator('button[title="Edit post"]')
@@ -303,7 +303,7 @@ test.describe('Admin Post Management', () => {
       await postCards.first().click()
 
       // Wait for detail panel to load
-      await page.waitForLoadState('networkidle')
+      await waitForNetworkIdle(page)
 
       // Open edit dialog
       const editButton = page.locator('button[title="Edit post"]')
@@ -327,7 +327,7 @@ test.describe('Admin Post Management', () => {
         await expect(page.getByRole('dialog')).toBeHidden({ timeout: 10000 })
 
         // Wait for update
-        await page.waitForLoadState('networkidle')
+        await waitForNetworkIdle(page)
       }
     }
   })
@@ -342,7 +342,7 @@ test.describe('Admin Post Management', () => {
       await postCards.first().click()
 
       // Wait for detail panel to load
-      await page.waitForLoadState('networkidle')
+      await waitForNetworkIdle(page)
 
       // Open edit dialog
       const editButton = page.locator('button[title="Edit post"]')
@@ -370,17 +370,24 @@ test.describe('Admin Post Management', () => {
       return
     }
     await postCards.first().click()
-    await page.waitForLoadState('networkidle')
 
     // Wait for the modal
     const modal = page.getByRole('dialog')
     await expect(modal).toBeVisible({ timeout: 10000 })
 
-    // Find the comment textarea and type into it
-    const commentTextarea = modal.locator('textarea[placeholder*="comment" i]').first()
-    await expect(commentTextarea).toBeVisible({ timeout: 5000 })
-    await commentTextarea.click()
-    await commentTextarea.fill('E2E test comment via keyboard')
+    // The comment composer is a rich-text editor now, not a textarea. It first
+    // renders the editor's empty state, which mounts the real editor on the first
+    // press or focus.
+    const composer = modal.getByTestId('comment-form-editor').first()
+    await expect(composer).toBeVisible({ timeout: 15000 })
+    await composer.getByRole('textbox', { name: /write a comment/i }).click()
+    const commentEditor = composer.locator('.ProseMirror[contenteditable="true"]')
+    await expect(commentEditor).toBeVisible({ timeout: 10000 })
+    await commentEditor.click()
+    // Unique per run: comments on this post persist between runs, so a fixed body
+    // would match earlier ones (and strict mode would see several).
+    const body = `E2E test comment ${Date.now()}`
+    await page.keyboard.type(body)
 
     // Cmd+Enter should submit the comment, NOT save/close the post
     await page.keyboard.press('Meta+Enter')
@@ -388,8 +395,10 @@ test.describe('Admin Post Management', () => {
     // Modal must still be open (post was not saved/closed)
     await expect(modal).toBeVisible()
 
-    // Comment textarea should be cleared (comment was submitted successfully)
-    await expect(commentTextarea).toHaveValue('')
+    // The composer clears on a successful submit...
+    await expect(commentEditor).toHaveText('', { timeout: 10000 })
+    // ...and the comment shows in the thread.
+    await expect(modal.getByText(body)).toBeVisible({ timeout: 10000 })
   })
 })
 
@@ -402,14 +411,60 @@ async function openFirstPostModal(page: import('@playwright/test').Page) {
   await postCards.first().click()
   const modal = page.getByRole('dialog')
   await expect(modal).toBeVisible({ timeout: 10000 })
-  await page.waitForLoadState('networkidle')
   return modal
+}
+
+/** The workspace's seeded post statuses, plus the empty-state label. */
+const STATUS_NAMES = [
+  'Open',
+  'Under Review',
+  'Planned',
+  'In Progress',
+  'Closed',
+  'Complete',
+  'No status',
+]
+
+/**
+ * The status control in the post detail's metadata sidebar. It renders the
+ * current status as its own label (a StatusDropdown trigger), so the trigger is
+ * the button named after a status. A class-based lookup is unsafe: the voters
+ * stack's "Add voter" button carries an `inline-flex` class too and comes first.
+ */
+function sidebarStatus(sidebar: import('@playwright/test').Locator) {
+  return sidebar.getByRole('button', { name: new RegExp(`^(${STATUS_NAMES.join('|')})$`) }).first()
+}
+
+/**
+ * Open the sidebar's status popover and pick the first status other than the
+ * current one. Returns the chosen status name, or null when it alone exists.
+ */
+async function pickDifferentStatus(
+  page: import('@playwright/test').Page,
+  trigger: import('@playwright/test').Locator
+): Promise<string | null> {
+  const current = ((await trigger.textContent()) ?? '').trim()
+  await trigger.click()
+  const popover = page.locator('[data-slot="popover-content"]')
+  await expect(popover).toBeVisible({ timeout: 5000 })
+
+  const options = popover.getByRole('button')
+  for (let i = 0; i < (await options.count()); i++) {
+    const name = ((await options.nth(i).textContent()) ?? '').trim()
+    if (name && name !== current) {
+      await options.nth(i).click()
+      await expect(popover).toBeHidden({ timeout: 5000 })
+      return name
+    }
+  }
+  await page.keyboard.press('Escape')
+  return null
 }
 
 test.describe('Admin Post Management - Status Transitions', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/admin/feedback')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
   })
 
   test('opening post detail shows current status badge', async ({ page }) => {
@@ -419,15 +474,12 @@ test.describe('Admin Post Management - Status Transitions', () => {
       return
     }
 
-    // The metadata sidebar renders a StatusDropdown (badge variant) next to the "Status" label.
-    // The StatusBadge renders the status name as text.
-    const statusRow = modal.locator('aside').filter({ hasText: /^Status/ })
-    // Sidebar may be hidden on narrow viewports but the config uses 1920x1080 so it is visible.
-    // The status name text must be non-empty — anything other than "None" is the actual value.
-    const statusText = statusRow.locator('span').filter({ hasNot: statusRow.locator('svg') })
-    // At minimum the row itself should be visible
-    await expect(modal.getByText('Status')).toBeVisible()
-    await expect(statusText.first()).toBeVisible()
+    // The metadata sidebar renders the "Status" label beside a StatusDropdown
+    // (badge variant) whose text is the current status name.
+    const sidebar = modal.locator('aside')
+    await expect(sidebar).toBeVisible({ timeout: 5000 })
+    await expect(sidebar.getByText('Status', { exact: true })).toBeVisible()
+    await expect(sidebarStatus(sidebar)).toHaveText(/\S/)
 
     // Close modal
     await page.keyboard.press('Escape')
@@ -442,67 +494,23 @@ test.describe('Admin Post Management - Status Transitions', () => {
       return
     }
 
-    // Locate the status trigger button inside the metadata sidebar (aside element)
-    // It's rendered as a <button> wrapping a <StatusBadge> inside the sidebar
     const sidebar = modal.locator('aside')
     await expect(sidebar).toBeVisible({ timeout: 5000 })
 
-    // The StatusDropdown trigger sits next to the "Status" label row.
-    // Scope to the row that contains the word "Status".
-    const statusLabel = sidebar.getByText('Status')
-    await expect(statusLabel).toBeVisible()
+    const statusBadgeButton = sidebarStatus(sidebar)
+    await expect(statusBadgeButton).toBeVisible()
 
-    // The trigger is a sibling button in the same flex row
-    // Use the popover approach: click the status badge button to open dropdown
-    const statusBadgeButton = sidebar.locator('button[class*="inline-flex"]').first()
-
-    if ((await statusBadgeButton.count()) === 0) {
-      // Sidebar status trigger not found — skip rather than fail
-      await page.keyboard.press('Escape')
-      test.skip()
-      return
-    }
-
-    const initialStatusText = (await statusBadgeButton.textContent()) ?? ''
-    await statusBadgeButton.click()
-
-    // Popover opens with status options
-    const popover = page.locator('[data-slot="popover-content"]')
-    await expect(popover).toBeVisible({ timeout: 5000 })
-
-    // Pick a status that is different from the current one
-    const statusOptions = popover.locator('button').filter({ hasNot: popover.locator('svg') })
-    const count = await statusOptions.count()
-    if (count === 0) {
-      await page.keyboard.press('Escape')
-      test.skip()
-      return
-    }
-
-    // Find first option whose text differs from initial status
-    let clicked = false
-    for (let i = 0; i < count; i++) {
-      const optText = (await statusOptions.nth(i).textContent()) ?? ''
-      if (optText.trim() !== initialStatusText.trim()) {
-        await statusOptions.nth(i).click()
-        clicked = true
-        break
-      }
-    }
-
-    if (!clicked) {
+    const newStatus = await pickDifferentStatus(page, statusBadgeButton)
+    if (!newStatus) {
       // Only one status exists — nothing to change; skip
       await page.keyboard.press('Escape')
       test.skip()
       return
     }
 
-    // Popover should close after selection
-    await expect(popover).toBeHidden({ timeout: 5000 })
-
-    // The badge in the sidebar should now show a different status name
-    const updatedStatusText = (await statusBadgeButton.textContent()) ?? ''
-    expect(updatedStatusText.trim()).not.toBe(initialStatusText.trim())
+    // The change is applied optimistically, so the sidebar badge shows the new
+    // status without waiting for a refetch.
+    await expect(statusBadgeButton).toHaveText(newStatus, { timeout: 5000 })
 
     // Close modal
     await page.keyboard.press('Escape')
@@ -524,62 +532,40 @@ test.describe('Admin Post Management - Status Transitions', () => {
 
     const modal = page.getByRole('dialog')
     await expect(modal).toBeVisible({ timeout: 10000 })
-    await page.waitForLoadState('networkidle')
 
     const sidebar = modal.locator('aside')
     await expect(sidebar).toBeVisible({ timeout: 5000 })
 
-    const statusBadgeButton = sidebar.locator('button[class*="inline-flex"]').first()
-    if ((await statusBadgeButton.count()) === 0) {
+    const statusBadgeButton = sidebarStatus(sidebar)
+    await expect(statusBadgeButton).toBeVisible()
+
+    const newStatus = await pickDifferentStatus(page, statusBadgeButton)
+    if (!newStatus) {
       await page.keyboard.press('Escape')
       test.skip()
       return
     }
 
-    const initialStatusText = (await statusBadgeButton.textContent()) ?? ''
+    // The mutation has settled once the trigger is interactive again, so the
+    // change is on the server before we reload.
+    await expect(statusBadgeButton).toHaveText(newStatus, { timeout: 10000 })
+    await expect(statusBadgeButton).toBeEnabled({ timeout: 10000 })
 
-    // Open status popover and pick a different option
-    await statusBadgeButton.click()
-    const popover = page.locator('[data-slot="popover-content"]')
-    await expect(popover).toBeVisible({ timeout: 5000 })
-
-    const statusOptions = popover.locator('button')
-    let newStatusText = ''
-    for (let i = 0; i < (await statusOptions.count()); i++) {
-      const optText = (await statusOptions.nth(i).textContent()) ?? ''
-      if (optText.trim() !== initialStatusText.trim()) {
-        newStatusText = optText.trim()
-        await statusOptions.nth(i).click()
-        break
-      }
-    }
-
-    if (!newStatusText) {
-      await page.keyboard.press('Escape')
-      test.skip()
-      return
-    }
-
-    await expect(popover).toBeHidden({ timeout: 5000 })
-    await page.waitForLoadState('networkidle')
-
-    // Close modal
+    // Close the modal and reload, so the reopened detail reads from the server
+    // rather than from the optimistically patched cache.
     await page.keyboard.press('Escape')
     await expect(modal).toBeHidden({ timeout: 5000 })
+    await page.reload()
 
-    // Re-open the same post
     const sameCard = page.locator(`[data-post-id="${postId}"]`)
+    await expect(sameCard).toBeVisible({ timeout: 10000 })
     await sameCard.click()
     const reopenedModal = page.getByRole('dialog')
     await expect(reopenedModal).toBeVisible({ timeout: 10000 })
-    await page.waitForLoadState('networkidle')
 
-    // Status badge should now show the new status
     const reopenedSidebar = reopenedModal.locator('aside')
     await expect(reopenedSidebar).toBeVisible({ timeout: 5000 })
-    const updatedBadge = reopenedSidebar.locator('button[class*="inline-flex"]').first()
-    const persistedText = (await updatedBadge.textContent()) ?? ''
-    expect(persistedText.trim()).toBe(newStatusText)
+    await expect(sidebarStatus(reopenedSidebar)).toHaveText(newStatus, { timeout: 10000 })
 
     await page.keyboard.press('Escape')
   })
@@ -594,44 +580,23 @@ test.describe('Admin Post Management - Status Transitions', () => {
     const sidebar = modal.locator('aside')
     await expect(sidebar).toBeVisible({ timeout: 5000 })
 
-    const statusBadgeButton = sidebar.locator('button[class*="inline-flex"]').first()
-    if ((await statusBadgeButton.count()) === 0) {
+    const statusBadgeButton = sidebarStatus(sidebar)
+    await expect(statusBadgeButton).toBeVisible()
+
+    const newStatus = await pickDifferentStatus(page, statusBadgeButton)
+    if (!newStatus) {
       await page.keyboard.press('Escape')
       test.skip()
       return
     }
 
-    const initialStatusText = (await statusBadgeButton.textContent()) ?? ''
-    await statusBadgeButton.click()
-
-    const popover = page.locator('[data-slot="popover-content"]')
-    await expect(popover).toBeVisible({ timeout: 5000 })
-
-    const statusOptions = popover.locator('button')
-    let changed = false
-    for (let i = 0; i < (await statusOptions.count()); i++) {
-      const optText = (await statusOptions.nth(i).textContent()) ?? ''
-      if (optText.trim() !== initialStatusText.trim()) {
-        await statusOptions.nth(i).click()
-        changed = true
-        break
-      }
-    }
-
-    if (!changed) {
-      await page.keyboard.press('Escape')
-      test.skip()
-      return
-    }
-
-    // Sonner toast should appear (success or any notification) — non-fatal check
+    // A status change confirms itself with its own feedback. A toast may not be
+    // raised (the mutation has none), so the updated badge is the confirmation.
     const toast = page.locator('[data-sonner-toast]')
     if ((await toast.count()) > 0) {
       await expect(toast.first()).toBeVisible({ timeout: 5000 })
     } else {
-      // Toast may have already dismissed; verify the status badge changed instead
-      const updatedStatusText = (await statusBadgeButton.textContent()) ?? ''
-      expect(updatedStatusText.trim()).not.toBe(initialStatusText.trim())
+      await expect(statusBadgeButton).toHaveText(newStatus, { timeout: 5000 })
     }
 
     await page.keyboard.press('Escape')
@@ -641,7 +606,7 @@ test.describe('Admin Post Management - Status Transitions', () => {
 test.describe('Admin Post Management - Post Detail Panel Accuracy', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/admin/feedback')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
   })
 
   test('detail panel title matches the post title clicked in the list', async ({ page }) => {
@@ -659,7 +624,7 @@ test.describe('Admin Post Management - Post Detail Panel Accuracy', () => {
     await firstCard.click()
     const modal = page.getByRole('dialog')
     await expect(modal).toBeVisible({ timeout: 10000 })
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     // The modal header breadcrumb shows "Feedback / <title>"
     // The title input is pre-filled with the post title
@@ -723,7 +688,7 @@ test.describe('Admin Post Management - Post Detail Panel Accuracy', () => {
     await firstCard.click()
     const modal = page.getByRole('dialog')
     await expect(modal).toBeVisible({ timeout: 10000 })
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     // The modal has a "Comments" tab that is always visible
     const commentsTab = modal.getByRole('button', { name: /^comments$/i })
@@ -742,8 +707,9 @@ test.describe('Admin Post Management - Post Detail Panel Accuracy', () => {
     const sidebar = modal.locator('aside')
     await expect(sidebar).toBeVisible({ timeout: 5000 })
 
-    // "Board" label is always visible in the sidebar
-    await expect(sidebar.getByText('Board')).toBeVisible()
+    // "Board" label is always visible in the sidebar. Exact: a board whose own
+    // name contains "Board" (e.g. one this suite created) would match a substring.
+    await expect(sidebar.getByText('Board', { exact: true })).toBeVisible()
 
     // Board name appears as a button (editable in admin mode) or plain span
     // Either way there must be some non-empty text next to the Board label
@@ -785,7 +751,7 @@ test.describe('Admin Post Management - Post Detail Panel Accuracy', () => {
     await targetCard.click()
     const modal = page.getByRole('dialog')
     await expect(modal).toBeVisible({ timeout: 10000 })
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     // The TipTap editor is always present even if empty; for posts with content it has text
     const editor = modal.locator('.tiptap')
@@ -832,7 +798,7 @@ test.describe('Admin Post Management - Post Detail Panel Accuracy', () => {
 test.describe('Admin Post Management - Filter + Pagination Accuracy', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/admin/feedback')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
   })
 
   test('after filtering by board, all visible posts belong to that board', async ({ page }) => {
@@ -845,35 +811,30 @@ test.describe('Admin Post Management - Filter + Pagination Accuracy', () => {
       return
     }
 
-    // Read the board name we'll filter by
+    // Read the board name we'll filter by. The option's accessible name carries
+    // its facet count ("Bug Reports, 150"); the name is the part before it.
     const targetBoardOption = boardOptions.first()
-    const boardName = (await targetBoardOption.textContent()) ?? ''
+    const boardName = (
+      (await targetBoardOption.getAttribute('aria-label')) ??
+      (await targetBoardOption.textContent()) ??
+      ''
+    )
+      .replace(/,\s*\d+$/, '')
+      .trim()
     await targetBoardOption.click()
-    await page.waitForLoadState('networkidle')
+    await expect(targetBoardOption).toHaveAttribute('aria-selected', 'true')
+    expect(boardName.length).toBeGreaterThan(0)
 
-    // Wait for post list to update
-    await page.waitForTimeout(500)
+    // The active-filters region names the board that is now filtering the list.
+    const activeFiltersBar = page.getByRole('region', { name: 'Active filters' })
+    await expect(activeFiltersBar).toBeVisible({ timeout: 10000 })
+    await expect(activeFiltersBar.getByText(boardName, { exact: false })).toBeVisible()
 
-    // Check posts in the list — each card should show the filtered board name
-    // Board name appears in the card's meta row (via boardSlug) — visible in detail panel
-    // The safest assertion is that the list is not empty and the active filter chip is shown
+    // Either posts exist (filtered) or the empty state appears — both are valid.
     const postCards = page.locator('[data-post-id]')
-    const emptyState = page.locator('text=/no posts|no results/i')
-
-    // Either posts exist (filtered) or empty state appears — both are valid results
+    const emptyState = page.getByText(/no posts|no results/i)
     const hasContent = (await postCards.count()) > 0 || (await emptyState.count()) > 0
     expect(hasContent).toBe(true)
-
-    // The active filters bar should show the selected board name as a chip
-    const activeFiltersBar = page.locator(
-      '[class*="ActiveFilters"], [data-testid="active-filters"]'
-    )
-    // Board filter chip: text contains the board name (trimmed)
-    const boardChip = activeFiltersBar.first().getByText(boardName.trim(), { exact: false })
-    await expect(activeFiltersBar.first()).toBeVisible()
-    // At minimum the board option we clicked has the right name
-    expect(boardName.trim().length).toBeGreaterThan(0)
-    await expect(boardChip).toBeVisible()
   })
 
   test('after filtering by status, all visible posts show that status badge', async ({ page }) => {
@@ -886,11 +847,24 @@ test.describe('Admin Post Management - Filter + Pagination Accuracy', () => {
       return
     }
 
+    // The option's accessible name carries its facet count ("Open, 165"); the
+    // status name is the part before it, and it is what each row's badge shows.
     const targetOption = statusOptions.first()
-    const statusName = ((await targetOption.textContent()) ?? '').trim()
+    const statusName = (
+      (await targetOption.getAttribute('aria-label')) ??
+      (await targetOption.textContent()) ??
+      ''
+    )
+      .replace(/,\s*\d+$/, '')
+      .trim()
     await targetOption.click()
-    await page.waitForLoadState('networkidle')
-    await page.waitForTimeout(500)
+    await expect(targetOption).toHaveAttribute('aria-selected', 'true')
+
+    // The list refetches for the filter; its chip confirms the applied status.
+    const activeFiltersBar = page.getByRole('region', { name: 'Active filters' })
+    await expect(activeFiltersBar.getByText(statusName, { exact: false })).toBeVisible({
+      timeout: 10000,
+    })
 
     const postCards = page.locator('[data-post-id]')
     const cardCount = await postCards.count()
@@ -902,9 +876,7 @@ test.describe('Admin Post Management - Filter + Pagination Accuracy', () => {
 
     // Each visible post card should show the status badge with the selected status name
     for (let i = 0; i < Math.min(cardCount, 5); i++) {
-      const card = postCards.nth(i)
-      // The status name may be split by the color dot span — use a broader text match
-      await expect(card.getByText(statusName, { exact: false })).toBeVisible()
+      await expect(postCards.nth(i).getByText(statusName, { exact: false })).toBeVisible()
     }
   })
 
@@ -921,7 +893,7 @@ test.describe('Admin Post Management - Filter + Pagination Accuracy', () => {
     const searchTerm = 'a'
     await searchInput.fill(searchTerm)
     // Debounced search — wait for network
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
     await page.waitForTimeout(800)
 
     const postCards = page.locator('[data-post-id]')
@@ -954,18 +926,18 @@ test.describe('Admin Post Management - Filter + Pagination Accuracy', () => {
     }
 
     // Get baseline count before search
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
     const baselineCount = await page.locator('[data-post-id]').count()
 
     // Search for a narrow term
     await searchInput.fill('zz')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
     await page.waitForTimeout(800)
     const filteredCount = await page.locator('[data-post-id]').count()
 
     // Clear the search
     await searchInput.clear()
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
     await page.waitForTimeout(800)
     const restoredCount = await page.locator('[data-post-id]').count()
 
@@ -979,7 +951,7 @@ test.describe('Admin Post Management - Filter + Pagination Accuracy', () => {
 test.describe('Admin Post Management - Edit Flow', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/admin/feedback')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
   })
 
   test('editing a post title and saving updates the title in the list', async ({ page }) => {
@@ -996,7 +968,7 @@ test.describe('Admin Post Management - Edit Flow', () => {
     await firstCard.click()
     const modal = page.getByRole('dialog')
     await expect(modal).toBeVisible({ timeout: 10000 })
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     // The modal IS the edit form — title input is directly editable
     const titleInput = modal.getByPlaceholder("What's the feedback about?")
@@ -1012,7 +984,7 @@ test.describe('Admin Post Management - Edit Flow', () => {
 
     // Modal should close after saving
     await expect(modal).toBeHidden({ timeout: 10000 })
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     // The post card in the list should now show the updated title
     const updatedCard = page.locator(`[data-post-id="${postId}"]`)
@@ -1036,7 +1008,7 @@ test.describe('Admin Post Management - Edit Flow', () => {
 
     const modal = page.getByRole('dialog')
     await expect(modal).toBeVisible({ timeout: 10000 })
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     // Clear then type new body content into the TipTap editor
     const editor = modal.locator('.tiptap')
@@ -1053,14 +1025,14 @@ test.describe('Admin Post Management - Edit Flow', () => {
     await saveButton.click()
 
     await expect(modal).toBeHidden({ timeout: 10000 })
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     // Reopen the same post and verify body content
     const sameCard = page.locator(`[data-post-id="${postId}"]`)
     await sameCard.click()
     const reopenedModal = page.getByRole('dialog')
     await expect(reopenedModal).toBeVisible({ timeout: 10000 })
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     const reopenedEditor = reopenedModal.locator('.tiptap')
     await expect(reopenedEditor).toBeVisible({ timeout: 5000 })
@@ -1082,11 +1054,11 @@ test.describe('Admin Post Management - Edit Flow', () => {
 
     const modal = page.getByRole('dialog')
     await expect(modal).toBeVisible({ timeout: 10000 })
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     const sidebar = modal.locator('aside')
     await expect(sidebar).toBeVisible({ timeout: 5000 })
-    await expect(sidebar.getByText('Board')).toBeVisible()
+    await expect(sidebar.getByText('Board', { exact: true })).toBeVisible()
 
     // Board name is a clickable button in admin mode
     const boardRow = sidebar
@@ -1133,7 +1105,7 @@ test.describe('Admin Post Management - Edit Flow', () => {
     }
 
     // Wait for the board change to persist (mutation + toast)
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
     await page.waitForTimeout(500)
 
     // The board displayed in the sidebar should now be different
@@ -1148,7 +1120,7 @@ test.describe('Admin Post Management - Edit Flow', () => {
     await sameCard.click()
     const reopenedModal = page.getByRole('dialog')
     await expect(reopenedModal).toBeVisible({ timeout: 10000 })
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     const reopenedSidebar = reopenedModal.locator('aside')
     await expect(reopenedSidebar).toBeVisible({ timeout: 5000 })

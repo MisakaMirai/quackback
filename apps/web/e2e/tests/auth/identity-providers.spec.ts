@@ -15,6 +15,7 @@
  * hard-binding redirect rather than completing a real OIDC handshake. Providers
  * are seeded via a DB helper script and removed in `afterAll`.
  */
+import { waitForNetworkIdle } from '../../utils/helpers'
 import { test, expect } from '@playwright/test'
 import { seedIdentityProvider, removeIdentityProvider } from '../../utils/access-helpers'
 
@@ -72,7 +73,7 @@ test.beforeEach(async ({ page }) => {
 //     enforced provider does not.
 test('(1) button-only provider surfaces in the portal OIDC button list', async ({ page }) => {
   await page.goto('/auth/login')
-  await page.waitForLoadState('networkidle')
+  await waitForNetworkIdle(page)
 
   // The button-only provider renders its "Sign in with <label>" button
   // (`portal.auth.oauth.signInWith`).
@@ -110,7 +111,7 @@ test('(2) enforced-domain email routes to SSO and password is hard-bound', async
   // posts it to /_serverFn/...; the routing kind is inlined in the serialized
   // body). Set the wait up before submitting.
   await page.goto('/auth/login')
-  await page.waitForLoadState('networkidle')
+  await waitForNetworkIdle(page)
   const lookupResponse = page.waitForResponse(
     async (resp) => {
       if (resp.request().method() !== 'POST') return false

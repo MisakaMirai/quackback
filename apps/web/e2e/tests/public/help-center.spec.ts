@@ -1,4 +1,5 @@
-import { test, expect } from '@playwright/test'
+import { waitForNetworkIdle } from '../../utils/helpers'
+import { test, expect, type Page } from '@playwright/test'
 
 /**
  * Public Help Center E2E tests.
@@ -11,10 +12,20 @@ import { test, expect } from '@playwright/test'
  * when the flag is off or seed data is absent.
  */
 
+/**
+ * With the feature flag off, every /hc route (including /hc/{locale}) renders
+ * the app's 404 page. That page has its own "Page not found" <h1>, so an
+ * h1-presence check does not tell the disabled help center apart from the real
+ * landing page — this does.
+ */
+async function helpCenterDisabled(page: Page): Promise<boolean> {
+  return (await page.getByRole('heading', { name: 'Page not found' }).count()) > 0
+}
+
 test.describe('Public Help Center', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/hc')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
   })
 
   // -------------------------------------------------------------------------
@@ -31,8 +42,7 @@ test.describe('Public Help Center', () => {
   })
 
   test('shows the search bar on the landing page', async ({ page }) => {
-    const heading = page.locator('h1').first()
-    if ((await heading.count()) === 0) return
+    if (await helpCenterDisabled(page)) return // help center disabled in seed
 
     // Hero search renders an <input type="search"> with placeholder "Search articles..."
     const searchInput = page.getByPlaceholder('Search articles...')
@@ -40,10 +50,9 @@ test.describe('Public Help Center', () => {
   })
 
   test('shows categories list when categories exist in seed data', async ({ page }) => {
-    const heading = page.locator('h1').first()
-    if ((await heading.count()) === 0) return
+    if (await helpCenterDisabled(page)) return // help center disabled in seed
 
-    // Category cards link to /collections/<slug>
+    // Category cards link to /hc/{locale}/collections/<urlId>-<slug>
     const categoryCards = page.locator('a[href*="/collections/"]')
     if ((await categoryCards.count()) === 0) {
       // No categories yet — empty state message should be shown
@@ -95,7 +104,7 @@ test.describe('Public Help Center', () => {
     if ((await categoryCards.count()) === 0) return
 
     await categoryCards.first().click()
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     await expect(page).toHaveURL(/\/hc\/[^/]+\/collections\//)
   })
@@ -111,7 +120,7 @@ test.describe('Public Help Center', () => {
     const categoryNameText = await categoryCards.first().locator('h3').textContent()
 
     await categoryCards.first().click()
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     if (categoryNameText) {
       await expect(page.locator('h1').first()).toHaveText(categoryNameText)
@@ -128,7 +137,7 @@ test.describe('Public Help Center', () => {
     if ((await categoryCards.count()) === 0) return
 
     await categoryCards.first().click()
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     // Article rows link to /hc/{locale}/articles/{urlId}-{slug}
     const articleLinks = page.locator('a[href*="/articles/"]')
@@ -154,13 +163,13 @@ test.describe('Public Help Center', () => {
     if ((await categoryCards.count()) === 0) return
 
     await categoryCards.first().click()
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     const articleLinks = page.locator('a[href*="/articles/"]')
     if ((await articleLinks.count()) === 0) return
 
     await articleLinks.first().click()
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     await expect(page).toHaveURL(/\/hc\/[^/]+\/articles\//)
   })
@@ -173,13 +182,13 @@ test.describe('Public Help Center', () => {
     if ((await categoryCards.count()) === 0) return
 
     await categoryCards.first().click()
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     const articleLinks = page.locator('a[href*="/articles/"]')
     if ((await articleLinks.count()) === 0) return
 
     await articleLinks.first().click()
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     // Article title renders as an h1
     await expect(page.locator('article h1').or(page.locator('h1'))).toBeVisible()
@@ -193,13 +202,13 @@ test.describe('Public Help Center', () => {
     if ((await categoryCards.count()) === 0) return
 
     await categoryCards.first().click()
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     const articleLinks = page.locator('a[href*="/articles/"]')
     if ((await articleLinks.count()) === 0) return
 
     await articleLinks.first().click()
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     // Rich text content renders inside .prose
     const contentArea = page.locator('.prose')
@@ -214,13 +223,13 @@ test.describe('Public Help Center', () => {
     if ((await categoryCards.count()) === 0) return
 
     await categoryCards.first().click()
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     const articleLinks = page.locator('a[href*="/articles/"]')
     if ((await articleLinks.count()) === 0) return
 
     await articleLinks.first().click()
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     await expect(page.getByText('Was this helpful?')).toBeVisible()
     await expect(page.getByRole('button', { name: /Yes/i })).toBeVisible()
@@ -235,13 +244,13 @@ test.describe('Public Help Center', () => {
     if ((await categoryCards.count()) === 0) return
 
     await categoryCards.first().click()
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     const articleLinks = page.locator('a[href*="/articles/"]')
     if ((await articleLinks.count()) === 0) return
 
     await articleLinks.first().click()
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     // TOC renders "On this page" label only when headings are present
     const tocLabel = page.getByText('On this page')
@@ -258,13 +267,13 @@ test.describe('Public Help Center', () => {
     if ((await categoryCards.count()) === 0) return
 
     await categoryCards.first().click()
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     const articleLinks = page.locator('a[href*="/articles/"]')
     if ((await articleLinks.count()) === 0) return
 
     await articleLinks.first().click()
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     // Author block shows "Written By <name>" when an author is set
     const writtenBy = page.getByText(/Written By/i)
@@ -291,7 +300,7 @@ test.describe('Public Help Center', () => {
     if ((await categoryCards.count()) === 0) return
 
     await categoryCards.first().click()
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     // Breadcrumb nav has aria-label="Breadcrumb"
     const breadcrumb = page.getByRole('navigation', { name: 'Breadcrumb' })
@@ -301,7 +310,7 @@ test.describe('Public Help Center', () => {
     const helpCenterLink = breadcrumb.getByRole('link', { name: /Help Center/i })
     if ((await helpCenterLink.count()) > 0) {
       await helpCenterLink.click()
-      await page.waitForLoadState('networkidle')
+      await waitForNetworkIdle(page)
       await expect(page).toHaveURL(/\/hc\/[^/]+\/?$/)
     }
   })
@@ -314,13 +323,13 @@ test.describe('Public Help Center', () => {
     if ((await categoryCards.count()) === 0) return
 
     await categoryCards.first().click()
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     const articleLinks = page.locator('a[href*="/articles/"]')
     if ((await articleLinks.count()) === 0) return
 
     await articleLinks.first().click()
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     const breadcrumb = page.getByRole('navigation', { name: 'Breadcrumb' })
     await expect(breadcrumb).toBeVisible()
@@ -331,7 +340,7 @@ test.describe('Public Help Center', () => {
     const breadcrumbLink = breadcrumb.locator('a').last()
     if ((await breadcrumbLink.count()) > 0) {
       await breadcrumbLink.click()
-      await page.waitForLoadState('networkidle')
+      await waitForNetworkIdle(page)
       await expect(page).toHaveURL(/\/hc/)
     }
   })
@@ -344,14 +353,14 @@ test.describe('Public Help Center', () => {
     if ((await categoryCards.count()) === 0) return
 
     await categoryCards.first().click()
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     // The left sidebar has an "All categories" back link (visible on xl viewports).
     // The route component also renders it via Link to="/hc".
     const allCategoriesLink = page.getByRole('link', { name: /All categories/i })
     if ((await allCategoriesLink.count()) > 0) {
       await allCategoriesLink.first().click()
-      await page.waitForLoadState('networkidle')
+      await waitForNetworkIdle(page)
       await expect(page).toHaveURL(/\/hc\/[^/]+\/?$/)
     }
   })
@@ -412,7 +421,7 @@ test.describe('Public Help Center', () => {
     if (!firstHref) return
 
     await page.goto(firstHref)
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
     await expect(page).toHaveURL(/\/collections\//)
   })
 
@@ -430,14 +439,14 @@ test.describe('Public Help Center', () => {
     if ((await categoryCards.count()) === 0) return
 
     await categoryCards.first().click()
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     const articleLinks = page.locator('a[href*="/articles/"]')
     if ((await articleLinks.count()) < 2) return // need at least 2 articles for prev/next
 
     // Navigate to the second article so there's a "Previous" link
     await articleLinks.nth(1).click()
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     // Previous / Next links contain the arrow characters rendered by the component
     const prevLink = page.getByText(/← Previous/i)
@@ -454,7 +463,7 @@ test.describe('Public Help Center', () => {
 test.describe('Help Center - Search Accuracy', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/hc')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
   })
 
   test('search results all contain the query term in title or category name', async ({ page }) => {
@@ -589,7 +598,7 @@ test.describe('Help Center - Article Content Verification', () => {
   // Navigate to the first available article before each test
   async function navigateToFirstArticle(page: import('@playwright/test').Page): Promise<boolean> {
     await page.goto('/hc')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     const heading = page.locator('h1').first()
     if ((await heading.count()) === 0) return false
@@ -598,20 +607,20 @@ test.describe('Help Center - Article Content Verification', () => {
     if ((await categoryCards.count()) === 0) return false
 
     await categoryCards.first().click()
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     const articleLinks = page.locator('a[href*="/articles/"]')
     if ((await articleLinks.count()) === 0) return false
 
     await articleLinks.first().click()
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     return true
   }
 
   test('article h1 title matches the title shown in the category listing', async ({ page }) => {
     await page.goto('/hc')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     const heading = page.locator('h1').first()
     if ((await heading.count()) === 0) return
@@ -620,7 +629,7 @@ test.describe('Help Center - Article Content Verification', () => {
     if ((await categoryCards.count()) === 0) return
 
     await categoryCards.first().click()
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     const articleLinks = page.locator('a[href*="/articles/"]')
     if ((await articleLinks.count()) === 0) return
@@ -632,7 +641,7 @@ test.describe('Help Center - Article Content Verification', () => {
       .textContent()
 
     await articleLinks.first().click()
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     // The article h1 must match the listing title exactly
     if (listingTitle) {
@@ -672,7 +681,7 @@ test.describe('Help Center - Article Content Verification', () => {
 
     // TOC is only rendered on xl viewports; use a wide viewport for this test
     await page.setViewportSize({ width: 1440, height: 900 })
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     const tocLabel = page.getByText('On this page')
     if ((await tocLabel.count()) === 0) return // no headings in this article — skip
@@ -704,7 +713,7 @@ test.describe('Help Center - Article Content Verification', () => {
     if (!ok) return
 
     await page.setViewportSize({ width: 1440, height: 900 })
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     const tocLabel = page.getByText('On this page')
     if ((await tocLabel.count()) === 0) return
@@ -736,7 +745,7 @@ test.describe('Help Center - Article Content Verification', () => {
 test.describe('Help Center - Article Feedback Widget', () => {
   async function navigateToFirstArticle(page: import('@playwright/test').Page): Promise<boolean> {
     await page.goto('/hc')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     const heading = page.locator('h1').first()
     if ((await heading.count()) === 0) return false
@@ -745,13 +754,13 @@ test.describe('Help Center - Article Feedback Widget', () => {
     if ((await categoryCards.count()) === 0) return false
 
     await categoryCards.first().click()
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     const articleLinks = page.locator('a[href*="/articles/"]')
     if ((await articleLinks.count()) === 0) return false
 
     await articleLinks.first().click()
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     return true
   }
@@ -844,7 +853,7 @@ test.describe('Help Center - Article Feedback Widget', () => {
 test.describe('Help Center - Navigation Accuracy', () => {
   test('breadcrumb on category page shows Help Center then category name', async ({ page }) => {
     await page.goto('/hc')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     const heading = page.locator('h1').first()
     if ((await heading.count()) === 0) return
@@ -855,7 +864,7 @@ test.describe('Help Center - Navigation Accuracy', () => {
     const categoryName = await categoryCards.first().locator('h3').textContent()
 
     await categoryCards.first().click()
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     const breadcrumb = page.getByRole('navigation', { name: 'Breadcrumb' })
     await expect(breadcrumb).toBeVisible()
@@ -875,7 +884,7 @@ test.describe('Help Center - Navigation Accuracy', () => {
     page,
   }) => {
     await page.goto('/hc')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     const heading = page.locator('h1').first()
     if ((await heading.count()) === 0) return
@@ -886,13 +895,13 @@ test.describe('Help Center - Navigation Accuracy', () => {
     const categoryName = await categoryCards.first().locator('h3').textContent()
 
     await categoryCards.first().click()
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     const articleLinks = page.locator('a[href*="/articles/"]')
     if ((await articleLinks.count()) === 0) return
 
     await articleLinks.first().click()
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     const breadcrumb = page.getByRole('navigation', { name: 'Breadcrumb' })
     await expect(breadcrumb).toBeVisible()
@@ -912,7 +921,7 @@ test.describe('Help Center - Navigation Accuracy', () => {
 
   test('"Help Center" breadcrumb link navigates back to /hc', async ({ page }) => {
     await page.goto('/hc')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     const heading = page.locator('h1').first()
     if ((await heading.count()) === 0) return
@@ -921,14 +930,14 @@ test.describe('Help Center - Navigation Accuracy', () => {
     if ((await categoryCards.count()) === 0) return
 
     await categoryCards.first().click()
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     const breadcrumb = page.getByRole('navigation', { name: 'Breadcrumb' })
     const helpCenterLink = breadcrumb.getByRole('link', { name: /Help Center/i })
     if ((await helpCenterLink.count()) === 0) return
 
     await helpCenterLink.click()
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     await expect(page).toHaveURL(/\/hc\/?$/)
   })
@@ -937,7 +946,7 @@ test.describe('Help Center - Navigation Accuracy', () => {
     page,
   }) => {
     await page.goto('/hc')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     const heading = page.locator('h1').first()
     if ((await heading.count()) === 0) return
@@ -949,13 +958,13 @@ test.describe('Help Center - Navigation Accuracy', () => {
     const categoryName = await categoryCards.first().locator('h3').textContent()
 
     await categoryCards.first().click()
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     const articleLinks = page.locator('a[href*="/articles/"]')
     if ((await articleLinks.count()) === 0) return
 
     await articleLinks.first().click()
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     const breadcrumb = page.getByRole('navigation', { name: 'Breadcrumb' })
     if (categoryName) {
@@ -963,7 +972,7 @@ test.describe('Help Center - Navigation Accuracy', () => {
       if ((await categoryLink.count()) === 0) return
 
       await categoryLink.first().click()
-      await page.waitForLoadState('networkidle')
+      await waitForNetworkIdle(page)
 
       // Should land on the category page
       if (categoryHref) {

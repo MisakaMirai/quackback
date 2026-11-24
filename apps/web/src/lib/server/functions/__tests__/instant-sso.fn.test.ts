@@ -171,4 +171,13 @@ describe('resolveInstantSsoRedirectFn', () => {
     expect(result).toBeNull()
     expect(hoisted.signInSocial).not.toHaveBeenCalled()
   })
+
+  it('(h) falls back to null when the sole provider cannot be resolved', async () => {
+    // A registered IdP whose discovery document is unreachable must not make the
+    // public portal root throw: the caller shows the normal sign-in dialog.
+    soleOidcWorkspace({ oauth: { password: false, magicLink: false } })
+    hoisted.signInSocial.mockRejectedValueOnce(new Error('getaddrinfo ENOTFOUND idp.example.org'))
+
+    await expect(resolveHandler({ data: {} })).resolves.toBeNull()
+  })
 })

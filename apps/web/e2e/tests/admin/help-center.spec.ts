@@ -1,70 +1,106 @@
-import { test, expect } from '@playwright/test'
+import { test, expect, type Locator, type Page } from '@playwright/test'
 
 /**
  * Help Center admin E2E tests.
  *
  * These tests cover the help center article management UI at /admin/help-center.
  *
- * Prerequisites:
- *   - The `helpCenter` feature flag must be enabled for the acme workspace.
+ * The article list and the article editor now share one route: creating an
+ * article opens a dialog on the list, and "Save draft" opens the new article in
+ * the editor modal addressed by the `?article=<id>` search param. (The former
+ * full-page editor route, /admin/help-center/articles/<id>, now just redirects
+ * to that modal.) The editor's metadata sidebar is a pane of the modal, so
+ * publishing/unpublishing happens there and "Save changes" closes the modal.
  *
- * The suite enables the flag before each suite via `enableHelpCenter`. Tests that
- * can't run without the flag return early rather than failing, so the suite stays
- * green on fresh seeds where the flag is off by default.
+ * Prerequisites:
+ *   - The `helpCenter` product flag must be enabled in Settings > General.
+ *
+ * The suite enables the flag before each test via `enableHelpCenter`. The flag
+ * persists, so only the first test in the file actually flips the switch.
  */
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-/** Enable the Help Center module with its switch on the General settings page. */
-async function enableHelpCenter(page: import('@playwright/test').Page): Promise<void> {
-  await page.goto('/admin/settings/general')
-  await page.waitForLoadState('networkidle')
+const LIST_PATH = '/admin/help-center'
+const SEARCH_PLACEHOLDER = 'Search articles...'
 
-  const toggle = page.getByRole('switch', { name: 'Help Center' })
-  await expect(toggle).toBeVisible({ timeout: 10000 })
-  if (!(await toggle.isChecked())) {
-    await toggle.click()
-    await expect(toggle).toBeChecked({ timeout: 5000 })
-    await page.waitForLoadState('networkidle')
-  }
+/** The create-article dialog; its accessible name is the sr-only dialog title. */
+function createArticleDialog(page: Page): Locator {
+  return page.getByRole('dialog', { name: 'Create help article' })
 }
 
-/** Select the first available category in a combobox, or dismiss if none exist. */
-async function selectFirstCategoryIfAvailable(
-  container: import('@playwright/test').Locator,
-  page: import('@playwright/test').Page
-): Promise<void> {
-  const trigger = container.locator('[role="combobox"]').first()
+/** The article editor modal; its accessible name is the sr-only dialog title. */
+function editorDialog(page: Page): Locator {
+  return page.getByRole('dialog', { name: 'Edit article' })
+}
+
+/** Enable the Help Center module with its switch on the General settings page. */
+async function enableHelpCenter(page: Page): Promise<void> {
+  await page.goto('/admin/settings/general')
+
+  const toggle = page.getByRole('switch', { name: 'Help Center' })
+  await expect(toggle).toBeVisible({ timeout: 15000 })
+  if (await toggle.isChecked()) return
+
+  await toggle.click()
+  // A click that lands before hydration is swallowed; the switch updates
+  // optimistically, so wait for the checked state and click once more if the
+  // press never registered.
+  await expect(toggle)
+    .toBeChecked({ timeout: 5000 })
+    .catch(() => toggle.click())
+  await expect(toggle).toBeChecked({ timeout: 10000 })
+
+  // The module's nav entries (admin sidebar and settings nav) are driven by the
+  // feature flags in the root route context, which the autosave refreshes
+  // asynchronously. Their appearance is the signal that /admin/help-center will
+  // open instead of redirecting to the first enabled product.
+  await expect(page.getByRole('link', { name: 'Help center' }).first()).toBeVisible({
+    timeout: 20000,
+  })
+}
+
+/**
+ * Open the article list and wait for its toolbar.
+ * No networkidle waits: the admin shell holds SSE streams open, so the network
+ * never goes idle.
+ */
+async function openList(page: Page): Promise<void> {
+  await page.goto(LIST_PATH)
+  await expect(page.getByPlaceholder(SEARCH_PLACEHOLDER)).toBeVisible({ timeout: 15000 })
+}
+
+/** Select the first available category in the editor's combobox, if any exist. */
+async function selectFirstCategoryIfAvailable(dialog: Locator, page: Page): Promise<void> {
+  const trigger = dialog.locator('[role="combobox"]').first()
   if ((await trigger.count()) === 0) return
   await trigger.click()
   const firstOption = page.getByRole('option').first()
-  if ((await firstOption.count()) > 0) {
+  try {
+    await firstOption.waitFor({ state: 'visible', timeout: 2000 })
     await firstOption.click()
-  } else {
+  } catch {
+    // No categories in this workspace yet: the article saves into General.
     await page.keyboard.press('Escape')
   }
 }
 
 /**
- * Create a fresh article via the dialog and navigate to the editor page.
- * Returns the editor URL, or null if the creation flow was unavailable.
+ * Create a fresh article via the dialog (saving it as a draft) and return the
+ * editor URL. Saving as a draft opens the article in the editor modal.
  */
 async function createAndOpenArticle(
-  page: import('@playwright/test').Page,
+  page: Page,
   title = `Editor Test Article ${Date.now()}`
-): Promise<string | null> {
+): Promise<string> {
   await enableHelpCenter(page)
-  await page.goto('/admin/help-center')
-  await page.waitForLoadState('networkidle')
+  await openList(page)
 
-  const newButton = page.getByRole('button', { name: 'New article' }).first()
-  if ((await newButton.count()) === 0) return null
-  await newButton.click()
-
-  const dialog = page.getByRole('dialog')
-  await expect(dialog).toBeVisible()
+  await page.getByRole('button', { name: 'New article' }).first().click()
+  const dialog = createArticleDialog(page)
+  await expect(dialog).toBeVisible({ timeout: 15000 })
 
   await dialog.getByPlaceholder('Article title').fill(title)
   await selectFirstCategoryIfAvailable(dialog, page)
@@ -73,10 +109,35 @@ async function createAndOpenArticle(
   await page.keyboard.type('Test article content for e2e test.')
 
   await dialog.getByRole('button', { name: /save draft/i }).click()
-  await expect(dialog).toBeHidden({ timeout: 15000 })
-  await expect(page).toHaveURL(/\/admin\/help-center\/articles\//, { timeout: 15000 })
+  await expect(dialog).toBeHidden({ timeout: 20000 })
+  await expect(page).toHaveURL(/[?&]article=article_[^&]+/, { timeout: 20000 })
 
+  await expect(editorDialog(page)).toBeVisible({ timeout: 20000 })
   return page.url()
+}
+
+/** Publish the open article with the status control in the editor sidebar. */
+async function publishArticle(page: Page): Promise<void> {
+  const editor = editorDialog(page)
+  const draftStatus = editor.getByRole('button', { name: /^draft$/i })
+  await expect(draftStatus).toBeVisible({ timeout: 15000 })
+  await draftStatus.click()
+  await expect(editor.getByRole('button', { name: /^published$/i })).toBeVisible({
+    timeout: 20000,
+  })
+}
+
+/** The editor modal is closed and the URL no longer addresses an article. */
+async function expectEditorClosed(page: Page): Promise<void> {
+  await expect(editorDialog(page)).toBeHidden({ timeout: 20000 })
+  await expect(page).toHaveURL(
+    (url) => url.pathname === LIST_PATH && !url.searchParams.has('article')
+  )
+}
+
+/** The modal's header close (X) button. */
+function editorCloseButton(page: Page): Locator {
+  return editorDialog(page).locator('header button').first()
 }
 
 // ---------------------------------------------------------------------------
@@ -88,26 +149,22 @@ test.describe('Help Center admin navigation', () => {
     await enableHelpCenter(page)
 
     await page.goto('/admin')
-    await page.waitForLoadState('networkidle')
-
-    const helpCenterLink = page.getByRole('link', { name: 'Help Center' }).first()
-    await expect(helpCenterLink).toBeVisible({ timeout: 10000 })
+    const helpCenterLink = page.getByRole('link', { name: 'Help center' }).first()
+    await expect(helpCenterLink).toBeVisible({ timeout: 15000 })
     await helpCenterLink.click()
 
-    await expect(page).toHaveURL(/\/admin\/help-center/, { timeout: 10000 })
+    await expect(page).toHaveURL(/\/admin\/help-center/, { timeout: 15000 })
   })
 
   test('help center index shows article list area', async ({ page }) => {
     await enableHelpCenter(page)
-    await page.goto('/admin/help-center')
-    await page.waitForLoadState('networkidle')
+    await openList(page)
 
-    const content = page
-      .getByText('Write your first article')
-      .or(page.getByText(/\d+ articles?/))
-      .or(page.getByText(/article/i).first())
-
-    await expect(content).toBeVisible({ timeout: 10000 })
+    // The list area reads either its empty state or the article count line.
+    await expect(page.getByText(/No articles yet|\d+ articles?/).first()).toBeVisible({
+      timeout: 15000,
+    })
+    await expect(page.getByRole('button', { name: 'New article' }).first()).toBeVisible()
   })
 })
 
@@ -118,8 +175,7 @@ test.describe('Help Center admin navigation', () => {
 test.describe('Help Center category management', () => {
   test.beforeEach(async ({ page }) => {
     await enableHelpCenter(page)
-    await page.goto('/admin/help-center')
-    await page.waitForLoadState('networkidle')
+    await openList(page)
   })
 
   test('offers New article in the header and New category in the pane', async ({ page }) => {
@@ -130,19 +186,19 @@ test.describe('Help Center category management', () => {
   })
 
   test('can create a new top-level category', async ({ page }) => {
-    const newCategory = page.getByRole('button', { name: 'New category' })
-    await expect(newCategory).toBeVisible({ timeout: 10000 })
-    await newCategory.click()
+    await page.getByRole('button', { name: 'New category' }).first().click()
 
     const dialog = page.getByRole('dialog')
-    await expect(dialog).toBeVisible({ timeout: 5000 })
+    await expect(dialog).toBeVisible({ timeout: 10000 })
 
     const categoryName = `E2E Category ${Date.now()}`
-    await dialog.getByLabel(/name/i).fill(categoryName)
-    await dialog.getByRole('button', { name: /create|save/i }).click()
+    await dialog.getByLabel('Name', { exact: true }).fill(categoryName)
+    await dialog.getByRole('button', { name: 'Create', exact: true }).click()
 
-    await expect(dialog).toBeHidden({ timeout: 10000 })
-    await expect(page.getByText(categoryName)).toBeVisible({ timeout: 10000 })
+    await expect(dialog).toBeHidden({ timeout: 15000 })
+    await expect(page.getByText(categoryName, { exact: true }).first()).toBeVisible({
+      timeout: 15000,
+    })
   })
 })
 
@@ -153,192 +209,166 @@ test.describe('Help Center category management', () => {
 test.describe('Help Center article creation', () => {
   test.beforeEach(async ({ page }) => {
     await enableHelpCenter(page)
-    await page.goto('/admin/help-center')
-    await page.waitForLoadState('networkidle')
+    await openList(page)
   })
 
   test('can open create article dialog from the New article button', async ({ page }) => {
-    const newButton = page.getByRole('button', { name: 'New article' }).first()
-    await expect(newButton).toBeVisible({ timeout: 10000 })
-    await newButton.click()
+    await page.getByRole('button', { name: 'New article' }).first().click()
 
-    const dialog = page.getByRole('dialog')
-    await expect(dialog).toBeVisible({ timeout: 5000 })
+    const dialog = createArticleDialog(page)
+    await expect(dialog).toBeVisible({ timeout: 15000 })
     await expect(dialog.getByPlaceholder('Article title')).toBeVisible()
 
     await page.keyboard.press('Escape')
+    await expect(dialog).toBeHidden({ timeout: 10000 })
   })
 
   test('can create an article with title and content, then navigate to editor', async ({
     page,
   }) => {
     const url = await createAndOpenArticle(page, `E2E Test Article ${Date.now()}`)
-    expect(url).toMatch(/\/admin\/help-center\/articles\//)
+    // Saving a draft opens the editor modal on the list route.
+    expect(url).toMatch(/[?&]article=article_/)
   })
 
   test('create article dialog can be dismissed with Escape', async ({ page }) => {
-    const newButton = page.getByRole('button', { name: 'New article' }).first()
-    await expect(newButton).toBeVisible({ timeout: 10000 })
-    await newButton.click()
+    await page.getByRole('button', { name: 'New article' }).first().click()
 
-    const dialog = page.getByRole('dialog')
-    await expect(dialog).toBeVisible()
+    const dialog = createArticleDialog(page)
+    await expect(dialog).toBeVisible({ timeout: 15000 })
 
     await page.keyboard.press('Escape')
-    await expect(dialog).toBeHidden({ timeout: 5000 })
+    await expect(dialog).toBeHidden({ timeout: 10000 })
   })
 })
 
 // ---------------------------------------------------------------------------
-// Article editor
+// Article editor (modal)
 // ---------------------------------------------------------------------------
 
 test.describe('Help Center article editor', () => {
   test('editor shows title input, description input, and content area', async ({ page }) => {
-    const url = await createAndOpenArticle(page)
-    if (!url) return
+    await createAndOpenArticle(page)
+    const editor = editorDialog(page)
 
-    await expect(page.getByPlaceholder('Untitled')).toBeVisible({ timeout: 10000 })
-    await expect(page.getByPlaceholder('Page description (optional)')).toBeVisible()
-    await expect(page.locator('.ProseMirror[contenteditable="true"]')).toBeVisible()
+    // The title field's placeholder is "Article title" in the editor too (it
+    // used to read "Untitled" on the old full-page editor).
+    await expect(editor.getByPlaceholder('Article title')).toBeVisible({ timeout: 15000 })
+    await expect(editor.getByPlaceholder('Page description (optional)')).toBeVisible()
+    await expect(editor.locator('.ProseMirror[contenteditable="true"]')).toBeVisible()
   })
 
-  test('editor has category select, Publish button and Save changes button', async ({ page }) => {
-    const url = await createAndOpenArticle(page)
-    if (!url) return
+  test('editor has category select, status control and Save changes button', async ({ page }) => {
+    await createAndOpenArticle(page)
+    const editor = editorDialog(page)
 
-    const categorySelect = page.locator('button[role="combobox"]')
-    await expect(categorySelect.first()).toBeVisible({ timeout: 10000 })
+    await expect(editor.getByRole('combobox').first()).toBeVisible({ timeout: 15000 })
 
-    const publishOrView = page
-      .getByRole('button', { name: /publish/i })
-      .or(page.getByRole('link', { name: /view article/i }))
-    await expect(publishOrView.first()).toBeVisible()
+    // Publishing is a status toggle in the metadata sidebar ("Draft" toggles to
+    // "Published"); there is no footer Publish button in the editor modal.
+    await expect(editor.getByRole('button', { name: /^draft$/i })).toBeVisible()
 
-    await expect(page.getByRole('button', { name: /save changes/i })).toBeVisible()
+    await expect(editor.getByRole('button', { name: /save changes/i })).toBeVisible()
   })
 
   test('can edit the article title and save', async ({ page }) => {
-    const url = await createAndOpenArticle(page)
-    if (!url) return
+    await createAndOpenArticle(page)
+    const editor = editorDialog(page)
 
-    const titleInput = page.getByPlaceholder('Untitled')
-    await expect(titleInput).toBeVisible({ timeout: 10000 })
+    const newTitle = `Updated Title ${Date.now()}`
+    await editor.getByPlaceholder('Article title').fill(newTitle)
+    const save = editor.getByRole('button', { name: /save changes/i })
+    await expect(save).toBeEnabled()
+    await save.click()
 
-    await titleInput.fill(`Updated Title ${Date.now()}`)
-    await page.getByRole('button', { name: /save changes/i }).click()
-
-    await expect(
-      page
-        .getByRole('button', { name: /saving/i })
-        .or(page.getByRole('button', { name: /save changes/i }))
-    ).toBeVisible({ timeout: 5000 })
-
-    await expect(page).toHaveURL(/\/admin\/help-center\/articles\//)
+    // Saving closes the modal and the list reflects the new title.
+    await expectEditorClosed(page)
+    await expect(page.getByRole('heading', { name: newTitle })).toBeVisible({ timeout: 15000 })
   })
 
   test('can edit article description', async ({ page }) => {
-    const url = await createAndOpenArticle(page)
-    if (!url) return
+    await createAndOpenArticle(page)
+    const editor = editorDialog(page)
 
-    const descInput = page.getByPlaceholder('Page description (optional)')
-    await expect(descInput).toBeVisible({ timeout: 10000 })
+    const description = 'A helpful description set by Playwright.'
+    await expect(editor.getByPlaceholder('Page description (optional)')).toBeVisible({
+      timeout: 15000,
+    })
+    await editor.getByPlaceholder('Page description (optional)').fill(description)
+    await editor.getByRole('button', { name: /save changes/i }).click()
 
-    await descInput.fill('A helpful description set by Playwright.')
-    await page.getByRole('button', { name: /save changes/i }).click()
-
-    await expect(page).toHaveURL(/\/admin\/help-center\/articles\//)
+    await expectEditorClosed(page)
+    // The list row previews the description once it is saved.
+    await expect(page.getByText(description).first()).toBeVisible({ timeout: 15000 })
   })
 
-  test('can publish an article and see "View article" link', async ({ page }) => {
-    const url = await createAndOpenArticle(page)
-    if (!url) return
+  test('can publish an article and see the View button', async ({ page }) => {
+    await createAndOpenArticle(page)
+    await publishArticle(page)
 
-    const publishButton = page.getByRole('button', { name: /^publish$/i })
-    if ((await publishButton.count()) === 0) return
-
-    await publishButton.click()
-
-    await expect(page.getByRole('link', { name: /view article/i })).toBeVisible({ timeout: 10000 })
+    // A published article exposes the header's View action for the public page.
+    await expect(editorDialog(page).getByRole('button', { name: /^view$/i })).toBeVisible({
+      timeout: 15000,
+    })
   })
 
-  test('can unpublish a published article via ellipsis menu', async ({ page }) => {
-    const url = await createAndOpenArticle(page)
-    if (!url) return
+  test('can unpublish a published article via the status control', async ({ page }) => {
+    await createAndOpenArticle(page)
+    await publishArticle(page)
 
-    const publishButton = page.getByRole('button', { name: /^publish$/i })
-    if ((await publishButton.count()) === 0) return
+    // The metadata sidebar's status control is the publish/unpublish toggle.
+    const editor = editorDialog(page)
+    await editor.getByRole('button', { name: /^published$/i }).click()
 
-    await publishButton.click()
-    await expect(page.getByRole('link', { name: /view article/i })).toBeVisible({ timeout: 10000 })
-
-    const actionsButton = page.getByRole('button', { name: /article actions/i })
-    await expect(actionsButton).toBeVisible({ timeout: 5000 })
-    await actionsButton.click()
-
-    await page.getByRole('menuitem', { name: /unpublish/i }).click()
-
-    await expect(page.getByRole('button', { name: /^publish$/i })).toBeVisible({ timeout: 10000 })
+    await expect(editor.getByRole('button', { name: /^draft$/i })).toBeVisible({ timeout: 20000 })
+    await expect(editor.getByRole('button', { name: /^view$/i })).toBeHidden()
   })
 
-  test('back button navigates to help center list', async ({ page }) => {
-    const url = await createAndOpenArticle(page)
-    if (!url) return
+  test('close button returns to the help center list', async ({ page }) => {
+    await createAndOpenArticle(page)
 
-    const breadcrumbLink = page.getByRole('link', { name: 'Help Center' }).first()
-    await expect(breadcrumbLink).toBeVisible({ timeout: 10000 })
-    await breadcrumbLink.click()
+    // The editor is a modal: its header close button returns to the list.
+    await editorCloseButton(page).click()
 
-    await expect(page).toHaveURL(/\/admin\/help-center/, { timeout: 10000 })
-    expect(page.url()).not.toMatch(/\/articles\//)
+    await expectEditorClosed(page)
   })
 })
 
 // ---------------------------------------------------------------------------
-// Article author (new feature on this branch)
+// Article author (metadata sidebar)
 // ---------------------------------------------------------------------------
 
 test.describe('Help Center article author', () => {
   /**
-   * The author feature is exposed via the REST API and MCP tools on this branch.
-   * Full author-setting tests are covered by the integration suite in
-   * help-center-api.test.ts. These tests verify the UI display path.
+   * Author changes are exposed through the REST API and MCP tools, which require
+   * a Bearer API key. These tests verify the UI display path: the editor's
+   * metadata sidebar names the article's author and survives a reload.
    */
 
   test('article list renders without errors when articles exist', async ({ page }) => {
     await enableHelpCenter(page)
-    await page.goto('/admin/help-center')
-    await page.waitForLoadState('networkidle')
+    await openList(page)
 
-    const articleCards = page.locator('h3')
-    if ((await articleCards.count()) === 0) return
+    const articleRows = page.locator('div.group:has(h3)')
+    if ((await articleRows.count()) === 0) {
+      await expect(page.getByText('No articles yet')).toBeVisible()
+      return
+    }
 
-    await expect(articleCards.first()).toBeVisible()
+    await expect(articleRows.first().locator('h3')).toBeVisible()
   })
 
-  test('article editor remains stable after setting author via API', async ({ page, request }) => {
+  test('article editor shows the author and stays stable after a reload', async ({ page }) => {
     const url = await createAndOpenArticle(page)
-    if (!url) return
-
-    const urlMatch = url.match(/\/articles\/([^/?#]+)/)
-    if (!urlMatch) return
-    const articleId = urlMatch[1]
-
-    const patchResponse = await request.patch(`/api/v1/help-center/articles/${articleId}`, {
-      data: { authorId: 'self' },
-      headers: { 'Content-Type': 'application/json' },
-    })
-
-    // If authorId: "self" is unsupported, skip — don't fail hard.
-    if (!patchResponse.ok()) return
+    const editor = editorDialog(page)
 
     await page.reload()
-    await page.waitForLoadState('networkidle')
+    await expect(editor).toBeVisible({ timeout: 20000 })
 
-    // TODO: When the editor gains a metadata sidebar with an author picker,
-    // assert `await expect(page.getByText('Author')).toBeVisible()` here.
-    await expect(page).toHaveURL(/\/admin\/help-center\/articles\//)
-    await expect(page.getByPlaceholder('Untitled')).toBeVisible()
+    // The metadata sidebar's author row names the article's creator.
+    await expect(editor.getByText('Author', { exact: true })).toBeVisible({ timeout: 15000 })
+    await expect(editor.getByPlaceholder('Article title')).not.toHaveValue('')
+    expect(page.url()).toBe(url)
   })
 })
 
@@ -349,27 +379,31 @@ test.describe('Help Center article author', () => {
 test.describe('Help Center article filtering', () => {
   test.beforeEach(async ({ page }) => {
     await enableHelpCenter(page)
-    await page.goto('/admin/help-center')
-    await page.waitForLoadState('networkidle')
+    await openList(page)
   })
 
   test('search input is present', async ({ page }) => {
-    const searchInput = page.locator('[data-search-input]').or(page.getByPlaceholder(/search/i))
-    await expect(searchInput.first()).toBeVisible({ timeout: 10000 })
+    const searchInput = page.locator('[data-search-input]')
+    await expect(searchInput).toBeVisible({ timeout: 10000 })
+    await expect(searchInput).toHaveAttribute('placeholder', SEARCH_PLACEHOLDER)
   })
 
   test('sort dropdown is present', async ({ page }) => {
-    const sortTrigger = page.getByRole('button', { name: /^sort: (newest|oldest)/i })
-    await expect(sortTrigger.first()).toBeVisible({ timeout: 10000 })
+    await expect(page.getByRole('button', { name: /^sort: newest/i })).toBeVisible({
+      timeout: 10000,
+    })
   })
 
   test('can change sort order', async ({ page }) => {
-    const sortTrigger = page.getByRole('button', { name: /^sort: (newest|oldest)/i })
-    await expect(sortTrigger.first()).toBeVisible({ timeout: 10000 })
+    const sortTrigger = page.getByRole('button', { name: /^sort: newest/i })
+    await expect(sortTrigger).toBeVisible({ timeout: 10000 })
 
-    await sortTrigger.first().click()
+    await sortTrigger.click()
     await page.getByRole('menuitemradio', { name: /oldest/i }).click()
-    await expect(page.getByRole('button', { name: /^sort: oldest/i }).first()).toBeVisible()
+
+    await expect(page.getByRole('button', { name: /^sort: oldest/i })).toBeVisible({
+      timeout: 10000,
+    })
   })
 })
 
@@ -379,86 +413,60 @@ test.describe('Help Center article filtering', () => {
 
 test.describe('Help Center article editor toolbar', () => {
   test('bubble menu appears when text is selected', async ({ page }) => {
-    const url = await createAndOpenArticle(page, `Toolbar Test ${Date.now()}`)
-    if (!url) return
+    await createAndOpenArticle(page, `Toolbar Test ${Date.now()}`)
+    const editor = editorDialog(page).locator('.ProseMirror[contenteditable="true"]')
+    await expect(editor).toBeVisible({ timeout: 15000 })
 
-    const editor = page.locator('.ProseMirror[contenteditable="true"]')
-    await expect(editor).toBeVisible({ timeout: 10000 })
-
-    // Type some text to select
     await editor.click()
-    await editor.type('Hello formatting world')
-
-    // Select all text in the editor (Ctrl+A scoped to editor)
+    await page.keyboard.type('Hello formatting world')
     await editor.press('Control+a')
 
-    // Bubble menu should appear (it activates on text selection)
-    // The bubble menu may contain Bold, Italic, Link buttons
-    const bubbleMenu = page.locator('[class*="bubble-menu"], [data-tippy-root], .tippy-box')
-    if ((await bubbleMenu.count()) > 0) {
-      await expect(bubbleMenu.first()).toBeVisible({ timeout: 3000 })
-    }
+    // The floating bubble menu labels its buttons with the shortcut, which is
+    // how it is told apart from the always-present toolbar buttons.
+    await expect(page.getByRole('button', { name: /^Bold \(/ })).toBeVisible({ timeout: 10000 })
   })
 
   test('bold shortcut (Ctrl+B) toggles bold in editor', async ({ page }) => {
-    const url = await createAndOpenArticle(page, `Bold Test ${Date.now()}`)
-    if (!url) return
-
-    const editor = page.locator('.ProseMirror[contenteditable="true"]')
-    await expect(editor).toBeVisible({ timeout: 10000 })
+    await createAndOpenArticle(page, `Bold Test ${Date.now()}`)
+    const editor = editorDialog(page).locator('.ProseMirror[contenteditable="true"]')
+    await expect(editor).toBeVisible({ timeout: 15000 })
 
     await editor.click()
-    await editor.type('bold text')
+    await page.keyboard.type('bold text')
     await editor.press('Control+a')
     await editor.press('Control+b')
 
     // Text should now be wrapped in a <strong> tag
-    const boldText = editor.locator('strong')
-    await expect(boldText).toBeVisible({ timeout: 3000 })
+    await expect(editor.locator('strong')).toBeVisible({ timeout: 5000 })
   })
 
   test('italic shortcut (Ctrl+I) toggles italic in editor', async ({ page }) => {
-    const url = await createAndOpenArticle(page, `Italic Test ${Date.now()}`)
-    if (!url) return
-
-    const editor = page.locator('.ProseMirror[contenteditable="true"]')
-    await expect(editor).toBeVisible({ timeout: 10000 })
+    await createAndOpenArticle(page, `Italic Test ${Date.now()}`)
+    const editor = editorDialog(page).locator('.ProseMirror[contenteditable="true"]')
+    await expect(editor).toBeVisible({ timeout: 15000 })
 
     await editor.click()
-    await editor.type('italic text')
+    await page.keyboard.type('italic text')
     await editor.press('Control+a')
     await editor.press('Control+i')
 
-    const italicText = editor.locator('em')
-    await expect(italicText).toBeVisible({ timeout: 3000 })
+    await expect(editor.locator('em')).toBeVisible({ timeout: 5000 })
   })
 
   test('slash command menu opens when "/" is typed at start of line', async ({ page }) => {
-    const url = await createAndOpenArticle(page, `Slash Menu Test ${Date.now()}`)
-    if (!url) return
+    await createAndOpenArticle(page, `Slash Menu Test ${Date.now()}`)
+    const editor = editorDialog(page).locator('.ProseMirror[contenteditable="true"]')
+    await expect(editor).toBeVisible({ timeout: 15000 })
 
-    const editor = page.locator('.ProseMirror[contenteditable="true"]')
-    await expect(editor).toBeVisible({ timeout: 10000 })
-
-    // Click at end of editor to position cursor, then press Enter for new line
+    // Start a fresh, empty block, then type the trigger character.
     await editor.click()
-    await editor.press('End')
-    await editor.press('Enter')
-    await editor.type('/')
+    await page.keyboard.press('Control+End')
+    await page.keyboard.press('Enter')
+    await page.keyboard.type('/')
 
-    // Slash command menu should appear
-    // It's typically rendered in a floating popover/tooltip
-    const slashMenu = page
-      .locator('[class*="slash"], [data-slash-menu]')
-      .or(page.locator('.tippy-box'))
-      .or(page.locator('[role="listbox"]'))
-    const menuVisible = (await slashMenu.count()) > 0
-
-    if (menuVisible) {
-      await expect(slashMenu.first()).toBeVisible({ timeout: 3000 })
-      await page.keyboard.press('Escape') // dismiss
-    }
-    // If not visible, the test passes non-destructively — menu may require different trigger
+    // The slash menu lists block types (Text, Heading 1, …).
+    await expect(page.getByText('Heading 1', { exact: true })).toBeVisible({ timeout: 10000 })
+    await page.keyboard.press('Escape')
   })
 })
 
@@ -469,51 +477,34 @@ test.describe('Help Center article editor toolbar', () => {
 test.describe('Help Center article SEO description', () => {
   test('description field value is persisted after save and page reload', async ({ page }) => {
     const url = await createAndOpenArticle(page, `SEO Test ${Date.now()}`)
-    if (!url) return
-
-    const descInput = page.getByPlaceholder('Page description (optional)')
-    await expect(descInput).toBeVisible({ timeout: 10000 })
+    const editor = editorDialog(page)
 
     const description = `SEO description set at ${Date.now()}`
-    await descInput.fill(description)
+    await editor.getByPlaceholder('Page description (optional)').fill(description)
+    await editor.getByRole('button', { name: /save changes/i }).click()
+    await expectEditorClosed(page)
 
-    await page.getByRole('button', { name: /save changes/i }).click()
-    // Wait for save
-    await expect(
-      page
-        .getByRole('button', { name: /saving/i })
-        .or(page.getByRole('button', { name: /save changes/i }))
-    ).toBeVisible({ timeout: 5000 })
-    await expect(page.getByRole('button', { name: /save changes/i })).toBeVisible({
-      timeout: 10000,
+    // Saving closes the modal; reopening the article by URL shows the stored value.
+    await page.goto(url)
+    await expect(editor.getByPlaceholder('Page description (optional)')).toHaveValue(description, {
+      timeout: 20000,
     })
-
-    // Reload and verify the description was persisted
-    await page.reload()
-    await page.waitForLoadState('networkidle')
-
-    const reloadedDesc = page.getByPlaceholder('Page description (optional)')
-    await expect(reloadedDesc).toHaveValue(description, { timeout: 10000 })
   })
 
   test('description field is trimmed on save (leading/trailing whitespace)', async ({ page }) => {
     const url = await createAndOpenArticle(page, `Trim Test ${Date.now()}`)
-    if (!url) return
+    const editor = editorDialog(page)
 
-    const descInput = page.getByPlaceholder('Page description (optional)')
-    await expect(descInput).toBeVisible({ timeout: 10000 })
+    await editor.getByPlaceholder('Page description (optional)').fill('  trimmed description  ')
+    await editor.getByRole('button', { name: /save changes/i }).click()
+    await expectEditorClosed(page)
 
-    await descInput.fill('  trimmed description  ')
-    await page.getByRole('button', { name: /save changes/i }).click()
-    await page.waitForLoadState('networkidle')
-
-    // After reload the value should be trimmed (the server trims on save)
-    await page.reload()
-    await page.waitForLoadState('networkidle')
-
-    const reloaded = page.getByPlaceholder('Page description (optional)')
-    const savedValue = await reloaded.inputValue()
-    expect(savedValue.trim()).toBe('trimmed description')
+    // The server trims on save, so the reopened article shows the trimmed value.
+    await page.goto(url)
+    await expect(editor.getByPlaceholder('Page description (optional)')).toHaveValue(
+      'trimmed description',
+      { timeout: 20000 }
+    )
   })
 })
 
@@ -524,86 +515,69 @@ test.describe('Help Center article SEO description', () => {
 test.describe('Help Center article list filtering - status', () => {
   test.beforeEach(async ({ page }) => {
     await enableHelpCenter(page)
-    await page.goto('/admin/help-center')
-    await page.waitForLoadState('networkidle')
+    await openList(page)
   })
 
   test('"Filter" button opens filter popover with Status and Category options', async ({
     page,
   }) => {
-    const addFilterButton = page.getByRole('button', { name: 'Filter', exact: true })
-    if ((await addFilterButton.count()) === 0) return
+    await page.getByRole('button', { name: 'Filter', exact: true }).click()
 
-    await addFilterButton.click()
-
-    // Popover should list Status and Category
     const menu = page.locator('[data-slot="popover-content"]')
-    await expect(menu.getByRole('button', { name: 'Status' })).toBeVisible({ timeout: 3000 })
-    await expect(menu.getByRole('button', { name: 'Category' })).toBeVisible()
+    await expect(menu.getByRole('button', { name: 'Status', exact: true })).toBeVisible({
+      timeout: 10000,
+    })
+    await expect(menu.getByRole('button', { name: 'Category', exact: true })).toBeVisible()
   })
 
   test('can apply Draft status filter', async ({ page }) => {
-    const addFilterButton = page.getByRole('button', { name: 'Filter', exact: true })
-    if ((await addFilterButton.count()) === 0) return
-
-    await addFilterButton.click()
+    await page.getByRole('button', { name: 'Filter', exact: true }).click()
     const menu = page.locator('[data-slot="popover-content"]')
-    await menu.getByRole('button', { name: 'Status' }).click()
+    await menu.getByRole('button', { name: 'Status', exact: true }).click()
 
     // Status sub-menu shows Draft and Published
-    await expect(menu.getByRole('button', { name: 'Draft' })).toBeVisible({ timeout: 3000 })
-    await menu.getByRole('button', { name: 'Draft' }).click()
-    await page.waitForLoadState('networkidle')
+    await expect(menu.getByRole('button', { name: 'Draft', exact: true })).toBeVisible({
+      timeout: 10000,
+    })
+    await menu.getByRole('button', { name: 'Draft', exact: true }).click()
 
-    // A filter chip for Status: Draft should now be visible
-    await expect(page.getByText('Draft', { exact: true }).last()).toBeVisible({ timeout: 5000 })
+    // A Status: Draft chip replaces the filter entry with its remove action.
+    await expect(page.getByRole('button', { name: 'Remove Status Draft filter' })).toBeVisible({
+      timeout: 10000,
+    })
+    await expect(page).toHaveURL(/[?&]status=draft/)
   })
 
   test('can apply Published status filter', async ({ page }) => {
-    const addFilterButton = page.getByRole('button', { name: 'Filter', exact: true })
-    if ((await addFilterButton.count()) === 0) return
-
-    await addFilterButton.click()
+    await page.getByRole('button', { name: 'Filter', exact: true }).click()
     const menu = page.locator('[data-slot="popover-content"]')
-    await menu.getByRole('button', { name: 'Status' }).click()
+    await menu.getByRole('button', { name: 'Status', exact: true }).click()
 
-    await expect(menu.getByRole('button', { name: 'Published' })).toBeVisible({ timeout: 3000 })
-    await menu.getByRole('button', { name: 'Published' }).click()
-    await page.waitForLoadState('networkidle')
-
-    await expect(page.getByText('Published', { exact: true }).last()).toBeVisible({
-      timeout: 5000,
+    await expect(menu.getByRole('button', { name: 'Published', exact: true })).toBeVisible({
+      timeout: 10000,
     })
+    await menu.getByRole('button', { name: 'Published', exact: true }).click()
+
+    await expect(page.getByRole('button', { name: 'Remove Status Published filter' })).toBeVisible({
+      timeout: 10000,
+    })
+    await expect(page).toHaveURL(/[?&]status=published/)
   })
 
   test('status filter chip can be removed', async ({ page }) => {
     // Apply a Draft filter
-    const addFilterButton = page.getByRole('button', { name: 'Filter', exact: true })
-    if ((await addFilterButton.count()) === 0) return
-
-    await addFilterButton.click()
+    await page.getByRole('button', { name: 'Filter', exact: true }).click()
     const menu = page.locator('[data-slot="popover-content"]')
-    await menu.getByRole('button', { name: 'Status' }).click()
-    await menu.getByRole('button', { name: 'Draft' }).click()
-    await page.waitForLoadState('networkidle')
+    await menu.getByRole('button', { name: 'Status', exact: true }).click()
+    await menu.getByRole('button', { name: 'Draft', exact: true }).click()
 
-    // Remove the filter by clicking the × on the chip
-    // FilterChip renders a remove button (usually contains an × or X icon)
-    const statusChip = page.locator('button').filter({ hasText: /status/i })
-    if ((await statusChip.count()) === 0) return
+    // Filter chips render their own remove button, named after the filter.
+    const removeButton = page.getByRole('button', { name: 'Remove Status Draft filter' })
+    await expect(removeButton).toBeVisible({ timeout: 10000 })
+    await removeButton.click()
 
-    // Look for a sibling remove button by finding a button close to the chip
-    const removeButton = statusChip
-      .locator('xpath=following-sibling::button[1]')
-      .or(page.locator('button[aria-label*="remove"]').first())
-
-    if ((await removeButton.count()) > 0) {
-      await removeButton.first().click()
-      await page.waitForLoadState('networkidle')
-    } else {
-      // If no dedicated remove button, just verify the filter chip is present
-      await expect(statusChip.first()).toBeVisible()
-    }
+    await expect(removeButton).toBeHidden({ timeout: 10000 })
+    await expect(page).not.toHaveURL(/status=/)
   })
 
   test('searching in the admin list shows matching articles', async ({ page }) => {
@@ -612,94 +586,83 @@ test.describe('Help Center article list filtering - status', () => {
     await createAndOpenArticle(page, uniqueTitle)
 
     // Return to the list
-    await page.goto('/admin/help-center')
-    await page.waitForLoadState('networkidle')
+    await page.goto(LIST_PATH)
+    await expect(page.getByPlaceholder(SEARCH_PLACEHOLDER)).toBeVisible({ timeout: 15000 })
 
-    const searchInput = page
-      .locator('[data-search-input]')
-      .or(page.getByPlaceholder(/search all articles/i))
-      .or(page.getByPlaceholder(/search/i))
-    if ((await searchInput.count()) === 0) return
-
-    await searchInput.first().fill(uniqueTitle)
-    await page.waitForTimeout(500) // debounce
-    await page.waitForLoadState('networkidle')
+    await page.locator('[data-search-input]').fill(uniqueTitle)
 
     // The article should appear in the list
-    await expect(page.getByText(uniqueTitle)).toBeVisible({ timeout: 10000 })
+    await expect(page.getByRole('heading', { name: uniqueTitle })).toBeVisible({ timeout: 15000 })
   })
 
   test('searching with no matches shows "No articles match your search" empty state', async ({
     page,
   }) => {
-    const searchInput = page
-      .locator('[data-search-input]')
-      .or(page.getByPlaceholder(/search all articles/i))
-      .or(page.getByPlaceholder(/search/i))
-    if ((await searchInput.count()) === 0) return
+    const searchInput = page.locator('[data-search-input]')
+    await expect(searchInput).toBeVisible({ timeout: 10000 })
 
-    await searchInput.first().fill('xyznonexistentarticlexyz98765')
-    await page.waitForTimeout(500)
-    await page.waitForLoadState('networkidle')
+    await searchInput.fill('xyznonexistentarticlexyz98765')
 
     await expect(
       page
         .getByText('No articles match your search')
         .or(page.getByText('No articles match your filters'))
-    ).toBeVisible({ timeout: 10000 })
+    ).toBeVisible({ timeout: 15000 })
   })
 })
 
 // ---------------------------------------------------------------------------
-// Article preview / "View article" link
+// Article preview — the header's View action
 // ---------------------------------------------------------------------------
 
 test.describe('Help Center article preview link', () => {
-  test('"View article" link uses the canonical /hc/{locale}/articles/{id}-{slug} path', async ({
+  test('"View" button opens the canonical /hc/{locale}/articles/{id}-{slug} path', async ({
     page,
+    context,
   }) => {
-    const url = await createAndOpenArticle(page, `Preview Test ${Date.now()}`)
-    if (!url) return
+    await createAndOpenArticle(page, `Preview Test ${Date.now()}`)
+    await publishArticle(page)
 
-    // The article must be published to show the "View article" link
-    const publishButton = page.getByRole('button', { name: /^publish$/i })
-    if ((await publishButton.count()) === 0) return
-    await publishButton.click()
+    // The header's View action opens the article in a new tab.
+    const [popup] = await Promise.all([
+      context.waitForEvent('page'),
+      editorDialog(page)
+        .getByRole('button', { name: /^view$/i })
+        .click(),
+    ])
 
-    // Wait for "View article" link to appear
-    const viewLink = page.locator('a').filter({ hasText: /view article/i })
-    await expect(viewLink).toBeVisible({ timeout: 10000 })
-
-    // Verify the href is the canonical locale-prefixed article URL
-    const href = await viewLink.getAttribute('href')
-    expect(href).toMatch(/\/hc\/[^/]+\/articles\/[^/]+$/)
+    // Verify the URL is the canonical locale-prefixed article URL
+    await expect(popup).toHaveURL(/\/hc\/[^/]+\/articles\/[^/]+$/, { timeout: 20000 })
+    await popup.close()
   })
 
-  test('"View article" link opens in a new tab (target=_blank)', async ({ page }) => {
-    const url = await createAndOpenArticle(page, `NewTab Test ${Date.now()}`)
-    if (!url) return
+  test('"View" button opens the article in a new tab', async ({ page, context }) => {
+    await createAndOpenArticle(page, `NewTab Test ${Date.now()}`)
+    await publishArticle(page)
 
-    const publishButton = page.getByRole('button', { name: /^publish$/i })
-    if ((await publishButton.count()) === 0) return
-    await publishButton.click()
+    const adminUrl = page.url()
+    const [popup] = await Promise.all([
+      context.waitForEvent('page'),
+      editorDialog(page)
+        .getByRole('button', { name: /^view$/i })
+        .click(),
+    ])
 
-    const viewLink = page.locator('a').filter({ hasText: /view article/i })
-    await expect(viewLink).toBeVisible({ timeout: 10000 })
-
-    const target = await viewLink.getAttribute('target')
-    expect(target).toBe('_blank')
+    await expect(popup).toHaveURL(/\/hc\/[^/]+\/articles\//, { timeout: 20000 })
+    // The admin tab keeps the article open behind the new tab.
+    expect(page.url()).toBe(adminUrl)
+    await popup.close()
   })
 
-  test('"View article" link is not shown for draft articles', async ({ page }) => {
-    const url = await createAndOpenArticle(page, `Draft Link Test ${Date.now()}`)
-    if (!url) return
+  test('"View" button is not shown for draft articles', async ({ page }) => {
+    await createAndOpenArticle(page, `Draft Link Test ${Date.now()}`)
+    const editor = editorDialog(page)
 
-    // Article is in draft state after creation — "View article" should not be present
-    const viewLink = page.locator('a').filter({ hasText: /view article/i })
-    await expect(viewLink).toBeHidden({ timeout: 5000 })
+    // Article is in draft state after creation — no View action yet.
+    await expect(editor.getByRole('button', { name: /^view$/i })).toBeHidden()
 
-    // Publish button should be visible instead
-    await expect(page.getByRole('button', { name: /^publish$/i })).toBeVisible()
+    // The status control offers publishing instead.
+    await expect(editor.getByRole('button', { name: /^draft$/i })).toBeVisible()
   })
 })
 
@@ -708,36 +671,26 @@ test.describe('Help Center article preview link', () => {
 // ---------------------------------------------------------------------------
 
 test.describe('Help Center article list item actions', () => {
-  test.beforeEach(async ({ page }) => {
-    await enableHelpCenter(page)
-    await page.goto('/admin/help-center')
-    await page.waitForLoadState('networkidle')
-  })
-
   test('article row shows ellipsis menu with Edit and Delete options on hover', async ({
     page,
   }) => {
-    // Need at least one article in the list
-    const articleRows = page.locator('h3')
-    if ((await articleRows.count()) === 0) return
+    // Guarantees the list has at least one row to act on.
+    await createAndOpenArticle(page)
+    await page.keyboard.press('Escape')
+    await expectEditorClosed(page)
 
-    const firstRow = page.locator('div.group').first()
-    if ((await firstRow.count()) === 0) return
+    const firstRow = page.locator('div.group:has(h3)').first()
+    await expect(firstRow).toBeVisible({ timeout: 15000 })
 
-    // Hover to reveal the ellipsis button
+    // Hover to reveal the ellipsis button (the row's only button).
     await firstRow.hover()
+    await firstRow.locator('button').last().click()
 
-    const ellipsisButton = firstRow.locator('button').filter({
-      has: page.locator('svg'),
+    await expect(page.getByRole('menuitem', { name: 'Edit', exact: true })).toBeVisible({
+      timeout: 10000,
     })
+    await expect(page.getByRole('menuitem', { name: 'Delete', exact: true })).toBeVisible()
 
-    if ((await ellipsisButton.count()) > 0) {
-      await ellipsisButton.last().click()
-
-      await expect(page.getByRole('menuitem', { name: /edit/i })).toBeVisible({ timeout: 3000 })
-      await expect(page.getByRole('menuitem', { name: /delete/i })).toBeVisible()
-
-      await page.keyboard.press('Escape')
-    }
+    await page.keyboard.press('Escape')
   })
 })

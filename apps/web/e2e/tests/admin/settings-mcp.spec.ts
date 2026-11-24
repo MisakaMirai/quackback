@@ -1,9 +1,10 @@
+import { waitForNetworkIdle } from '../../utils/helpers'
 import { test, expect } from '@playwright/test'
 
 test.describe('Admin MCP Settings', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/admin/settings/developers?tab=mcp')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
   })
 
   test('legacy /admin/settings/mcp URL lands on the developers MCP tab', async ({ page }) => {
@@ -48,14 +49,14 @@ test.describe('Admin MCP Settings', () => {
     const wasChecked = await mcpToggle.isChecked()
 
     await mcpToggle.click()
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     const nowChecked = await mcpToggle.isChecked()
     expect(nowChecked).toBe(!wasChecked)
 
     // Restore original state
     await mcpToggle.click()
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
     expect(await mcpToggle.isChecked()).toBe(wasChecked)
   })
 

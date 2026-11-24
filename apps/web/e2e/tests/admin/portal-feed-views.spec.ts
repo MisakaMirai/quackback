@@ -1,3 +1,4 @@
+import { waitForNetworkIdle } from '../../utils/helpers'
 import { test, expect } from '@playwright/test'
 
 // Runs signed in (the admin storage state), so the portal treats the viewer as
@@ -5,7 +6,7 @@ import { test, expect } from '@playwright/test'
 test.describe('Portal feed views for a signed-in viewer', () => {
   test('My posts, Voted and Following narrow the feed', async ({ page }) => {
     await page.goto('/')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
     const show = page.getByRole('group', { name: 'Show' })
     await expect(show.getByRole('button', { name: /All posts/ })).toHaveAttribute(
       'aria-pressed',

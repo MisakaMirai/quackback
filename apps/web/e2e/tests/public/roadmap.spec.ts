@@ -1,9 +1,10 @@
+import { waitForNetworkIdle } from '../../utils/helpers'
 import { test, expect } from '@playwright/test'
 
 test.describe('Public Roadmap', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/roadmap')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
   })
 
   test('page loads at /roadmap', async ({ page }) => {
@@ -205,7 +206,7 @@ test.describe('Public Roadmap', () => {
 
     // Click the second tab
     await tabs.nth(1).click()
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     // The second tab should now be selected
     await expect(tabs.nth(1)).toHaveAttribute('aria-selected', 'true')
@@ -216,7 +217,7 @@ test.describe('Public Roadmap', () => {
   test('URL search param ?roadmap= selects the corresponding roadmap', async ({ page }) => {
     // Navigate fresh without beforeEach interference
     await page.goto('/roadmap')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     const tabList = page.locator('[role="tablist"]')
     if ((await tabList.count()) === 0) {
@@ -236,7 +237,7 @@ test.describe('Public Roadmap', () => {
     const selectedRoadmapUrl = page.url()
 
     await page.goto(selectedRoadmapUrl)
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     await expect(page.getByRole('tab', { name: selectedTabName })).toHaveAttribute(
       'aria-selected',

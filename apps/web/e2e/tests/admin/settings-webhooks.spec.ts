@@ -1,9 +1,10 @@
+import { waitForNetworkIdle } from '../../utils/helpers'
 import { test, expect } from '@playwright/test'
 
 test.describe('Admin Webhooks Settings', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/admin/settings/developers?tab=webhooks')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
   })
 
   test('page loads and shows webhooks section', async ({ page }) => {
@@ -20,7 +21,7 @@ test.describe('Admin Webhooks Settings', () => {
   })
 
   test('shows create webhook button when webhooks exist', async ({ page }) => {
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     const createButton = page.getByRole('button', { name: 'New webhook' }).first()
     const emptyStateButton = page.getByRole('button', { name: 'New webhook' }).last()
@@ -31,7 +32,7 @@ test.describe('Admin Webhooks Settings', () => {
   })
 
   test('shows empty state with create button when no webhooks', async ({ page }) => {
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     // If empty state is shown, it should have the call-to-action button
     if ((await page.getByText('No webhooks yet').count()) > 0) {
@@ -40,7 +41,7 @@ test.describe('Admin Webhooks Settings', () => {
   })
 
   test('can open create webhook dialog', async ({ page }) => {
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     // Click whichever create button is available
     const createButton = page.getByRole('button', { name: 'New webhook' }).first()
@@ -59,7 +60,7 @@ test.describe('Admin Webhooks Settings', () => {
   })
 
   test('create webhook dialog has URL input field', async ({ page }) => {
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     const createButton = page.getByRole('button', { name: 'New webhook' }).first()
     const emptyStateButton = page.getByRole('button', { name: 'New webhook' }).last()
@@ -81,7 +82,7 @@ test.describe('Admin Webhooks Settings', () => {
   })
 
   test('create webhook dialog has event type checkboxes', async ({ page }) => {
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     const createButton = page.getByRole('button', { name: 'New webhook' }).first()
     const emptyStateButton = page.getByRole('button', { name: 'New webhook' }).last()
@@ -106,7 +107,7 @@ test.describe('Admin Webhooks Settings', () => {
   })
 
   test('create webhook dialog has Cancel and Create Webhook buttons', async ({ page }) => {
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     const createButton = page.getByRole('button', { name: 'New webhook' }).first()
     const emptyStateButton = page.getByRole('button', { name: 'New webhook' }).last()
@@ -127,7 +128,7 @@ test.describe('Admin Webhooks Settings', () => {
   })
 
   test('create button is disabled until URL and events are filled', async ({ page }) => {
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     const createButton = page.getByRole('button', { name: 'New webhook' }).first()
     const emptyStateButton = page.getByRole('button', { name: 'New webhook' }).last()
@@ -149,7 +150,7 @@ test.describe('Admin Webhooks Settings', () => {
   })
 
   test('shows validation error when submitting without selecting events', async ({ page }) => {
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     const createButton = page.getByRole('button', { name: 'New webhook' }).first()
     const emptyStateButton = page.getByRole('button', { name: 'New webhook' }).last()
@@ -174,7 +175,7 @@ test.describe('Admin Webhooks Settings', () => {
   })
 
   test('can close create webhook dialog with Escape', async ({ page }) => {
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     const createButton = page.getByRole('button', { name: 'New webhook' }).first()
     const emptyStateButton = page.getByRole('button', { name: 'New webhook' }).last()
@@ -193,7 +194,7 @@ test.describe('Admin Webhooks Settings', () => {
   })
 
   test('can close create webhook dialog with Cancel button', async ({ page }) => {
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     const createButton = page.getByRole('button', { name: 'New webhook' }).first()
     const emptyStateButton = page.getByRole('button', { name: 'New webhook' }).last()
@@ -212,7 +213,7 @@ test.describe('Admin Webhooks Settings', () => {
   })
 
   test('existing webhooks show their URL', async ({ page }) => {
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     // Only check if webhooks are present (non-empty state)
     const rowMenu = page.getByRole('button', { name: /^actions for https?:\/\//i }).first()
@@ -224,7 +225,7 @@ test.describe('Admin Webhooks Settings', () => {
   })
 
   test('existing webhooks show subscribed event types or their failure state', async ({ page }) => {
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     // Only check if webhooks are present
     const rowMenu = page.getByRole('button', { name: /^actions for https?:\/\//i }).first()
@@ -238,7 +239,7 @@ test.describe('Admin Webhooks Settings', () => {
   })
 
   test('existing webhooks show a row menu with edit and delete', async ({ page }) => {
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     const rowMenu = page.getByRole('button', { name: /^actions for /i }).first()
     if ((await rowMenu.count()) > 0) {
@@ -250,7 +251,7 @@ test.describe('Admin Webhooks Settings', () => {
   })
 
   test('can open delete webhook dialog', async ({ page }) => {
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     const rowMenu = page.getByRole('button', { name: /^actions for /i }).first()
     if ((await rowMenu.count()) > 0) {
@@ -266,7 +267,7 @@ test.describe('Admin Webhooks Settings', () => {
   })
 
   test('delete confirmation dialog has confirm and cancel buttons', async ({ page }) => {
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     const rowMenu = page.getByRole('button', { name: /^actions for /i }).first()
     if ((await rowMenu.count()) > 0) {
@@ -285,7 +286,7 @@ test.describe('Admin Webhooks Settings', () => {
   })
 
   test('shows webhook verification guide section', async ({ page }) => {
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     // The verification guide is always rendered below the webhooks card
     const verificationSection = page.getByText(/verif/i).first()
@@ -295,7 +296,7 @@ test.describe('Admin Webhooks Settings', () => {
   })
 
   test('webhook count is shown when webhooks exist', async ({ page }) => {
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     // When webhooks exist, a "X of 25 webhooks" label is shown
     const countLabel = page.getByText(/of 25 webhooks/)
@@ -310,7 +311,7 @@ test.describe('Admin Webhooks - Create Webhook Flow', () => {
 
   test.beforeEach(async ({ page }) => {
     await page.goto('/admin/settings/developers?tab=webhooks')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
   })
 
   test('can create a webhook with URL and events', async ({ page }) => {
@@ -360,6 +361,6 @@ test.describe('Admin Webhooks - Create Webhook Flow', () => {
       }
     }
 
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
   })
 })

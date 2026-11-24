@@ -1,6 +1,26 @@
 import { Page, Locator, expect } from '@playwright/test'
 
 /**
+ * Wait for the page's initial network work to settle, without betting the whole
+ * test timeout on it.
+ *
+ * `page.waitForLoadState('networkidle')` asks for a moment the app never
+ * reaches on any page that opens an SSE stream — the admin shell keeps
+ * presence/inbox streams open — so the call blocks until the test times out and
+ * the failure reports the wait instead of the assertion the test was making.
+ * Playwright discourages the state for that reason.
+ *
+ * This waits for `load` (already reached by then in practice) and then gives the
+ * network a short, bounded idle window to settle client queries. A page that
+ * stays busy is not an error: the assertions that follow own the real waiting,
+ * with their own timeouts.
+ */
+export async function waitForNetworkIdle(page: Page, timeout = 1500): Promise<void> {
+  await page.waitForLoadState('load')
+  await page.waitForLoadState('networkidle', { timeout }).catch(() => {})
+}
+
+/**
  * Wait until a control is hydrated (React has attached event handlers).
  *
  * Visibility alone is not enough: pages are server-rendered, so a button can

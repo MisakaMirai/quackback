@@ -1,3 +1,4 @@
+import { waitForNetworkIdle } from '../../utils/helpers'
 import { test, expect } from '@playwright/test'
 
 /**
@@ -7,7 +8,7 @@ import { test, expect } from '@playwright/test'
 test.describe('Admin Users Segments', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/admin/users')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
   })
 
   test('sidebar shows Segments section with create button', async ({ page }) => {
@@ -16,17 +17,19 @@ test.describe('Admin Users Segments', () => {
   })
 
   test('shows segments list or empty state', async ({ page }) => {
-    await page.waitForTimeout(500)
-
     const emptyState = page.getByText(/no segments yet/i)
-    const editButtons = page.getByRole('button', { name: 'Edit segment' })
+    // Row actions only show on hover, and getByRole() ignores them while they
+    // are hidden — match the action's title attribute so the check works on
+    // the DOM regardless of hover state.
+    const editButtons = page.locator('button[title="Edit segment"]')
 
-    // Either at least one segment row exists (each has a hover edit button in
-    // the DOM) or the empty state prompt is shown.
-    const hasSegments = (await editButtons.count()) > 0
-    const hasEmptyState = (await emptyState.count()) > 0
-
-    expect(hasSegments || hasEmptyState).toBe(true)
+    // Either at least one segment row exists or the empty state prompt is
+    // shown. The segments query is client-side, so wait for it to settle
+    // instead of racing a fixed timeout.
+    await expect(async () => {
+      const settled = (await editButtons.count()) > 0 || (await emptyState.count()) > 0
+      expect(settled).toBe(true)
+    }).toPass({ timeout: 10000 })
   })
 
   test('can open the create segment dialog from "New segment"', async ({ page }) => {
@@ -43,9 +46,10 @@ test.describe('Admin Users Segments', () => {
     const dialog = page.getByRole('dialog')
     await expect(dialog).toBeVisible({ timeout: 5000 })
 
-    // Type selector buttons (manual / dynamic) — text is lowercase in the DOM (CSS capitalize)
-    await expect(dialog.getByText('manual')).toBeVisible()
-    await expect(dialog.getByText('dynamic')).toBeVisible()
+    // Type selector buttons. Each renders a capitalized title plus a description,
+    // so match the button's accessible name rather than a bare text node.
+    await expect(dialog.getByRole('button', { name: /manual/i })).toBeVisible()
+    await expect(dialog.getByRole('button', { name: /dynamic/i })).toBeVisible()
   })
 
   test('create dialog has name and description fields', async ({ page }) => {
@@ -109,12 +113,13 @@ test.describe('Admin Users Segments', () => {
     const dialog = page.getByRole('dialog')
     await expect(dialog).toBeVisible({ timeout: 5000 })
 
-    // Click the "dynamic" type option (text is lowercase in DOM; CSS capitalize makes it visually "Dynamic")
-    await dialog.getByText('dynamic').click()
+    // Click the "dynamic" type option (capitalized title + description, so
+    // match the button's accessible name).
+    await dialog.getByRole('button', { name: /dynamic/i }).click()
 
     // Rule builder should appear
-    await expect(dialog.getByText('Rules')).toBeVisible({ timeout: 3000 })
-    await expect(dialog.getByText(/add condition/i)).toBeVisible()
+    await expect(dialog.getByText('Rules', { exact: true })).toBeVisible({ timeout: 3000 })
+    await expect(dialog.getByRole('button', { name: /add condition/i })).toBeVisible()
   })
 
   test('dynamic rule builder has "Add condition" button', async ({ page }) => {
@@ -123,7 +128,7 @@ test.describe('Admin Users Segments', () => {
     const dialog = page.getByRole('dialog')
     await expect(dialog).toBeVisible({ timeout: 5000 })
 
-    await dialog.getByText('dynamic').click()
+    await dialog.getByRole('button', { name: /dynamic/i }).click()
 
     const addConditionButton = dialog.getByRole('button', { name: /add condition/i })
     await expect(addConditionButton).toBeVisible({ timeout: 3000 })
@@ -142,7 +147,7 @@ test.describe('Admin Users Segments', () => {
     const dialog = page.getByRole('dialog')
     await expect(dialog).toBeVisible({ timeout: 5000 })
 
-    await dialog.getByText('dynamic').click()
+    await dialog.getByRole('button', { name: /dynamic/i }).click()
     await dialog.getByRole('button', { name: /add condition/i }).click()
 
     // At least 2 comboboxes: attribute + operator
@@ -156,7 +161,7 @@ test.describe('Admin Users Segments', () => {
     const dialog = page.getByRole('dialog')
     await expect(dialog).toBeVisible({ timeout: 5000 })
 
-    await dialog.getByText('dynamic').click()
+    await dialog.getByRole('button', { name: /dynamic/i }).click()
     await dialog.getByRole('button', { name: /add condition/i }).click()
 
     // Click the attribute combobox (second combobox — first is match all/any)
@@ -166,11 +171,12 @@ test.describe('Admin Users Segments', () => {
     const optionContainer = page
       .locator('[role="listbox"]')
       .or(page.locator('[data-slot="select-content"]'))
+      .first()
+    await expect(optionContainer).toBeVisible({ timeout: 5000 })
 
-    if ((await optionContainer.count()) > 0) {
-      await expect(optionContainer.getByText('Email Domain')).toBeVisible()
-      await expect(optionContainer.getByText('Post Count')).toBeVisible()
-    }
+    // Built-in field labels (the old "Email Domain" field was removed).
+    await expect(optionContainer.getByRole('option', { name: 'Post Count' })).toBeVisible()
+    await expect(optionContainer.getByRole('option', { name: 'Email', exact: true })).toBeVisible()
 
     await page.keyboard.press('Escape')
   })
@@ -183,7 +189,7 @@ test.describe('Admin Users Segments', () => {
     const dialog = page.getByRole('dialog')
     await expect(dialog).toBeVisible({ timeout: 5000 })
 
-    await dialog.getByText('dynamic').click()
+    await dialog.getByRole('button', { name: /dynamic/i }).click()
     await dialog.locator('#seg-name').fill(segmentName)
 
     // Add a condition
@@ -314,7 +320,7 @@ test.describe('Admin Users Segments', () => {
     const dialog = page.getByRole('dialog')
     await expect(dialog).toBeVisible({ timeout: 5000 })
 
-    await dialog.getByText('dynamic').click()
+    await dialog.getByRole('button', { name: /dynamic/i }).click()
     await dialog.getByRole('button', { name: /add condition/i }).click()
 
     // The match selector is the first combobox (renders "ALL" / "ANY")

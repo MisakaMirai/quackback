@@ -1,67 +1,33 @@
+import { waitForNetworkIdle } from '../../utils/helpers'
 import { test, expect, Page, BrowserContext } from '@playwright/test'
-import { getOtpCode } from '../../utils/db-helpers'
+import { loginViaMagicLink } from '../../utils/access-helpers'
+import { enableMagicLinkMethod, clearSigninRateLimit } from '../../utils/db-helpers'
 
-const TEST_HOST = 'acme.localhost:3000'
 const TEST_EMAIL = 'demo@example.com'
 
 // Configure test to run serially (no parallelization)
-// This prevents OTP race conditions across different describe blocks
+// This prevents sign-in rate-limit races across different describe blocks
 test.describe.configure({ mode: 'serial' })
 
 /**
- * Helper function to get OTP code with retries
- * Database writes may not be immediately visible
+ * Authenticate the page's browser context through the magic-link flow that
+ * global setup and the rest of the suite use.
+ *
+ * Magic link is opt-in per workspace and the seed leaves it off; the admin
+ * project's global setup enables it, but a public-only run does not depend on
+ * that project, so provision it here. The per-address sign-in budget (3 sends
+ * per 15 minutes) is cleared too — the legacy OTP send this replaced spent it
+ * and then span until the file's beforeAll timed out before a single test ran.
  */
-async function getOtpCodeWithRetry(email: string, host: string, maxRetries = 3): Promise<string> {
-  for (let i = 0; i < maxRetries; i++) {
-    try {
-      return getOtpCode(email, host)
-    } catch {
-      if (i === maxRetries - 1) throw new Error(`Failed to get OTP after ${maxRetries} retries`)
-      // Wait 100ms before retrying
-      await new Promise((resolve) => setTimeout(resolve, 100))
-    }
-  }
-  throw new Error('Failed to get OTP')
-}
+async function loginWithMagicLink(page: Page) {
+  enableMagicLinkMethod()
+  clearSigninRateLimit()
+  await loginViaMagicLink(page.context(), TEST_EMAIL)
 
-/**
- * Helper function to authenticate using OTP flow via API
- * This is faster and more reliable than using the UI
- */
-async function loginWithOTP(page: Page) {
-  const context = page.context()
-
-  // Step 1: Request OTP code via Better-auth
-  const sendResponse = await context.request.post('/api/auth/email-otp/send-verification-otp', {
-    data: {
-      email: TEST_EMAIL,
-      type: 'sign-in',
-    },
-  })
-
-  if (!sendResponse.ok()) {
-    const errorBody = await sendResponse.text()
-    throw new Error(`OTP send failed (${sendResponse.status()}): ${errorBody}`)
-  }
-
-  // Step 2: Get OTP code directly from database (with retry for timing issues)
-  const code = await getOtpCodeWithRetry(TEST_EMAIL, TEST_HOST)
-  expect(code).toMatch(/^\d{6}$/) // 6-digit code
-
-  // Step 3: Verify OTP code via Better-auth
-  const verifyResponse = await context.request.post('/api/auth/sign-in/email-otp', {
-    data: {
-      email: TEST_EMAIL,
-      otp: code,
-    },
-  })
-  expect(verifyResponse.ok()).toBeTruthy()
-
-  // Step 4: Session cookie is now set by Better-auth
-  // Navigate to home page to verify authentication
+  // Session cookie is set on the context by the verify redirect; confirm the
+  // portal renders for the signed-in visitor.
   await page.goto('/')
-  await page.waitForLoadState('networkidle')
+  await waitForNetworkIdle(page)
 
   // Verify we're on the home page (portal); URL may include query params like ?sort=top
   await expect(page).toHaveURL(/^http:\/\/[^/]+\/?(\?.*)?$/, { timeout: 10000 })
@@ -75,7 +41,7 @@ let globalPage: Page
 test.beforeAll(async ({ browser }) => {
   globalContext = await browser.newContext()
   globalPage = await globalContext.newPage()
-  await loginWithOTP(globalPage)
+  await loginWithMagicLink(globalPage)
 })
 
 // Clean up after all tests in the file
@@ -88,7 +54,7 @@ test.describe('Public Post Submission', () => {
   test.beforeEach(async () => {
     // Navigate to home for each test
     await globalPage.goto('/')
-    await globalPage.waitForLoadState('networkidle')
+    await waitForNetworkIdle(globalPage)
   })
 
   test('can open submit post form', async () => {
@@ -214,7 +180,7 @@ test.describe('Public Post Submission', () => {
     await expect(editor).toBeVisible({ timeout: 5000 })
 
     // Don't fill anything, just click Submit
-    const submitButton = globalPage.getByRole('button', { name: /^submit$/i })
+    const submitButton = globalPage.getByRole('button', { name: /^post$/i })
     await submitButton.click()
 
     // Error message should appear
@@ -223,27 +189,30 @@ test.describe('Public Post Submission', () => {
     await expect(errorMessage).toContainText('Please add a title')
   })
 
-  test('shows error when submitting without description', async () => {
-    // Open the dialog
+  test('submitting without a description is allowed (details are optional)', async () => {
+    // The composer no longer requires a description: only the title is
+    // validated, and a post with no details is created from its title alone.
+    await globalPage.getByRole('button', { name: /^New$/i }).click()
+    await waitForNetworkIdle(globalPage)
+
     const createPostInput = globalPage.getByPlaceholder("What's on your mind?")
     await createPostInput.click()
 
-    // Wait for dialog to open
-    const titleInput = globalPage.getByPlaceholder("What's on your mind?")
     const editor = globalPage.locator('.tiptap')
     await expect(editor).toBeVisible({ timeout: 5000 })
 
     // Fill only the title
-    await titleInput.fill('Test Post Title')
+    const uniqueTitle = `Title-only post ${Date.now()}`
+    await globalPage.getByPlaceholder("What's on your mind?").fill(uniqueTitle)
 
-    // Click Submit without filling description
-    const submitButton = globalPage.getByRole('button', { name: /^submit$/i })
-    await submitButton.click()
+    // Click Post without filling the description
+    await globalPage.getByRole('button', { name: /^post$/i }).click()
 
-    // Error message should appear
-    const errorMessage = globalPage.locator('.bg-destructive\\/10')
-    await expect(errorMessage).toBeVisible({ timeout: 5000 })
-    await expect(errorMessage).toContainText('Please add a description')
+    // It succeeds rather than showing a validation error.
+    await expect(globalPage.getByText('Feedback submitted')).toBeVisible({ timeout: 10000 })
+    await expect(globalPage.getByRole('heading', { name: uniqueTitle })).toBeVisible({
+      timeout: 10000,
+    })
   })
 
   test('can submit a basic post', async () => {
@@ -264,7 +233,7 @@ test.describe('Public Post Submission', () => {
     await globalPage.keyboard.type('This is a test post description created by E2E tests.')
 
     // Click Submit
-    const submitButton = globalPage.getByRole('button', { name: /^submit$/i })
+    const submitButton = globalPage.getByRole('button', { name: /^post$/i })
     await submitButton.click()
 
     // Dialog should close after successful submission
@@ -275,7 +244,7 @@ test.describe('Public Post Submission', () => {
     // First switch to "New" sort so new posts appear at top
     const newSortButton = globalPage.getByRole('button', { name: /^New$/i })
     await newSortButton.click()
-    await globalPage.waitForLoadState('networkidle')
+    await waitForNetworkIdle(globalPage)
 
     // Generate a unique title to identify our post
     const uniqueTitle = `E2E Test Post ${Date.now()}`
@@ -296,7 +265,7 @@ test.describe('Public Post Submission', () => {
     await globalPage.keyboard.type('This post should appear in the feed after submission.')
 
     // Submit the post
-    const submitButton = globalPage.getByRole('button', { name: /^submit$/i })
+    const submitButton = globalPage.getByRole('button', { name: /^post$/i })
     await submitButton.click()
 
     // Wait for dialog to close - router.refresh() should update the feed automatically
@@ -314,7 +283,7 @@ test.describe('Board Selector', () => {
   test.beforeEach(async () => {
     // Navigate to home for each test
     await globalPage.goto('/')
-    await globalPage.waitForLoadState('networkidle')
+    await waitForNetworkIdle(globalPage)
   })
 
   test('board selector is visible in dialog header', async () => {
@@ -409,7 +378,7 @@ test.describe('Board Selector', () => {
   test('can submit post to a different board than default', async () => {
     // Sort by new to see fresh posts
     await globalPage.getByRole('button', { name: /^New$/i }).click()
-    await globalPage.waitForLoadState('networkidle')
+    await waitForNetworkIdle(globalPage)
 
     const uniqueTitle = `Different Board Post ${Date.now()}`
 
@@ -441,7 +410,7 @@ test.describe('Board Selector', () => {
     await globalPage.keyboard.type('This post was submitted to a different board')
 
     // Submit
-    await globalPage.getByRole('button', { name: /^submit$/i }).click()
+    await globalPage.getByRole('button', { name: /^post$/i }).click()
     // Editor should collapse after successful submission
     await expect(editor).not.toBeVisible({
       timeout: 10000,
@@ -450,9 +419,9 @@ test.describe('Board Selector', () => {
     // Post should appear (may need to adjust filters or check "All" view)
     // Navigate to all boards to see the post
     await globalPage.goto('/')
-    await globalPage.waitForLoadState('networkidle')
+    await waitForNetworkIdle(globalPage)
     await globalPage.getByRole('button', { name: /^New$/i }).click()
-    await globalPage.waitForLoadState('networkidle')
+    await waitForNetworkIdle(globalPage)
 
     await expect(globalPage.getByRole('heading', { name: uniqueTitle })).toBeVisible({
       timeout: 15000,
@@ -556,7 +525,7 @@ test.describe('Board Selector', () => {
     const bugsFilter = globalPage.getByRole('button', { name: /Bug Reports/i })
     if ((await bugsFilter.count()) > 0) {
       await bugsFilter.click()
-      await globalPage.waitForLoadState('networkidle')
+      await waitForNetworkIdle(globalPage)
 
       // Open form again
       await globalPage.getByPlaceholder("What's on your mind?").click()
@@ -575,7 +544,7 @@ test.describe('Board Selector', () => {
     const featuresFilter = globalPage.getByRole('button', { name: /Feature Requests/i })
     if ((await featuresFilter.count()) > 0) {
       await featuresFilter.click()
-      await globalPage.waitForLoadState('networkidle')
+      await waitForNetworkIdle(globalPage)
 
       // Open form - should post to Feature Requests with no switcher
       await globalPage.getByPlaceholder("What's on your mind?").click()
@@ -595,7 +564,7 @@ test.describe('Board Selector', () => {
     const bugsFilter = globalPage.getByRole('button', { name: /Bug Reports/i })
     if ((await bugsFilter.count()) > 0) {
       await bugsFilter.click()
-      await globalPage.waitForLoadState('networkidle')
+      await waitForNetworkIdle(globalPage)
 
       // Open form - should post to Bug Reports with no switcher
       await globalPage.getByPlaceholder("What's on your mind?").click()
@@ -613,7 +582,7 @@ test.describe('Board Selector', () => {
 
     // Click "All" or go back to home to clear filter
     await globalPage.goto('/')
-    await globalPage.waitForLoadState('networkidle')
+    await waitForNetworkIdle(globalPage)
 
     // Open form - should default to first board (not filtered)
     await globalPage.getByPlaceholder("What's on your mind?").click()
@@ -625,41 +594,32 @@ test.describe('Board Selector', () => {
     await expect(boardSelector).not.toHaveText('Select board')
   })
 
-  test('clicking any board in sidebar then opening dialog shows that board as default', async () => {
-    const boardSelector = globalPage.locator('[role="combobox"]')
+  test('clicking a board in the sidebar then opening dialog posts to that board', async () => {
+    // Board rows live in the filter panel's "Boards" section. The panel also has
+    // a "Show" section for signed-in viewers, so scope to the group rather than
+    // taking `aside button` (which picked "My posts" before).
+    const boardRows = globalPage.getByRole('group', { name: 'Boards' }).getByRole('button')
+    // Skip "All boards" (row 0) so the pick differs from the default.
+    const boardRow = boardRows.nth(1)
 
-    // Get all board buttons in the sidebar (excluding "View all posts")
-    const sidebarBoardButtons = globalPage
-      .locator('aside button')
-      .filter({ hasNotText: /view all/i })
+    // Extract just the board name (remove the count badge, e.g. "Bug Reports 110")
+    const expectedBoardName = (await boardRow.textContent())?.split(/\d/)[0].trim() ?? ''
+    expect(expectedBoardName.length).toBeGreaterThan(0)
 
-    // Get the second board button (to ensure we're switching from default)
-    const secondBoardButton = sidebarBoardButtons.nth(1)
+    await boardRow.click()
+    await expect(globalPage).toHaveURL(/[?&]board=/, { timeout: 5000 })
+    await waitForNetworkIdle(globalPage)
 
-    if (await secondBoardButton.isVisible()) {
-      // Get the board name before clicking
-      const boardName = await secondBoardButton.textContent()
+    // Open the composer
+    await globalPage.getByPlaceholder("What's on your mind?").click()
+    await expect(globalPage.locator('.tiptap')).toBeVisible({ timeout: 10000 })
 
-      // Click the board filter
-      await secondBoardButton.click()
-      await globalPage.waitForLoadState('networkidle')
-
-      // Open dialog
-      await globalPage.getByPlaceholder("What's on your mind?").click()
-      await expect(globalPage.getByPlaceholder("What's on your mind?")).toBeVisible({
-        timeout: 5000,
-      })
-
-      // Board selector should show the clicked board's name
-      // Extract just the board name (remove any count badges)
-      const expectedBoardName = boardName?.split(/\d/)[0].trim()
-      if (expectedBoardName) {
-        await expect(boardSelector).toContainText(expectedBoardName)
-      }
-    } else {
-      // No second board visible in sidebar - test passes trivially
-      expect(true).toBe(true)
-    }
+    // A board-filtered feed locks the composer to that board: the header states
+    // it and there is no board switcher. (The old test expected a combobox that
+    // only renders on the all-boards feed.)
+    const postingTo = globalPage.getByLabel(new RegExp(`Posting to ${expectedBoardName}`, 'i'))
+    await expect(postingTo).toBeVisible({ timeout: 10000 })
+    await expect(postingTo.getByRole('combobox')).toHaveCount(0)
   })
 })
 
@@ -668,7 +628,7 @@ test.describe('Rich Text Editor', () => {
   test.beforeEach(async () => {
     // Navigate to home for each test
     await globalPage.goto('/')
-    await globalPage.waitForLoadState('networkidle')
+    await waitForNetworkIdle(globalPage)
 
     // Open the dialog for all tests
     await globalPage.getByPlaceholder("What's on your mind?").click()
@@ -753,8 +713,9 @@ test.describe('Rich Text Editor', () => {
     // Select all text to convert to a list
     await globalPage.keyboard.press('ControlOrMeta+a')
 
-    // Click bullet list button to convert text to list
-    const bulletListButton = globalPage.locator('button:has(svg.lucide-list)')
+    // Click bullet list button to convert text to list. The toolbar button is
+    // labelled (the bullet icon is a heroicon now, so no `svg.lucide-list`).
+    const bulletListButton = globalPage.getByRole('button', { name: /^bullet list$/i })
     await bulletListButton.click()
 
     // Verify list structure
@@ -774,8 +735,8 @@ test.describe('Rich Text Editor', () => {
     // Select all text to convert to a list
     await globalPage.keyboard.press('ControlOrMeta+a')
 
-    // Click numbered list button to convert text to list
-    const numberedListButton = globalPage.locator('button:has(svg.lucide-list-ordered)')
+    // Click numbered list button to convert text to list (labelled toolbar button)
+    const numberedListButton = globalPage.getByRole('button', { name: /^ordered list$/i })
     await numberedListButton.click()
 
     // Verify list structure
@@ -791,17 +752,19 @@ test.describe('Rich Text Editor', () => {
     // Triple-click to select text
     await editor.click({ clickCount: 3 })
 
-    // Set up dialog handler BEFORE clicking the button
-    globalPage.on('dialog', async (dialog) => {
-      await dialog.accept('https://example.com')
-    })
-
-    // Click link button
-    const linkButton = globalPage.locator('button:has(svg.lucide-link)')
-    await linkButton.click()
-
-    // Wait a moment for the link to be applied
-    await globalPage.waitForTimeout(200)
+    // Two link controls exist while text is selected: the composer toolbar's
+    // (window.prompt) and the selection bubble's URL popover. Handle whichever
+    // this build shows — the old test only knew the prompt and a lucide icon.
+    globalPage.once('dialog', (dialog) => dialog.accept('https://example.com'))
+    await globalPage
+      .getByRole('button', { name: /^insert link$/i })
+      .last()
+      .click()
+    const urlInput = globalPage.getByPlaceholder('https://example.com')
+    if (await urlInput.isVisible().catch(() => false)) {
+      await urlInput.fill('https://example.com')
+      await urlInput.press('Enter')
+    }
 
     // Verify link was created
     const link = editor.locator('a')
@@ -831,21 +794,21 @@ test.describe('Submission States and Integration', () => {
   test.beforeEach(async () => {
     // Navigate to home for each test
     await globalPage.goto('/')
-    await globalPage.waitForLoadState('networkidle')
+    await waitForNetworkIdle(globalPage)
   })
 
-  test('Submit button shows "Post" initially', async () => {
+  test('submit button shows the "Post" label', async () => {
     await globalPage.getByPlaceholder("What's on your mind?").click()
     await expect(globalPage.getByPlaceholder("What's on your mind?")).toBeVisible({ timeout: 5000 })
 
-    const submitButton = globalPage.getByRole('button', { name: /^submit$/i })
+    const submitButton = globalPage.getByRole('button', { name: /^post$/i })
     await expect(submitButton).toHaveText('Post')
   })
 
   test('can submit with Cmd+Enter keyboard shortcut', async () => {
     // Switch to New sort
     await globalPage.getByRole('button', { name: /^New$/i }).click()
-    await globalPage.waitForLoadState('networkidle')
+    await waitForNetworkIdle(globalPage)
 
     const uniqueTitle = `Keyboard Submit Test ${Date.now()}`
 
@@ -874,7 +837,7 @@ test.describe('Submission States and Integration', () => {
   test('Submit form is visible on filtered board', async () => {
     // Navigate with board filter (using 'features' board which exists in database)
     await globalPage.goto('/?board=features')
-    await globalPage.waitForLoadState('networkidle')
+    await waitForNetworkIdle(globalPage)
 
     // Submit form input should be visible
     const createPostInput = globalPage.getByPlaceholder("What's on your mind?")
@@ -882,19 +845,16 @@ test.describe('Submission States and Integration', () => {
   })
 
   test('post submits to the current board context', async () => {
-    // Navigate to home first
-    await globalPage.goto('/')
-    await globalPage.waitForLoadState('networkidle')
-
-    // Click Feature Requests board filter (board that exists in database)
-    const featuresButton = globalPage.getByRole('button', { name: /Feature Requests/i })
-    await featuresButton.click()
-    await globalPage.waitForLoadState('networkidle')
+    // Open the board-filtered feed directly: the panel folds boards past the
+    // first six behind "N more", so a workspace with extra boards (the access
+    // fixtures add six) cannot be relied on to show "Feature Requests" as a row.
+    await globalPage.goto('/?board=features')
+    await waitForNetworkIdle(globalPage)
 
     // Click New sort to see newest posts first
     const newSortButton = globalPage.getByRole('button', { name: /^New$/i })
     await newSortButton.click()
-    await globalPage.waitForLoadState('networkidle')
+    await waitForNetworkIdle(globalPage)
 
     const uniqueTitle = `Feature Requests Board Post ${Date.now()}`
 
@@ -908,13 +868,13 @@ test.describe('Submission States and Integration', () => {
     await editor.click()
     await globalPage.keyboard.type('This post should appear in the features board')
 
-    await globalPage.getByRole('button', { name: /^submit$/i }).click()
+    await globalPage.getByRole('button', { name: /^post$/i }).click()
     await expect(editor).not.toBeVisible({ timeout: 10000 })
 
     // Reload page to ensure fresh server data is displayed
     // (Client state doesn't auto-update with router.refresh when filters are already set)
     await globalPage.reload()
-    await globalPage.waitForLoadState('networkidle')
+    await waitForNetworkIdle(globalPage)
 
     // Post should appear in the filtered results (still on features board)
     await expect(globalPage.getByRole('heading', { name: uniqueTitle })).toBeVisible({
@@ -928,7 +888,7 @@ test.describe('Submission States and Integration', () => {
   test('submitted post shows author name', async () => {
     // Sort by new to see fresh posts
     await globalPage.getByRole('button', { name: /^New$/i }).click()
-    await globalPage.waitForLoadState('networkidle')
+    await waitForNetworkIdle(globalPage)
 
     const uniqueTitle = `Author Test Post ${Date.now()}`
 
@@ -942,7 +902,7 @@ test.describe('Submission States and Integration', () => {
     await editor.click()
     await globalPage.keyboard.type('Testing author attribution')
 
-    await globalPage.getByRole('button', { name: /^submit$/i }).click()
+    await globalPage.getByRole('button', { name: /^post$/i }).click()
     await expect(editor).not.toBeVisible({ timeout: 10000 })
 
     // Find the post and verify author is shown

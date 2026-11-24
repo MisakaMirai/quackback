@@ -6,8 +6,10 @@ test.describe('onboarding launch plan', () => {
     await page.goto('/admin/getting-started')
     await expect(page).toHaveURL(/\/admin\/getting-started$/)
     await expect(page.getByRole('heading', { level: 1, name: 'Launch plan' })).toBeVisible()
-    await expect(page.getByText(/^\d+ of \d+ done$/)).toBeVisible()
+    // The header counts steps now ("Step 1 of 3", or "Done" once complete); the
+    // old "N of M done" copy is gone.
     await expect(page.getByRole('progressbar')).toBeVisible()
+    await expect(page.locator('#launch-plan-progress')).toHaveText(/^(Step \d+ of \d+|Done)$/)
     await expect(page.getByRole('button', { name: 'Replay the tour' })).toBeVisible()
   })
 

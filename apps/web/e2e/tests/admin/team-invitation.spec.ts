@@ -1,3 +1,4 @@
+import { waitForNetworkIdle } from '../../utils/helpers'
 import { test, expect, type Page } from '@playwright/test'
 import { getTeamInvitation } from '../../utils/db-helpers'
 
@@ -20,7 +21,7 @@ test.describe('Team invitation flow', () => {
   /** Invite `address` from the Members page; returns the link the dialog shows. */
   async function inviteFromMembersPage(page: Page, address: string): Promise<string> {
     await page.goto('/admin/settings/members')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     await page.getByRole('button', { name: /add people/i }).click()
     const dialog = page.getByRole('dialog')
@@ -66,7 +67,7 @@ test.describe('Team invitation flow', () => {
     const invitee = await inviteeContext.newPage()
     try {
       await invitee.goto(link)
-      await invitee.waitForLoadState('networkidle')
+      await waitForNetworkIdle(invitee)
 
       // The invite link deliberately does not auto-verify: it is a page that
       // asks the human to accept (email scanners prefetch every link), so the
@@ -77,7 +78,7 @@ test.describe('Team invitation flow', () => {
       await invitee.getByRole('button', { name: 'Accept invitation' }).click()
 
       await expect(invitee).toHaveURL(/\/complete-signup\/invite_/, { timeout: 20_000 })
-      await invitee.waitForLoadState('networkidle')
+      await waitForNetworkIdle(invitee)
 
       // Signed in by the invite's magic link → the set-up form, not the
       // "sign in to accept" state.
@@ -101,7 +102,7 @@ test.describe('Team invitation flow', () => {
     // The invitation is spent and the address is now a teammate.
     await expect.poll(() => getTeamInvitation(address).status, { timeout: 15_000 }).toBe('accepted')
     await page.reload()
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
     await expect(page.getByText(inviteeName).first()).toBeVisible({ timeout: 15_000 })
     await expect(page.getByText(address).first()).toBeVisible({ timeout: 15_000 })
   })

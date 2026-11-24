@@ -1,9 +1,10 @@
+import { waitForNetworkIdle } from '../../utils/helpers'
 import { test, expect } from '@playwright/test'
 
 test.describe('Admin feedback search', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/admin/feedback')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
   })
 
   test('sorts by best match while searching, and back to newest when cleared', async ({ page }) => {

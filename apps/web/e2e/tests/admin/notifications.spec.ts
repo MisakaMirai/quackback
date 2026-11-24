@@ -1,9 +1,10 @@
+import { waitForNetworkIdle } from '../../utils/helpers'
 import { test, expect } from '@playwright/test'
 
 test.describe('Admin Notifications Page', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/admin/notifications')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
   })
 
   test('page loads without error', async ({ page }) => {
@@ -12,7 +13,9 @@ test.describe('Admin Notifications Page', () => {
   })
 
   test('shows Notifications heading', async ({ page }) => {
-    await expect(page.getByRole('heading', { name: 'Notifications' })).toBeVisible({
+    // exact: the empty state's "No notifications yet" heading also matches a
+    // case-insensitive substring query, which trips strict mode.
+    await expect(page.getByRole('heading', { name: 'Notifications', exact: true })).toBeVisible({
       timeout: 10000,
     })
   })
@@ -32,7 +35,7 @@ test.describe('Admin Notifications Page', () => {
 test.describe('Admin Notifications — Empty State', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/admin/notifications')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
   })
 
   test('shows empty state when there are no notifications', async ({ page }) => {
@@ -60,7 +63,7 @@ test.describe('Admin Notifications — Empty State', () => {
 test.describe('Admin Notifications — Notification List', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/admin/notifications')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
   })
 
   test('notification items are visible if notifications exist', async ({ page }) => {
@@ -119,7 +122,7 @@ test.describe('Admin Notifications — Notification List', () => {
     if ((await unreadItems.count()) > 0) {
       const initialUnreadCount = await unreadItems.count()
       await unreadItems.first().click()
-      await page.waitForLoadState('networkidle')
+      await waitForNetworkIdle(page)
 
       // After marking as read, unread count should decrease or stay the same
       // (mutation is async; just verify no crash)
@@ -132,7 +135,7 @@ test.describe('Admin Notifications — Notification List', () => {
 test.describe('Admin Notifications — Mark All as Read', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/admin/notifications')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
   })
 
   test('"Mark all as read" button visible when unread notifications exist', async ({ page }) => {
@@ -170,7 +173,7 @@ test.describe('Admin Notifications — Mark All as Read', () => {
 
       // Button becomes disabled while mutation is pending
       // After mutation completes, unread count should be 0 so the button is disabled
-      await page.waitForLoadState('networkidle')
+      await waitForNetworkIdle(page)
       await expect(markAllBtn).toBeDisabled({ timeout: 10000 })
     }
   })
@@ -183,7 +186,7 @@ test.describe('Admin Notifications — Loading State', () => {
 
     // The spinner renders while isLoading is true
     // It may flash briefly — capture it before networkidle; just verify no crash
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
     await expect(page).toHaveURL('/admin/notifications')
   })
 })

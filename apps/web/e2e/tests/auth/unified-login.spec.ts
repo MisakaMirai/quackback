@@ -4,7 +4,8 @@
  * Covers the new unified auth surface that replaced the old /auth/login page:
  *
  *  1. Public portal, unauth /admin → /?auth=signin&callbackUrl=%2Fadmin; dialog
- *     auto-opens ("Welcome back"); admin magic-link sign-in lands on /admin.
+ *     auto-opens with the team-surface copy; admin magic-link sign-in lands on
+ *     /admin.
  *  2. Public portal, portal user reaching /admin → error toast (not_team_member);
  *     dialog remains open; user stays out of /admin.
  *  3. Private portal, unauth /admin → gate shows the inline auth form; admin
@@ -20,6 +21,7 @@
  *
  * All tests manage their own auth state (no stored state injected).
  */
+import { waitForNetworkIdle } from '../../utils/helpers'
 import { readFileSync } from 'fs'
 import { resolve } from 'path'
 import { test, expect } from '@playwright/test'
@@ -31,11 +33,17 @@ import {
   seedIdentityProvider,
   removeIdentityProvider,
 } from '../../utils/access-helpers'
+import { AUTH_STATE_PATH } from '../../utils/auth-state'
 const PORTAL_EMAIL = 'e2e-portal-unified@example.test'
 
 // Registration IDs scoped to this suite to avoid collisions with identity-providers.spec.ts.
 const BTN_RID = 'e2e-unified-btn'
 const BTN_LABEL = 'E2E Unified Button'
+// A second button-only provider for journey 4: two registered OIDC providers
+// mean the workspace is not "sole IdP", so the instant-SSO redirect stays out
+// of the way and the dialog (this journey's subject) is guaranteed to render.
+const BTN2_RID = 'e2e-unified-btn-2'
+const BTN2_LABEL = 'E2E Unified Button 2'
 const CORP_RID = 'e2e-unified-corp'
 const CORP_LABEL = 'E2E Corp IdP'
 // Avoid .test/.example/.invalid/.localhost — normalizeDomain rejects them as
@@ -71,20 +79,28 @@ test.beforeEach(async ({ page }) => {
 test('(1a) unauth /admin → /?auth=signin with callbackUrl=/admin and dialog visible', async ({
   page,
 }) => {
-  await page.goto('/admin')
-  await page.waitForLoadState('networkidle')
-
   // requireWorkspaceRole redirects to buildSigninRedirect('/admin'), which is
   // { to: '/', search: { auth: 'signin', callbackUrl: '/admin' } }.
   // auth=signin serializes cleanly (no JSON-quoting), so match directly.
-  await expect(page).toHaveURL(/[?&]auth=signin/, { timeout: 15000 })
-  const url = new URL(page.url())
-  expect(url.searchParams.get('callbackUrl')).toMatch(/^\/admin/)
+  //
+  // `setPortalVisibility` writes from another process and a warm server reuses
+  // its settings copy for a few seconds (SETTINGS_LOCAL_TTL_MS), so a portal
+  // another spec just re-opened can still be serving the private gate. Retry
+  // until the public portal is actually in effect.
+  await expect(async () => {
+    await page.goto('/admin')
+    await expect(page).toHaveURL(/[?&]auth=signin/, { timeout: 5000 })
+    const url = new URL(page.url())
+    expect(url.searchParams.get('callbackUrl')).toMatch(/^\/admin/)
 
-  // useAutoOpenAuthDialog fires on mount when auth=signin; the dialog heading is
-  // "Welcome back" for mode='login'.
-  await expect(page.getByRole('dialog')).toBeVisible({ timeout: 10000 })
-  await expect(page.getByRole('heading', { name: /welcome back/i })).toBeVisible({ timeout: 10000 })
+    // useAutoOpenAuthDialog fires on mount when auth=signin. With a team
+    // callbackUrl the dialog renders the team-surface copy ("Sign in to
+    // <workspace> admin"), not the generic public "Welcome back" title.
+    await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 })
+    await expect(page.getByRole('heading', { name: /sign in to .*admin/i })).toBeVisible({
+      timeout: 3000,
+    })
+  }).toPass({ timeout: 25_000 })
 })
 
 test('(1b) signed-in admin navigating to /admin lands there (not on the dialog)', async ({
@@ -98,7 +114,7 @@ test('(1b) signed-in admin navigating to /admin lands there (not on the dialog)'
   // We use `browser.newContext` (not the test's `page`/`context` fixtures) to
   // bypass the `beforeEach` clearCookies + initScript, which would interfere
   // with loading an existing session via storageState.
-  const ctx = await browser.newContext({ storageState: 'e2e/.auth/admin.json' })
+  const ctx = await browser.newContext({ storageState: AUTH_STATE_PATH })
   const page = await ctx.newPage()
   try {
     await page.goto('/admin')
@@ -117,6 +133,10 @@ test('(2) portal user reaching /admin gets not_team_member error toast', async (
   // Enable magic-link just long enough to establish the portal user session.
   setPortalAuthMethods('enable-magic-link')
   try {
+    // The method is written by a separate process and this server reuses its
+    // settings copy for a few seconds (SETTINGS_LOCAL_TTL_MS); posting before
+    // the window closes is refused with magic_link_method_not_allowed.
+    await new Promise((resolve) => setTimeout(resolve, 6_000))
     await loginViaMagicLink(context, PORTAL_EMAIL, { role: 'user' })
   } finally {
     setPortalAuthMethods('restore')
@@ -124,7 +144,7 @@ test('(2) portal user reaching /admin gets not_team_member error toast', async (
 
   const page = await context.newPage()
   await page.goto('/admin')
-  await page.waitForLoadState('networkidle')
+  await waitForNetworkIdle(page)
 
   // requireWorkspaceRole bounces via buildSigninRedirect('/admin', { error: 'not_team_member' }).
   // auth=signin serializes cleanly; match directly.
@@ -169,26 +189,33 @@ test('(2) portal user reaching /admin gets not_team_member error toast', async (
 //      router.navigate({ to: '/admin' }).
 
 test('(3) private portal gate: sign-in in the gate lands on /admin', async ({ page }) => {
+  test.setTimeout(90_000)
   setPortalVisibility('private')
   try {
     // /admin redirects to /?auth=signin&callbackUrl=/admin; the _portal loader
     // evaluates the anonymous visitor against the private portal → denied →
     // gate rendered with autoOpenSignin='login'.
-    await page.goto('/admin')
-    await page.waitForLoadState('networkidle')
+    //
+    // The visibility write lands from another process (the e2e helper script),
+    // and a warm server reuses its settings copy for a few seconds
+    // (SETTINGS_LOCAL_TTL_MS), so retry the navigation until the gate is
+    // actually enforced.
+    await expect(async () => {
+      await page.goto('/admin')
+      // Must land on portal root with auth=signin param.
+      await expect(page).toHaveURL(/[?&]auth=signin/, { timeout: 10000 })
+      // The gate renders the shared auth form inline (no modal). Its private-
+      // portal copy proves the private portal is being enforced.
+      await expect(page.getByText(/this portal is private/i)).toBeVisible({ timeout: 3000 })
+    }).toPass({ timeout: 30_000 })
 
-    // Must land on portal root with auth=signin param.
-    await expect(page).toHaveURL(/[?&]auth=signin/, { timeout: 15000 })
-
-    // The gate renders the shared auth form inline (no modal). Its private-
-    // portal copy + the email field prove the gate rendered the form directly.
-    await expect(page.getByText(/this portal is private/i)).toBeVisible({ timeout: 15000 })
+    // The email field is part of the gate's inline form.
     await expect(page.getByLabel(/email/i)).toBeVisible({ timeout: 15000 })
 
     // ── Simulate post-sign-in: inject admin session + broadcast auth-success ──
     // Load the stored admin session (built by global-setup or refresh-admin-session.ts).
     const { cookies } = JSON.parse(
-      readFileSync(resolve(import.meta.dirname, '../../.auth/admin.json'), 'utf-8')
+      readFileSync(resolve(import.meta.dirname, '../../..', AUTH_STATE_PATH), 'utf-8')
     ) as { cookies: Parameters<typeof page.context.addCookies>[0] }
     await page.context().addCookies(cookies)
 
@@ -197,14 +224,18 @@ test('(3) private portal gate: sign-in in the gate lands on /admin', async ({ pa
     //   setSigningIn(true)
     //   router.invalidate()  ← re-runs the _portal loader with the now-set admin cookie
     //   → access granted → router.navigate({ to: callbackUrl='/admin' })
-    await page.evaluate(() => {
-      const ch = new BroadcastChannel('quackback-auth')
-      ch.postMessage({ type: 'auth-success', timestamp: Date.now() })
-      ch.close()
-    })
-
-    // After loader re-evaluates (admin session → granted), navigate fires to /admin.
-    await expect(page).toHaveURL(/\/admin/, { timeout: 20000 })
+    //
+    // The listener is mounted in an effect, so a message posted before the
+    // gate's first commit would be dropped; re-posting until the navigation
+    // lands is idempotent (the handler only invalidates/navigates).
+    await expect(async () => {
+      await page.evaluate(() => {
+        const ch = new BroadcastChannel('quackback-auth')
+        ch.postMessage({ type: 'auth-success', timestamp: Date.now() })
+        ch.close()
+      })
+      await expect(page).toHaveURL(/\/admin/, { timeout: 2000 })
+    }).toPass({ timeout: 30_000 })
     await expect(page.getByRole('navigation').first()).toBeVisible({ timeout: 15000 })
   } finally {
     setPortalVisibility('public')
@@ -224,10 +255,20 @@ test('(3) private portal gate: sign-in in the gate lands on /admin', async ({ pa
 test('(4) /?auth=signin shows the dialog with OIDC button and recovery-code link', async ({
   page,
 }) => {
+  test.setTimeout(60_000)
   seedIdentityProvider({
     registrationId: BTN_RID,
     label: BTN_LABEL,
     clientId: 'e2e-unified-btn-client',
+    discoveryUrl: DISCOVERY_URL,
+    enabled: true,
+    showButton: true,
+  })
+  // Two providers: no sole-IdP instant redirect (see BTN2_RID).
+  seedIdentityProvider({
+    registrationId: BTN2_RID,
+    label: BTN2_LABEL,
+    clientId: 'e2e-unified-btn-2-client',
     discoveryUrl: DISCOVERY_URL,
     enabled: true,
     showButton: true,
@@ -238,16 +279,22 @@ test('(4) /?auth=signin shows the dialog with OIDC button and recovery-code link
   try {
     // ?auth=signin opens the dialog; ?callbackUrl=/admin makes isTeamCallback true
     // so the recovery-code link renders inside the SSO-only Stage 1.
-    await page.goto('/?auth=signin&callbackUrl=%2Fadmin')
-    await page.waitForLoadState('networkidle')
-
-    // Dialog must open (?auth=signin triggers useAutoOpenAuthDialog).
-    await expect(page.getByRole('dialog')).toBeVisible({ timeout: 15000 })
-
-    // The seeded button-only provider's "Sign in with …" button appears.
-    await expect(
-      page.getByRole('button', { name: new RegExp(`Sign in with ${BTN_LABEL}`, 'i') })
-    ).toBeVisible({ timeout: 10000 })
+    //
+    // The provider/auth-method writes come from another process and a warm
+    // server reuses its settings + provider copies for a few seconds, so retry
+    // until the dialog reflects them (public portal, SSO-only button).
+    await expect(async () => {
+      await page.goto('/?auth=signin&callbackUrl=%2Fadmin')
+      // Dialog must open (?auth=signin triggers useAutoOpenAuthDialog).
+      const dialog = page.getByRole('dialog')
+      await expect(dialog).toBeVisible({ timeout: 5000 })
+      // The seeded button-only provider's "Sign in with …" button appears once
+      // the SSO-only stage is in effect.
+      await expect(
+        // Anchored: the second seeded button's label starts with this one.
+        dialog.getByRole('button', { name: new RegExp(`^Sign in with ${BTN_LABEL}$`, 'i') })
+      ).toBeVisible({ timeout: 3000 })
+    }).toPass({ timeout: 30_000 })
 
     // Break-glass recovery-code link is visible (SSO-only Stage 1 + callbackUrl=/admin → isTeamCallback).
     await expect(page.getByRole('link', { name: /use a recovery code/i })).toBeVisible({
@@ -259,6 +306,7 @@ test('(4) /?auth=signin shows the dialog with OIDC button and recovery-code link
     )
   } finally {
     removeIdentityProvider(BTN_RID)
+    removeIdentityProvider(BTN2_RID)
     setPortalAuthMethods('restore')
   }
 })
@@ -269,7 +317,7 @@ test('(4) /?auth=signin shows the dialog with OIDC button and recovery-code link
 
 test('(5) /auth/recovery renders the standalone recovery form', async ({ page }) => {
   await page.goto('/auth/recovery')
-  await page.waitForLoadState('networkidle')
+  await waitForNetworkIdle(page)
 
   // Heading confirms we're on the recovery page, not a redirect.
   await expect(page.getByRole('heading', { name: /use a recovery code/i })).toBeVisible({
@@ -311,14 +359,17 @@ test('(6) corporate button hidden; verified-domain email routes to corporate IdP
   })
   try {
     // Open dialog via ?auth=signin (serializes cleanly, no JSON-quoting needed).
-    await page.goto('/?auth=signin')
-    await page.waitForLoadState('networkidle')
-    await expect(page.getByRole('dialog')).toBeVisible({ timeout: 15000 })
-
-    // The button-only provider renders; the routed-only corporate provider does NOT.
-    await expect(
-      page.getByRole('button', { name: new RegExp(`Sign in with ${BTN_LABEL}`, 'i') })
-    ).toBeVisible({ timeout: 10000 })
+    // Provider writes come from another process; this server reuses its copy
+    // for a few seconds, so retry until the seeded button-only provider is in
+    // the list (which also settles the public portal after journey 3).
+    await expect(async () => {
+      await page.goto('/?auth=signin')
+      await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 })
+      // The button-only provider renders; the routed-only corporate provider does NOT.
+      await expect(
+        page.getByRole('button', { name: new RegExp(`Sign in with ${BTN_LABEL}`, 'i') })
+      ).toBeVisible({ timeout: 3000 })
+    }).toPass({ timeout: 30_000 })
     await expect(
       page.getByRole('button', { name: new RegExp(`Sign in with ${CORP_LABEL}`, 'i') })
     ).toHaveCount(0)

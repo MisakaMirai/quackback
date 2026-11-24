@@ -70,8 +70,31 @@ export function getOtpCode(email: string, _host?: string): string {
  * portal Support tab. Also busts the cached workspace settings so the change is
  * live at once.
  */
-export function setSupportSurfaces(enabled: boolean = true): void {
-  runScript('set-support-surfaces.ts', [enabled ? 'on' : 'off'], 'set support surfaces')
+/**
+ * Enable or disable the conversation surfaces (support inbox, portal support
+ * tab), and with `all` the neighbouring product modules as well.
+ *
+ * `all` is what a spec needs when it visits pages gated on `supportTickets`,
+ * `helpCenter`, `changelog` or `feedback`: those flags are off on a fresh seed
+ * and their routes redirect. Pass the same `all` on the way back to restore the
+ * seeded workspace — plain `off` leaves the neighbouring flags alone.
+ */
+export function setSupportSurfaces(enabled: boolean = true, all: boolean = false): void {
+  runScript(
+    'set-support-surfaces.ts',
+    [enabled ? 'on' : 'off', ...(all ? ['all'] : [])],
+    'set support surfaces'
+  )
+}
+
+/**
+ * Put every product flag back to the value a fresh seed writes. A spec that
+ * enabled several modules for its own pages calls this in `afterAll` so the
+ * workspace it hands on is the seeded one, not one with modules on — other
+ * specs in the same run read those flags too.
+ */
+export function restoreSeedSurfaces(): void {
+  runScript('set-support-surfaces.ts', ['seed'], 'restore seed surfaces')
 }
 
 export interface SeededConversation {
@@ -105,6 +128,33 @@ export function seedConversation(
   ) as SeededConversation
 }
 
+export interface SeededFile {
+  /** TypeID (`file_…`) — the form message payloads and the API use. */
+  fileId: string
+  /** Storage key the row points at, e.g. `chat-images/e2e-pasted.png`. */
+  storageKey: string
+  name: string
+  contentType: string
+  size: number
+  family: string
+}
+
+/**
+ * Seed a `files` row (idempotent on `storageKey`) so a composer attachment can
+ * be submitted without object storage. Specs stub the upload POST and the
+ * storage GET themselves; this is the row `resolveAttachments` looks up.
+ */
+export function seedFile(
+  storageKey: string,
+  name: string,
+  contentType: string = 'image/png',
+  size: number = 2048
+): SeededFile {
+  return JSON.parse(
+    runScript('seed-file.ts', [storageKey, name, contentType, String(size)], 'seed file')
+  ) as SeededFile
+}
+
 /**
  * Clear the magic-link sign-in rate-limit buckets (signin:magiclink:*) so
  * repeated e2e runs from one machine don't 429 the sign-in POST. The script
@@ -112,6 +162,15 @@ export function seedConversation(
  */
 export function clearSigninRateLimit(): void {
   runScript('clear-signin-rate-limit.ts', [], 'clear signin rate limit')
+}
+
+/**
+ * Clear only the 20-per-15-minutes per-IP magic-link budget, leaving the
+ * 3-per-(ip,address) one. For a spec that asserts the per-address window's exact
+ * shape: the per-IP budget is shared by everything the shard signed in.
+ */
+export function clearMagicLinkIpBudget(): void {
+  runScript('clear-signin-rate-limit.ts', ['ip-only'], 'clear magic-link IP budget')
 }
 
 /**

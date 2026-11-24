@@ -1,9 +1,10 @@
+import { waitForNetworkIdle } from '../../utils/helpers'
 import { test, expect } from '@playwright/test'
 
 test.describe('Admin General Settings', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/admin/settings/general')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
   })
 
   test('shows one toggle for every workspace product', async ({ page }) => {

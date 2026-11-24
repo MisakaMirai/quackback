@@ -1,9 +1,10 @@
+import { waitForNetworkIdle } from '../../utils/helpers'
 import { test, expect } from '@playwright/test'
 
 test.describe('Portal feed filter panel', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
   })
 
   test('no status is lit by default, and the first pick narrows to it', async ({ page }) => {
@@ -66,7 +67,7 @@ test.describe('Portal feed filter panel', () => {
 
   test('anonymous visitors get no Show section, even from a view link', async ({ page }) => {
     await page.goto('/?view=mine')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
     await expect(page.getByRole('group', { name: 'Boards' })).toBeVisible()
     await expect(page.getByRole('group', { name: 'Show' })).toHaveCount(0)
     await expect(
@@ -80,7 +81,7 @@ test.describe('Portal feed filters on a phone', () => {
 
   test('the Filters sheet applies a board as it is picked', async ({ page }) => {
     await page.goto('/')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
     await expect(page.getByRole('group', { name: 'Boards' })).toHaveCount(0)
 
     await page.getByRole('button', { name: 'Filters' }).click()

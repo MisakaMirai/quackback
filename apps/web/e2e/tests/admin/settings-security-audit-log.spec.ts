@@ -1,3 +1,4 @@
+import { waitForNetworkIdle } from '../../utils/helpers'
 import { readFileSync } from 'node:fs'
 import { test, expect } from '@playwright/test'
 import { clearSigninRateLimit, enableMagicLinkMethod } from '../../utils/db-helpers'
@@ -48,7 +49,7 @@ test.describe('Admin audit log', () => {
     expect((await send()).status()).toBe(429)
 
     await page.goto('/admin/settings/security/authentication?tab=audit-log')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     // Filter by the actor address the (failed) sign-in carried.
     const filter = page.getByRole('searchbox', { name: 'Filter audit events by actor email' })
@@ -90,7 +91,7 @@ test.describe('Admin audit log', () => {
     // and links keep working.
     await page.goto('/admin/settings/security/audit-log')
     await expect(page).toHaveURL(/tab=audit-log/, { timeout: 15_000 })
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
     await expect(
       page.getByRole('searchbox', { name: 'Filter audit events by actor email' })
     ).toBeVisible({ timeout: 15_000 })

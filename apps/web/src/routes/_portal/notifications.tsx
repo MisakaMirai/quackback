@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, redirect } from '@tanstack/react-router'
 import { useIntl, FormattedMessage } from 'react-intl'
 import {
   BellIcon,
@@ -45,6 +45,15 @@ interface NotificationsSearch {
 }
 
 export const Route = createFileRoute('/_portal/notifications')({
+  // A visitor's notifications are theirs alone, so the page has to know who is
+  // asking. Without this gate an anonymous visitor got the whole shell — the
+  // heading, the tabs and the bulk actions — over data the API refuses to
+  // return; the settings layout next door has always redirected.
+  beforeLoad: ({ context }) => {
+    if (!context.session?.user) {
+      throw redirect({ to: '/' })
+    }
+  },
   // Only the literal 'unread' is accepted — anything else falls back to the
   // default All tab rather than surfacing a broken filter state.
   validateSearch: (search: Record<string, unknown>): NotificationsSearch => ({

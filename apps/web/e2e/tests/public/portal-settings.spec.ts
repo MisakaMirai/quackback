@@ -1,3 +1,4 @@
+import { waitForNetworkIdle } from '../../utils/helpers'
 import { test, expect } from '@playwright/test'
 
 /**
@@ -11,6 +12,12 @@ import { test, expect } from '@playwright/test'
  * Neither destination should be accessible without a logged-in portal user.
  */
 
+/** The origin the suite runs against, so the redirect target is not CI's host. */
+const baseOrigin = new URL(process.env.PLAYWRIGHT_BASE_URL ?? 'http://acme.localhost:3000').origin
+
+/** Landed on the portal homepage: the configured origin's root, query ignored. */
+const onPortalHome = (url: URL) => url.origin === baseOrigin && url.pathname === '/'
+
 test.describe('Portal Settings — unauthenticated access', () => {
   // -------------------------------------------------------------------------
   // /settings redirect behaviour
@@ -20,7 +27,7 @@ test.describe('Portal Settings — unauthenticated access', () => {
     page,
   }) => {
     await page.goto('/settings')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     // The settings layout redirects to "/" when there is no session.
     // We should NOT end up on a /settings path.
@@ -31,7 +38,7 @@ test.describe('Portal Settings — unauthenticated access', () => {
     page,
   }) => {
     await page.goto('/settings/profile')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     await expect(page).not.toHaveURL(/\/settings/)
   })
@@ -40,7 +47,7 @@ test.describe('Portal Settings — unauthenticated access', () => {
     page,
   }) => {
     await page.goto('/settings/preferences')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     await expect(page).not.toHaveURL(/\/settings/)
   })
@@ -51,17 +58,17 @@ test.describe('Portal Settings — unauthenticated access', () => {
 
   test('/settings redirect lands on the public portal homepage', async ({ page }) => {
     await page.goto('/settings')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     // The beforeLoad guard throws redirect({ to: '/' }); URL may include default search params
-    await expect(page).toHaveURL(/^http:\/\/acme\.localhost:3000\//)
+    await expect(page).toHaveURL(onPortalHome)
   })
 
   test('/settings/profile redirect lands on the public portal homepage', async ({ page }) => {
     await page.goto('/settings/profile')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
-    await expect(page).toHaveURL(/^http:\/\/acme\.localhost:3000\//)
+    await expect(page).toHaveURL(onPortalHome)
   })
 
   // -------------------------------------------------------------------------
@@ -72,7 +79,7 @@ test.describe('Portal Settings — unauthenticated access', () => {
     page,
   }) => {
     await page.goto('/settings')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     // Portal header renders a "Log in" button when no session is present
     await expect(page.getByRole('button', { name: /Log in/i })).toBeVisible()
@@ -82,14 +89,14 @@ test.describe('Portal Settings — unauthenticated access', () => {
     page,
   }) => {
     await page.goto('/settings')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     await expect(page.getByRole('button', { name: /Sign up/i })).toBeVisible()
   })
 
   test('settings UI (Profile heading) is not visible after redirect', async ({ page }) => {
     await page.goto('/settings/profile')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     // The Profile settings page renders an h1 / page header titled "Profile".
     // It must not be shown to unauthenticated users.
@@ -98,7 +105,7 @@ test.describe('Portal Settings — unauthenticated access', () => {
 
   test('settings UI (Preferences heading) is not visible after redirect', async ({ page }) => {
     await page.goto('/settings/preferences')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     await expect(page.getByRole('heading', { name: 'Preferences', exact: true })).not.toBeVisible()
   })
@@ -109,7 +116,7 @@ test.describe('Portal Settings — unauthenticated access', () => {
 
   test('clicking "Log in" opens the auth dialog', async ({ page }) => {
     await page.goto('/')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     const logInButton = page.getByRole('button', { name: /Log in/i })
     await expect(logInButton).toBeVisible()
@@ -122,7 +129,7 @@ test.describe('Portal Settings — unauthenticated access', () => {
 
   test('clicking "Sign up" opens the auth dialog in signup mode', async ({ page }) => {
     await page.goto('/')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     const signUpButton = page.getByRole('button', { name: /Sign up/i })
     await expect(signUpButton).toBeVisible()

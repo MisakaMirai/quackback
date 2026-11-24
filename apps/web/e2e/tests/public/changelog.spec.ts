@@ -1,9 +1,10 @@
+import { waitForNetworkIdle } from '../../utils/helpers'
 import { test, expect } from '@playwright/test'
 
 test.describe('Public Changelog', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/changelog')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
   })
 
   test('page loads at /changelog', async ({ page }) => {
@@ -20,9 +21,7 @@ test.describe('Public Changelog', () => {
   })
 
   test('page header shows description text', async ({ page }) => {
-    await expect(
-      page.getByText(/stay up to date with the latest product updates/i)
-    ).toBeVisible()
+    await expect(page.getByText(/stay up to date with the latest product updates/i)).toBeVisible()
   })
 
   test('RSS feed button is visible', async ({ page }) => {
@@ -93,10 +92,7 @@ test.describe('Public Changelog', () => {
     const titleLink = entries.first().locator('a[href*="/changelog/"]').first()
     const href = await titleLink.getAttribute('href')
 
-    await Promise.all([
-      page.waitForURL(/\/changelog\/.+/, { timeout: 10000 }),
-      titleLink.click(),
-    ])
+    await Promise.all([page.waitForURL(/\/changelog\/.+/, { timeout: 10000 }), titleLink.click()])
 
     if (href) {
       await expect(page).toHaveURL(new RegExp(href.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
@@ -127,7 +123,7 @@ test.describe('Public Changelog - Detail Page', () => {
   test('detail page loads when navigating to a valid entry', async ({ page }) => {
     // Start at the list and navigate to the first entry
     await page.goto('/changelog')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     const entries = page.locator('article')
     if ((await entries.count()) === 0) {
@@ -136,12 +132,9 @@ test.describe('Public Changelog - Detail Page', () => {
     }
 
     const titleLink = entries.first().locator('a[href*="/changelog/"]').first()
-    await Promise.all([
-      page.waitForURL(/\/changelog\/.+/, { timeout: 10000 }),
-      titleLink.click(),
-    ])
+    await Promise.all([page.waitForURL(/\/changelog\/.+/, { timeout: 10000 }), titleLink.click()])
 
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     // Detail page renders an <article> with an h1
     await expect(page.locator('article h1')).toBeVisible({ timeout: 10000 })
@@ -149,7 +142,7 @@ test.describe('Public Changelog - Detail Page', () => {
 
   test('detail page shows entry title as h1', async ({ page }) => {
     await page.goto('/changelog')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     const entries = page.locator('article')
     if ((await entries.count()) === 0) {
@@ -160,11 +153,8 @@ test.describe('Public Changelog - Detail Page', () => {
     const titleLink = entries.first().locator('a[href*="/changelog/"]').first()
     const listTitleText = await entries.first().getByRole('heading').first().textContent()
 
-    await Promise.all([
-      page.waitForURL(/\/changelog\/.+/, { timeout: 10000 }),
-      titleLink.click(),
-    ])
-    await page.waitForLoadState('networkidle')
+    await Promise.all([page.waitForURL(/\/changelog\/.+/, { timeout: 10000 }), titleLink.click()])
+    await waitForNetworkIdle(page)
 
     const detailTitle = page.locator('article h1')
     await expect(detailTitle).toBeVisible({ timeout: 10000 })
@@ -176,7 +166,7 @@ test.describe('Public Changelog - Detail Page', () => {
 
   test('detail page shows entry content', async ({ page }) => {
     await page.goto('/changelog')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     const entries = page.locator('article')
     if ((await entries.count()) === 0) {
@@ -185,11 +175,8 @@ test.describe('Public Changelog - Detail Page', () => {
     }
 
     const titleLink = entries.first().locator('a[href*="/changelog/"]').first()
-    await Promise.all([
-      page.waitForURL(/\/changelog\/.+/, { timeout: 10000 }),
-      titleLink.click(),
-    ])
-    await page.waitForLoadState('networkidle')
+    await Promise.all([page.waitForURL(/\/changelog\/.+/, { timeout: 10000 }), titleLink.click()])
+    await waitForNetworkIdle(page)
 
     // Content renders after the h1 — there should be some text content in the article
     const article = page.locator('article').first()
@@ -200,7 +187,7 @@ test.describe('Public Changelog - Detail Page', () => {
 
   test('detail page shows published date', async ({ page }) => {
     await page.goto('/changelog')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     const entries = page.locator('article')
     if ((await entries.count()) === 0) {
@@ -209,11 +196,8 @@ test.describe('Public Changelog - Detail Page', () => {
     }
 
     const titleLink = entries.first().locator('a[href*="/changelog/"]').first()
-    await Promise.all([
-      page.waitForURL(/\/changelog\/.+/, { timeout: 10000 }),
-      titleLink.click(),
-    ])
-    await page.waitForLoadState('networkidle')
+    await Promise.all([page.waitForURL(/\/changelog\/.+/, { timeout: 10000 }), titleLink.click()])
+    await waitForNetworkIdle(page)
 
     const dateEl = page.locator('article time').first()
     await expect(dateEl).toBeVisible({ timeout: 10000 })
@@ -223,7 +207,7 @@ test.describe('Public Changelog - Detail Page', () => {
 
   test('detail page has correct title meta tag', async ({ page }) => {
     await page.goto('/changelog')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     const entries = page.locator('article')
     if ((await entries.count()) === 0) {
@@ -232,11 +216,8 @@ test.describe('Public Changelog - Detail Page', () => {
     }
 
     const titleLink = entries.first().locator('a[href*="/changelog/"]').first()
-    await Promise.all([
-      page.waitForURL(/\/changelog\/.+/, { timeout: 10000 }),
-      titleLink.click(),
-    ])
-    await page.waitForLoadState('networkidle')
+    await Promise.all([page.waitForURL(/\/changelog\/.+/, { timeout: 10000 }), titleLink.click()])
+    await waitForNetworkIdle(page)
 
     const title = await page.title()
     // Title should include "Changelog" and workspace name
@@ -245,7 +226,7 @@ test.describe('Public Changelog - Detail Page', () => {
 
   test('back navigation returns to changelog list', async ({ page }) => {
     await page.goto('/changelog')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     const entries = page.locator('article')
     if ((await entries.count()) === 0) {
@@ -254,11 +235,8 @@ test.describe('Public Changelog - Detail Page', () => {
     }
 
     const titleLink = entries.first().locator('a[href*="/changelog/"]').first()
-    await Promise.all([
-      page.waitForURL(/\/changelog\/.+/, { timeout: 10000 }),
-      titleLink.click(),
-    ])
-    await page.waitForLoadState('networkidle')
+    await Promise.all([page.waitForURL(/\/changelog\/.+/, { timeout: 10000 }), titleLink.click()])
+    await waitForNetworkIdle(page)
 
     // BackLink renders as an <a> pointing to /changelog containing the text "Changelog"
     const backLink = page.locator('a[href="/changelog"]')
@@ -275,7 +253,7 @@ test.describe('Public Changelog - Detail Page', () => {
 
   test('detail page for non-existent entry shows not-found state', async ({ page }) => {
     await page.goto('/changelog/nonexistent-entry-id-that-does-not-exist')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     await expect(
       page.getByText(/changelog entry not found|not yet published|removed/i).first()

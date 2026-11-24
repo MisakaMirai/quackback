@@ -1,9 +1,10 @@
+import { waitForNetworkIdle } from '../../utils/helpers'
 import { test, expect } from '@playwright/test'
 
 test.describe('Portal Notifications (unauthenticated)', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/notifications')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
   })
 
   test('redirects away from /notifications when not logged in', async ({ page }) => {
@@ -15,8 +16,9 @@ test.describe('Portal Notifications (unauthenticated)', () => {
     const isOnNotifications = url.includes('/notifications')
 
     if (!isOnNotifications) {
-      // Hard redirect path: just verify we landed somewhere sensible (home or root)
-      expect(url).toMatch(/acme\.localhost:3000/)
+      // Hard redirect path: the portal home is the only sensible landing spot.
+      // Single-workspace routing — the old acme.localhost:3000 host check is gone.
+      expect(new URL(url).pathname).toBe('/')
     } else {
       // Soft-gate path: page renders but only shows a login prompt, not notification
       // content. Check that neither the notifications heading nor any notification
@@ -25,7 +27,11 @@ test.describe('Portal Notifications (unauthenticated)', () => {
       const loginTrigger = page.getByRole('button', { name: /log in|sign in|sign up/i })
       const isHeadingVisible = (await heading.count()) > 0 && (await heading.isVisible())
 
-      // Unauthenticated users must NOT see the notifications content heading
+      // Unauthenticated users must NOT see the notifications content heading.
+      // NOTE: this currently fails — /notifications renders its shell (heading,
+      // tabs) for anonymous visitors while every /settings/* portal page
+      // redirects them home. Reported as a suspected product bug, not worked
+      // around here.
       expect(isHeadingVisible).toBe(false)
 
       // No heading rendered — auth gate in place
@@ -42,7 +48,7 @@ test.describe('Portal Notifications (unauthenticated)', () => {
       // Already redirected — check header on current page
     } else {
       await page.goto('/')
-      await page.waitForLoadState('networkidle')
+      await waitForNetworkIdle(page)
     }
 
     const logInButton = page.getByRole('button', { name: /log in/i })
@@ -55,7 +61,7 @@ test.describe('Portal Notifications (unauthenticated)', () => {
   test('notification bell icon is not shown when unauthenticated', async ({ page }) => {
     // The NotificationBell component is only rendered for logged-in users
     await page.goto('/')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     // The bell sits next to the avatar; it should be absent for anonymous visitors
     const bell = page.locator('[aria-label*="notification" i], [data-testid*="notification-bell"]')

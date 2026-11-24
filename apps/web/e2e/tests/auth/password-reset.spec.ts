@@ -1,3 +1,4 @@
+import { waitForNetworkIdle } from '../../utils/helpers'
 import { test, expect } from '@playwright/test'
 import { clearSigninRateLimit, enableMagicLinkMethod, getResetToken } from '../../utils/db-helpers'
 import { loginViaMagicLink } from '../../utils/access-helpers'
@@ -69,7 +70,7 @@ test('(2) the form only enables its submit once the password is long enough and 
   await page.goto('/auth/reset-password?token=not-a-live-token')
   // The form is server-rendered and the fields are controlled: wait for the
   // client to finish hydrating, or the values never reach React's state.
-  await page.waitForLoadState('networkidle')
+  await waitForNetworkIdle(page)
   const password = page.getByLabel('New password')
   const confirm = page.getByLabel('Confirm password')
   const submit = page.getByRole('button', { name: 'Reset password' })
@@ -109,7 +110,7 @@ test('(3) a reset link sets the password once, then the credential signs in', as
 
     // The emailed page: set the new password.
     await page.goto(`/auth/reset-password?token=${token}`)
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
     await page.getByLabel('New password').fill(NEW_PASSWORD)
     await page.getByLabel('Confirm password').fill(NEW_PASSWORD)
     const submitted = page.getByRole('heading', { name: 'Password reset' })
@@ -148,7 +149,7 @@ test('(3) a reset link sets the password once, then the credential signs in', as
     try {
       const replayPage = await replay.newPage()
       await replayPage.goto(`/auth/reset-password?token=${token}`)
-      await replayPage.waitForLoadState('networkidle')
+      await waitForNetworkIdle(replayPage)
       await replayPage.getByLabel('New password').fill('another-password-1')
       await replayPage.getByLabel('Confirm password').fill('another-password-1')
       const failure = replayPage.getByText(/invalid|expired/i)
