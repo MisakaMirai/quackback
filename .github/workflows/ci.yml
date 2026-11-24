@@ -376,18 +376,23 @@ jobs:
     # The whole Playwright suite is too slow for every PR: run it nightly, or on
     # an explicit workflow_dispatch when a change needs it before the cron fires.
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
-    # The suite did not fit the old single-job 60-minute budget at one worker
-    # (run 44897107294 was cancelled at 60:00 on 2026-11-21). Shard it four ways:
-    # playwright.config pins workers to 1 *per shard*, and each shard gets its
-    # own Postgres service and dev server, so this is the parallelism that config
-    # already anticipates — it does not trade test isolation for speed.
+    # Eight shards, one worker each. Sharding is the parallelism this suite
+    # tolerates — every shard gets its own Postgres service and its own server,
+    # so specs keep the single-workspace assumptions they were written for,
+    # whereas more workers per shard would have them mutating one workspace's
+    # settings concurrently. The suite did not fit a single 60-minute job
+    # (run 44897107294 was cancelled at 60:00 on 2026-11-21); four shards of the
+    # 836-test suite still took 15–49 minutes per shard, eight leaves each shard
+    # roughly eight spec files.
     name: e2e-full (${{ matrix.shard }}/${{ strategy.job-total }})
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    # Budget, not a target: a shard that triples its wall clock fails here rather
+    # than quietly holding a runner. A green shard is ~8-12 minutes today.
+    timeout-minutes: 35
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4]
+        shard: [1, 2, 3, 4, 5, 6, 7, 8]
     services:
       postgres:
         image: pgvector/pgvector:pg17
@@ -400,6 +405,16 @@ jobs:
     env:
       SECRET_KEY: e2e-full-secret-key-for-ci-only-at-least-32-chars
       BASE_URL: http://acme.localhost:3000
+      # Playwright starts the app itself; this makes it start the built server
+      # (below) instead of the Vite dev server. Dev transforms each route on its
+      # first request, which on a two-core runner costs seconds per page and was
+      # most of this suite's wall clock.
+      E2E_SERVER: production
+      # The suite drives every auth endpoint from one address in one process, so
+      # Better-Auth's per-IP budget is spent by the suite's own sign-ins and its
+      # 429s land on whichever spec runs next. The app's own sign-in limiters
+      # (auth/signin-rate-limit.ts) stay on: they are what the auth specs assert.
+      DISABLE_AUTH_RATE_LIMIT: '1'
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
@@ -413,15 +428,31 @@ jobs:
           key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
           restore-keys: bun-${{ runner.os }}-
       - run: bun install --frozen-lockfile
-      - name: Write .env for the dev server and e2e scripts
+      - name: Write .env for the app server and e2e scripts
         run: |
           cat > .env <<EOF
           DATABASE_URL=$DATABASE_URL
           SECRET_KEY=$SECRET_KEY
           BASE_URL=$BASE_URL
+          # Object storage is addressable but never contacted from CI. Rendering
+          # an attachment URL needs `isS3Configured()` (bucket, region and keys)
+          # to mint one at all, and the specs that attach images stub both the
+          # browser's upload POST and the storage GET. There is no live bucket,
+          # so no spec may depend on a real upload reaching object storage; the
+          # values only have to be shaped like a configuration.
+          S3_BUCKET=quackback-e2e
+          S3_REGION=us-east-1
+          S3_ACCESS_KEY_ID=e2e-access-key
+          S3_SECRET_ACCESS_KEY=e2e-secret-key
           EOF
       - run: bun run db:migrate
       - run: bun run db:seed
+      # One build per shard rather than an artifact hand-off: the build is
+      # ~1.5 minutes and the eight run in parallel anyway, so a 300 MB
+      # upload/download would be the slower path.
+      - run: bun run build
+        env:
+          SKIP_ENV_VALIDATION: true
       - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: ~/.cache/ms-playwright
