@@ -113,15 +113,18 @@ test.describe('Post @-mention happy path', () => {
       throw err
     }
 
-    // The picker must include our target. Use a regex to allow other matches
-    // before/after — we just need to confirm the target shows up.
-    const targetRow = picker.locator('.mention-picker__row').filter({ hasText: target.displayName })
+    // The picker must include our target. Address the row by principal id:
+    // seed display names repeat ("Riley Brown" is more than one person), so a
+    // row found by name can be someone else and the chip would carry another
+    // principal's id — which is how this spec failed in e2e-full shard 2 of run
+    // 45412075117 while the same code passed elsewhere.
+    const targetRow = picker.locator(`[data-principal-id="${target.principalId}"]`)
     await expect(targetRow.first()).toBeVisible({ timeout: 5000 })
+    await expect(targetRow.first()).toContainText(target.displayName)
 
-    // ---- Select the target via Enter --------------------------------------
-    // The picker has roving selection starting at index 0. For determinism,
-    // click the target row directly (avoids ordering surprises if the
-    // alphabetical first match isn't our target).
+    // ---- Select the target ------------------------------------------------
+    // Click the row directly rather than pressing Enter: the picker's roving
+    // selection starts at index 0, which need not be the target.
     await targetRow.first().click()
 
     // ---- Verify the in-editor chip ----------------------------------------
