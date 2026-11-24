@@ -209,7 +209,11 @@ const SWEEP_PAGES: { path: string; as: Actor }[] = [
     'ticket-statuses',
     'ticket-types',
   ].map((page) => ({ path: `/admin/settings/${page}`, as: 'admin' as const })),
-  ...['/roadmap', '/changelog', '/hc/en', '/support', '/notifications'].map((path) => ({
+  // /notifications is not here for the anonymous visitor: it is a visitor's own
+  // page, so it redirects to the portal home when nobody is signed in (and the
+  // sweep would then measure the redirect target). The signed-in entry below
+  // covers it.
+  ...['/roadmap', '/changelog', '/hc/en', '/support'].map((path) => ({
     path,
     as: 'anon' as const,
   })),
