@@ -423,7 +423,11 @@ async function createAuth() {
       // sign-ins and its 429s land on whichever test runs next. The e2e-full
       // job sets this to '1'; nothing else should, because it removes a real
       // protection (see docs/e2e-coverage.md).
-      enabled: process.env.DISABLE_AUTH_RATE_LIMIT !== '1',
+      //
+      // Left absent rather than set to `true` otherwise: the library enables
+      // its limiter by environment (production only), and pinning it on would
+      // also throttle the integration tests that register clients in a loop.
+      ...(process.env.DISABLE_AUTH_RATE_LIMIT === '1' ? { enabled: false } : {}),
       customStorage: workspaceRateLimitStorage,
       // Requesting a device code is unauthenticated and mints a row, so it gets
       // its own small budget per address. The rest of the device endpoints are
