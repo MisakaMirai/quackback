@@ -6,10 +6,18 @@ on:
   pull_request:
   schedule:
     - cron: '17 3 * * *'
+  # Run the whole suite (including the nightly-only e2e-full job) on demand
+  # instead of waiting for the cron when a change needs the slow gates now.
+  workflow_dispatch:
 
+# Scope the group by event so the nightly full-suite run never shares a group
+# with push runs on the same ref. Within an event, a new PR commit or a push to
+# a feature branch supersedes the in-flight run; a push to the long-lived
+# main/dev branches and the scheduled run finish instead, since nothing newer
+# will verify those commits and cancelling would drop their only signal.
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: ci-${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref_name != 'main' && github.ref_name != 'dev') }}
 
 permissions:
   contents: read
@@ -22,11 +30,19 @@ env:
 jobs:
   check:
     runs-on: ubuntu-latest
+    # The build is the slow part; a hung install, build, or typecheck must not
+    # silently consume the runner until the default multi-hour limit.
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
         with:
           bun-version: 1.4.0
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+          restore-keys: bun-${{ runner.os }}-
       - run: bun install --frozen-lockfile
       - name: Audit production dependencies
         run: bun scripts/audit-check.ts
@@ -45,9 +61,11 @@ jobs:
 
   # Four shards on four-core runners. The ~1,300-file suite was ~8–9 min of
   # wall clock on one job; splitting files is what makes the unit gate finish
-  # in a couple of minutes.
+  # in a couple of minutes. The matrix is the single source of the shard count:
+  # the job name and --shard both read strategy.job-total, so adding a shard
+  # touches only the list below.
   unit:
-    name: test (${{ matrix.shard }}/4)
+    name: test (${{ matrix.shard }}/${{ strategy.job-total }})
     runs-on: ubuntu-latest
     # Budget, not a target: a shard that doubles in wall clock fails here rather
     # than quietly slowing every PR. The suite is ~3-5 min per shard today.
@@ -87,13 +105,14 @@ jobs:
       - name: Check migration/schema drift
         if: matrix.shard == 1
         run: bun run db:check-drift
-      - run: bun run test --run --shard=${{ matrix.shard }}/4 --reporter=dot --reporter=github-actions
+      - run: bun run test --run --shard=${{ matrix.shard }}/${{ strategy.job-total }} --reporter=dot --reporter=github-actions
 
   # Single check name so existing "test" required-status wiring still matches.
   test:
     needs: unit
     if: always()
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: All unit shards passed
         run: test "${{ needs.unit.result }}" = "success"
@@ -114,8 +133,29 @@ jobs:
     env:
       SECRET_KEY: e2e-smoke-secret-key-for-ci-only-at-least-32-chars
       BASE_URL: http://acme.localhost:3000
+      # The curated PR gate: only specs known to pass in this job. `@smoke`
+      # marks more specs than run here (the conversation-flow and conversation
+      # image specs need richer setup and are not green in CI yet); add one here
+      # once it is. The gate lists files instead of relying on the tag alone
+      # because Playwright loads every discovered spec to evaluate --grep, and
+      # one unrelated load-time error would fail the gate.
+      SMOKE_SPECS: >-
+        tests/admin/inbox.spec.ts
+        tests/public/portal-support.spec.ts
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      # Playwright silently ignores an argument that matches no file, so a
+      # deleted or renamed spec narrows the gate while CI stays green (the
+      # workflows spec was dropped in 9fea133f7 and this list kept naming it).
+      # Fail loudly instead.
+      - name: Check smoke specs exist
+        run: |
+          for spec in $SMOKE_SPECS; do
+            test -f "apps/web/e2e/$spec" || {
+              echo "::error::smoke spec $spec is missing; update SMOKE_SPECS in .github/workflows/ci.yml"
+              exit 1
+            }
+          done
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
         with:
           bun-version: 1.4.0
@@ -124,6 +164,11 @@ jobs:
       # resolve it regardless of the runner's resolver.
       - name: Map acme.localhost to loopback
         run: echo "127.0.0.1 acme.localhost" | sudo tee -a /etc/hosts
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+          restore-keys: bun-${{ runner.os }}-
       - run: bun install --frozen-lockfile
       # The dev server loads env from the repo-root .env (bun --env-file) and
       # the e2e db-helpers spawn scripts through `dotenv -e ../../.env`, so
@@ -139,12 +184,15 @@ jobs:
       - run: bun run db:seed
       # bunx re-resolves playwright from the registry and can hang for the
       # whole job timeout. Drive the workspace binary. Cache browsers so a
-      # later run skips the CDN fetch. System deps (--with-deps / apt) are
-      # best-effort: a stalled apt mirror must not fail the job.
+      # later run skips the CDN fetch; restore-keys reuses the newest browser
+      # cache after a lockfile change and the install step only fills in the
+      # revision the new Playwright version needs. System deps (--with-deps /
+      # apt) are best-effort: a stalled apt mirror must not fail the job.
       - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+          restore-keys: playwright-${{ runner.os }}-
       - name: Install Playwright Chromium
         timeout-minutes: 8
         working-directory: apps/web
@@ -175,13 +223,11 @@ jobs:
             cat /tmp/quackback-e2e.log
             exit 1
           fi
-          # Explicit spec files (not just the tag) so an unrelated spec with a
-          # load-time error can't take the smoke gate down; the setup project
-          # (admin auth) still runs as a project dependency, unfiltered.
-          if ! (cd apps/web && ./node_modules/.bin/playwright test \
-            tests/admin/inbox.spec.ts \
-            tests/admin/workflows.spec.ts \
-            tests/public/portal-support.spec.ts \
+          # SMOKE_SPECS is the explicit file list (not just the tag) so an
+          # unrelated spec with a load-time error can't take the smoke gate
+          # down; the setup project (admin auth) still runs as a project
+          # dependency, unfiltered.
+          if ! (cd apps/web && ./node_modules/.bin/playwright test $SMOKE_SPECS \
             --grep "@smoke"); then
             echo '===== server log (playwright failed) ====='
             cat /tmp/quackback-e2e.log
@@ -229,6 +275,7 @@ jobs:
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+          restore-keys: playwright-${{ runner.os }}-
       - name: Install Playwright Chromium
         timeout-minutes: 8
         working-directory: apps/web
@@ -275,6 +322,11 @@ jobs:
           bun-version: 1.4.0
       - name: Map workspace hostname to loopback
         run: echo "127.0.0.1 acme.localhost" | sudo tee -a /etc/hosts
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+          restore-keys: bun-${{ runner.os }}-
       - run: bun install --frozen-lockfile
       - run: bun run db:migrate
       - run: bun run db:seed
@@ -309,7 +361,10 @@ jobs:
             cat /tmp/quackback-live-api.log
             exit 1
           fi
-          if ! (cd apps/web && bunx vitest run --config vitest.config.ts \
+          # Drive the workspace binary, as the @smoke job does with Playwright:
+          # `bunx` re-resolves from the registry and can hang for the whole job
+          # timeout when the registry is slow.
+          if ! (cd apps/web && ../../node_modules/.bin/vitest run --config vitest.config.ts \
             src/lib/server/domains/api/__tests__/api-integration.test.ts); then
             echo '===== server log (vitest failed) ====='
             cat /tmp/quackback-live-api.log
@@ -318,9 +373,21 @@ jobs:
           fi
 
   e2e-full:
-    if: github.event_name == 'schedule'
+    # The whole Playwright suite is too slow for every PR: run it nightly, or on
+    # an explicit workflow_dispatch when a change needs it before the cron fires.
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    # The suite did not fit the old single-job 60-minute budget at one worker
+    # (run 44897107294 was cancelled at 60:00 on 2026-11-21). Shard it four ways:
+    # playwright.config pins workers to 1 *per shard*, and each shard gets its
+    # own Postgres service and dev server, so this is the parallelism that config
+    # already anticipates — it does not trade test isolation for speed.
+    name: e2e-full (${{ matrix.shard }}/${{ strategy.job-total }})
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
     services:
       postgres:
         image: pgvector/pgvector:pg17
@@ -340,6 +407,11 @@ jobs:
           bun-version: 1.4.0
       - name: Map acme.localhost to loopback
         run: echo "127.0.0.1 acme.localhost" | sudo tee -a /etc/hosts
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+          restore-keys: bun-${{ runner.os }}-
       - run: bun install --frozen-lockfile
       - name: Write .env for the dev server and e2e scripts
         run: |
@@ -354,6 +426,7 @@ jobs:
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+          restore-keys: playwright-${{ runner.os }}-
       - name: Install Playwright Chromium
         timeout-minutes: 8
         working-directory: apps/web
@@ -362,5 +435,9 @@ jobs:
           if ! timeout 90 ./node_modules/.bin/playwright install-deps chromium; then
             echo '::warning::playwright install-deps timed out or failed; continuing with browser-only install'
           fi
-      - run: ./node_modules/.bin/playwright test
+      # Print results instead of collecting report artifacts: the list reporter
+      # writes one line per test, each test's stdout/stderr as it runs, and the
+      # full failure output (with retries) at the end — all in the job log, where
+      # a failed nightly shard can be read without downloading anything.
+      - run: ./node_modules/.bin/playwright test --shard=${{ matrix.shard }}/${{ strategy.job-total }} --reporter=list
         working-directory: apps/web
