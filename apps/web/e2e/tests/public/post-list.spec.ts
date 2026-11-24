@@ -1,4 +1,5 @@
-import { test, expect } from '@playwright/test'
+import { waitForNetworkIdle } from '../../utils/helpers'
+import { test, expect, type Page } from '@playwright/test'
 
 test.describe('Public Post List', () => {
   test.beforeEach(async ({ page }) => {
@@ -34,7 +35,7 @@ test.describe('Public Post List', () => {
 
   test('can filter by board using sidebar', async ({ page }) => {
     // Wait for page to load
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     // Look for board filter buttons in sidebar
     const boardButtons = page.locator('aside button').filter({ hasText: /feature|bug|general/i })
@@ -51,7 +52,7 @@ test.describe('Public Post List', () => {
 
   test('can search for posts', async ({ page }) => {
     // Look for search input
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
     const searchInput = page.getByPlaceholder(/search/i)
 
     if ((await searchInput.count()) > 0) {
@@ -66,7 +67,7 @@ test.describe('Public Post List', () => {
   test('defaults to Trending sort with visual indicator', async ({ page }) => {
     // Navigate to page without sort param
     await page.goto('/')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     // "Trending" button should be active (has font-medium class)
     const trendingButton = page.getByRole('button', { name: /^Trending$/i })
@@ -81,7 +82,7 @@ test.describe('Public Post List', () => {
 
   test('can sort posts by clicking New', async ({ page }) => {
     await page.goto('/')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     // Click "New" sort option
     const newButton = page.getByRole('button', { name: /^New$/i })
@@ -100,7 +101,7 @@ test.describe('Public Post List', () => {
 
   test('can sort posts by clicking Trending', async ({ page }) => {
     await page.goto('/')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     // Click "Trending" sort option
     const trendingButton = page.getByRole('button', { name: /^Trending$/i })
@@ -116,7 +117,7 @@ test.describe('Public Post List', () => {
   test('navigating with sort param in URL shows correct active state', async ({ page }) => {
     // Navigate directly with sort=new
     await page.goto('/?sort=new')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     // "New" should be active
     const newButton = page.getByRole('button', { name: /^New$/i })
@@ -129,7 +130,7 @@ test.describe('Public Post List', () => {
 
   test('can switch between all sort options', async ({ page }) => {
     await page.goto('/')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     const topButton = page.getByRole('button', { name: /^Top$/i })
     const newButton = page.getByRole('button', { name: /^New$/i })
@@ -162,7 +163,7 @@ test.describe('Public Post List', () => {
     await page.goto('/?board=features&sort=new')
 
     // Wait for page to be ready
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     // Skip if the features board has no posts in this environment
     const postCards = page.locator('[data-post-id]')
@@ -208,7 +209,7 @@ test.describe('Public Post List', () => {
 
   test('displays post status badges', async ({ page }) => {
     // Wait for posts to load
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     // Look for status badges (they have specific styling)
     const statusBadges = page.locator('[class*="badge"]')
@@ -224,7 +225,7 @@ test.describe('Public Post List', () => {
     await page.goto('/?board=features')
 
     // Wait for page to be ready
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     // Skip if the features board has no posts in this environment
     const postCards = page.locator('[data-post-id]')
@@ -249,7 +250,7 @@ test.describe('Public Post List', () => {
   test('can view all posts after filtering by board', async ({ page }) => {
     // Start with a board filter applied (using 'features' board which exists in database)
     await page.goto('/?board=features')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     // Verify we're filtered
     await expect(page).toHaveURL(/[?&]board=features/)
@@ -263,7 +264,7 @@ test.describe('Public Post List', () => {
 
     // Navigate fresh to verify the state renders correctly
     await page.goto('/')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     // "All boards" should now be selected
     await expect(
@@ -274,7 +275,7 @@ test.describe('Public Post List', () => {
   test('filtered board posts link to correct board routes', async ({ page }) => {
     // Navigate to features board
     await page.goto('/?board=features')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     // Get all post links
     const postLinks = page.locator('a[href*="/posts/"]')
@@ -293,7 +294,7 @@ test.describe('Public Post List', () => {
   test('switching boards updates displayed posts', async ({ page }) => {
     // Start with features board
     await page.goto('/?board=features')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     // Get initial post hrefs (all should be /features/posts/...)
     const initialLinks = page.locator('a[href*="/posts/"]')
@@ -311,7 +312,7 @@ test.describe('Public Post List', () => {
 
       // URL should update
       await expect(page).toHaveURL(/[?&]board=bugs/)
-      await page.waitForLoadState('networkidle')
+      await waitForNetworkIdle(page)
 
       // Wait for posts to refresh - should now link to /bugs/posts/...
       // Use a locator that specifically looks for bugs board posts
@@ -323,138 +324,115 @@ test.describe('Public Post List', () => {
     }
   })
 
-  test.describe('Filter Dropdown', () => {
-    test('filter button opens dropdown', async ({ page }) => {
+  // The feed's "Filter" popover is gone: the same filters live in a permanent
+  // panel (sidebar on wide screens, a "Filters" sheet on phones), applied
+  // filters show as chips above the feed, and "Clear all" appears with 2 chips.
+  test.describe('Filter panel and chips', () => {
+    const statusGroup = (page: Page) => page.getByRole('group', { name: 'Status', exact: true })
+    const tagGroup = (page: Page) => page.getByRole('group', { name: 'Tags' })
+    const activeFilters = (page: Page) => page.getByRole('region', { name: 'Active filters' })
+    /** The filter panel's result total, rendered as an accessible status line. */
+    const resultTotal = async (page: Page): Promise<number> => {
+      const text = await page.locator('p[role="status"]').innerText()
+      return Number(text.match(/\d[\d,]*/)?.[0].replace(/,/g, '') ?? '0')
+    }
+
+    test('filter panel is in the sidebar with its filter sections', async ({ page }) => {
       await page.goto('/')
-      await page.waitForLoadState('networkidle')
+      await waitForNetworkIdle(page)
 
-      // Click the filter button
-      const filterButton = page.getByRole('button', { name: /Filter/i })
-      await expect(filterButton).toBeVisible()
-      await filterButton.click()
+      // There is no popover to open any more — the sections are always on the
+      // page, beside the feed.
+      await expect(page.getByRole('group', { name: 'Boards' })).toBeVisible()
+      await expect(statusGroup(page)).toBeVisible()
+      await expect(tagGroup(page)).toBeVisible()
 
-      // Dropdown should be visible with "Filters" header
-      await expect(page.getByText('Filters', { exact: true })).toBeVisible()
+      // The less common filters still unfold behind "More filters".
+      const moreFilters = page.getByRole('button', { name: /^more filters$/i })
+      await expect(moreFilters).toHaveAttribute('aria-expanded', 'false')
+      await moreFilters.click()
+      await expect(moreFilters).toHaveAttribute('aria-expanded', 'true')
+      await expect(page.getByRole('group', { name: 'Vote count' })).toBeVisible()
     })
 
-    test('filter dropdown shows status options', async ({ page }) => {
+    test('filter panel shows the status options as toggle pills', async ({ page }) => {
       await page.goto('/')
-      await page.waitForLoadState('networkidle')
+      await waitForNetworkIdle(page)
 
-      // Open filter dropdown
-      const filterButton = page.getByRole('button', { name: /Filter/i })
-      await filterButton.click()
-
-      // Status section is only rendered when statuses exist in seed data
-      test.skip(
-        (await page.getByText('Status', { exact: true }).count()) === 0,
-        'No status options available in filter dropdown'
+      const status = statusGroup(page)
+      // Each seed status is a toggle pill; its accessible name also carries the
+      // post count, and none is lit until the visitor picks one.
+      for (const name of ['Open', 'Under Review', 'Planned', 'In Progress', 'Complete', 'Closed']) {
+        await expect(status.getByRole('button', { name: new RegExp(`^${name}`) })).toBeVisible()
+      }
+      await expect(status.getByRole('button', { name: /^Open/ })).toHaveAttribute(
+        'aria-pressed',
+        'false'
       )
-
-      // Status section should be visible
-      await expect(page.getByText('Status', { exact: true })).toBeVisible()
-
-      // Should show status checkboxes (at least one status option)
-      const statusCheckbox = page.locator('button[role="checkbox"]').first()
-      await expect(statusCheckbox).toBeVisible()
     })
 
     test('can select status filter', async ({ page }) => {
       await page.goto('/')
-      await page.waitForLoadState('networkidle')
+      await waitForNetworkIdle(page)
 
-      // Open filter dropdown
-      const filterButton = page.getByRole('button', { name: /Filter/i })
-      await filterButton.click()
+      const complete = statusGroup(page).getByRole('button', { name: /^Complete/ })
+      await complete.click()
 
-      // Status section is only rendered when statuses exist in seed data
-      test.skip(
-        (await page.getByText('Status', { exact: true }).count()) === 0,
-        'No status options available in filter dropdown'
-      )
-
-      // Wait for dropdown content to be visible
-      await expect(page.getByText('Status', { exact: true })).toBeVisible()
-
-      // Click the first status checkbox
-      const statusCheckbox = page.locator('button[role="checkbox"]').first()
-      await statusCheckbox.click()
-
-      // URL should update with status parameter
+      // URL carries the status slug, and the pill lights up.
       await expect(page).toHaveURL(/[?&]status=/, { timeout: 5000 })
+      await expect(complete).toHaveAttribute('aria-pressed', 'true')
+      await expect(activeFilters(page)).toContainText('Status:')
     })
 
-    test('filter badge shows count when filters active', async ({ page }) => {
+    test('filter button shows the active filter count (phone)', async ({ page }) => {
+      // The numeric badge now lives on the phone's "Filters" sheet trigger; on
+      // wide screens the chips above the feed state the same thing.
+      await page.setViewportSize({ width: 390, height: 844 })
       await page.goto('/')
-      await page.waitForLoadState('networkidle')
+      await waitForNetworkIdle(page)
 
-      // Open filter dropdown and select a status
-      const filterButton = page.getByRole('button', { name: /Filter/i })
-      await filterButton.click()
+      await page.getByRole('button', { name: /^Filters$/ }).click()
+      const sheet = page.getByRole('dialog', { name: 'Filters' })
+      await sheet
+        .getByRole('group', { name: 'Status', exact: true })
+        .getByRole('button', { name: /^Complete/ })
+        .click()
+      await page.getByRole('button', { name: 'Done' }).click()
 
-      // Status section is only rendered when statuses exist in seed data
-      test.skip(
-        (await page.getByText('Status', { exact: true }).count()) === 0,
-        'No status options available in filter dropdown'
-      )
-
-      // Wait for dropdown and click first status checkbox
-      await expect(page.getByText('Status', { exact: true })).toBeVisible()
-      const statusCheckbox = page.locator('button[role="checkbox"]').first()
-      await statusCheckbox.click()
-
-      // Wait for URL to update (filter applied)
-      await expect(page).toHaveURL(/[?&]status=/, { timeout: 5000 })
-
-      // Filter button should show badge with count (look for the badge element)
-      const badge = page.locator('span.rounded-full.bg-primary')
-      await expect(badge).toBeVisible()
-      await expect(badge).toHaveText('1')
+      // The trigger names the one filter that is on.
+      await expect(page.getByRole('button', { name: /^Filters, 1 on$/ })).toBeVisible()
     })
 
     test('can clear all filters', async ({ page }) => {
-      // Navigate with a status filter already applied
-      // TanStack Router encodes arrays as JSON, so ["open"] → %5B%22open%22%5D
-      await page.goto('/?status=%5B%22open%22%5D')
-      await page.waitForLoadState('networkidle')
+      await page.goto('/')
+      await waitForNetworkIdle(page)
 
-      // Skip if this caused an error (status param format may not be supported)
-      test.skip(
-        (await page.getByText('Something went wrong').count()) > 0,
-        'Status URL param format caused an error'
-      )
+      // Two different filters are needed before "Clear all" is offered.
+      await statusGroup(page)
+        .getByRole('button', { name: /^Complete/ })
+        .click()
+      await expect(page).toHaveURL(/[?&]status=/, { timeout: 5000 })
+      await tagGroup(page).getByRole('button', { name: /^API$/ }).click()
+      await expect(page).toHaveURL(/[?&]tagIds=/, { timeout: 5000 })
 
-      // Open filter dropdown
-      const filterButton = page.getByRole('button', { name: /Filter/i })
-      await filterButton.click()
-
-      // Click "Clear all" button
-      const clearButton = page.getByRole('button', { name: /Clear all/i })
+      const clearButton = page.getByRole('button', { name: /^clear all$/i })
       await expect(clearButton).toBeVisible()
       await clearButton.click()
 
-      // URL should no longer have status parameter
+      // URL should no longer have either filter parameter.
       await expect(page).not.toHaveURL(/[?&]status=/, { timeout: 5000 })
+      await expect(page).not.toHaveURL(/[?&]tagIds=/)
+      await expect(activeFilters(page)).toHaveCount(0)
     })
 
     test('status filter persists with other filters', async ({ page }) => {
       // Navigate with board and sort filters (using 'features' board which exists in database)
       await page.goto('/?board=features&sort=new')
-      await page.waitForLoadState('networkidle')
+      await waitForNetworkIdle(page)
 
-      // Open filter dropdown and select a status
-      const filterButton = page.getByRole('button', { name: /Filter/i })
-      await filterButton.click()
-
-      // Status section is only rendered when statuses exist in seed data
-      test.skip(
-        (await page.getByText('Status', { exact: true }).count()) === 0,
-        'No status options available in filter dropdown'
-      )
-
-      await expect(page.getByText('Status', { exact: true })).toBeVisible()
-      const statusCheckbox = page.locator('button[role="checkbox"]').first()
-      await statusCheckbox.click()
+      await statusGroup(page)
+        .getByRole('button', { name: /^Complete/ })
+        .click()
 
       // URL should have all three filters
       await expect(page).toHaveURL(/board=features/)
@@ -464,280 +442,169 @@ test.describe('Public Post List', () => {
 
     test('can toggle status filter on and off', async ({ page }) => {
       await page.goto('/')
-      await page.waitForLoadState('networkidle')
+      await waitForNetworkIdle(page)
 
-      // Open filter dropdown
-      const filterButton = page.getByRole('button', { name: /Filter/i })
-      await filterButton.click()
-
-      // Status section is only rendered when statuses exist in seed data
-      test.skip(
-        (await page.getByText('Status', { exact: true }).count()) === 0,
-        'No status options available in filter dropdown'
-      )
-
-      // Select status
-      await expect(page.getByText('Status', { exact: true })).toBeVisible()
-      const statusCheckbox = page.locator('button[role="checkbox"]').first()
-      await statusCheckbox.click()
-
-      // Verify filter is applied
+      const complete = statusGroup(page).getByRole('button', { name: /^Complete/ })
+      await complete.click()
       await expect(page).toHaveURL(/[?&]status=/, { timeout: 5000 })
 
-      // Click again to deselect
-      await statusCheckbox.click()
-
-      // Filter should be removed
+      // Clicking the lit pill again clears the filter.
+      await complete.click()
       await expect(page).not.toHaveURL(/[?&]status=/, { timeout: 5000 })
+      await expect(complete).toHaveAttribute('aria-pressed', 'false')
     })
 
     test('can select multiple status filters', async ({ page }) => {
       await page.goto('/')
-      await page.waitForLoadState('networkidle')
+      await waitForNetworkIdle(page)
 
-      // Open filter dropdown
-      const filterButton = page.getByRole('button', { name: /Filter/i })
-      await filterButton.click()
+      const status = statusGroup(page)
+      const open = status.getByRole('button', { name: /^Open/ })
+      const complete = status.getByRole('button', { name: /^Complete/ })
 
-      // Status section is only rendered when statuses exist in seed data
-      test.skip(
-        (await page.getByText('Status', { exact: true }).count()) === 0,
-        'No status options available in filter dropdown'
-      )
+      await open.click()
+      await expect(page).toHaveURL(/[?&]status=/, { timeout: 5000 })
+      await complete.click()
 
-      await expect(page.getByText('Status', { exact: true })).toBeVisible()
+      // Both pills stay lit, and the single status chip names both picks.
+      await expect(open).toHaveAttribute('aria-pressed', 'true')
+      await expect(complete).toHaveAttribute('aria-pressed', 'true')
+      await expect(activeFilters(page).getByText('Status:')).toHaveCount(1)
+      await expect(activeFilters(page)).toContainText('Open and Complete')
 
-      // Get all status checkboxes
-      const statusCheckboxes = page.locator('button[role="checkbox"]')
-      const checkboxCount = await statusCheckboxes.count()
-
-      // If we have at least 2 statuses, select multiple
-      if (checkboxCount >= 2) {
-        await statusCheckboxes.nth(0).click()
-        await expect(page).toHaveURL(/[?&]status=/, { timeout: 5000 })
-
-        await statusCheckboxes.nth(1).click()
-        // Wait for URL to update with second status
-        await page.waitForTimeout(500)
-
-        // TanStack Router encodes arrays as JSON: status=["open","planned"] → URL-encoded
-        // The badge count is the reliable indicator of multiple filters being active
-        const badge = page.locator('span.rounded-full.bg-primary')
-        await expect(badge).toHaveText('2')
-
-        // Also verify the URL has a status param (regardless of encoding)
-        await expect(page).toHaveURL(/[?&]status=/)
-      }
+      // TanStack Router encodes the array as JSON — both slugs are in the URL.
+      await expect(page).toHaveURL(/open/, { timeout: 5000 })
+      await expect(page).toHaveURL(/complete/)
     })
 
-    test('filter dropdown shows tags section if tags exist', async ({ page }) => {
+    test('filter panel shows a tags section when tags exist', async ({ page }) => {
       await page.goto('/')
-      await page.waitForLoadState('networkidle')
+      await waitForNetworkIdle(page)
 
-      // Open filter dropdown
-      const filterButton = page.getByRole('button', { name: /Filter/i })
-      await filterButton.click()
-
-      // Wait for dropdown content
-      await expect(page.getByText('Filters', { exact: true })).toBeVisible()
-
-      // Tags section may or may not be visible depending on if org has tags
-      // We just verify the dropdown opened successfully
-      const tagsSection = page.getByText('Tags', { exact: true })
-      // This test just confirms the filter dropdown works, tags are optional
-      expect(await tagsSection.count()).toBeGreaterThanOrEqual(0)
+      // Seed tags are offered as toggle pills in the panel's Tags section.
+      const tags = tagGroup(page)
+      await expect(tags).toBeVisible()
+      await expect(tags.getByRole('button', { name: /^API$/ })).toBeVisible()
+      await expect(tags.getByRole('button', { name: /^UX$/ })).toBeVisible()
+      await expect(tags.getByRole('button', { name: /^API$/ })).toHaveAttribute(
+        'aria-pressed',
+        'false'
+      )
     })
 
     test('navigating with status param shows correct checked state', async ({ page }) => {
       // Navigate with status filter in URL
       // TanStack Router encodes arrays as JSON: ["open"] → %5B%22open%22%5D
       await page.goto('/?status=%5B%22open%22%5D')
-      await page.waitForLoadState('networkidle')
+      await waitForNetworkIdle(page)
 
-      // Skip if navigation caused an error
-      test.skip(
-        (await page.getByText('Something went wrong').count()) > 0,
-        'Status URL param format caused an error'
+      // The "Open" pill is lit, the others are not.
+      const status = statusGroup(page)
+      await expect(status.getByRole('button', { name: /^Open/ })).toHaveAttribute(
+        'aria-pressed',
+        'true',
+        { timeout: 10000 }
+      )
+      await expect(status.getByRole('button', { name: /^Complete/ })).toHaveAttribute(
+        'aria-pressed',
+        'false'
       )
 
-      // Open filter dropdown
-      const filterButton = page.getByRole('button', { name: /Filter/i })
-
-      // Badge should show 1 (one filter active)
-      const badge = page.locator('span.rounded-full.bg-primary')
-      await expect(badge).toBeVisible()
-      await expect(badge).toHaveText('1')
-
-      await filterButton.click()
-
-      // The checkbox for "open" status should be checked
-      const openCheckbox = page.locator('[role="checkbox"][data-checked]')
-      await expect(openCheckbox.first()).toBeVisible()
+      // The active filter is stated above the feed.
+      await expect(activeFilters(page)).toContainText('Status:')
+      await expect(activeFilters(page)).toContainText('Open')
     })
 
     test('can select tag filter when tags exist', async ({ page }) => {
       await page.goto('/')
-      await page.waitForLoadState('networkidle')
+      await waitForNetworkIdle(page)
 
-      // Open filter dropdown
-      const filterButton = page.getByRole('button', { name: /Filter/i })
-      await filterButton.click()
+      await tagGroup(page).getByRole('button', { name: /^API$/ }).click()
 
-      // Wait for dropdown
-      await expect(page.getByText('Filters', { exact: true })).toBeVisible()
-
-      // Look for tags section
-      const tagsSection = page.getByText('Tags', { exact: true })
-      if ((await tagsSection.count()) > 0) {
-        // Find tag buttons (they are styled buttons, not checkboxes)
-        const tagButtons = page
-          .locator('[class*="rounded-full"][class*="text-xs"]')
-          .filter({ hasNotText: /^\d+$/ })
-        const tagCount = await tagButtons.count()
-
-        if (tagCount > 0) {
-          // Click the first tag
-          await tagButtons.first().click()
-
-          // URL should update with tagIds parameter
-          await expect(page).toHaveURL(/[?&]tagIds=/, { timeout: 5000 })
-        }
-      }
+      // URL should update with tagIds parameter
+      await expect(page).toHaveURL(/[?&]tagIds=/, { timeout: 5000 })
+      await expect(activeFilters(page)).toContainText('Tag:')
     })
 
-    test('tag selection updates badge count', async ({ page }) => {
+    test('tag selection adds a chip alongside the status chip', async ({ page }) => {
       await page.goto('/')
-      await page.waitForLoadState('networkidle')
+      await waitForNetworkIdle(page)
 
-      // Open filter dropdown
-      const filterButton = page.getByRole('button', { name: /Filter/i })
-      await filterButton.click()
+      // Select a tag → one chip.
+      await tagGroup(page).getByRole('button', { name: /^API$/ }).click()
+      await expect(page).toHaveURL(/[?&]tagIds=/, { timeout: 5000 })
+      await expect(activeFilters(page).getByText('Tag:')).toBeVisible()
 
-      await expect(page.getByText('Filters', { exact: true })).toBeVisible()
-
-      // Check if tags exist
-      const tagsSection = page.getByText('Tags', { exact: true })
-      if ((await tagsSection.count()) > 0) {
-        const tagButtons = page
-          .locator('[class*="rounded-full"][class*="text-xs"]')
-          .filter({ hasNotText: /^\d+$/ })
-        const tagCount = await tagButtons.count()
-
-        if (tagCount > 0) {
-          // Select a tag
-          await tagButtons.first().click()
-          await expect(page).toHaveURL(/[?&]tagIds=/, { timeout: 5000 })
-
-          // Badge should show 1
-          const badge = page.locator('span.rounded-full.bg-primary')
-          await expect(badge).toHaveText('1')
-
-          // Select a status too
-          const statusCheckbox = page.locator('button[role="checkbox"]').first()
-          await statusCheckbox.click()
-
-          // Badge should now show 2
-          await expect(badge).toHaveText('2')
-        }
-      }
+      // Select a status too → a second chip: one per filter group, which is
+      // what the old numeric badge counted.
+      await statusGroup(page)
+        .getByRole('button', { name: /^Complete/ })
+        .click()
+      await expect(page).toHaveURL(/[?&]status=/, { timeout: 5000 })
+      await expect(activeFilters(page).getByText('Tag:')).toBeVisible()
+      await expect(activeFilters(page).getByText('Status:')).toBeVisible()
     })
 
     test('combined status and tag filtering updates URL correctly', async ({ page }) => {
       await page.goto('/')
-      await page.waitForLoadState('networkidle')
+      await waitForNetworkIdle(page)
 
-      const filterButton = page.getByRole('button', { name: /Filter/i })
-      await filterButton.click()
-
-      // Status section is only rendered when statuses exist in seed data
-      test.skip(
-        (await page.getByText('Status', { exact: true }).count()) === 0,
-        'No status options available in filter dropdown'
-      )
-
-      await expect(page.getByText('Status', { exact: true })).toBeVisible()
-
-      // Select a status
-      const statusCheckbox = page.locator('button[role="checkbox"]').first()
-      await statusCheckbox.click()
+      await statusGroup(page)
+        .getByRole('button', { name: /^Complete/ })
+        .click()
       await expect(page).toHaveURL(/[?&]status=/, { timeout: 5000 })
-      // Wait for React to re-render setFilters with the updated status before clicking tags
-      await page.waitForTimeout(300)
+      // Let the first filter land before picking the next one.
+      await waitForNetworkIdle(page)
 
-      // Check if tags exist and select one
-      const tagsSection = page.getByText('Tags', { exact: true })
-      if ((await tagsSection.count()) > 0) {
-        const tagButtons = page
-          .locator('[class*="rounded-full"][class*="text-xs"]')
-          .filter({ hasNotText: /^\d+$/ })
-        if ((await tagButtons.count()) > 0) {
-          await tagButtons.first().click()
+      await tagGroup(page).getByRole('button', { name: /^API$/ }).click()
 
-          // URL should have both status and tagIds
-          await expect(page).toHaveURL(/status=/)
-          await expect(page).toHaveURL(/tagIds=/, { timeout: 5000 })
-        }
-      }
+      // URL should have both status and tagIds
+      await expect(page).toHaveURL(/status=/)
+      await expect(page).toHaveURL(/tagIds=/, { timeout: 5000 })
     })
 
     test('clearing filters removes both status and tag params', async ({ page }) => {
-      // Navigate with a status filter via the UI to avoid URL format issues
+      // Apply both filters through the panel, then clear them together.
       await page.goto('/')
-      await page.waitForLoadState('networkidle')
+      await waitForNetworkIdle(page)
 
-      const filterButton = page.getByRole('button', { name: /Filter/i })
-      await filterButton.click()
-
-      // Status section is only rendered when statuses exist in seed data
-      test.skip(
-        (await page.getByText('Status', { exact: true }).count()) === 0,
-        'No status options available in filter dropdown'
-      )
-
-      // Select a status to add it to URL
-      const statusCheckbox = page.locator('button[role="checkbox"]').first()
-      await statusCheckbox.click()
+      await statusGroup(page)
+        .getByRole('button', { name: /^Complete/ })
+        .click()
       await expect(page).toHaveURL(/[?&]status=/, { timeout: 5000 })
+      await tagGroup(page).getByRole('button', { name: /^API$/ }).click()
+      await expect(page).toHaveURL(/[?&]tagIds=/, { timeout: 5000 })
 
-      // Click clear all
-      const clearButton = page.getByRole('button', { name: /Clear all/i })
-      if ((await clearButton.count()) > 0) {
-        await clearButton.click()
+      await page.getByRole('button', { name: /^clear all$/i }).click()
 
-        // Both params should be removed
-        await expect(page).not.toHaveURL(/status=/, { timeout: 5000 })
-        await expect(page).not.toHaveURL(/tagIds=/)
-      }
+      // Both params should be removed
+      await expect(page).not.toHaveURL(/status=/, { timeout: 5000 })
+      await expect(page).not.toHaveURL(/tagIds=/)
     })
 
     test('filter state persists on page reload', async ({ page }) => {
       await page.goto('/')
-      await page.waitForLoadState('networkidle')
+      await waitForNetworkIdle(page)
 
-      // Toggle a status in the filter panel
-      await page.waitForLoadState('networkidle')
-      const statusCheckbox = page
-        .getByRole('group', { name: 'Status' })
-        .getByRole('checkbox')
-        .first()
-      await statusCheckbox.click()
-
-      // Wait for URL to update
+      await statusGroup(page)
+        .getByRole('button', { name: /^Complete/ })
+        .click()
       await expect(page).toHaveURL(/[?&]status=/, { timeout: 5000 })
 
-      // Get the current URL
       const urlBeforeReload = page.url()
 
-      // Reload the page
       await page.reload()
-      await page.waitForLoadState('networkidle')
+      await waitForNetworkIdle(page)
 
       // URL should still have the status parameter
       expect(page.url()).toBe(urlBeforeReload)
 
-      // Badge should still show filter is active
-      const badge = page.locator('span.rounded-full.bg-primary')
-      await expect(badge).toBeVisible()
+      // The pill stays lit and the chip is still shown.
+      await expect(statusGroup(page).getByRole('button', { name: /^Complete/ })).toHaveAttribute(
+        'aria-pressed',
+        'true'
+      )
+      await expect(activeFilters(page)).toContainText('Status:')
     })
 
     test('status filter triggers post list refresh', async ({ page }) => {
@@ -747,145 +614,78 @@ test.describe('Public Post List', () => {
       const postCards = page.locator('[data-post-id]')
       await expect(postCards.first()).toBeVisible({ timeout: 15000 })
 
-      // Toggle a status in the filter panel
-      await page.waitForLoadState('networkidle')
-      const statusCheckbox = page
-        .getByRole('group', { name: 'Status' })
-        .getByRole('checkbox')
-        .first()
-      await statusCheckbox.click()
+      await statusGroup(page)
+        .getByRole('button', { name: /^Complete/ })
+        .click()
 
       // Wait for URL to update (indicates filter applied)
       await expect(page).toHaveURL(/[?&]status=/, { timeout: 5000 })
 
-      // Wait for potential loading state to complete
-      await page.waitForLoadState('networkidle')
-      await page.waitForTimeout(500)
-
-      // Post list should have been refreshed - check that the page is in a valid state
-      // Either posts are shown or an empty state is displayed
-      const filteredPostCards = page.locator('[data-post-id]')
-      const emptyState = page
-        .locator('[class*="empty"]')
-        .or(page.getByText(/no posts/i))
-        .or(page.getByText(/nothing here/i))
-
-      const hasFilteredPosts = (await filteredPostCards.count()) > 0
-      const hasEmptyState = (await emptyState.count()) > 0
-
-      // The filter was applied (URL changed), so the page should show either posts or empty state
-      // If neither, the filter still worked - we just verified URL changed
-      expect(hasFilteredPosts || hasEmptyState || page.url().includes('status=')).toBe(true)
+      // The refreshed feed holds only the picked status (Complete has posts in
+      // the seed data), so every card names it.
+      await expect
+        .poll(
+          async () => {
+            const cards = await postCards.count()
+            if (cards === 0) return 1 // an empty result is still a refresh
+            const texts = await postCards.allInnerTexts()
+            return texts.every((text) => text.includes('Complete')) ? 1 : 0
+          },
+          { timeout: 10000 }
+        )
+        .toBe(1)
     })
 
     test('shows empty state when filters match no posts', async ({ page }) => {
-      // Apply a status filter via the UI to avoid URL encoding issues
-      await page.goto('/')
-      await page.waitForLoadState('networkidle')
+      // A vote threshold no post reaches leaves the feed empty through a filter,
+      // without depending on which status/tag combinations the seed data has.
+      await page.goto('/?minVotes=100000')
+      await waitForNetworkIdle(page)
 
-      const filterButton = page.getByRole('button', { name: /Filter/i })
-      await filterButton.click()
+      await expect(page.getByText('No posts match your filters.')).toBeVisible({ timeout: 10000 })
+      await expect(page.locator('[data-post-id]')).toHaveCount(0)
 
-      // Status section is only rendered when statuses exist in seed data
-      test.skip(
-        (await page.getByText('Status', { exact: true }).count()) === 0,
-        'No status options available in filter dropdown'
-      )
-
-      // Close the dropdown and check the page state with an applied filter
-      await page.keyboard.press('Escape')
-
-      // The page should show either posts or an empty state message (not an error page)
-      const postCards = page.locator('[data-post-id]')
-      const noPostsMessage = page.getByText(/No posts match/)
-      const errorPage = page.getByText('Something went wrong')
-
-      // Give time for the filter to apply
-      await page.waitForTimeout(500)
-
-      // Ensure no error page
-      expect(await errorPage.count()).toBe(0)
-
-      // The page should show something valid
-      const hasVisiblePosts = (await postCards.count()) > 0
-      const hasEmptyMessage = (await noPostsMessage.count()) > 0
-      expect(hasVisiblePosts || hasEmptyMessage).toBe(true)
+      // The page should not show an error state
+      expect(await page.getByText('Something went wrong').count()).toBe(0)
     })
 
-    test('filter dropdown closes when clicking outside', async ({ page }) => {
-      await page.goto('/')
-      await page.waitForLoadState('networkidle')
+    test('filter chip editor closes when clicking outside', async ({ page }) => {
+      await page.goto('/?status=%5B%22open%22%5D')
+      await waitForNetworkIdle(page)
 
-      // Open filter dropdown
-      const filterButton = page.getByRole('button', { name: /Filter/i })
-      await filterButton.click()
+      // The chip above the feed opens the pills for that filter.
+      await activeFilters(page)
+        .getByRole('button', { name: /^Status:/ })
+        .click()
+      const editor = page.getByRole('dialog', { name: 'Status' })
+      await expect(editor).toBeVisible()
 
-      // Verify dropdown is open
-      await expect(page.getByText('Filters', { exact: true })).toBeVisible()
-
-      // Click outside the dropdown — the portal page has no <header> element,
-      // so click on the main body area away from the popover
-      await page.mouse.click(200, 400)
-
-      // Dropdown should close (Filters text should not be visible)
-      await expect(page.getByText('Filters', { exact: true })).not.toBeVisible({ timeout: 3000 })
+      // Click outside the popover — it should close.
+      await page.mouse.click(200, 500)
+      await expect(editor).toBeHidden({ timeout: 3000 })
     })
 
     test('multiple status filters use OR logic (shows posts matching any)', async ({ page }) => {
       await page.goto('/')
-      await page.waitForLoadState('networkidle')
+      await waitForNetworkIdle(page)
+      const unfilteredTotal = await resultTotal(page)
 
-      // Open filter
-      const filterButton = page.getByRole('button', { name: /Filter/i })
-      await filterButton.click()
+      const status = statusGroup(page)
+      await status.getByRole('button', { name: /^Closed/ }).click()
+      await expect(page).toHaveURL(/[?&]status=/, { timeout: 5000 })
+      const closedTotal = await resultTotal(page)
+      expect(closedTotal).toBeGreaterThan(0)
 
-      // Status section is only rendered when statuses exist in seed data
-      test.skip(
-        (await page.getByText('Status', { exact: true }).count()) === 0,
-        'No status options available in filter dropdown'
-      )
+      await status.getByRole('button', { name: /^Complete/ }).click()
+      await expect(page).toHaveURL(/complete/, { timeout: 5000 })
+      const bothTotal = await resultTotal(page)
 
-      await expect(page.getByText('Status', { exact: true })).toBeVisible()
-
-      const statusCheckboxes = page.locator('button[role="checkbox"]')
-      const checkboxCount = await statusCheckboxes.count()
-
-      if (checkboxCount >= 2) {
-        // Select first status and note URL
-        await statusCheckboxes.nth(0).click()
-        await expect(page).toHaveURL(/status=/, { timeout: 5000 })
-
-        // Wait for posts to load with first filter
-        await page.waitForLoadState('networkidle')
-        const postsWithFirstStatus = page.locator('[data-post-id]')
-        const countWithFirst = await postsWithFirstStatus.count()
-
-        // Add second status (wait for React to update setFilters closure first)
-        await page.waitForTimeout(300)
-        await statusCheckboxes.nth(1).click()
-        await page.waitForTimeout(500)
-
-        // TanStack Router encodes arrays as JSON — verify the URL still has a status param
-        await expect(page).toHaveURL(/status=/)
-
-        // The badge should show 2 active filters
-        const badge = page.locator('span.rounded-full.bg-primary')
-        await expect(badge).toHaveText('2')
-
-        // Wait for posts to refresh
-        await page.waitForLoadState('networkidle')
-
-        // With OR logic, count should be >= first filter alone (or equal if overlap)
-        const postsWithBothStatuses = page.locator('[data-post-id]')
-        const countWithBoth = await postsWithBothStatuses.count()
-
-        // Count should be at least what we had with first filter
-        // (unless the filters narrow down, which shouldn't happen with OR)
-        expect(countWithBoth).toBeGreaterThanOrEqual(0)
-        // Sanity: OR union cannot produce fewer than either filter alone
-        // (allow equal as posts may have overlapping statuses)
-        expect(countWithBoth).toBeGreaterThanOrEqual(countWithFirst)
-      }
+      // OR union: adding a second status can only widen the result set, and it
+      // stays within the unfiltered total.
+      expect(bothTotal).toBeGreaterThan(closedTotal)
+      expect(bothTotal).toBeLessThanOrEqual(unfilteredTotal)
+      await expect(activeFilters(page)).toContainText('Closed')
+      await expect(activeFilters(page)).toContainText('Complete')
     })
   })
 })
@@ -903,60 +703,36 @@ test.describe('Post List - Filter Result Verification', () => {
     const postCards = page.locator('[data-post-id]')
     await expect(postCards.first()).toBeVisible({ timeout: 15000 })
 
-    // Open filter dropdown and select "Open" status
-    const filterButton = page.getByRole('button', { name: /Filter/i })
-    await filterButton.click()
-
-    // Skip if status section is not present
-    test.skip(
-      (await page.getByText('Status', { exact: true }).count()) === 0,
-      'No status options available in filter dropdown'
-    )
-
-    await expect(page.getByText('Status', { exact: true })).toBeVisible()
-
-    // Click the "Open" status label (first checkbox in dropdown which should be Open)
-    const openLabel = page.locator('label').filter({ hasText: /^Open$/ })
-    test.skip((await openLabel.count()) === 0, 'Open status label not found in filter dropdown')
-    await openLabel.click()
+    // Pick "Open" in the filter panel's Status section (the old Filter popover
+    // is gone, and each status is a toggle pill).
+    await page
+      .getByRole('group', { name: 'Status', exact: true })
+      .getByRole('button', { name: /^Open/ })
+      .click()
 
     // Wait for URL and page to update (TanStack Router encodes arrays as JSON)
     await expect(page).toHaveURL(/[?&]status=/, { timeout: 5000 })
-    await page.waitForLoadState('networkidle')
-    await page.waitForTimeout(300)
-
-    // Close the dropdown by pressing Escape
-    await page.keyboard.press('Escape')
+    await expect(page.locator('[data-post-id]').first()).toBeVisible({ timeout: 15000 })
 
     // Collect all visible status badge texts from post cards
     // StatusBadge renders as: <span class="inline-flex items-center gap-1.5 text-xs font-medium">
-    // It is a direct child of [data-post-id], not nested under .post-card
     const statusBadges = page.locator(
       '[data-post-id] span.inline-flex.items-center.text-xs.font-medium'
     )
     const badgeCount = await statusBadges.count()
+    expect(badgeCount).toBeGreaterThan(0)
 
-    // If there are posts with status badges, each should say "Open"
-    if (badgeCount > 0) {
-      for (let i = 0; i < badgeCount; i++) {
-        const text = await statusBadges.nth(i).textContent()
-        // Status badge text contains the status name; verify it matches "Open"
-        expect(text?.trim()).toContain('Open')
-      }
-    } else {
-      // Acceptable: zero posts with badges means the empty state or posts without statuses
-      const emptyMsg = page.getByText('No posts match your filters.')
-      const postLinks = page.locator('[data-post-id]')
-      const hasEmpty = (await emptyMsg.count()) > 0
-      const hasPosts = (await postLinks.count()) > 0
-      expect(hasEmpty || hasPosts).toBe(true)
+    // Each should say "Open"
+    for (let i = 0; i < badgeCount; i++) {
+      const text = await statusBadges.nth(i).textContent()
+      expect(text?.trim()).toContain('Open')
     }
   })
 
   test('board filter: all visible post links belong to the selected board', async ({ page }) => {
     // Navigate directly with the features board filter
     await page.goto('/?board=features')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
     await page.waitForTimeout(500)
 
     // Skip if the features board has no posts in this environment
@@ -975,7 +751,7 @@ test.describe('Post List - Filter Result Verification', () => {
     await page.goto('/')
     const postCards = page.locator('[data-post-id]')
     await expect(postCards.first()).toBeVisible({ timeout: 15000 })
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     // Record unfiltered count (up to one page)
     const unfilteredCount = await postCards.count()
@@ -984,7 +760,7 @@ test.describe('Post List - Filter Result Verification', () => {
     test.skip((await tags.count()) === 0, 'No tags section in the filter panel')
     await tags.getByRole('button').first().click()
     await expect(page).toHaveURL(/[?&]tagIds=/, { timeout: 5000 })
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     // Filtering can only reduce or keep the count
     const filteredCount = await postCards.count()
@@ -996,18 +772,18 @@ test.describe('Post List - Filter Result Verification', () => {
     await page.goto('/')
     const postCards = page.locator('[data-post-id]')
     await expect(postCards.first()).toBeVisible({ timeout: 15000 })
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     const status = page.getByRole('group', { name: 'Status', exact: true })
     await status.getByRole('button').first().click()
     await expect(page).toHaveURL(/[?&]status=/, { timeout: 5000 })
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
     const filteredCount = await postCards.count()
 
     // Remove it from its chip
     await page.getByRole('button', { name: /^Remove Status/ }).click()
     await expect(page).not.toHaveURL(/[?&]status=/, { timeout: 5000 })
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     const unfilteredCount = await postCards.count()
     expect(unfilteredCount).toBeGreaterThanOrEqual(filteredCount)
@@ -1020,33 +796,29 @@ test.describe('Post List - Filter Result Verification', () => {
 
     // Get board-only count
     await page.goto('/?board=features')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
     await page.waitForTimeout(500)
     const boardOnlyCount = await postCards.count()
     test.skip(boardOnlyCount === 0, 'No posts in features board')
 
-    // Get a status slug from the filter dropdown (UI-based, avoids URL encoding issues)
+    // Get a status slug from the filter panel (UI-based, avoids URL encoding issues)
     await page.goto('/')
-    await page.waitForLoadState('networkidle')
-    const filterButton = page.getByRole('button', { name: /Filter/i })
-    await filterButton.click()
-    test.skip(
-      (await page.getByText('Status', { exact: true }).count()) === 0,
-      'No status options available in filter dropdown'
-    )
-    // Select the first status via UI to get the URL encoding right
-    const statusCheckbox = page.locator('button[role="checkbox"]').first()
-    await statusCheckbox.click()
+    await waitForNetworkIdle(page)
+    // The status choices live in the sidebar panel as toggle pills.
+    await page
+      .getByRole('group', { name: 'Status', exact: true })
+      .getByRole('button', { name: /^Open/ })
+      .click()
     await expect(page).toHaveURL(/[?&]status=/, { timeout: 5000 })
     // Extract the encoded status value from the URL
     const statusUrl = page.url()
     const statusMatch = statusUrl.match(/[?&]status=([^&]+)/)
     const encodedStatus = statusMatch?.[1] ?? ''
-    await page.keyboard.press('Escape')
+    expect(encodedStatus).not.toBe('')
 
     // Get status-only count
     await page.goto(`/?status=${encodedStatus}`)
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
     await page.waitForTimeout(500)
     // Skip if status URL caused an error
     test.skip(
@@ -1057,7 +829,7 @@ test.describe('Post List - Filter Result Verification', () => {
 
     // Get combined count
     await page.goto(`/?board=features&status=${encodedStatus}`)
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
     await page.waitForTimeout(500)
     test.skip(
       (await page.getByText('Something went wrong').count()) > 0,
@@ -1070,46 +842,14 @@ test.describe('Post List - Filter Result Verification', () => {
   })
 
   test('empty state shows "No posts match your filters." when no posts match', async ({ page }) => {
-    // Apply filters via UI (avoids URL encoding issues with TanStack Router's JSON array params)
-    await page.goto('/')
-    await page.waitForLoadState('networkidle')
+    // A vote threshold no post reaches produces the filtered empty state
+    // deterministically (the old two-step popover flow is gone).
+    await page.goto('/?minVotes=100000')
+    await expect(page.getByText('No posts match your filters.')).toBeVisible({ timeout: 10000 })
 
-    const filterButton = page.getByRole('button', { name: /Filter/i })
-    await filterButton.click()
-
-    // Status section is only rendered when statuses exist in seed data
-    test.skip(
-      (await page.getByText('Status', { exact: true }).count()) === 0,
-      'No status options available in filter dropdown'
-    )
-
-    await expect(page.getByText('Status', { exact: true })).toBeVisible()
-
-    // Select the last status checkbox (most likely to have no posts)
-    const statusCheckboxes = page.locator('button[role="checkbox"]')
-    const checkboxCount = await statusCheckboxes.count()
-    // Click the last one (often "closed" or similar low-count status)
-    await statusCheckboxes.nth(checkboxCount - 1).click()
-    await expect(page).toHaveURL(/[?&]status=/, { timeout: 5000 })
-    await page.keyboard.press('Escape')
-    await page.waitForLoadState('networkidle')
-    await page.waitForTimeout(500)
-
-    const postLinks = page.locator('[data-post-id]')
-    const emptyMsg = page.getByText('No posts match your filters.')
-
-    const hasPosts = (await postLinks.count()) > 0
-    const hasSpecificEmptyMsg = (await emptyMsg.count()) > 0
-
-    // Whether we have posts or not, the page should not show an error
-    const errorPage = page.getByText('Something went wrong')
-    expect(await errorPage.count()).toBe(0)
-
-    if (!hasPosts) {
-      // Must show the specific empty-state message, not just a blank page
-      expect(hasSpecificEmptyMsg).toBe(true)
-    }
-    // If there are posts, the filter found some results — test passes vacuously
+    // No post cards, and no error page either.
+    await expect(page.locator('[data-post-id]')).toHaveCount(0)
+    expect(await page.getByText('Something went wrong').count()).toBe(0)
   })
 })
 
@@ -1124,7 +864,7 @@ test.describe('Post List - Sort Order Verification', () => {
     await page.goto('/?sort=new')
     const postCards = page.locator('[data-post-id]')
     await expect(postCards.first()).toBeVisible({ timeout: 15000 })
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     const count = await postCards.count()
     test.skip(count < 2, 'Need at least 2 posts to verify sort order')
@@ -1142,7 +882,7 @@ test.describe('Post List - Sort Order Verification', () => {
     const topButton = page.getByRole('button', { name: /^Top$/i })
     await topButton.click()
     await expect(page).toHaveURL(/sort=top/, { timeout: 5000 })
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
     await page.waitForTimeout(300)
 
     const firstPostIdTop = await postCards.first().getAttribute('data-post-id')
@@ -1164,7 +904,7 @@ test.describe('Post List - Sort Order Verification', () => {
     await page.goto('/?sort=top')
     const postCards = page.locator('[data-post-id]')
     await expect(postCards.first()).toBeVisible({ timeout: 15000 })
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     const count = await postCards.count()
     test.skip(count < 2, 'Need at least 2 posts to verify sort order')
@@ -1189,7 +929,7 @@ test.describe('Post List - Sort Order Verification', () => {
     await page.goto('/?sort=new')
     const postCards = page.locator('[data-post-id]')
     await expect(postCards.first()).toBeVisible({ timeout: 15000 })
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     const count = await postCards.count()
     test.skip(count < 2, 'Need at least 2 posts to verify sort order')
@@ -1236,7 +976,7 @@ test.describe('Post List - Search Accuracy', () => {
     const postCards = page.locator('[data-post-id]')
     await expect(postCards.first()).toBeVisible({ timeout: 15000 })
     // Wait for React hydration before clicking interactive elements
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     // Use a search term that exists in the seed post titles
     const searchTerm = 'dark mode'
@@ -1282,7 +1022,7 @@ test.describe('Post List - Search Accuracy', () => {
     // Start with search active
     await page.goto('/?search=dark+mode')
     const postCards = page.locator('[data-post-id]')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
     await page.waitForTimeout(300)
     const searchCount = await postCards.count()
 
@@ -1292,7 +1032,7 @@ test.describe('Post List - Search Accuracy', () => {
 
     // URL should no longer contain a search parameter
     await expect(page).not.toHaveURL(/[?&]search=/, { timeout: 5000 })
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
     await page.waitForTimeout(300)
 
     const fullCount = await postCards.count()
@@ -1306,7 +1046,7 @@ test.describe('Post List - Search Accuracy', () => {
     await page.goto('/')
     await expect(page.locator('[data-post-id]').first()).toBeVisible({ timeout: 15000 })
     // Wait for React hydration before clicking interactive elements
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     // Search for a string that will never match real post titles
     const impossibleTerm = 'xyzzy_no_such_post_zqwerty_99999'
@@ -1316,7 +1056,7 @@ test.describe('Post List - Search Accuracy', () => {
     await searchInput.press('Enter')
 
     await expect(page).toHaveURL(/search=/, { timeout: 5000 })
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
     await page.waitForTimeout(500)
 
     // Should show the specific "no match" message rather than just a blank list

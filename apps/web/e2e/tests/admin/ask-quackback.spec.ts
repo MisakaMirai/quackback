@@ -36,13 +36,34 @@ test.describe('search', () => {
     page,
   }) => {
     await page.goto('/admin/feedback')
-    await waitForHydration(searchRow(page))
+    const trigger = searchRow(page)
+    await waitForHydration(trigger)
+    // The shell attaches the palette's global shortcut listener while it
+    // hydrates, so a press in the same tick as first paint can be missed. Open
+    // the palette once from its row — that proves the shell is live — then close
+    // it and use the keyboard, which is what this test is about.
+    await trigger.click()
+    await expect(page.getByRole('dialog')).toBeVisible(FIRST_OPEN)
+    await page.keyboard.press('Escape')
+    await expect(page.getByRole('dialog')).not.toBeVisible()
     await page.keyboard.press('Control+k')
     const dialog = page.getByRole('dialog')
     const input = dialog.getByRole('combobox')
     await expect(input).toBeFocused(FIRST_OPEN)
     await input.fill('tags')
-    await expect(dialog.getByRole('option', { name: 'Tags', exact: true })).toBeVisible()
+    const tags = dialog.getByRole('option', { name: 'Tags', exact: true })
+    await expect(tags).toBeVisible()
+    // Enter now opens the full results page for the typed query ("Search for
+    // “tags”" is selected first), so step onto the Tags destination before Enter
+    // to keep navigating to a page from the palette.
+    await expect(dialog.getByRole('option', { name: /Search for/ })).toHaveAttribute(
+      'aria-selected',
+      'true'
+    )
+    for (let step = 0; step < 3 && (await tags.getAttribute('aria-selected')) !== 'true'; step++) {
+      await input.press('ArrowDown')
+    }
+    await expect(tags).toHaveAttribute('aria-selected', 'true')
     await input.press('Enter')
     await expect(page).toHaveURL(/\/admin\/settings\/tags/)
     await expect(dialog).not.toBeVisible()

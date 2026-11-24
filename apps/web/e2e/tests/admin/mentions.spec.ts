@@ -21,6 +21,7 @@
  * cover the event dispatch + notification/email targeting; the chip + hover
  * card are the load-bearing UI behaviours this e2e protects.
  */
+import { waitForNetworkIdle } from '../../utils/helpers'
 import { test, expect } from '@playwright/test'
 import { getMentionTarget } from '../../utils/db-helpers'
 
@@ -47,7 +48,7 @@ test.describe('Post @-mention happy path', () => {
 
     // ---- Open the portal post form ----------------------------------------
     await page.goto('/')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     const createPostInput = page.getByPlaceholder("What's on your mind?")
     await expect(createPostInput).toBeVisible({ timeout: 15000 })
@@ -135,8 +136,8 @@ test.describe('Post @-mention happy path', () => {
     // Wait for the create-post mutation (server function) to settle. The
     // form's `useCreatePublicPost` posts to the TanStack-Start server fn,
     // so we just wait for the editor to collapse — same signal the
-    // post-submission spec uses.
-    const submitBtn = page.getByRole('button', { name: /^submit$/i })
+    // post-submission spec uses. The portal composer's submit CTA is "Post".
+    const submitBtn = page.getByRole('button', { name: /^post$/i })
     await submitBtn.click()
     await expect(editor).not.toBeVisible({ timeout: 15000 })
 
@@ -154,7 +155,7 @@ test.describe('Post @-mention happy path', () => {
     await expect(postLink.first()).toBeVisible({ timeout: 15000 })
     await postLink.first().click()
     await page.waitForURL(/\/posts\//, { timeout: 10000 })
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     // ---- Verify the rendered chip ---------------------------------------
     // Rendered HTML uses data-principal-id (not data-id) — see

@@ -1,9 +1,10 @@
+import { waitForNetworkIdle } from '../../utils/helpers'
 import { test, expect } from '@playwright/test'
 
 test.describe('Public Post List — chip filters', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
   })
 
   test('shows no status chip at the default scope', async ({ page }) => {
@@ -20,7 +21,7 @@ test.describe('Public Post List — chip filters', () => {
 
   test('a chip opens its pills to change the filter in place', async ({ page }) => {
     await page.goto(`/?status=${encodeURIComponent(JSON.stringify(['open']))}`)
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
     const chips = page.getByRole('region', { name: 'Active filters' })
     await chips.getByRole('button', { name: /^Status:/ }).click()
     const editor = page.getByRole('dialog', { name: 'Status' })
@@ -38,7 +39,7 @@ test.describe('Public Post List — chip filters', () => {
     page,
   }) => {
     await page.goto('/changelog')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
     let release = () => {}
     const held = new Promise<void>((resolve) => (release = resolve))
     // Hold back only the feed's data (fetchPortalData), not the route.
@@ -65,7 +66,7 @@ test.describe('Public Post List — chip filters', () => {
 
   test('what is typed while the feed loads carries into the loaded feed', async ({ page }) => {
     await page.goto('/changelog')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
     let release = () => {}
     const held = new Promise<void>((resolve) => (release = resolve))
     await page.route(/_serverFn\/.*ZmV0Y2hQb3J0YWxEYXRh/, async (route) => {
@@ -107,7 +108,7 @@ test.describe('Public Post List — chip filters', () => {
     const title = (await firstTitle.innerText()).trim()
 
     await page.goto('/')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
     await page.getByRole('searchbox', { name: 'Search posts' }).fill(title)
 
     await expect(page).toHaveURL(/[?&]search=/, { timeout: 5000 })

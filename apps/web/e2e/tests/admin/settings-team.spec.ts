@@ -1,9 +1,16 @@
 import { test, expect } from '@playwright/test'
+import { waitForHydration } from '../../utils/helpers'
 
 test.describe('Admin Team Settings', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/admin/settings/members')
-    await page.waitForLoadState('networkidle')
+    // No networkidle: the admin shell keeps SSE streams open, so the network
+    // never goes idle on an admin page. The heading comes from the server, and
+    // the buttons the tests press need their handlers attached.
+    await expect(page.getByRole('heading', { name: 'Members & Teams' })).toBeVisible({
+      timeout: 15_000,
+    })
+    await waitForHydration(page.getByRole('button', { name: /add people/i }))
   })
 
   test('displays team members page', async ({ page }) => {
@@ -48,8 +55,9 @@ test.describe('Admin Team Settings', () => {
 
     await page.waitForTimeout(300)
 
-    // Should show "No results found" when nothing matches
-    const noResults = page.getByText(/no results found|no team members/i)
+    // Should show "No results found" when nothing matches. The roster renders
+    // both a table and a card list (one per screen size), so both say it.
+    const noResults = page.getByRole('table').getByText(/no results found/i)
     await expect(noResults).toBeVisible({ timeout: 5000 })
 
     // Clear search
@@ -103,8 +111,9 @@ test.describe('Admin Team Settings', () => {
   })
 
   test('shows "you" label next to the current user', async ({ page }) => {
-    // The current admin user row renders "(you)" next to their name
-    const youLabel = page.locator('span').filter({ hasText: /\(you\)/ })
+    // The current admin user row renders "(you)" next to their name. Scoped to
+    // the roster table: the card list repeats the roster for narrow screens.
+    const youLabel = page.getByRole('table').getByText('(you)', { exact: true })
     await expect(youLabel).toBeVisible({ timeout: 10000 })
   })
 

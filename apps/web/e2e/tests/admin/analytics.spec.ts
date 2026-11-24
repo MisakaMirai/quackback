@@ -1,3 +1,4 @@
+import { waitForNetworkIdle } from '../../utils/helpers'
 import { test, expect } from '@playwright/test'
 
 // Analytics is GA (no longer behind a feature flag); the route always renders.
@@ -6,7 +7,7 @@ import { test, expect } from '@playwright/test'
 test.describe('Admin Analytics Page', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/admin/analytics')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
   })
 
   test('page loads on the analytics route', async ({ page }) => {
@@ -21,7 +22,7 @@ test.describe('Admin Analytics Page', () => {
 test.describe('Admin Analytics — Period Selector', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/admin/analytics')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
   })
 
   test('period selector buttons are present when analytics enabled', async ({ page }) => {
@@ -40,7 +41,7 @@ test.describe('Admin Analytics — Period Selector', () => {
     const btn7d = page.getByRole('button', { name: '7d' })
     if ((await btn7d.count()) > 0) {
       await btn7d.click()
-      await page.waitForLoadState('networkidle')
+      await waitForNetworkIdle(page)
       // Button should now have primary background (active state)
       await expect(btn7d).toBeVisible()
     }
@@ -50,7 +51,7 @@ test.describe('Admin Analytics — Period Selector', () => {
     const btn30d = page.getByRole('button', { name: '30d' })
     if ((await btn30d.count()) > 0) {
       await btn30d.click()
-      await page.waitForLoadState('networkidle')
+      await waitForNetworkIdle(page)
       await expect(btn30d).toBeVisible()
     }
   })
@@ -59,7 +60,7 @@ test.describe('Admin Analytics — Period Selector', () => {
     const btn90d = page.getByRole('button', { name: '90d' })
     if ((await btn90d.count()) > 0) {
       await btn90d.click()
-      await page.waitForLoadState('networkidle')
+      await waitForNetworkIdle(page)
       await expect(btn90d).toBeVisible()
     }
   })
@@ -68,7 +69,7 @@ test.describe('Admin Analytics — Period Selector', () => {
     const btn12m = page.getByRole('button', { name: '12m' })
     if ((await btn12m.count()) > 0) {
       await btn12m.click()
-      await page.waitForLoadState('networkidle')
+      await waitForNetworkIdle(page)
       await expect(btn12m).toBeVisible()
     }
   })
@@ -77,7 +78,7 @@ test.describe('Admin Analytics — Period Selector', () => {
 test.describe('Admin Analytics — Section Navigation', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/admin/analytics')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
   })
 
   test('left sidebar shows section nav on large screens', async ({ page }) => {
@@ -147,11 +148,11 @@ test.describe('Admin Analytics — Section Navigation', () => {
 test.describe('Admin Analytics — Metrics Cards', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/admin/analytics')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
   })
 
   test('shows Posts metric card when data available', async ({ page }) => {
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
     // Give Suspense a moment to resolve
     await page.waitForTimeout(1000)
 

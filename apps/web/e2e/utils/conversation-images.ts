@@ -1,5 +1,6 @@
 import { deflateSync } from 'node:zlib'
 import type { Locator, Page, Route } from '@playwright/test'
+import type { SeededFile } from './db-helpers'
 
 function crc32(data: Buffer): number {
   let c = ~0
@@ -50,6 +51,47 @@ export const PASTED_PNG = 'e2e-pasted.png'
 export const CHANGELOG_PNG = 'e2e-changelog.png'
 export const POST_PNG = 'e2e-post.png'
 
+/** Serve the landscape fixture for one storage key, so a seeded file's url
+ *  decodes in the browser without an object store. */
+export async function stubStorageImage(page: Page, storageKey: string): Promise<void> {
+  const png = landscapePng()
+  await page.route(`**/api/storage/${storageKey}*`, (route) =>
+    route.fulfill({ status: 200, contentType: 'image/png', body: png })
+  )
+}
+
+/**
+ * Stub the composer's current upload contract: a raw-body
+ * `POST /api/upload/file?name=<name>` answering the `UploadedFile` DTO whose
+ * `url` is the app's own host-independent `/api/storage/<key>` path (stub the
+ * bytes separately with {@link stubStorageImage}).
+ *
+ * The submitted message rebuilds each attachment from its `files` row, not from
+ * this response, so `files` must be real rows (see `seedFile` in db-helpers) —
+ * `resolveAttachments` rejects an unknown `fileId`.
+ */
+export async function stubFileUploads(page: Page, files: SeededFile[]): Promise<void> {
+  if (files.length === 0) throw new Error('stubFileUploads needs at least one file')
+  await page.route('**/api/upload/file*', async (route) => {
+    const request = route.request()
+    if (request.method() !== 'POST') return route.continue()
+    const requestedName = new URL(request.url()).searchParams.get('name')
+    const file = files.find((candidate) => candidate.name === requestedName) ?? files[0]!
+    await route.fulfill({
+      status: 201,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        fileId: file.fileId,
+        url: `/api/storage/${file.storageKey}`,
+        name: file.name,
+        contentType: file.contentType,
+        size: file.size,
+        family: file.family,
+      }),
+    })
+  })
+}
+
 /** Serve fixture PNGs and stub upload endpoints so e2e never hits MinIO. */
 export async function stubConversationImageNetwork(page: Page): Promise<Buffer> {
   const png = landscapePng()
@@ -73,6 +115,9 @@ export async function stubConversationImageNetwork(page: Page): Promise<Buffer> 
     })
   })
 
+  // The rich-text editors still upload through the multipart image endpoint;
+  // its stored url is served here. The conversation composer's upload is
+  // stubbed separately (see stubFileUploads).
   await page.route(`**/api/storage/chat-images/${LEGACY_WIDE_PNG}*`, fulfillPng)
   await page.route(`**/api/storage/chat-images/${PASTED_PNG}*`, fulfillPng)
   await page.route(`**/api/storage/changelog-images/${CHANGELOG_PNG}*`, fulfillPng)

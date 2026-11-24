@@ -1,20 +1,26 @@
+import { waitForNetworkIdle } from '../../utils/helpers'
 import { test, expect } from '@playwright/test'
 
-// /admin redirects to /admin/feedback — all dashboard tests run on the feedback page
+// /admin is the admin Home overview itself — the old /admin/feedback redirect is
+// retired, so these tests load the overview in place.
 
 test.describe('Admin Dashboard', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/admin')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
   })
 
   test('page loads without error', async ({ page }) => {
-    // Should redirect to /admin/feedback
-    await expect(page).toHaveURL(/\/admin\/feedback/, { timeout: 10000 })
+    // The admin landing surface is /admin itself, rendered as the Home overview.
+    await expect(page).toHaveURL(/\/admin\/?$/, { timeout: 10000 })
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible({ timeout: 10000 })
   })
 
-  test('redirects /admin to /admin/feedback', async ({ page }) => {
-    await expect(page).toHaveURL(/\/admin\/feedback/)
+  test('serves the Home overview at /admin', async ({ page }) => {
+    // The landing page moved: /admin no longer redirects to the feedback list;
+    // it shows the overview, whose Actions menu opens its create dialogs.
+    await expect(page).toHaveURL(/\/admin\/?$/)
+    await expect(page.getByRole('button', { name: 'Actions' })).toBeVisible({ timeout: 10000 })
   })
 
   test('renders the admin layout without crashing', async ({ page }) => {
@@ -28,7 +34,7 @@ test.describe('Admin Dashboard', () => {
 test.describe('Admin Sidebar Navigation', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/admin/feedback')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
   })
 
   test('sidebar is visible on desktop', async ({ page }) => {
@@ -65,28 +71,28 @@ test.describe('Admin Sidebar Navigation', () => {
   test('Feedback nav link is clickable and navigates correctly', async ({ page }) => {
     const feedbackLink = page.getByRole('link', { name: 'Feedback' }).first()
     await feedbackLink.click()
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
     await expect(page).toHaveURL(/\/admin\/feedback/)
   })
 
   test('Roadmap nav link is clickable and navigates correctly', async ({ page }) => {
     const roadmapLink = page.getByRole('link', { name: 'Roadmap' }).first()
     await roadmapLink.click()
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
     await expect(page).toHaveURL(/\/admin\/roadmap/)
   })
 
   test('Changelog nav link is clickable and navigates correctly', async ({ page }) => {
     const changelogLink = page.getByRole('link', { name: 'Changelog' }).first()
     await changelogLink.click()
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
     await expect(page).toHaveURL(/\/admin\/changelog/)
   })
 
   test('Users nav link is clickable and navigates correctly', async ({ page }) => {
     const usersLink = page.getByRole('link', { name: 'Users' }).first()
     await usersLink.click()
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
     await expect(page).toHaveURL(/\/admin\/users/)
   })
 
@@ -95,19 +101,20 @@ test.describe('Admin Sidebar Navigation', () => {
     await expect(portalLink.first()).toBeVisible({ timeout: 10000 })
   })
 
-  test('logo links to feedback page', async ({ page }) => {
-    const logoLink = page.getByRole('link', { name: 'Quackback' }).first()
+  test('logo links to the admin Home', async ({ page }) => {
+    // The logo carries the workspace's own name — "Acme Corp" in seed data — and
+    // now returns to Home (/admin) rather than the retired /admin/feedback page.
+    const logoLink = page.getByRole('link', { name: 'Acme Corp' }).first()
     await expect(logoLink).toBeVisible({ timeout: 10000 })
     await logoLink.click()
-    await page.waitForLoadState('networkidle')
-    await expect(page).toHaveURL(/\/admin\/feedback/)
+    await expect(page).toHaveURL(/\/admin\/?$/)
   })
 })
 
 test.describe('Admin Feedback Page (Dashboard Content)', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/admin/feedback')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
   })
 
   test('page loads without error', async ({ page }) => {

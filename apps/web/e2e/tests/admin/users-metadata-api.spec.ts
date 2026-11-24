@@ -1,3 +1,4 @@
+import { waitForNetworkIdle } from '../../utils/helpers'
 import { test, expect, type APIRequestContext, type Page, type Response } from '@playwright/test'
 
 /**
@@ -17,7 +18,9 @@ import { test, expect, type APIRequestContext, type Page, type Response } from '
  * list read-back, and the 400/401/404 edges.
  */
 
-const ADMIN_STATE = 'e2e/.auth/admin.json'
+import { AUTH_STATE_PATH } from '../../utils/auth-state'
+
+const ADMIN_STATE = AUTH_STATE_PATH
 
 /** Unique per run so repeated runs never collide on attribute keys. */
 const RUN = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`
@@ -60,7 +63,7 @@ async function createAttributeDefinition(
   type: 'Text' | 'Number' = 'Text'
 ) {
   await page.goto('/admin/settings/people')
-  await page.waitForLoadState('networkidle')
+  await waitForNetworkIdle(page)
 
   await page
     .getByRole('button', { name: /new attribute/i })
@@ -88,7 +91,7 @@ async function createAttributeDefinition(
 /** Mint a personal key on the signed-in teammate's own API keys page. */
 async function createApiKey(page: Page, name: string): Promise<string> {
   await page.goto('/settings/api-keys')
-  await page.waitForLoadState('networkidle')
+  await waitForNetworkIdle(page)
 
   await page.getByRole('button', { name: 'New key' }).first().click()
   const createDialog = page.getByRole('dialog').filter({ hasText: 'Create API key' })

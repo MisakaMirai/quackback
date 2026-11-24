@@ -59,6 +59,11 @@ export function setupAccessFixtures(memberEmail: string): AccessFixtures {
 /** Flip the workspace `features.allowAnonymous` master switch. */
 export function setWorkspaceAnon(enabled: boolean): void {
   runScript('../scripts/set-workspace-anon.ts', [String(enabled)])
+  // `portal_config` is written as raw SQL, so the running server keeps serving
+  // the switch it cached under 'settings:workspace' until that key is dropped —
+  // without this, an OFF→ON→OFF flip inside one run still serves the ON value
+  // to the next page render.
+  runScript('../scripts/bust-caches.ts', ['settings:workspace'])
 }
 
 /**
@@ -155,10 +160,17 @@ export async function loginViaMagicLink(
   email: string,
   opts: { role?: 'admin' | 'member' | 'user' } = {}
 ): Promise<void> {
-  const send = await context.request.post('/api/auth/sign-in/magic-link', {
-    data: { email, callbackURL: '/' },
-  })
-  expect(send.ok(), `magic-link send for ${email}`).toBeTruthy()
+  // The magic-link endpoint is rate limited per address and per IP, and one
+  // shard signs several identities in through it. Clear the buckets and retry a
+  // throttled send instead of failing the test on the limiter's schedule: the
+  // specs that test the limiter drive the endpoint themselves.
+  await expect(async () => {
+    flushMagicLinkRateLimit()
+    const send = await context.request.post('/api/auth/sign-in/magic-link', {
+      data: { email, callbackURL: '/' },
+    })
+    expect(send.ok(), `magic-link send for ${email}`).toBeTruthy()
+  }).toPass({ timeout: 30_000 })
 
   const token = getMagicLinkToken(email)
   expect(token.length).toBeGreaterThan(8)

@@ -1,10 +1,11 @@
+import { waitForNetworkIdle } from '../../utils/helpers'
 import { test, expect } from '@playwright/test'
 
 test.describe('Admin Status Management', () => {
   test.beforeEach(async ({ page }) => {
     // Navigate to status settings
     await page.goto('/admin/settings/statuses')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
   })
 
   test('displays status settings page', async ({ page }) => {

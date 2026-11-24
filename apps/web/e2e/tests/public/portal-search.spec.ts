@@ -1,9 +1,10 @@
+import { waitForNetworkIdle } from '../../utils/helpers'
 import { test, expect } from '@playwright/test'
 
 test.describe('Portal search', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
   })
 
   test('finds ideas from the first letters of a word, best match first', async ({ page }) => {
@@ -39,7 +40,7 @@ test.describe('Portal search', () => {
 test.describe('Portal search, widened', () => {
   test('a misspelling finds the idea and says the match is close', async ({ page }) => {
     await page.goto('/')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
     await page.getByRole('searchbox', { name: 'Search posts' }).fill('integraton')
     await expect(
       page.getByText('No exact matches. Showing posts with a similar spelling.')

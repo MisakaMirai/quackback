@@ -1,3 +1,4 @@
+import { waitForNetworkIdle } from '../../utils/helpers'
 import { test, expect, type Page } from '@playwright/test'
 import {
   clearSigninRateLimit,
@@ -31,30 +32,55 @@ test.describe('Portal access invitations', () => {
     setPortalVisibility('private')
   })
 
-  test.afterAll(() => {
+  test.afterAll(async () => {
     setPortalVisibility('public')
+    // The restore is written from another process and a warm server keeps
+    // serving its previous settings copy for SETTINGS_LOCAL_TTL_MS (5s), so
+    // give it that window before the next spec reads the portal. Without this a
+    // spec that runs right after this file can briefly see the private gate.
+    await new Promise((resolve) => setTimeout(resolve, 5_500))
     clearSigninRateLimit()
   })
 
   /** Invite `address` from the portal-access tab; asserts the invite row landed. */
   async function inviteFromPortalAccess(page: Page, address: string): Promise<void> {
-    await page.goto('/admin/settings/security/authentication?tab=portal-access')
-    await page.waitForLoadState('networkidle')
+    // The invite section only renders while the portal is private, and the
+    // visibility write comes from another process: a warm server keeps serving
+    // its previous settings copy for a few seconds (SETTINGS_LOCAL_TTL_MS), so
+    // retry until the private-portal section is actually in effect.
+    await expect(async () => {
+      await page.goto('/admin/settings/security/authentication?tab=portal-access')
+      await expect(page.getByRole('button', { name: 'Invite users' })).toBeVisible({
+        timeout: 5000,
+      })
+    }).toPass({ timeout: 30_000 })
 
-    await page.getByRole('button', { name: 'Invite users' }).click()
+    // The button can be visible from the SSR markup before React hydrates, in
+    // which case the first click is a no-op; retry the click until the dialog
+    // actually opens (the dialog itself proves hydration).
+    const inviteButton = page.getByRole('button', { name: 'Invite users' })
     const dialog = page.getByRole('dialog')
-    await expect(dialog).toBeVisible()
+    await expect(async () => {
+      if (!(await dialog.isVisible().catch(() => false))) {
+        await inviteButton.click()
+      }
+      await expect(dialog).toBeVisible({ timeout: 3000 })
+    }).toPass({ timeout: 20_000 })
     await dialog.getByRole('textbox', { name: 'Email addresses to invite' }).fill(address)
     await dialog.getByRole('button', { name: 'Send invites' }).click()
 
     // The invitation row is written before the email leaves, so it exists
     // whether the transport accepted the message, is unconfigured (CI), or is
-    // a failing SMTP relay (a local .env with credentials). The dialog either
-    // closes on success or keeps the failed address for a retry; either way
-    // the invite is live, which is what the invitee's side follows.
-    await expect(page.getByText(/(Sent 1 invite\.|\d+ sent, \d+ failed\.)/).first()).toBeVisible({
-      timeout: 30_000,
-    })
+    // a failing SMTP relay (a local .env with credentials). The send can take a
+    // while (the email attempt happens before the server function answers), so
+    // wait for it to settle: full success closes the dialog and shows a brief
+    // inline summary, a partial failure keeps the dialog open with the failed
+    // addresses.
+    await expect(async () => {
+      const closed = !(await dialog.isVisible())
+      const failureNotice = await page.getByText(/\d+ sent, \d+ failed\./).count()
+      expect(closed || failureNotice > 0).toBe(true)
+    }).toPass({ timeout: 90_000 })
     if (await dialog.isVisible()) {
       await dialog.getByRole('button', { name: 'Cancel' }).click()
     }
@@ -62,7 +88,9 @@ test.describe('Portal access invitations', () => {
   }
 
   test('an accepted portal invite opens a private portal', async ({ browser, page, baseURL }) => {
-    test.setTimeout(120_000)
+    // The invite send waits on the email transport (a slow/unreachable SMTP
+    // relay can take a minute) before the dialog settles.
+    test.setTimeout(180_000)
     const address = `e2e-portal-invite-${Date.now()}@example.test`
 
     await inviteFromPortalAccess(page, address)
@@ -93,7 +121,7 @@ test.describe('Portal access invitations', () => {
         `/verify-magic-link?token=${encodeURIComponent(token)}` +
           `&callbackURL=${encodeURIComponent(`/portal-invite/${invite.invitationId}`)}`
       )
-      await invitee.waitForLoadState('networkidle')
+      await waitForNetworkIdle(invitee)
 
       // Like every invite link, this page asks the human to accept rather
       // than spending the token on a bare GET (mail scanners prefetch links).
@@ -103,10 +131,12 @@ test.describe('Portal access invitations', () => {
       await invitee.getByRole('button', { name: 'Accept invitation' }).click()
 
       // Accepting lands on the portal; with the invite accepted the private
-      // portal gate lets this visitor through.
+      // portal gate lets this visitor through. The portal root has no "Support"
+      // heading any more — the feed's composer is the content-level signal that
+      // the gate was replaced by the portal itself.
       await expect(invitee).toHaveURL(/\/$/, { timeout: 30_000 })
       await expect(invitee.getByText(/this portal is private/i)).toHaveCount(0)
-      await expect(invitee.getByRole('heading', { name: /support/i }).first()).toBeVisible({
+      await expect(invitee.getByPlaceholder("What's on your mind?").first()).toBeVisible({
         timeout: 15_000,
       })
 

@@ -21,6 +21,7 @@
  */
 import { test, expect, type BrowserContext, type APIRequestContext } from '@playwright/test'
 import {
+  clearMagicLinkIpBudget,
   clearSigninRateLimit,
   enableMagicLinkMethod,
   getMagicLinkToken,
@@ -49,12 +50,22 @@ function uniqueEmail(tag: string): string {
   return `e2e-security-${tag}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@example.test`
 }
 
-/** Ask for a magic link and return the bare token from the verification row. */
+/**
+ * Ask for a magic link and return the bare token from the verification row.
+ *
+ * The magic-link endpoint has a 20-per-15-minutes budget per client IP on top
+ * of the 3-per-address one, and every identity this shard signs in spends it.
+ * Clear the buckets and retry a throttled send: the test that asserts the
+ * limiter's shape (5) drives the endpoint itself and is unaffected.
+ */
 async function sendMagicLink(request: APIRequestContext, email: string): Promise<string> {
-  const send = await request.post('/api/auth/sign-in/magic-link', {
-    data: { email, callbackURL: '/' },
-  })
-  expect(send.ok(), `magic-link send for ${email}`).toBeTruthy()
+  await expect(async () => {
+    clearSigninRateLimit()
+    const send = await request.post('/api/auth/sign-in/magic-link', {
+      data: { email, callbackURL: '/' },
+    })
+    expect(send.ok(), `magic-link send for ${email}`).toBeTruthy()
+  }).toPass({ timeout: 30_000 })
   const token = getMagicLinkToken(email)
   expect(token.length).toBeGreaterThan(8)
   return token
@@ -202,6 +213,10 @@ test('(5) the fourth magic-link send for one address is rate-limited', async ({
   const context = await browser.newContext({ baseURL })
   try {
     for (let attempt = 1; attempt <= 3; attempt += 1) {
+      // The 20-per-15-minutes per-IP budget is shared by every identity the shard
+      // signed in, and this test measures the per-address window: reset only the
+      // per-IP counter so a busy shard cannot answer send 2 with its 429.
+      clearMagicLinkIpBudget()
       const send = await context.request.post('/api/auth/sign-in/magic-link', {
         data: { email, callbackURL: '/' },
       })

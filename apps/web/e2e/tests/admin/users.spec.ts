@@ -1,10 +1,11 @@
+import { waitForNetworkIdle } from '../../utils/helpers'
 import { test, expect } from '@playwright/test'
 
 test.describe('Admin Users Page', () => {
   test.beforeEach(async ({ page }) => {
     // Navigate to admin users page
     await page.goto('/admin/users')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
   })
 
   test('displays users page with header', async ({ page }) => {
@@ -15,7 +16,7 @@ test.describe('Admin Users Page', () => {
 
   test('shows user count', async ({ page }) => {
     // Wait for user list to load
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     // Should show user count in the format "X users" or "X user"
     await expect(page.getByText(/\d+ users?/)).toBeVisible({ timeout: 10000 })
@@ -43,7 +44,7 @@ test.describe('Admin Users Page', () => {
 
     // Wait for debounced search
     await page.waitForTimeout(500)
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     // URL should update with search param
     await expect(page).toHaveURL(/search=test/)
@@ -76,7 +77,7 @@ test.describe('Admin Users Page', () => {
     await page.getByRole('menuitemradio', { name: option, exact: true }).click()
 
     // Wait for update
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
   }
 
   test('can change sort order', async ({ page }) => {
@@ -105,12 +106,12 @@ test.describe('Admin Users Page', () => {
 test.describe('Admin Users - User Selection', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/admin/users')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
   })
 
   test('can select a user to view details', async ({ page }) => {
     // Wait for users to load
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     // Find user cards (divs with user info that are clickable)
     const userCards = page.locator('[class*="cursor-pointer"]').filter({
@@ -167,8 +168,9 @@ test.describe('Admin Users - User Selection', () => {
       // Should show account section
       await expect(page.getByText('Account', { exact: true })).toBeVisible({ timeout: 15000 })
 
-      // Should show join date
-      await expect(page.getByText(/Joined portal/)).toBeVisible()
+      // The account facts show the join date under a "Joined" label (the old
+      // "Joined portal" copy was shortened).
+      await expect(page.getByText('Joined', { exact: true })).toBeVisible()
     }
   })
 
@@ -180,7 +182,7 @@ test.describe('Admin Users - User Selection', () => {
 
     if ((await userCards.count()) > 0) {
       await userCards.first().click()
-      await page.waitForLoadState('networkidle')
+      await waitForNetworkIdle(page)
 
       // Find and click the "Back to users" button which closes the detail panel
       const closeButton = page.getByRole('button', { name: /back to users/i })
@@ -199,7 +201,14 @@ test.describe('Admin Users - User Selection', () => {
 
     if ((await userCards.count()) > 0) {
       await userCards.first().click()
-      await page.waitForLoadState('networkidle')
+      await waitForNetworkIdle(page)
+
+      // Wait for the detail panel itself before pressing Escape: its keydown
+      // listener is only mounted once the panel renders, so Escape sent to a
+      // still-loading pane is a no-op.
+      await expect(page.getByRole('button', { name: /back to users/i })).toBeVisible({
+        timeout: 15000,
+      })
 
       // Press Escape
       await page.keyboard.press('Escape')
@@ -213,7 +222,7 @@ test.describe('Admin Users - User Selection', () => {
 test.describe('Admin Users - Keyboard Navigation', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/admin/users')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
   })
 
   test('can navigate users with j/k keys', async ({ page }) => {
@@ -286,7 +295,7 @@ test.describe('Admin Users - Keyboard Navigation', () => {
 test.describe('Admin Users - Filters Panel', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/admin/users')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
   })
 
   test('shows filters panel button or desktop sidebar', async ({ page }) => {
@@ -323,7 +332,7 @@ test.describe('Admin Users - Filters Panel', () => {
 test.describe('Admin Users - Activity Display', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/admin/users')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
   })
 
   test('user cards show activity counts', async ({ page }) => {
@@ -392,7 +401,7 @@ test.describe('Admin Users - Activity Display', () => {
 test.describe('Admin Users - Role Management', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/admin/users')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
   })
 
   test('shows actions section for admins', async ({ page }) => {
@@ -402,7 +411,7 @@ test.describe('Admin Users - Role Management', () => {
 
     if ((await userCards.count()) > 0) {
       await userCards.first().click()
-      await page.waitForLoadState('networkidle')
+      await waitForNetworkIdle(page)
 
       // Actions section should be visible for admin users
       const actionsSection = page.getByText('Actions')
@@ -423,7 +432,7 @@ test.describe('Admin Users - Role Management', () => {
 
     if ((await userCards.count()) > 0) {
       await userCards.first().click()
-      await page.waitForLoadState('networkidle')
+      await waitForNetworkIdle(page)
 
       // Find role selector
       const roleSelector = page
@@ -451,7 +460,7 @@ test.describe('Admin Users - Role Management', () => {
 
     if ((await userCards.count()) > 0) {
       await userCards.first().click()
-      await page.waitForLoadState('networkidle')
+      await waitForNetworkIdle(page)
 
       // Remove button should be visible for admin users
       const removeButton = page.getByRole('button', { name: /remove from portal/i })
@@ -470,7 +479,7 @@ test.describe('Admin Users - Role Management', () => {
 
     if ((await userCards.count()) > 0) {
       await userCards.first().click()
-      await page.waitForLoadState('networkidle')
+      await waitForNetworkIdle(page)
 
       const removeButton = page.getByRole('button', { name: /remove from portal/i })
 
@@ -495,7 +504,7 @@ test.describe('Admin Users - Role Management', () => {
 test.describe('Admin Users - Empty State', () => {
   test('shows appropriate message when no users match filters', async ({ page }) => {
     await page.goto('/admin/users')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     // Search for something that won't exist
     const searchInput = page.getByPlaceholder('Search users...')
@@ -519,7 +528,7 @@ test.describe('Admin Users - Empty State', () => {
 test.describe('Admin Users - Engagement Metrics', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/admin/users')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
   })
 
   test('detail panel shows numeric counts for Posts, Comments, and Votes', async ({ page }) => {
@@ -593,7 +602,7 @@ test.describe('Admin Users - Engagement Metrics', () => {
 test.describe('Admin Users - Search Edge Cases', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/admin/users')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
   })
 
   test('search with special characters does not crash the page', async ({ page }) => {
@@ -603,7 +612,7 @@ test.describe('Admin Users - Search Edge Cases', () => {
     // Attempt with common special chars that could break URL encoding or SQL
     await searchInput.fill("test' OR 1=1 --")
     await page.waitForTimeout(600) // debounce
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     // Page should still render — either results or empty state, not an error
     const pageStillOk =
@@ -616,7 +625,7 @@ test.describe('Admin Users - Search Edge Cases', () => {
     const searchInput = page.getByPlaceholder('Search users...')
     await searchInput.fill('%40example.com')
     await page.waitForTimeout(600)
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     // Page must not throw a runtime error
     const hasError = (await page.locator('text=An unexpected error').count()) > 0
@@ -653,7 +662,7 @@ test.describe('Admin Users - Search Edge Cases', () => {
 test.describe('Admin Users - Advanced Filters', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/admin/users')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
   })
 
   test('Filter button opens a popover with filter categories', async ({ page }) => {
@@ -679,7 +688,7 @@ test.describe('Admin Users - Advanced Filters', () => {
     const verifiedOnlyButton = page.getByRole('button', { name: 'Verified only', exact: true })
     await expect(verifiedOnlyButton).toBeVisible({ timeout: 3000 })
     await verifiedOnlyButton.click()
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     // A filter chip for "Email: Verified" should now appear
     await expect(page.getByText(/email/i).first()).toBeVisible({ timeout: 5000 })
@@ -700,7 +709,7 @@ test.describe('Admin Users - Advanced Filters', () => {
     // Type a value and apply
     await page.locator('input[type="number"]').fill('1')
     await applyButton.click()
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     // Filter chip for Posts should appear
     await expect(page.getByText(/posts/i).first()).toBeVisible({ timeout: 5000 })
@@ -715,7 +724,7 @@ test.describe('Admin Users - Advanced Filters', () => {
     await page.getByText('Email Status').click()
     // Use exact role+name to avoid strict-mode violation with "Unverified only"
     await page.getByRole('button', { name: 'Verified only', exact: true }).click()
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     // Locate the remove (×) button on the email filter chip
     const filterChip = page
@@ -725,7 +734,7 @@ test.describe('Admin Users - Advanced Filters', () => {
     const removeButton = page.locator('button[aria-label*="remove"], button[aria-label*="clear"]')
     if ((await removeButton.count()) > 0) {
       await removeButton.first().click()
-      await page.waitForLoadState('networkidle')
+      await waitForNetworkIdle(page)
 
       // The verified filter param should be gone from URL or filters bar
       const stillHasFilterText = (await page.getByText('Email: Verified').count()) > 0
@@ -742,13 +751,13 @@ test.describe('Admin Users - Advanced Filters', () => {
     if ((await mostActiveButton.count()) === 0) return
 
     await mostActiveButton.click()
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
     await expect(page).toHaveURL(/sort=most_active/)
 
     const mostPostsButton = page.getByRole('button', { name: 'Most Posts' })
     if ((await mostPostsButton.count()) > 0) {
       await mostPostsButton.click()
-      await page.waitForLoadState('networkidle')
+      await waitForNetworkIdle(page)
       await expect(page).toHaveURL(/sort=most_posts/)
     }
   })
@@ -758,7 +767,7 @@ test.describe('Admin Users - Advanced Filters', () => {
     if ((await button.count()) === 0) return
 
     await button.click()
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
     await expect(page).toHaveURL(/sort=most_comments/)
   })
 
@@ -767,7 +776,7 @@ test.describe('Admin Users - Advanced Filters', () => {
     if ((await button.count()) === 0) return
 
     await button.click()
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
     await expect(page).toHaveURL(/sort=most_votes/)
   })
 

@@ -1,3 +1,4 @@
+import { waitForNetworkIdle } from '../../utils/helpers'
 import { test, expect } from '@playwright/test'
 
 /**
@@ -11,7 +12,7 @@ async function navigateToFirstPost(
   await expect(postCards.first()).toBeVisible({ timeout: 15000 })
   await postCards.first().click()
   await page.waitForURL(/\/posts\//, { timeout: 15000 })
-  await page.waitForLoadState('networkidle')
+  await waitForNetworkIdle(page)
 }
 
 test.describe('Post detail page', () => {
@@ -216,7 +217,7 @@ test.describe('Post detail page', () => {
 
       if ((await boardLink.count()) > 0) {
         await boardLink.first().click()
-        await page.waitForLoadState('networkidle')
+        await waitForNetworkIdle(page)
         // Should be back on a listing view
         await expect(page).not.toHaveURL(/\/posts\//)
       }

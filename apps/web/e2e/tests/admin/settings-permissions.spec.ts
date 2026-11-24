@@ -1,3 +1,4 @@
+import { waitForNetworkIdle } from '../../utils/helpers'
 import { test, expect } from '@playwright/test'
 
 /**
@@ -11,7 +12,7 @@ import { test, expect } from '@playwright/test'
 test.describe('Admin Moderation Settings', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/admin/settings/moderation')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
   })
 
   test('page loads and shows moderation heading', async ({ page }) => {
@@ -50,7 +51,7 @@ test.describe('Admin Moderation Settings', () => {
 test.describe('Admin Portal access — anonymous interaction', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/admin/settings/security/authentication?tab=portal-access')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
   })
 
   test('shows the allow-anonymous master switch', async ({ page }) => {
@@ -75,14 +76,14 @@ test.describe('Admin Portal access — anonymous interaction', () => {
 
     // Reload and confirm the new value persisted, then restore the original.
     await page.reload()
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
     const persisted = await toggle.getAttribute('aria-checked')
     expect(persisted).not.toBe(initial)
 
     await toggle.click()
     await page.waitForTimeout(500)
     await page.reload()
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
     expect(await toggle.getAttribute('aria-checked')).toBe(initial)
   })
 })

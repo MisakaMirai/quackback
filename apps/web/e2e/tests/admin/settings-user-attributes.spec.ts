@@ -1,9 +1,19 @@
 import { test, expect } from '@playwright/test'
+import { waitForHydration } from '../../utils/helpers'
 
 test.describe('Admin User Attributes Settings', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/admin/settings/people')
-    await page.waitForLoadState('networkidle')
+    // No networkidle: the admin shell keeps SSE streams open, so the network
+    // never goes idle on an admin page. The heading comes from the server, and
+    // the create button the tests press needs its handlers attached.
+    await expect(page.getByRole('heading', { name: 'Attributes' })).toBeVisible({ timeout: 15_000 })
+    await waitForHydration(
+      page
+        .getByRole('button', { name: /new attribute/i })
+        .or(page.getByRole('button', { name: /add attribute/i }))
+        .first()
+    )
   })
 
   test('page loads and shows heading', async ({ page }) => {
@@ -313,8 +323,11 @@ test.describe('Admin User Attributes Settings', () => {
     // Confirm deletion
     await confirmDialog.getByRole('button', { name: /^delete attribute$/i }).click()
 
-    // Attribute should no longer appear
-    await expect(page.getByText(attrLabel)).toBeHidden({ timeout: 10000 })
+    // The row is gone. Scoped to the list: the confirm dialog's own copy also
+    // names the attribute while it animates out.
+    await expect(
+      page.locator('[data-slot="settings-list-row"]').filter({ hasText: attrLabel })
+    ).toHaveCount(0, { timeout: 10000 })
   })
 
   test('delete confirmation dialog can be cancelled', async ({ page }) => {

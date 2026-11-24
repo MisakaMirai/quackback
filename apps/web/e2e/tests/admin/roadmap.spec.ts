@@ -1,9 +1,10 @@
+import { waitForNetworkIdle } from '../../utils/helpers'
 import { test, expect } from '@playwright/test'
 
 test.describe('Admin Roadmap', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/admin/roadmap')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
   })
 
   test('page loads and shows roadmap content', async ({ page }) => {
@@ -24,13 +25,13 @@ test.describe('Admin Roadmap', () => {
   test('navigating to /admin/roadmap via sidebar link works', async ({ page }) => {
     // Start somewhere else and navigate back via the sidebar
     await page.goto('/admin/feedback')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     const roadmapLink = page.getByRole('link', { name: 'Roadmap' })
     await roadmapLink.first().click()
 
     await expect(page).toHaveURL(/\/admin\/roadmap/, { timeout: 10000 })
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     // Page should render roadmap UI
     const roadmapContent = page
@@ -44,7 +45,7 @@ test.describe('Admin Roadmap', () => {
 test.describe('Admin Roadmap - Sidebar', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/admin/roadmap')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
   })
 
   test('roadmap sidebar shows "Roadmaps" section header', async ({ page }) => {
@@ -127,7 +128,7 @@ test.describe('Admin Roadmap - Sidebar', () => {
 
       if ((await firstItem.count()) > 0) {
         await firstItem.click()
-        await page.waitForLoadState('networkidle')
+        await waitForNetworkIdle(page)
 
         // After selecting, the main area should show the roadmap name heading
         const roadmapHeading = page.locator('main h2').first()
@@ -150,7 +151,7 @@ test.describe('Admin Roadmap - Sidebar', () => {
 test.describe('Admin Roadmap - CRUD', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/admin/roadmap')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
   })
 
   test('can create a new roadmap', async ({ page }) => {
@@ -170,7 +171,7 @@ test.describe('Admin Roadmap - CRUD', () => {
 
       // Dialog should close on success
       await expect(dialog).toBeHidden({ timeout: 10000 })
-      await page.waitForLoadState('networkidle')
+      await waitForNetworkIdle(page)
 
       // The new roadmap should appear in the sidebar
       await expect(page.locator('aside').getByText(roadmapName)).toBeVisible({ timeout: 10000 })
@@ -193,7 +194,7 @@ test.describe('Admin Roadmap - CRUD', () => {
 
       await dialog.getByRole('button', { name: /create/i }).click()
       await expect(dialog).toBeHidden({ timeout: 10000 })
-      await page.waitForLoadState('networkidle')
+      await waitForNetworkIdle(page)
 
       // New roadmap appears in sidebar
       await expect(page.locator('aside').getByText(roadmapName)).toBeVisible({ timeout: 10000 })
@@ -267,7 +268,7 @@ test.describe('Admin Roadmap - CRUD', () => {
 
           await editDialog.getByRole('button', { name: /save/i }).click()
           await expect(editDialog).toBeHidden({ timeout: 10000 })
-          await page.waitForLoadState('networkidle')
+          await waitForNetworkIdle(page)
         } else {
           await page.keyboard.press('Escape')
         }
@@ -320,7 +321,7 @@ test.describe('Admin Roadmap - CRUD', () => {
 test.describe('Admin Roadmap - Kanban columns', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/admin/roadmap')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
   })
 
   test('shows kanban columns when a roadmap is selected', async ({ page }) => {
@@ -454,7 +455,7 @@ test.describe('Admin Roadmap - Kanban columns', () => {
 test.describe('Admin Roadmap - Kanban Accuracy', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/admin/roadmap')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
   })
 
   test('card count in each column matches the header badge count', async ({ page }) => {
@@ -500,7 +501,7 @@ test.describe('Admin Roadmap - Kanban Accuracy', () => {
     if ((await noRoadmapMsg.count()) > 0) return
 
     const cards = page.locator('main [class*="bg-card"][class*="rounded-lg"]')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     const cardCount = await cards.count()
     if (cardCount === 0) return
@@ -521,7 +522,7 @@ test.describe('Admin Roadmap - Kanban Accuracy', () => {
     if ((await noRoadmapMsg.count()) > 0) return
 
     const cards = page.locator('main [class*="bg-card"][class*="rounded-lg"]')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     const cardCount = await cards.count()
     if (cardCount === 0) return
@@ -542,7 +543,7 @@ test.describe('Admin Roadmap - Kanban Accuracy', () => {
     if ((await noRoadmapMsg.count()) > 0) return
 
     const cards = page.locator('main [class*="bg-card"][class*="rounded-lg"]')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     if ((await cards.count()) === 0) return
 
@@ -578,7 +579,7 @@ test.describe('Admin Roadmap - Cross-View Verification', () => {
     // Navigate to admin feedback to find a post and verify it shows on /roadmap.
 
     await page.goto('/admin/feedback')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     // Find the first post card in the list
     const postCards = page.locator('[class*="cursor-pointer"]').filter({
@@ -597,7 +598,7 @@ test.describe('Admin Roadmap - Cross-View Verification', () => {
     expect(postTitle.length).toBeGreaterThan(0)
 
     await firstCard.click()
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     // In the detail panel, find the status selector and change it to "Planned"
     // The status picker is inside the post detail modal/sheet
@@ -635,11 +636,11 @@ test.describe('Admin Roadmap - Cross-View Verification', () => {
     }
 
     await plannedOption.first().click()
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     // Navigate to the public roadmap
     await page.goto('/roadmap')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     // Confirm no "no roadmaps" empty state (seed always has roadmaps)
     const noRoadmapsMsg = page.getByText('No roadmaps available')
@@ -657,7 +658,7 @@ test.describe('Admin Roadmap - Cross-View Verification', () => {
 test.describe('Admin Roadmap - Public Roadmap Column Accuracy', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/roadmap')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
   })
 
   test('column headers show expected roadmap-visible status names', async ({ page }) => {
@@ -724,7 +725,7 @@ test.describe('Admin Roadmap - Public Roadmap Column Accuracy', () => {
     if ((await noRoadmapsMsg.count()) > 0) return
 
     const cards = page.locator('.roadmap-card')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     const cardCount = await cards.count()
     if (cardCount === 0) return
@@ -744,7 +745,7 @@ test.describe('Admin Roadmap - Public Roadmap Column Accuracy', () => {
 test.describe('Admin Roadmap - Filters bar', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/admin/roadmap')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
   })
 
   test('shows the search field in the toolbar', async ({ page }) => {

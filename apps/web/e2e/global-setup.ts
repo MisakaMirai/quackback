@@ -1,4 +1,5 @@
 import { test as setup, expect } from '@playwright/test'
+import { AUTH_STATE_PATH } from './utils/auth-state'
 import {
   getMagicLinkToken,
   ensureTestUserHasRole,
@@ -7,7 +8,7 @@ import {
 } from './utils/db-helpers'
 
 const ADMIN_EMAIL = 'demo@example.com'
-const AUTH_FILE = 'e2e/.auth/admin.json'
+const AUTH_FILE = AUTH_STATE_PATH
 
 /**
  * Global setup: Authenticate as admin via Better-auth's magic-link plugin.

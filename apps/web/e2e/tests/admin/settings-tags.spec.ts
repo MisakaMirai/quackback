@@ -1,9 +1,16 @@
 import { test, expect } from '@playwright/test'
+import { waitForHydration } from '../../utils/helpers'
 
 test.describe('Admin Tags Settings', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/admin/settings/tags')
-    await page.waitForLoadState('networkidle')
+    // No networkidle: the admin shell keeps SSE streams open, so the network
+    // never goes idle on an admin page. The heading comes from the server, and
+    // the create button the tests press needs its handlers attached.
+    await expect(page.getByRole('heading', { name: 'Feedback & Roadmaps' })).toBeVisible({
+      timeout: 15_000,
+    })
+    await waitForHydration(page.getByRole('button', { name: 'New tag', exact: true }).first())
   })
 
   test('displays tags settings page', async ({ page }) => {
@@ -32,14 +39,13 @@ test.describe('Admin Tags Settings', () => {
     await page.waitForTimeout(500)
 
     const dots = page.getByRole('button', { name: /^Change colour of / })
+    const list = page.locator('[data-slot="settings-list"]')
 
     if ((await dots.count()) > 0) {
       await expect(dots.first()).toBeVisible()
-      // Portal is the default and is not labelled
-      // (scoped to the page content: the settings nav has a Portal link)
-      await expect(page.getByRole('main').last().getByText('Portal', { exact: true })).toHaveCount(
-        0
-      )
+      // Portal is the default and is not labelled — only internal tags carry a
+      // badge. Scoped to the tag list: the settings nav has a Portal link too.
+      await expect(list.getByText('Portal', { exact: true })).toHaveCount(0)
     }
   })
 
@@ -178,8 +184,11 @@ test.describe('Admin Tags Settings', () => {
       // Confirm deletion
       await confirmDialog.getByRole('button', { name: 'Delete tag' }).click()
 
-      // PostTag should no longer appear
-      await expect(page.getByText(tagName)).toBeHidden({ timeout: 10000 })
+      // The row is gone. Scoped to the list: the confirm dialog's own copy also
+      // names the tag while it animates out.
+      await expect(
+        page.locator('[data-slot="settings-list-row"]').filter({ hasText: tagName })
+      ).toHaveCount(0, { timeout: 10000 })
     }
   })
 

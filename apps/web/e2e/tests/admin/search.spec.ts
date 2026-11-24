@@ -1,3 +1,4 @@
+import { waitForNetworkIdle } from '../../utils/helpers'
 import { test, expect } from '@playwright/test'
 
 /**
@@ -14,7 +15,7 @@ import { test, expect } from '@playwright/test'
 test.describe('Workspace search', () => {
   test('the palette opens and its first action opens the results page', async ({ page }) => {
     await page.goto('/admin')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     // The palette is opened from the sidebar's search row (same control the
     // shortcut fires), then typed into.
@@ -34,7 +35,7 @@ test.describe('Workspace search', () => {
 
   test('the results page filters by type and reports short and empty queries', async ({ page }) => {
     await page.goto('/admin/search?q=Dark%20mode')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
     await expect(page.getByText('Dark mode support').first()).toBeVisible({ timeout: 15_000 })
 
     // A type filter that cannot match the query shows the empty state instead

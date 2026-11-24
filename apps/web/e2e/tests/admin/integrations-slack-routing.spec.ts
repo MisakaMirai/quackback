@@ -1,9 +1,10 @@
+import { waitForNetworkIdle } from '../../utils/helpers'
 import { test, expect } from '@playwright/test'
 
 test.describe('Slack notification routing', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/admin/settings/integrations/slack')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
   })
 
   test('renders the routing UI when Slack is connected', async ({ page }) => {

@@ -1,9 +1,10 @@
+import { waitForNetworkIdle } from '../../utils/helpers'
 import { test, expect } from '@playwright/test'
 
 test.describe('Discord notification routing', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/admin/settings/integrations/discord')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
   })
 
   test('renders the routing UI when Discord is connected', async ({ page }) => {

@@ -13,13 +13,65 @@
  * Runs serially: it toggles the workspace allowAnonymous switch and shares the
  * e2e-* board fixtures, so tests must not interleave.
  */
+import { waitForNetworkIdle } from '../../utils/helpers'
 import { test, expect, type BrowserContext, type Page } from '@playwright/test'
+import { execFileSync } from 'node:child_process'
+import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import {
   loginViaMagicLink,
   setupAccessFixtures,
   setWorkspaceAnon,
   type AccessFixtures,
 } from '../../utils/access-helpers'
+import { enableMagicLinkMethod, clearSigninRateLimit } from '../../utils/db-helpers'
+
+const APPS_WEB_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..')
+
+/**
+ * Sign an identity in, retrying while the app's sign-in limiter asks us to wait.
+ * This file signs in three identities back to back, and the magic-link endpoint
+ * allows only a few sends per short window, so the later ones can 429.
+ */
+async function loginWithRetry(
+  context: BrowserContext,
+  email: string,
+  opts: { role?: 'admin' | 'member' | 'user' } = {}
+): Promise<void> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      await loginViaMagicLink(context, email, opts)
+      return
+    } catch (error) {
+      if (attempt >= 4) throw error
+      await new Promise((resolve) => setTimeout(resolve, 4000))
+    }
+  }
+}
+
+/**
+ * Drop the cached workspace settings row so a just-written portal config takes
+ * effect without waiting for the cache to expire. `setWorkspaceAnon` only writes
+ * settings.portal_config; without this the running server keeps answering with
+ * the switch's previous value, which reads as the wrong tier for every actor.
+ * Same suite script the other fixtures use, kept local as it is not a helper export.
+ */
+async function setWorkspaceAnonAndBust(enabled: boolean): Promise<void> {
+  setWorkspaceAnon(enabled)
+  execFileSync(
+    'bun',
+    ['--env-file=../../.env', 'e2e/scripts/bust-caches.ts', 'settings:workspace'],
+    {
+      cwd: APPS_WEB_ROOT,
+      encoding: 'utf-8',
+    }
+  )
+  // The running server keeps its own copy of the workspace settings for
+  // SETTINGS_LOCAL_TTL_MS (5s), and dropping the stored cache does not clear
+  // that copy, so wait the window out. Every assertion below then reads the
+  // value this write produced instead of racing the previous render.
+  await new Promise((resolve) => setTimeout(resolve, 5_500))
+}
 
 const MEMBER_EMAIL = 'e2e-seg-member@example.test'
 const PLAIN_EMAIL = 'e2e-plain-user@example.test'
@@ -58,7 +110,7 @@ async function visibleBoardNames(page: Page): Promise<string[]> {
   const names: string[] = []
   for (const key of Object.keys(BOARD_DISPLAY) as Array<keyof AccessFixtures['boards']>) {
     await page.goto(`/?board=${fx.boards[key].slug}`)
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
     await page.waitForTimeout(600) // let the filtered feed settle
     const body = await page.locator('body').innerText()
     if (body.includes(PROBE_POST)) names.push(BOARD_DISPLAY[key])
@@ -72,15 +124,20 @@ test.beforeAll(async ({ browser }) => {
   memberCtx = await browser.newContext()
   adminCtx = await browser.newContext()
 
-  // Establish identities (magic-link verify auto-creates the user).
-  await loginViaMagicLink(userCtx, PLAIN_EMAIL)
-  await loginViaMagicLink(memberCtx, MEMBER_EMAIL)
-  await loginViaMagicLink(adminCtx, ADMIN_EMAIL, { role: 'admin' })
+  // Establish identities (magic-link verify auto-creates the user). A
+  // public-only run does not execute the admin project's global setup, which is
+  // what enables the magic-link method and clears the per-address sign-in
+  // budget — do both here so all three identities can sign in.
+  enableMagicLinkMethod()
+  clearSigninRateLimit()
+  await loginWithRetry(userCtx, PLAIN_EMAIL)
+  await loginWithRetry(memberCtx, MEMBER_EMAIL)
+  await loginWithRetry(adminCtx, ADMIN_EMAIL, { role: 'admin' })
 
   // Provision boards + segment, and add the member to the segment (member
   // principal exists now that they've signed in).
   fx = setupAccessFixtures(MEMBER_EMAIL)
-  setWorkspaceAnon(true) // baseline ON
+  await setWorkspaceAnonAndBust(true) // baseline ON
 
   anon = await anonCtx.newPage()
   user = await userCtx.newPage()
@@ -89,7 +146,10 @@ test.beforeAll(async ({ browser }) => {
 })
 
 test.afterAll(async () => {
-  setWorkspaceAnon(true) // restore baseline
+  // Restore the seed value (OFF), not this suite's ON baseline: other public
+  // specs in the same run expect the workspace default, and leaving anonymous
+  // posting on changes their composer.
+  await setWorkspaceAnonAndBust(false)
   await Promise.all([anonCtx?.close(), userCtx?.close(), memberCtx?.close(), adminCtx?.close()])
 })
 
@@ -130,8 +190,11 @@ test.describe('view tier — board-list visibility', () => {
 // Engage the submit composer (the per-action submit gate surfaces on
 // interaction, not as upfront page text) and report the resulting state.
 async function composerState(page: Page, boardSlug: string) {
-  await page.goto(`/?board=${boardSlug}`)
-  await page.waitForLoadState('networkidle')
+  // `e2e=` keeps each visit a distinct URL: the app serves an already-rendered
+  // page for a URL it rendered recently, so re-visiting the same feed within a
+  // test that flips the workspace switch would read the previous render.
+  await page.goto(`/?board=${boardSlug}&e2e=${Date.now()}`)
+  await waitForNetworkIdle(page)
   const composer = page.getByPlaceholder(/what'?s on your mind/i).first()
   await composer.click()
   await composer.fill(`E2E access probe ${Date.now()}`)
@@ -171,14 +234,17 @@ test.describe('submit tier — submit affordance + enforcement', () => {
 // Load a board's seeded post and report the post-level access state.
 async function postState(page: Page, board: { slug: string; postId: string }) {
   await page.goto(`/b/${board.slug}/posts/${board.postId}`)
-  await page.waitForLoadState('networkidle')
+  await waitForNetworkIdle(page)
   const body = (await page.locator('main, body').first().innerText()).toLowerCase()
   const denied = /post not found|page not found/.test(body)
   return {
     denied,
     renders: !denied && body.includes('e2e access probe post'),
     signInToComment: /sign in to comment|log in to comment/.test(body),
-    hasCommentEditor: (await page.locator('[contenteditable="true"], textarea').count()) > 0,
+    // The composer paints an editor stand-in and only mounts the TipTap
+    // contenteditable once the pointer or focus arrives, so its host element is
+    // the stable signal that commenting is open (a live contenteditable is not).
+    hasCommentEditor: (await page.locator('[data-testid="comment-form-editor"]').count()) > 0,
   }
 }
 
@@ -219,17 +285,24 @@ test.describe('allowAnonymous master switch (fail-closed ceiling)', () => {
     expect(on.needsSignIn).toBe(false)
     expect(on.submitEnabled).toBe(true)
 
-    setWorkspaceAnon(false)
+    await setWorkspaceAnonAndBust(false)
     try {
-      const off = await composerState(anon, 'e2e-allanon')
-      // Submit now gated for anon...
-      expect(off.submitEnabled).toBe(false)
-      expect(off.needsSignIn).toBe(true)
+      // The server keeps its own copy of the workspace settings for
+      // SETTINGS_LOCAL_TTL_MS (5s), and busting the stored cache does not clear
+      // it, so the first probe after the write can still be answered from the
+      // previous value. Retry the probe until the switch has actually reached
+      // the server rather than injecting a sleep.
+      await expect(async () => {
+        const off = await composerState(anon, 'e2e-allanon')
+        // Submit now gated for anon...
+        expect(off.submitEnabled).toBe(false)
+        expect(off.needsSignIn).toBe(true)
+      }).toPass({ timeout: 30_000 })
       // ...but the board is still VIEWABLE (allowAnonymous never ceilings view).
       const names = await visibleBoardNames(anon)
       expect(names).toContain('E2E All Anonymous')
     } finally {
-      setWorkspaceAnon(true)
+      await setWorkspaceAnonAndBust(true)
     }
   })
 })
@@ -239,7 +312,7 @@ test.describe('allowAnonymous master switch (fail-closed ceiling)', () => {
 // can't leak into the other tests, and the workspace switch is back ON by now.
 async function gotoPost(page: Page, board: { slug: string; postId: string }) {
   await page.goto(`/b/${board.slug}/posts/${board.postId}`)
-  await page.waitForLoadState('networkidle')
+  await waitForNetworkIdle(page)
 }
 const voteButton = (page: Page) => page.getByTestId('vote-button').first()
 
@@ -292,11 +365,13 @@ test.describe('vote tier — vote affordance + gating', () => {
 /** Submit a post to a board via the portal composer; resolves once accepted. */
 async function submitFeedback(page: Page, boardSlug: string, title: string) {
   await page.goto(`/?board=${boardSlug}`)
-  await page.waitForLoadState('networkidle')
+  await waitForNetworkIdle(page)
   const composer = page.getByPlaceholder(/what'?s on your mind/i).first()
   await composer.click()
   await composer.fill(title)
-  const submit = page.getByRole('button', { name: /^submit/i }).first()
+  // The composer's send CTA is "Post" (it was "Submit" before the composer was
+  // rebuilt; the toolbar and the board filter put other buttons around it).
+  const submit = page.getByRole('button', { name: /^(post|submit)/i }).first()
   await expect(submit).toBeEnabled()
   await submit.click()
   await expect(page.getByText('Feedback submitted')).toBeVisible({ timeout: 10000 })
@@ -305,7 +380,7 @@ async function submitFeedback(page: Page, boardSlug: string, title: string) {
 /** Does the board's filtered feed (newest-first) surface a post with this title? */
 async function feedShowsPost(page: Page, boardSlug: string, title: string): Promise<boolean> {
   await page.goto(`/?board=${boardSlug}&sort=new`)
-  await page.waitForLoadState('networkidle')
+  await waitForNetworkIdle(page)
   await page.waitForTimeout(600) // let the feed settle
   return (await page.locator('body').innerText()).includes(title)
 }
@@ -315,14 +390,14 @@ async function feedShowsPost(page: Page, boardSlug: string, title: string): Prom
  *  <li>s in the same queue, each carrying its own Approve/Reject buttons. */
 async function queueRow(adminPage: Page, uniqueText: string) {
   await adminPage.goto('/admin/feedback/moderation')
-  await adminPage.waitForLoadState('networkidle')
+  await waitForNetworkIdle(adminPage)
   return adminPage.locator('li').filter({ hasText: uniqueText }).first()
 }
 
 /** Post a comment on a board's seeded post via the portal comment form. */
 async function submitComment(page: Page, board: { slug: string; postId: string }, text: string) {
   await page.goto(`/b/${board.slug}/posts/${board.postId}`)
-  await page.waitForLoadState('networkidle')
+  await waitForNetworkIdle(page)
   const form = page
     .locator('form')
     .filter({ has: page.getByTestId('comment-form-editor') })
@@ -343,7 +418,7 @@ async function postShowsComment(
   text: string
 ): Promise<boolean> {
   await page.goto(`/b/${board.slug}/posts/${board.postId}`)
-  await page.waitForLoadState('networkidle')
+  await waitForNetworkIdle(page)
   await page.waitForTimeout(600) // let comments settle
   return (await page.locator('main, body').first().innerText()).includes(text)
 }

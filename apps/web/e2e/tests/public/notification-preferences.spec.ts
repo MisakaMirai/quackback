@@ -1,3 +1,4 @@
+import { waitForNetworkIdle } from '../../utils/helpers'
 import { test, expect } from '@playwright/test'
 import {
   clearSigninRateLimit,
@@ -43,7 +44,7 @@ test.describe('Portal notification preferences', () => {
     await loginViaMagicLink(context, email)
     const page = await context.newPage()
     await page.goto('/settings/preferences')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
     await expect(page.getByRole('heading', { name: 'Preferences' })).toBeVisible({
       timeout: 15_000,
     })
@@ -64,7 +65,7 @@ test.describe('Portal notification preferences', () => {
 
       // The change is server-side, not just an optimistic switch.
       await page.reload()
-      await page.waitForLoadState('networkidle')
+      await waitForNetworkIdle(page)
       await expect(
         page.getByRole('switch', { name: 'Pause all email notifications' })
       ).toBeChecked()
@@ -104,7 +105,7 @@ test.describe('Portal notification preferences', () => {
 
       // Reload: the unchecked cell is what the server stored.
       await page.reload()
-      await page.waitForLoadState('networkidle')
+      await waitForNetworkIdle(page)
       await expect(page.getByRole('switch', { name: 'Status changed - Email' })).not.toBeChecked()
       await expect(page.getByRole('switch', { name: 'Status changed - In-app' })).toBeChecked()
     } finally {

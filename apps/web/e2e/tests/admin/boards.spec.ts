@@ -1,3 +1,4 @@
+import { waitForNetworkIdle } from '../../utils/helpers'
 import { test, expect, type Page, type Locator } from '@playwright/test'
 import { slugify } from '../../../src/lib/shared/utils/slugify'
 
@@ -20,7 +21,7 @@ async function setPresetAndSave(page: Page, preset: Locator): Promise<void> {
  */
 async function createBoard(page: Page, name: string): Promise<void> {
   await page.goto('/admin/settings/boards')
-  await page.waitForLoadState('networkidle')
+  await waitForNetworkIdle(page)
   await page.getByRole('button', { name: 'New board' }).click()
   const dialog = page.getByRole('dialog')
   await expect(dialog).toBeVisible()
@@ -72,7 +73,7 @@ async function deleteCurrentBoard(page: Page, name: string): Promise<void> {
 test.describe('Admin Board Management', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/admin/settings/boards')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
   })
 
   test('displays board settings page', async ({ page }) => {
@@ -126,7 +127,7 @@ test.describe('Admin Board Management', () => {
 
       // The form saves when the field loses focus
       await descInput.first().blur()
-      await page.waitForLoadState('networkidle')
+      await waitForNetworkIdle(page)
     }
   })
 
@@ -206,15 +207,12 @@ test.describe('Admin Board Management', () => {
 
   test('can access board access settings', async ({ page }) => {
     await openFirstBoard(page)
-    // Navigate to access settings tab
-    const accessLink = page.getByRole('link', { name: 'Access' })
-
-    if ((await accessLink.count()) > 0) {
-      await accessLink.click()
-
-      // Should navigate to access settings page
-      await expect(page).toHaveURL(/\/access/, { timeout: 5000 })
-    }
+    // Access is a tab of the board page (it sets ?tab=access). There is no
+    // standalone /access route, and the settings rail's "Access & Security" link
+    // is a different destination that the old name-based lookup used to hit.
+    await page.getByRole('tab', { name: 'Access' }).click()
+    await expect(page).toHaveURL(/[?&]tab=access/)
+    await expect(page.getByText('Per-action permissions')).toBeVisible({ timeout: 5000 })
   })
 })
 
@@ -222,7 +220,7 @@ test.describe('Board Access Settings', () => {
   test.beforeEach(async ({ page }) => {
     // Navigate to board settings access page
     await page.goto('/admin/settings/boards')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     await openFirstBoard(page)
 
@@ -259,7 +257,7 @@ test.describe('Board Access Settings', () => {
 
     // Reload — the URL keeps ?tab=access — and confirm the saved preset is active.
     await page.reload()
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
     await expect(page.getByText('Per-action permissions')).toBeVisible({ timeout: 10000 })
     await expect(privatePreset).toHaveAttribute('aria-pressed', 'true')
 
@@ -275,7 +273,7 @@ test.describe('Board Deletion Flow', () => {
   test('can delete a board after typing confirmation', async ({ page }) => {
     // First, create a board to delete
     await page.goto('/admin/settings/boards')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     // Click "New board" button
     const newBoardButton = page.getByRole('button', { name: 'New board' })
@@ -295,7 +293,7 @@ test.describe('Board Deletion Flow', () => {
 
     // Wait for dialog to close
     await expect(dialog).toBeHidden({ timeout: 10000 })
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     await expect(page.getByRole('heading', { name: testBoardName })).toBeVisible({ timeout: 10000 })
     // The danger zone button opens a confirm dialog that asks for the board name
@@ -361,7 +359,7 @@ test.describe('Create Board Dialog', () => {
 
   test.beforeEach(async ({ page }) => {
     await page.goto('/admin/settings/boards')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     // Wait for page to be ready - either the boards list or empty state
     await expect(
@@ -475,13 +473,13 @@ test.describe('Create Board Dialog', () => {
     await expect(dialog).toBeHidden({ timeout: 10000 })
 
     // Wait for navigation to complete and page to fully load
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     await expect(page.getByRole('heading', { name: testBoardName })).toBeVisible({ timeout: 10000 })
     await expect(page.getByRole('navigation', { name: 'Breadcrumb' })).toContainText(testBoardName)
 
     await page.goto('/admin/settings/boards')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
     await expect(page.getByRole('link', { name: new RegExp(testBoardName) })).toBeVisible({
       timeout: 10000,
     })
@@ -558,7 +556,7 @@ test.describe('Create Board Dialog', () => {
 test.describe('Board Settings Tabs', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/admin/settings/boards')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
     await expect(
       page
         .getByRole('heading', { level: 1, name: 'Feedback & Roadmaps' })
@@ -626,7 +624,7 @@ test.describe('Board Settings Tabs', () => {
     if ((await accessTab.count()) === 0) return
 
     await accessTab.click()
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
 
     await expect(accessTab).toHaveAttribute('data-active')
     await expect(page.getByRole('tab', { name: 'General' })).not.toHaveAttribute('data-active')
@@ -640,7 +638,7 @@ test.describe('Board Settings Tabs', () => {
 test.describe('Board Slug', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/admin/settings/boards')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
     await expect(
       page
         .getByRole('heading', { level: 1, name: 'Feedback & Roadmaps' })

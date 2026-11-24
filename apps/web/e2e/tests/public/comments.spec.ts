@@ -1,55 +1,28 @@
+import { waitForNetworkIdle } from '../../utils/helpers'
 import { test, expect, type Page, type BrowserContext, type Locator } from '@playwright/test'
-import { getOtpCode } from '../../utils/db-helpers'
+import { loginViaMagicLink } from '../../utils/access-helpers'
+import { enableMagicLinkMethod, clearSigninRateLimit } from '../../utils/db-helpers'
 
 const TEST_EMAIL = 'demo@example.com'
-const TEST_HOST = 'acme.localhost:3000'
 
-// Run serially to avoid OTP rate-limiting conflicts with other spec files
+// Run serially to avoid rate-limiting conflicts with other spec files
 test.describe.configure({ mode: 'serial' })
 
 // ---------------------------------------------------------------------------
-// Auth helper (mirrors voting.spec.ts pattern with exponential backoff)
+// Auth helper (magic link, the flow global setup and the rest of the suite use)
 // ---------------------------------------------------------------------------
-async function authenticateViaOTP(page: Page, maxRetries = 8) {
-  for (let attempt = 0; attempt < maxRetries; attempt++) {
-    try {
-      const sendResponse = await page.request.post('/api/auth/email-otp/send-verification-otp', {
-        headers: { 'Content-Type': 'application/json' },
-        data: { email: TEST_EMAIL, type: 'sign-in' },
-      })
-
-      if (sendResponse.status() === 429) {
-        const wait = Math.min(2000 * Math.pow(2, attempt), 20000)
-        console.log(`[comments] Rate limited, waiting ${wait}ms (attempt ${attempt + 1})`)
-        await page.waitForTimeout(wait)
-        continue
-      }
-
-      if (!sendResponse.ok()) {
-        throw new Error(`OTP send failed: ${await sendResponse.text()}`)
-      }
-
-      const otpCode = getOtpCode(TEST_EMAIL, TEST_HOST)
-
-      const verifyResponse = await page.request.post('/api/auth/sign-in/email-otp', {
-        headers: { 'Content-Type': 'application/json' },
-        data: { email: TEST_EMAIL, otp: otpCode },
-      })
-
-      if (!verifyResponse.ok()) {
-        throw new Error(`OTP verify failed: ${await verifyResponse.text()}`)
-      }
-
-      await page.goto('/')
-      await page.waitForLoadState('networkidle')
-      console.log('[comments] Authentication successful')
-      return
-    } catch (err) {
-      if (attempt === maxRetries - 1) throw err
-      console.log(`[comments] Auth attempt ${attempt + 1} failed, retrying...`)
-      await page.waitForTimeout(3000)
-    }
-  }
+async function authenticateViaMagicLink(page: Page) {
+  // Magic link is opt-in per workspace and the seed leaves it off; the admin
+  // project's global setup enables it, but a public-only run does not depend on
+  // that project. The per-address sign-in budget (3 sends per 15 minutes) is
+  // cleared too — the legacy OTP send this replaced spent it and then span
+  // until the suite's beforeAll timed out.
+  enableMagicLinkMethod()
+  clearSigninRateLimit()
+  await loginViaMagicLink(page.context(), TEST_EMAIL)
+  await page.goto('/')
+  await waitForNetworkIdle(page)
+  console.log('[comments] Authentication successful')
 }
 
 // ---------------------------------------------------------------------------
@@ -57,13 +30,13 @@ async function authenticateViaOTP(page: Page, maxRetries = 8) {
 // ---------------------------------------------------------------------------
 async function goToFirstPost(page: Page) {
   await page.goto('/')
-  await page.waitForLoadState('networkidle')
+  await waitForNetworkIdle(page)
 
   const postLinks = page.locator('a[href*="/posts/"]')
   await expect(postLinks.first()).toBeVisible({ timeout: 15000 })
   await postLinks.first().click()
   await page.waitForURL(/\/posts\//)
-  await page.waitForLoadState('networkidle')
+  await waitForNetworkIdle(page)
   // Wait for the comments heading (count badge rendered by CommentsSection)
   await expect(page.getByRole('heading', { name: /\d+ comments?/i })).toBeVisible({
     timeout: 10000,
@@ -295,7 +268,7 @@ test.describe('Authenticated user — comment form and submission', () => {
   test.beforeAll(async ({ browser }) => {
     sharedContext = await browser.newContext()
     const page = await sharedContext.newPage()
-    await authenticateViaOTP(page)
+    await authenticateViaMagicLink(page)
     await page.close()
   })
 
@@ -404,7 +377,18 @@ test.describe('Authenticated user — comment form and submission', () => {
   test('comment count increments after submitting a new comment', async () => {
     const page = await sharedContext.newPage()
     try {
-      await goToFirstPost(page)
+      // Use the newest post: the seeded first post accumulates comments across
+      // runs, and the heading counts the loaded page of root comments, so once
+      // it is full a new comment cannot move the number.
+      await page.goto('/?sort=new')
+      await waitForNetworkIdle(page)
+      await page.locator('a[href*="/posts/"]').first().click()
+      await page.waitForURL(/\/posts\//)
+      await waitForNetworkIdle(page)
+      await expect(page.getByRole('heading', { name: /\d+ comments?/i })).toBeVisible({
+        timeout: 10000,
+      })
+      await engageComposer(page)
 
       const heading = page.getByRole('heading', { name: /\d+ comments?/i })
       const beforeText = (await heading.textContent()) ?? '0'
@@ -496,13 +480,19 @@ test.describe('Authenticated user — comment form and submission', () => {
   })
 
   // -------------------------------------------------------------------------
-  test('shows "Posting as Demo User" attribution text in comment form', async () => {
+  test('shows the signed-in author attribution in the comment form', async () => {
     const page = await sharedContext.newPage()
     try {
       await goToFirstPost(page)
-      // CommentForm renders "Posting as {name}" for authenticated non-anonymous users
-      await expect(page.getByText(/posting as/i).first()).toBeVisible({ timeout: 10000 })
-      await expect(page.getByText(/demo/i).first()).toBeVisible({ timeout: 10000 })
+      // The composer attributes the comment to the signed-in viewer. A team
+      // member (the demo account) gets the unified composer, which states the
+      // name alone — the "Posting as …" sentence belongs to the plain member
+      // variant — so assert the name inside the comment form itself.
+      const form = page
+        .locator('form')
+        .filter({ has: page.getByTestId('comment-form-editor') })
+        .first()
+      await expect(form.getByText('Demo User').first()).toBeVisible({ timeout: 10000 })
     } finally {
       await page.close()
     }
@@ -520,7 +510,7 @@ test.describe('Edge cases — comment content', () => {
   test.beforeAll(async ({ browser }) => {
     sharedContext = await browser.newContext()
     const page = await sharedContext.newPage()
-    await authenticateViaOTP(page)
+    await authenticateViaMagicLink(page)
     await page.close()
   })
 
@@ -695,7 +685,7 @@ test.describe('Comment editing', () => {
   test.beforeAll(async ({ browser }) => {
     sharedContext = await browser.newContext()
     const page = await sharedContext.newPage()
-    await authenticateViaOTP(page)
+    await authenticateViaMagicLink(page)
     await page.close()
   })
 
@@ -896,7 +886,7 @@ test.describe('Markdown comment rendering', () => {
   test.beforeAll(async ({ browser }) => {
     sharedContext = await browser.newContext()
     const page = await sharedContext.newPage()
-    await authenticateViaOTP(page)
+    await authenticateViaMagicLink(page)
     await page.close()
   })
 
@@ -964,9 +954,9 @@ test.describe('Markdown comment rendering', () => {
       await editor.click()
       await clearEditor(editor)
       await editor.pressSequentially('/image')
-      const imageItem = page
-        .getByRole('option', { name: /^image$/i })
-        .or(page.getByText('Upload an image', { exact: false }))
+      // The slash menu renders plain buttons labelled with the item title (no
+      // role="option", and no "Upload an image" description line any more).
+      const imageItem = page.getByRole('button', { name: /^image$/i })
       await expect(imageItem.first()).toBeVisible({ timeout: 5000 })
       const [fileChooser] = await Promise.all([
         page.waitForEvent('filechooser'),

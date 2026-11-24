@@ -1,9 +1,10 @@
+import { waitForNetworkIdle } from '../../utils/helpers'
 import { test, expect } from '@playwright/test'
 
 test.describe('Admin Portal Settings', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/admin/settings/portal')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
   })
 
   test('page loads and shows portal settings', async ({ page }) => {
@@ -13,7 +14,7 @@ test.describe('Admin Portal Settings', () => {
 
   test('/admin/settings/branding redirects to portal', async ({ page }) => {
     await page.goto('/admin/settings/branding')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
     await expect(page).toHaveURL(/\/admin\/settings\/portal/)
     await expect(page.getByRole('heading', { name: 'Portal' })).toBeVisible({ timeout: 10000 })
   })

@@ -1,3 +1,4 @@
+import { waitForNetworkIdle } from '../../utils/helpers'
 import { test, expect, type Page } from '@playwright/test'
 import { getImportedPosts } from '../../utils/db-helpers'
 
@@ -17,7 +18,7 @@ test.describe('CSV import', () => {
 
   async function uploadCsv(page: Page, name: string, csv: string): Promise<void> {
     await page.goto('/admin/settings/imports')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
     await page.locator('input[type="file"]').setInputFiles({
       name,
       mimeType: 'text/csv',

@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { closeDialog } from '../../utils/helpers'
+import { closeDialog, waitForNetworkIdle } from '../../utils/helpers'
 
 /**
  * Public portal auth tests — no prior authentication.
@@ -18,7 +18,7 @@ test.describe('Portal Auth Dialog', () => {
 
   test.beforeEach(async ({ page }) => {
     await page.goto('/')
-    await page.waitForLoadState('networkidle')
+    await waitForNetworkIdle(page)
   })
 
   test.afterEach(async ({ page }) => {

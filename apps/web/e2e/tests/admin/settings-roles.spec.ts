@@ -3,11 +3,14 @@ import { test, expect } from '@playwright/test'
 test.describe('Admin Roles Settings', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/admin/settings/members?tab=roles')
-    await page.waitForLoadState('networkidle')
+    // No networkidle: the admin shell keeps SSE streams open, so the network
+    // never goes idle on an admin page.
+    await expect(page.getByRole('heading', { name: 'Roles' })).toBeVisible({ timeout: 15_000 })
   })
 
-  test('displays the four preset roles as cards', async ({ page }) => {
-    for (const name of ['Owner', 'Admin', 'Manager', 'Contributor']) {
+  test('displays the preset roles as cards', async ({ page }) => {
+    // Five built-in roles; "Support lead" was added after the four older ones.
+    for (const name of ['Owner', 'Admin', 'Manager', 'Support lead', 'Contributor']) {
       await expect(page.getByRole('link', { name: new RegExp(name) }).first()).toBeVisible({
         timeout: 10000,
       })
@@ -58,10 +61,11 @@ test.describe('Admin Roles Settings', () => {
     await page.getByLabel('post.view_private', { exact: true }).click()
     await page.getByRole('button', { name: 'Create role' }).click()
 
-    // Back on the tab, the custom card exists and links to its editor.
+    // Back on the tab, the custom card exists and links to its editor. A custom
+    // role is the only kind the list gives a member count (presets show none).
     const customCard = page.getByRole('link', { name: new RegExp(roleName) }).first()
     await expect(customCard).toBeVisible({ timeout: 15000 })
-    await expect(customCard.getByText('Custom')).toBeVisible()
+    await expect(customCard.getByText(/0 members/)).toBeVisible()
 
     // Open it and delete from the detail page (no holders -> no reassignment).
     await customCard.click()
