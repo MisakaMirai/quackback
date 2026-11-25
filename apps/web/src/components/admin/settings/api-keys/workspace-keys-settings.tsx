@@ -2,7 +2,7 @@
 
 import { lazy, Suspense, useState } from 'react'
 import { Link } from '@tanstack/react-router'
-import { defineMessages, useIntl } from 'react-intl'
+import { defineMessages, useIntl, type MessageDescriptor } from 'react-intl'
 import { KeyIcon } from '@heroicons/react/24/outline'
 import { EmptyState } from '@/components/shared/empty-state'
 import { NewButton } from '@/components/shared/new-button'
@@ -33,7 +33,7 @@ const ChangeKeyRoleDialog = lazy(() =>
   import('./change-key-role-dialog').then((mod) => ({ default: mod.ChangeKeyRoleDialog }))
 )
 
-const m = defineMessages({
+const m: Record<string, MessageDescriptor> = defineMessages({
   title: { id: 'apiKeys.workspace.title', defaultMessage: 'Workspace keys' },
   description: {
     id: 'apiKeys.workspace.description',

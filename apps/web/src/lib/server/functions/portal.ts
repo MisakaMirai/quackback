@@ -756,26 +756,13 @@ export const getCommentsSectionDataFn = createServerFn({ method: 'GET' })
     const ctx = await getOptionalAuth()
     const actor = await policyActorFromAuth(ctx)
 
-    // Per-post audience gate: a portal-granted caller can still be probing a
-    // post on a team-only / segment-restricted board. NotFound => denial.
-    try {
-      const { assertPostViewable } = await import('@/lib/server/domains/posts/post.access')
-      await assertPostViewable(postId, actor)
-    } catch (err) {
-      if (err instanceof Error && err.name === 'NotFoundError') return denied
-      throw err
-    }
-
-    // Per-POST comment capability for the real actor, composed with the
-    // workspace anonymous ceiling. canCommentOnPost is the single source of
-    // truth the portal + widget UIs share, so the CTA can't desync from the
-    // server-side canCreateComment gate. It needs the post's own author (an
-    // author-only board decides the reply right against it) alongside the
-    // board matrix, so the row carries all three; comments-locked stays out
-    // and is handled by the component's lockedMessage.
-    const { loadCommentContextForPost } = await import('@/lib/server/domains/posts/post.access')
+    // Per-post audience gate and the comment capability's inputs come from one
+    // memoized read: the post page's vote sidebar resolves the same post in the
+    // same SSR request, and this row carries the board matrix and the post's
+    // author that canCommentOnPost needs. A denied (or vanished) post => denial.
+    const { loadViewablePostContext } = await import('@/lib/server/domains/posts/post.access')
     const { canCommentOnPost } = await import('@/lib/server/policy')
-    const commentContext = await loadCommentContextForPost(postId)
+    const commentContext = await loadViewablePostContext(postId, actor)
     if (!commentContext) return denied
 
     // The workspace anonymous ceiling only applies to non-user actors, so

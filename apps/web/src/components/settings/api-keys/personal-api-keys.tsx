@@ -1,7 +1,7 @@
 'use client'
 
 import { lazy, Suspense, useState } from 'react'
-import { defineMessages, useIntl } from 'react-intl'
+import { defineMessages, useIntl, type MessageDescriptor } from 'react-intl'
 import { PortalPageHeader } from '@/components/public/portal-page-header'
 import { KeyGlyph } from '@/components/settings/settings-nav'
 import { NewButton } from '@/components/shared/new-button'
@@ -44,7 +44,7 @@ const CreatePersonalKeyDialog = lazy(() =>
   }))
 )
 
-const m = defineMessages({
+const m: Record<string, MessageDescriptor> = defineMessages({
   title: { id: 'portal.settings.apiKeys.title', defaultMessage: 'API keys' },
   actsAsYou: {
     id: 'portal.settings.apiKeys.actsAsYou',

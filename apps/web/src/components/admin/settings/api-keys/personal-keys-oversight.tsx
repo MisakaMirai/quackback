@@ -1,7 +1,7 @@
 'use client'
 
 import { lazy, Suspense, useState, useTransition } from 'react'
-import { defineMessages, useIntl } from 'react-intl'
+import { defineMessages, useIntl, type MessageDescriptor } from 'react-intl'
 import { useQueryClient } from '@tanstack/react-query'
 import { useRouter } from '@tanstack/react-router'
 import { SettingsCard } from '@/components/admin/settings/settings-card'
@@ -22,7 +22,7 @@ const RevokeApiKeyDialog = lazy(() =>
   import('./key-dialogs').then((mod) => ({ default: mod.RevokeApiKeyDialog }))
 )
 
-const m = defineMessages({
+const m: Record<string, MessageDescriptor> = defineMessages({
   title: { id: 'apiKeys.personal.title', defaultMessage: 'Personal keys' },
   description: {
     id: 'apiKeys.personal.description',

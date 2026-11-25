@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { defineMessages, useIntl } from 'react-intl'
+import { defineMessages, useIntl, type MessageDescriptor } from 'react-intl'
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -107,7 +107,7 @@ function FilterOptions({
 const selectClass =
   'h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring'
 
-const messages = defineMessages({
+const messages: Record<string, MessageDescriptor> = defineMessages({
   name: { id: 'admin.roadmap.form.name', defaultMessage: 'Name' },
   namePlaceholder: {
     id: 'admin.roadmap.form.namePlaceholder',

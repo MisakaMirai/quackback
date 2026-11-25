@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { defineMessages } from 'react-intl'
+import { defineMessages, type MessageDescriptor } from 'react-intl'
 import { useQuery } from '@tanstack/react-query'
 import {
   MapIcon,
@@ -40,7 +40,7 @@ import { useSegments } from '@/lib/client/hooks/use-segments-queries'
 import { RoadmapBuilderForm, type RoadmapBuilderValue } from './roadmap-builder-form'
 import { toastError } from '@/lib/client/error-notice'
 
-const messages = defineMessages({
+const messages: Record<string, MessageDescriptor> = defineMessages({
   roadmap: { id: 'admin.nav.roadmap', defaultMessage: 'Roadmap' },
   roadmaps: { id: 'admin.roadmap.sidebar.title', defaultMessage: 'Roadmaps' },
   newRoadmap: { id: 'admin.roadmap.sidebar.new', defaultMessage: 'New roadmap' },

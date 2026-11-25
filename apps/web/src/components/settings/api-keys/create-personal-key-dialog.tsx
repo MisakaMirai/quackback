@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { defineMessages, useIntl } from 'react-intl'
+import { defineMessages, useIntl, type MessageDescriptor } from 'react-intl'
 import { useRouter } from '@tanstack/react-router'
 import { DomainAccessPicker } from '@/components/domain-access-picker'
 import { Button } from '@/components/ui/button'
@@ -34,7 +34,7 @@ import type { ApiKey } from '@/lib/shared/types'
 import { refusalText } from '@/components/admin/settings/api-keys/key-messages'
 import { PORTAL_KEY_MESSAGES, portalScopeWords } from './portal-key-messages'
 
-const m = defineMessages({
+const m: Record<string, MessageDescriptor> = defineMessages({
   title: { id: 'portal.settings.apiKeys.createTitle', defaultMessage: 'Create API key' },
   actsAsYou: {
     id: 'portal.settings.apiKeys.actsAsYou',
