@@ -141,12 +141,12 @@ vi.mock('@/lib/server/domains/statuses/status.service', () => ({
   getDefaultStatus: vi.fn(),
 }))
 
-// getCommentsSectionDataFn proves view, then loads the post's author and board
-// access for the per-post comment capability.
-const mockLoadCommentContextForPost = vi.fn()
+// getCommentsSectionDataFn resolves the post view context once; that row
+// carries the author and board access for the per-post comment capability.
+const mockLoadViewablePostContext = vi.fn()
 vi.mock('@/lib/server/domains/posts/post.access', () => ({
   assertPostViewable: vi.fn().mockResolvedValue(undefined),
-  loadCommentContextForPost: (...args: unknown[]) => mockLoadCommentContextForPost(...args),
+  loadViewablePostContext: (...args: unknown[]) => mockLoadViewablePostContext(...args),
 }))
 
 vi.mock('@/lib/server/domains/post-tags/post-tag.service', () => ({
@@ -592,7 +592,7 @@ describe('portal.ts fetchPublicPostDetail — portal-visibility gate', () => {
 describe('portal.ts getCommentsSectionDataFn — per-post comment capability', () => {
   it('opens the composer only for the post author on an author-only board', async () => {
     mockResolvePortalAccess.mockResolvedValue({ granted: true, reason: 'public' })
-    mockLoadCommentContextForPost.mockResolvedValue({
+    mockLoadViewablePostContext.mockResolvedValue({
       moderationState: 'published',
       principalId: 'principal_author',
       access: {

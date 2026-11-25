@@ -19,7 +19,7 @@
       "htmlKB": 23.4
     },
     "doc:portal-post": {
-      "dbQueries": 15,
+      "dbQueries": 13,
       "htmlKB": 36.9
     },
     "doc:help-center": {
@@ -72,7 +72,7 @@
       "componentRenders": 465
     },
     "ui:portal-open-post": {
-      "dbQueries": 14,
+      "dbQueries": 13,
       "serverRequests": 6,
       "requests": 43,
       "jsRequests": 37,
@@ -81,7 +81,7 @@
       "componentRenders": 96
     },
     "ui:portal-post-load": {
-      "dbQueries": 22,
+      "dbQueries": 20,
       "serverRequests": 3,
       "requests": 135,
       "jsRequests": 130,
@@ -90,7 +90,7 @@
       "componentRenders": 203
     },
     "ui:portal-open-post-with-comments": {
-      "dbQueries": 15,
+      "dbQueries": 13,
       "serverRequests": 6,
       "requests": 43,
       "jsRequests": 37,
@@ -135,7 +135,7 @@
       "componentRenders": 455
     },
     "ui:portal-hover-open-post": {
-      "dbQueries": 14,
+      "dbQueries": 13,
       "serverRequests": 6,
       "requests": 43,
       "jsRequests": 37,

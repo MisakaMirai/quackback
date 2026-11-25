@@ -24,7 +24,7 @@ vi.mock('@/lib/server/db', async (importOriginal) => {
   }
 })
 
-import { assertPostVotable } from '../post.access'
+import { assertPostVotable, loadViewablePostContext } from '../post.access'
 
 function access(overrides: Partial<BoardAccess> = {}): BoardAccess {
   return {
@@ -97,6 +97,57 @@ describe('assertPostVotable', () => {
       { moderationState: 'published', principalId: null, access: access({ vote: 'anonymous' }) },
     ])
     await expect(assertPostVotable('post_1' as PostId, anon)).resolves.toBeUndefined()
+  })
+})
+
+describe('loadViewablePostContext', () => {
+  it('reads the post once per request and shares it across callers', async () => {
+    limitMock.mockResolvedValue([
+      { moderationState: 'published', principalId: null, access: access() },
+    ])
+    const { runWithLogContext } = await import('@/lib/server/log-context')
+
+    const [first, second] = await runWithLogContext(
+      { request_id: crypto.randomUUID() },
+      async () => [
+        await loadViewablePostContext('post_1' as PostId, anon),
+        await loadViewablePostContext('post_1' as PostId, anon),
+      ]
+    )
+
+    expect(first).not.toBeNull()
+    expect(second).toBe(first)
+    expect(limitMock).toHaveBeenCalledTimes(1)
+  })
+
+  it("does not reuse a viewer's context for another viewer", async () => {
+    limitMock.mockResolvedValue([
+      { moderationState: 'published', principalId: null, access: access() },
+    ])
+    const { runWithLogContext } = await import('@/lib/server/log-context')
+
+    await runWithLogContext({ request_id: crypto.randomUUID() }, async () => {
+      await loadViewablePostContext('post_1' as PostId, anon)
+      await loadViewablePostContext('post_1' as PostId, admin)
+    })
+
+    expect(limitMock).toHaveBeenCalledTimes(2)
+  })
+
+  it('reads again in the next request', async () => {
+    limitMock.mockResolvedValue([
+      { moderationState: 'published', principalId: null, access: access() },
+    ])
+    const { runWithLogContext } = await import('@/lib/server/log-context')
+
+    await runWithLogContext({ request_id: crypto.randomUUID() }, () =>
+      loadViewablePostContext('post_1' as PostId, anon)
+    )
+    await runWithLogContext({ request_id: crypto.randomUUID() }, () =>
+      loadViewablePostContext('post_1' as PostId, anon)
+    )
+
+    expect(limitMock).toHaveBeenCalledTimes(2)
   })
 })
 

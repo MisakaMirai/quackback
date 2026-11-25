@@ -179,15 +179,16 @@ vi.mock('@/lib/server/db', async (importOriginal) => ({
   ),
 }))
 
-// Partial mock: stub the assert chokepoints but keep the real
-// loadBoardAccessForPost, whose query chain resolves through the db mock's
-// .innerJoin().where().limit() (mockBoardRowLimit) like the inlined query did.
+// Partial mock: stub the access chokepoints; the vote sidebar's one read is the
+// shared post view context, which tests hand the board row directly.
+const mockLoadViewablePostContext = vi.fn()
 vi.mock('@/lib/server/domains/posts/post.access', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/server/domains/posts/post.access')>()
   return {
     ...actual,
     assertPostViewable: vi.fn().mockResolvedValue(undefined),
     assertCommentViewable: vi.fn().mockResolvedValue(undefined),
+    loadViewablePostContext: (...args: unknown[]) => mockLoadViewablePostContext(...args),
   }
 })
 
@@ -568,12 +569,9 @@ describe('getVoteSidebarDataFn — portal-visibility gate', () => {
 
   it('returns the non-voting default when the post is not viewable under its board audience', async () => {
     mockResolvePortalAccess.mockResolvedValue({ granted: true, reason: 'public' })
-    // assertPostViewable mock throws NotFound → handler must catch and
-    // return the safe default rather than leaking via a stack trace.
-    const { assertPostViewable } = await import('@/lib/server/domains/posts/post.access')
-    vi.mocked(assertPostViewable).mockRejectedValueOnce(
-      Object.assign(new Error('not found'), { name: 'NotFoundError' })
-    )
+    // The shared view read resolves null for a post the actor can't see, and
+    // the handler must return the safe default rather than leaking an error.
+    mockLoadViewablePostContext.mockResolvedValueOnce(null)
 
     const result = (await publicPostsHandlers[GET_VOTE_SIDEBAR_DATA]({
       data: { postId: 'pst_blocked' },
@@ -595,10 +593,14 @@ describe('getVoteSidebarDataFn — portal-visibility gate', () => {
     // No session cookie → handler resolves canVote without ctx.
     const { hasAuthCredentials } = await import('../auth-helpers')
     vi.mocked(hasAuthCredentials).mockReturnValueOnce(false)
-    // Board row is fetched and returns an access object — content is
+    // Board row is resolved by the shared view read — content is
     // opaque to this test (canVotePost is mocked); the fact that a row
     // exists is what gates the canVote computation.
-    mockBoardRowLimit.mockResolvedValueOnce([{ access: { vote: 'authenticated' } }])
+    mockLoadViewablePostContext.mockResolvedValueOnce({
+      moderationState: 'published',
+      principalId: null,
+      access: { vote: 'authenticated' },
+    })
     // allowAnonymous flag returns true (workspace ON)
     const { getSettings } = await import('../workspace')
     vi.mocked(getSettings).mockResolvedValueOnce({
@@ -618,7 +620,11 @@ describe('getVoteSidebarDataFn — portal-visibility gate', () => {
     mockResolvePortalAccess.mockResolvedValue({ granted: true, reason: 'public' })
     const { hasAuthCredentials } = await import('../auth-helpers')
     vi.mocked(hasAuthCredentials).mockReturnValueOnce(false)
-    mockBoardRowLimit.mockResolvedValueOnce([{ access: { vote: 'anonymous' } }])
+    mockLoadViewablePostContext.mockResolvedValueOnce({
+      moderationState: 'published',
+      principalId: null,
+      access: { vote: 'anonymous' },
+    })
     const { getSettings } = await import('../workspace')
     vi.mocked(getSettings).mockResolvedValueOnce({
       portalConfig: { features: { allowAnonymous: true } },
@@ -637,7 +643,11 @@ describe('getVoteSidebarDataFn — portal-visibility gate', () => {
     mockResolvePortalAccess.mockResolvedValue({ granted: true, reason: 'public' })
     const { hasAuthCredentials } = await import('../auth-helpers')
     vi.mocked(hasAuthCredentials).mockReturnValueOnce(false)
-    mockBoardRowLimit.mockResolvedValueOnce([{ access: { vote: 'anonymous' } }])
+    mockLoadViewablePostContext.mockResolvedValueOnce({
+      moderationState: 'published',
+      principalId: null,
+      access: { vote: 'anonymous' },
+    })
     const { getSettings } = await import('../workspace')
     vi.mocked(getSettings).mockResolvedValueOnce({
       portalConfig: { features: { allowAnonymous: false } },
@@ -669,7 +679,11 @@ describe('getVoteSidebarDataFn — portal-visibility gate', () => {
     vi.mocked(getOptionalAuth)
       .mockResolvedValueOnce(anonSession as never)
       .mockResolvedValueOnce(anonSession as never)
-    mockBoardRowLimit.mockResolvedValueOnce([{ access: { vote: 'anonymous' } }])
+    mockLoadViewablePostContext.mockResolvedValueOnce({
+      moderationState: 'published',
+      principalId: null,
+      access: { vote: 'anonymous' },
+    })
     mockCanVotePost.mockReturnValueOnce({ allowed: true })
     const { getSettings } = await import('../workspace')
     vi.mocked(getSettings).mockResolvedValueOnce({
@@ -702,7 +716,11 @@ describe('getVoteSidebarDataFn — portal-visibility gate', () => {
     vi.mocked(getOptionalAuth)
       .mockResolvedValueOnce(memberSession as never)
       .mockResolvedValueOnce(memberSession as never)
-    mockBoardRowLimit.mockResolvedValueOnce([{ access: { vote: 'authenticated' } }])
+    mockLoadViewablePostContext.mockResolvedValueOnce({
+      moderationState: 'published',
+      principalId: null,
+      access: { vote: 'authenticated' },
+    })
     mockCanVotePost.mockReturnValueOnce({ allowed: true })
     const { getVoteAndSubscriptionStatus } =
       await import('@/lib/server/domains/posts/post.public.utils')
