@@ -52,7 +52,7 @@ describe('job-wake publisher', () => {
 
   it('POSTs job ids after commit, coalesced', async () => {
     vi.useFakeTimers()
-    process.env.QUACKBACK_JOB_WORKER_URL = 'http://worker.railway.internal:3000'
+    process.env.QUACKBACK_JOB_WORKER_URL = 'http://worker.internal:3000'
     process.env.QUACKBACK_FLEET_INTERNAL_TOKEN = 'fleet-token'
     const { startJobWakePublisher } = await import('../wake')
     const { noteDurableWork } = await import('@/lib/server/jobs/after-commit')
@@ -62,7 +62,7 @@ describe('job-wake publisher', () => {
     await vi.advanceTimersByTimeAsync(15)
     expect(fetchMock).toHaveBeenCalledTimes(1)
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit]
-    expect(url).toBe('http://worker.railway.internal:3000/api/internal/job-wake')
+    expect(url).toBe('http://worker.internal:3000/api/internal/job-wake')
     expect(init.headers).toMatchObject({ authorization: 'Bearer fleet-token' })
     const body = JSON.parse(String(init.body)) as { jobIds: string[] }
     expect(body.jobIds.sort()).toEqual([
@@ -73,7 +73,7 @@ describe('job-wake publisher', () => {
 
   it('retries a failed POST and succeeds without throwing', async () => {
     vi.useFakeTimers()
-    process.env.QUACKBACK_JOB_WORKER_URL = 'http://worker.railway.internal:3000'
+    process.env.QUACKBACK_JOB_WORKER_URL = 'http://worker.internal:3000'
     process.env.QUACKBACK_FLEET_INTERNAL_TOKEN = 'fleet-token'
     fetchMock
       .mockRejectedValueOnce(new Error('network down'))
@@ -90,7 +90,7 @@ describe('job-wake publisher', () => {
 
   it('retries a failing POST three times and does not throw', async () => {
     vi.useFakeTimers()
-    process.env.QUACKBACK_JOB_WORKER_URL = 'http://worker.railway.internal:3000'
+    process.env.QUACKBACK_JOB_WORKER_URL = 'http://worker.internal:3000'
     process.env.QUACKBACK_FLEET_INTERNAL_TOKEN = 'fleet-token'
     fetchMock.mockRejectedValue(new Error('network down'))
     const { startJobWakePublisher } = await import('../wake')
@@ -147,7 +147,7 @@ describe('job-wake publisher', () => {
 
   it('retries a 503 and does not treat it as delivered', async () => {
     vi.useFakeTimers()
-    process.env.QUACKBACK_JOB_WORKER_URL = 'http://worker.railway.internal:3000'
+    process.env.QUACKBACK_JOB_WORKER_URL = 'http://worker.internal:3000'
     process.env.QUACKBACK_FLEET_INTERNAL_TOKEN = 'fleet-token'
     fetchMock.mockResolvedValue(new Response(null, { status: 503 }))
     const { startJobWakePublisher } = await import('../wake')
@@ -163,7 +163,7 @@ describe('job-wake publisher', () => {
   })
 
   it('POSTs an abort payload immediately when the publisher can send', async () => {
-    process.env.QUACKBACK_JOB_WORKER_URL = 'http://worker.railway.internal:3000'
+    process.env.QUACKBACK_JOB_WORKER_URL = 'http://worker.internal:3000'
     process.env.QUACKBACK_FLEET_INTERNAL_TOKEN = 'fleet-token'
     const { postJobWakeAbort } = await import('../wake')
     postJobWakeAbort({ team: 'T1', channel: 'C1', thread: '1.2' })

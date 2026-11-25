@@ -8,9 +8,9 @@ import { requestWorkspaceHost } from '@/lib/server/http/request-host'
  * URL as `http://`, while the browser always sends `Origin: https://…`.
  *
  * Custom-domain traffic is fetched by the saas-origin Worker against the
- * Railway origin, so Host / X-Forwarded-Host is the hop, not the browser
- * origin. The visitor name arrives as the signed customer-host header and
- * is recovered by `requestWorkspaceHost`.
+ * deployment's own origin, so Host / X-Forwarded-Host is the hop, not the
+ * browser origin. The visitor name arrives as the signed customer-host header
+ * and is recovered by `requestWorkspaceHost`.
  */
 
 export function originMatchesRequestHost(

@@ -12,11 +12,13 @@
  * a reintroduced import is caught before any build step.
  */
 import { describe, expect, it } from 'vitest'
-import { readFileSync } from 'node:fs'
+import { readFileSync, existsSync } from 'node:fs'
 import { join, relative } from 'node:path'
 import { walkSourceFiles } from '../policy/source-files'
 
 const SRC_ROOT = join(__dirname, '../../..')
+/** The repository root: this file lives at apps/web/src/lib/server/__tests__. */
+const REPO_ROOT = join(__dirname, '../../../../../..')
 
 /** Import paths that must not exist in the tree at all. */
 const FORBIDDEN_MODULES = [
@@ -37,6 +39,9 @@ const FORBIDDEN_SYMBOLS = [
   'resolveCloudConfig(',
   'isHostedBillingConfigured(',
   'startTelemetry(',
+  // The anonymous usage snapshot's kill switch. The snapshot itself is gone, so
+  // the switch must not come back with it.
+  'DISABLE_TELEMETRY',
   'emitPlgEvent(',
   'recordPlgEvent(',
   // The shared-OAuth gateway: integrations now always use the tenant's own
@@ -67,5 +72,36 @@ describe('cloud residue', () => {
 
   it('has no call site of the removed commercial layer', () => {
     expect(offenders(FORBIDDEN_SYMBOLS)).toEqual([])
+  })
+})
+
+describe('hosted deployment residue', () => {
+  it('has no Railway template or CLI dependency', () => {
+    expect(existsSync(join(REPO_ROOT, 'deploy/railway-template.yml'))).toBe(false)
+    const pkg = JSON.parse(readFileSync(join(REPO_ROOT, 'package.json'), 'utf8')) as {
+      devDependencies?: Record<string, string>
+      dependencies?: Record<string, string>
+    }
+    expect(pkg.devDependencies?.railway).toBeUndefined()
+    expect(pkg.dependencies?.railway).toBeUndefined()
+  })
+
+  it('names Railway nowhere in the docs, env template or source', () => {
+    const files = [
+      'README.md',
+      '.env.example',
+      'deploy/README.md',
+      'deploy/self-hosted/README.md',
+    ].map((file) => join(REPO_ROOT, file))
+    const offendersFound = files
+      .filter((file) => existsSync(file))
+      .filter((file) => readFileSync(file, 'utf8').toLowerCase().includes('railway'))
+      .concat(
+        walkSourceFiles(SRC_ROOT).filter((file) =>
+          readFileSync(file, 'utf8').toLowerCase().includes('railway')
+        )
+      )
+      .map((file) => relative(REPO_ROOT, file).split('\\').join('/'))
+    expect(offendersFound).toEqual([])
   })
 })

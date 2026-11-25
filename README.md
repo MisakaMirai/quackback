@@ -52,9 +52,7 @@ The portal speaks English, Simplified Chinese and Traditional Chinese, and follo
 
 Every feature, unlimited seats, no license key. You run the servers, backups and upgrades, and bring your own email provider.
 
-[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/quackback?referralCode=ez8Slg&utm_source=github&utm_medium=readme&utm_campaign=deploy-button)
-
-Or run the published image with Docker Compose. It starts Quackback, PostgreSQL and S3-compatible file storage on one host:
+Run the published image with Docker Compose. It starts Quackback, PostgreSQL and S3-compatible file storage on one host:
 
 ```bash
 git clone https://github.com/QuackbackIO/quackback.git
