@@ -6,11 +6,10 @@
  * and persistence.
  *
  * Storage: no dedicated column exists and Phase 1 ships without a migration, so
- * the schedule rides in the generic `settings.metadata` JSON bag (the same
- * no-new-table pattern the instance-id telemetry uses). Reads default to 24/7
- * when the key is absent. Holiday dates ride on the schedule itself (the
- * `holidays` key the clock engine skips); per-team schedules remain out of
- * scope for this object.
+ * the schedule rides in the generic `settings.metadata` JSON bag rather than in
+ * a new table. Reads default to 24/7 when the key is absent. Holiday dates ride
+ * on the schedule itself (the `holidays` key the clock engine skips); per-team
+ * schedules remain out of scope for this object.
  */
 import { logger } from '@/lib/server/logger'
 import {
@@ -94,8 +93,8 @@ export async function getOfficeHoursSchedule(): Promise<OfficeHoursSchedule> {
 }
 
 /**
- * Persist the schedule into the shared `settings.metadata` bag (sibling keys —
- * e.g. the telemetry instance id — survive the read-modify-write).
+ * Persist the schedule into the shared `settings.metadata` bag (sibling keys
+ * written by other settings survive the read-modify-write).
  */
 export async function updateOfficeHoursSchedule(
   input: OfficeHoursScheduleInput,

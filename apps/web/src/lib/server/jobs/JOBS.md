@@ -248,15 +248,15 @@ Read from `process.env` directly rather than through the zod config, matching
 `process-role.ts`: these must work in any context, including a worker process that
 has not loaded the full application config.
 
-| Variable                   | Default | Meaning                                                                                                                                                                                        |
-| -------------------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `JOB_POLL_INTERVAL_MS`     | 1000    | Longest an idle loop sleeps. It wakes sooner for its next schedule slot or a delayed job (§5)                                                                                                  |
-| `JOB_BATCH_SIZE`           | 5       | Jobs claimed per drain pass                                                                                                                                                                    |
-| `JOB_REAP_INTERVAL_MS`     | 15000   | How often expired leases are adjudicated                                                                                                                                                       |
-| `JOB_PRUNE_INTERVAL_MS`    | 1 hour  | How often terminal rows past retention are dropped (a table scan; keep it slow)                                                                                                                |
-| `JOB_RETENTION_MS`         | 7 days  | How long terminal rows are kept. Must exceed any live cron slot key                                                                                                                            |
-| `QUACKBACK_DISABLED_JOBS`  | unset   | Comma list of job names to pause, e.g. `spam-retention,file-retention`. See below                                                                                                              |
-| `QUACKBACK_JOB_WORKER_URL` | unset   | Split deployment only: origin of the worker (`http://worker.railway.internal:3000`). Publisher also requires `QUACKBACK_FLEET_INTERNAL_TOKEN`. Unset, rejected, or token-missing = poll floor. |
+| Variable                   | Default | Meaning                                                                                                                                                                                |
+| -------------------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `JOB_POLL_INTERVAL_MS`     | 1000    | Longest an idle loop sleeps. It wakes sooner for its next schedule slot or a delayed job (§5)                                                                                          |
+| `JOB_BATCH_SIZE`           | 5       | Jobs claimed per drain pass                                                                                                                                                            |
+| `JOB_REAP_INTERVAL_MS`     | 15000   | How often expired leases are adjudicated                                                                                                                                               |
+| `JOB_PRUNE_INTERVAL_MS`    | 1 hour  | How often terminal rows past retention are dropped (a table scan; keep it slow)                                                                                                        |
+| `JOB_RETENTION_MS`         | 7 days  | How long terminal rows are kept. Must exceed any live cron slot key                                                                                                                    |
+| `QUACKBACK_DISABLED_JOBS`  | unset   | Comma list of job names to pause, e.g. `spam-retention,file-retention`. See below                                                                                                      |
+| `QUACKBACK_JOB_WORKER_URL` | unset   | Split deployment only: origin of the worker (`http://worker.internal:3000`). Publisher also requires `QUACKBACK_FLEET_INTERNAL_TOKEN`. Unset, rejected, or token-missing = poll floor. |
 
 ### Pausing a job
 
@@ -295,7 +295,7 @@ Every execution is one structured NDJSON line on stdout. A worker replica
 | `job.lease_expired`  | warn / error | `expired lease …`        | reaper requeued or terminally failed a dead lease |
 
 `outcome` on a finish/fail line is `succeeded`, `failed`, `retrying`, or
-`lease_lost`. A Railway search on `event:"job.failed"` is the pageable set;
+`lease_lost`. A search on `event:"job.failed"` in the deployment's log store is the pageable set;
 retries are `job.retrying` so they do not sit in the same bucket.
 
 ## 9. Module-load order

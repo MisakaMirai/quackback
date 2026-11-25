@@ -95,10 +95,10 @@ describe('withSweepLock', () => {
   })
 
   it('keeps the lock row when keepUntilExpiry is true (skips the release DELETE)', async () => {
-    mockExecuteRows = [{ name: 'telemetry_ping', acquired_at: new Date() }]
+    mockExecuteRows = [{ name: 'daily_cycle', acquired_at: new Date() }]
     const fn = vi.fn()
 
-    await withSweepLock('telemetry_ping', 82_800_000, fn, { keepUntilExpiry: true })
+    await withSweepLock('daily_cycle', 82_800_000, fn, { keepUntilExpiry: true })
 
     expect(fn).toHaveBeenCalledOnce()
     // Only the INSERT runs — no release DELETE, so the row survives until
