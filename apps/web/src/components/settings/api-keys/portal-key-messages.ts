@@ -3,7 +3,7 @@
  * (portal.settings.apiKeys.*), for the dialogs, the scope picker and the scope
  * summaries it shares with the admin pages.
  */
-import { defineMessages, type IntlShape } from 'react-intl'
+import { defineMessages, type IntlShape, type MessageDescriptor } from 'react-intl'
 import type { KeyDialogMessages } from '@/components/admin/settings/api-keys/key-messages'
 import type { DomainAccessWords } from '@/components/domain-access-picker'
 import {
@@ -96,7 +96,7 @@ export const PORTAL_KEY_MESSAGES: KeyDialogMessages = defineMessages({
   },
 })
 
-const scope = defineMessages({
+const scope: Record<string, MessageDescriptor> = defineMessages({
   feedback: { id: 'portal.settings.apiKeys.scope.feedback', defaultMessage: 'Feedback' },
   feedbackDescription: {
     id: 'portal.settings.apiKeys.scope.feedbackDescription',

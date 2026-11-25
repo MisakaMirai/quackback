@@ -442,7 +442,7 @@ const VIA_CHANNEL: Partial<Record<AuditChannel, MessageDescriptor>> = defineMess
   system: { id: 'admin.auditLog.via.system', defaultMessage: 'via system' },
 })
 
-const VIA_ON_BEHALF_OF = defineMessages({
+const VIA_ON_BEHALF_OF: MessageDescriptor = defineMessages({
   onBehalfOf: { id: 'admin.auditLog.via.onBehalfOf', defaultMessage: 'for {name}' },
 }).onBehalfOf
 
