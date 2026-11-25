@@ -20,7 +20,7 @@
     },
     "doc:portal-post": {
       "dbQueries": 13,
-      "htmlKB": 36.9
+      "htmlKB": 41.7
     },
     "doc:help-center": {
       "dbQueries": 3,
@@ -78,7 +78,7 @@
       "jsRequests": 37,
       "jsKB": 67,
       "htmlTransferKB": 0,
-      "componentRenders": 96
+      "componentRenders": 116
     },
     "ui:portal-post-load": {
       "dbQueries": 20,
@@ -96,7 +96,7 @@
       "jsRequests": 37,
       "jsKB": 67,
       "htmlTransferKB": 0,
-      "componentRenders": 116
+      "componentRenders": 156
     },
     "ui:admin-feedback-load": {
       "dbQueries": 25,
@@ -108,7 +108,7 @@
       "componentRenders": 487
     },
     "ui:admin-open-post": {
-      "dbQueries": 17,
+      "dbQueries": 18,
       "serverRequests": 1,
       "requests": 54,
       "jsRequests": 52,
@@ -141,7 +141,7 @@
       "jsRequests": 37,
       "jsKB": 67,
       "htmlTransferKB": 0,
-      "componentRenders": 95
+      "componentRenders": 115
     },
     "ui:admin-hover-nav-feedback-to-roadmap": {
       "dbQueries": 18,
