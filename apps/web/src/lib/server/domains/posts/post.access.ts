@@ -17,6 +17,7 @@ import { db, eq, and, or, isNull, posts, boards, postComments } from '@/lib/serv
 import { type PostCommentId, type PostId } from '@quackback/ids'
 import { NotFoundError, ForbiddenError } from '@/lib/shared/errors'
 import { notTestPrincipal } from '@/lib/server/test-data'
+import { memoizePerRequest } from '@/lib/server/request-memo'
 import {
   canViewPost,
   canVotePost,
@@ -26,48 +27,15 @@ import {
 } from '@/lib/server/policy'
 
 /**
- * Resolve a post's board `access` matrix for capability gates, applying the
- * same soft-delete predicate as the assert chokepoints. Returns null when the
- * post / board doesn't exist or is soft-deleted — callers map that to their
- * denied/empty response. Centralizing this join keeps the audience gate sound:
- * the INNER + isNull predicate can't drift between the read paths that compose
- * `boardCapabilitiesForActor` / `canVotePost` off `boards.access`.
+ * The post/board row a view assertion reads. Shared by {@link assertPostViewable}
+ * and {@link loadViewablePostContext}: the write chokepoint only needs the
+ * allow/deny decision, while the portal post page's read endpoints also need
+ * the context to gate a capability without a second read.
  */
-export async function loadBoardAccessForPost(postId: PostId) {
-  const rows = await db
-    .select({ access: boards.access })
-    .from(posts)
-    .innerJoin(boards, eq(posts.boardId, boards.id))
-    .where(and(eq(posts.id, postId), isNull(posts.deletedAt), isNull(boards.deletedAt)))
-    .limit(1)
-  return rows[0]?.access ?? null
-}
-
-/**
- * Same resolution as {@link loadBoardAccessForPost}, plus the post's own
- * author and moderation state — the inputs a PER-POST comment capability
- * needs (`canCommentOnPost`): an author-only board decides the reply right
- * against the real post's author, which the board matrix alone can't answer.
- * Returns null on the same soft-delete/missing conditions.
- */
-export async function loadCommentContextForPost(postId: PostId) {
-  const rows = await db
-    .select({
-      access: boards.access,
-      moderationState: posts.moderationState,
-      principalId: posts.principalId,
-    })
-    .from(posts)
-    .innerJoin(boards, eq(posts.boardId, boards.id))
-    .where(and(eq(posts.id, postId), isNull(posts.deletedAt), isNull(boards.deletedAt)))
-    .limit(1)
-  return rows[0] ?? null
-}
-
-export async function assertPostViewable(postId: PostId, actor: Actor): Promise<void> {
+async function loadPostViewRow(postId: PostId, actor: Actor) {
   // Fetch only the fields the policy needs. Soft-deleted post or board
   // is treated as "doesn't exist" — the join uses INNER + isNull
-  // guards so any null falls into the !row branch below.
+  // guards so any null falls into the null branch below.
   const rows = await db
     .select({
       moderationState: posts.moderationState,
@@ -87,9 +55,7 @@ export async function assertPostViewable(postId: PostId, actor: Actor): Promise<
     .limit(1)
 
   const row = rows[0]
-  if (!row) {
-    throw new NotFoundError('POST_NOT_FOUND', `Post ${postId} not found`)
-  }
+  if (!row) return null
 
   const decision = canViewPost(
     actor,
@@ -99,7 +65,42 @@ export async function assertPostViewable(postId: PostId, actor: Actor): Promise<
     },
     { access: row.access }
   )
-  if (!decision.allowed) {
+  return decision.allowed ? row : null
+}
+
+/** The post fields a view check resolves, for callers that also gate a capability. */
+export type PostViewContext = NonNullable<Awaited<ReturnType<typeof loadPostViewRow>>>
+
+/**
+ * Actor identity for the request memo. A request has one actor, but the key
+ * carries its identity anyway: tests and background callers share a process
+ * without a request scope, where reuse across viewers would be wrong.
+ */
+function viewActorKey(actor: Actor): string {
+  const segments = [...actor.segmentIds].sort().join(',')
+  return `${actor.principalType}:${actor.principalId ?? '-'}:${actor.role ?? '-'}:${
+    actor.scopePrincipalId ?? '-'
+  }:${segments}`
+}
+
+/**
+ * Resolve the post view decision, sharing one read across every caller in the
+ * same request. The portal post page resolves the post through several server
+ * functions (the detail, the comments section, the vote sidebar), and each used
+ * to run its own audience read; the request memo turns those into one.
+ */
+export function loadViewablePostContext(
+  postId: PostId,
+  actor: Actor
+): Promise<PostViewContext | null> {
+  return memoizePerRequest(`post-view:${postId}:${viewActorKey(actor)}`, () =>
+    loadPostViewRow(postId, actor)
+  )
+}
+
+export async function assertPostViewable(postId: PostId, actor: Actor): Promise<void> {
+  const context = await loadViewablePostContext(postId, actor)
+  if (!context) {
     // 404-shape on deny so we don't leak existence to a denied caller.
     throw new NotFoundError('POST_NOT_FOUND', `Post ${postId} not found`)
   }
@@ -107,7 +108,7 @@ export async function assertPostViewable(postId: PostId, actor: Actor): Promise<
 
 /**
  * Vote-write chokepoint. Composes:
- *  - `canViewPost` (audience + moderation + own-pending), 404 on deny.
+ *  - `loadViewablePostContext` (audience + moderation + own-pending), 404 on deny.
  *  - `canVotePost` (board.access.vote tier), 403 on deny — the post is
  *    visible to the caller, so leaking existence isn't a concern; the
  *    "Sign in to vote on this board" / "Only specific groups…" hint is
@@ -117,52 +118,22 @@ export async function assertPostViewable(postId: PostId, actor: Actor): Promise<
  * the caller — this chokepoint is the per-board policy gate only.
  */
 export async function assertPostVotable(postId: PostId, actor: Actor): Promise<void> {
-  const rows = await db
-    .select({
-      moderationState: posts.moderationState,
-      principalId: posts.principalId,
-      access: boards.access,
-    })
-    .from(posts)
-    .innerJoin(boards, eq(posts.boardId, boards.id))
-    .where(
-      and(
-        eq(posts.id, postId),
-        isNull(posts.deletedAt),
-        isNull(boards.deletedAt),
-        postViewFilter(actor)
-      )
-    )
-    .limit(1)
-
-  const row = rows[0]
-  if (!row) {
+  const context = await loadViewablePostContext(postId, actor)
+  if (!context) {
+    // View denied (or the post vanished): 404-shape so existence doesn't leak.
     throw new NotFoundError('POST_NOT_FOUND', `Post ${postId} not found`)
   }
 
   const decision = canVotePost(
     actor,
     {
-      moderationState: row.moderationState,
-      principalId: row.principalId,
+      moderationState: context.moderationState,
+      principalId: context.principalId,
     },
-    { access: row.access }
+    { access: context.access }
   )
   if (!decision.allowed) {
-    // Distinguish view-deny (404) from vote-deny (403). canVotePost
-    // already runs canViewPost internally, so a view denial gets the
-    // NotFoundError shape — only "viewable but not votable" lands here.
-    const viewDecision = canViewPost(
-      actor,
-      {
-        moderationState: row.moderationState,
-        principalId: row.principalId,
-      },
-      { access: row.access }
-    )
-    if (!viewDecision.allowed) {
-      throw new NotFoundError('POST_NOT_FOUND', `Post ${postId} not found`)
-    }
+    // The view check above already passed, so this can only be the vote tier.
     throw new ForbiddenError('VOTE_NOT_ALLOWED', decision.reason)
   }
 }

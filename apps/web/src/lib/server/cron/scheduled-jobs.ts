@@ -134,7 +134,7 @@ export const SCHEDULED_CRON_JOBS = {
     await SCHEDULED_CRON_JOBS.hourly()
     const { withSweepLock } = await import('@/lib/server/sweep-lock')
     // Same bodies as `daily`, claimed once per 23 h so an hourly tick does
-    // not re-run retention + telemetry. Pattern matches `telemetry_ping`.
+    // not re-run them.
     await withSweepLock('daily_cycle', TWENTY_THREE_HOURS, () => SCHEDULED_CRON_JOBS.daily(), {
       keepUntilExpiry: true,
     })

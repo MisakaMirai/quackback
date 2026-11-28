@@ -582,24 +582,6 @@ curl -X POST 'https://api.resend.com/emails' \
 
 ---
 
-## One-Click Deployments
-
-### Railway
-
-[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/quackback)
-
-Deploys Quackback + PostgreSQL (with pgvector) + S3-compatible storage bucket to Railway. After deploying:
-
-1. **Find your OTP code**: If email is not configured, login codes appear in Railway's deployment logs
-2. **Configure email** (recommended): Add SMTP, Amazon SES or Resend credentials (one of them) in the service's environment variables
-3. **Custom domain**: Add a custom domain in Railway, then update the `BASE_URL` environment variable to match
-
-File uploads (logos, avatars, changelog images) work out of the box via the included Railway storage bucket.
-
-See [Railway pricing](https://railway.com/pricing) for costs.
-
----
-
 ## Support
 
 - **Documentation**: https://feedback.quackback.io/hc

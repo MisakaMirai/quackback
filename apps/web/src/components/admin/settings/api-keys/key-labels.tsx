@@ -1,7 +1,7 @@
-import { defineMessages, type IntlShape } from 'react-intl'
+import { defineMessages, type IntlShape, type MessageDescriptor } from 'react-intl'
 import type { ManagedApiKey } from '@/lib/server/domains/api-keys/api-key.types'
 
-const m = defineMessages({
+const m: Record<string, MessageDescriptor> = defineMessages({
   removed: { id: 'apiKeys.creator.removed', defaultMessage: '{name} (removed)' },
   removedTeammate: { id: 'apiKeys.creator.removedTeammate', defaultMessage: 'Removed teammate' },
 })

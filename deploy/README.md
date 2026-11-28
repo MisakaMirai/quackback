@@ -47,7 +47,6 @@ See the [Self-Hosted Guide](./self-hosted/README.md) for complete documentation.
 ```
 deploy/
 ├── README.md              # This file
-├── railway-template.yml   # One-click Railway template
 └── self-hosted/           # Self-hosting documentation
     └── README.md          # Self-hosted deployment guide
 ```

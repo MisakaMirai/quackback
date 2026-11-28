@@ -146,9 +146,9 @@ away: **0.019 ms/op** for the bucket upsert against **0.0009 ms/op** for
 `PERFORM 1`.
 
 **So the statement is essentially free and the whole cost is the round trip.**
-On the deployed pairing (Railway `us-east4` ↔ the workspace database `us-east-1`, measured at 0–3 ms
+On the measured pairing (app region `us-east4` ↔ the database `us-east-1`, measured at 0–3 ms
 RTT with a 7 ms tail over 217 samples), a rate-checked request pays roughly
-**1–4 ms p50** where a Railway-private Redis would have paid a few hundred
+**1–4 ms p50** where a colocated Redis would have paid a few hundred
 microseconds. **Net: about 1–3 ms p50 added to the sign-in and anonymous-mint hot paths,
 one round trip, unchanged in count.**
 

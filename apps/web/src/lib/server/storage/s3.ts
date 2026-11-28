@@ -1353,12 +1353,12 @@ export function getPublicUrl(key: string): string {
 }
 
 // ============================================================================
-// Presigned GET URLs (for private buckets like Railway)
+// Presigned GET URLs (for private buckets)
 // ============================================================================
 
 /**
  * Generate a presigned URL for reading a file from S3.
- * Use this when the bucket is not publicly accessible (e.g., Railway Buckets).
+ * Use this when the bucket is not publicly accessible.
  *
  * @param key - Storage key (path within bucket)
  * @param expiresIn - URL expiration time in seconds (default: 172800 = 48 hours).

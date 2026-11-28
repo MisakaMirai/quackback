@@ -90,6 +90,9 @@ export const MentionPicker = forwardRef<MentionPickerHandle, MentionPickerProps>
                   type="button"
                   role="option"
                   data-mention-idx={idx}
+                  // The principal this row inserts. Seed display names repeat, so
+                  // a row is only addressable by name when the name is unique.
+                  data-principal-id={item.principalId}
                   aria-selected={idx === selected}
                   className={`mention-picker__row${idx === selected ? ' is-selected' : ''}`}
                   // preventDefault on mousedown so clicking the picker doesn't

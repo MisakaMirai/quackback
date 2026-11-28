@@ -19,7 +19,7 @@ const log = logger.child({ component: 'config' })
 /**
  * A hostname that is a pattern rather than a host.
  *
- * `deploy/railway-template.yml` sets `BASE_URL: https://${{RAILWAY_PUBLIC_DOMAIN}}`,
+ * A hosted deployment sets `BASE_URL` from the platform-provided public domain,
  * and the moment a wildcard custom domain is attached that variable becomes the
  * literal string `*.example.com` (SAAS-HOSTING-STACK.md §9). `new URL()` accepts
  * it, so nothing downstream complains — it just produces email links, asset URLs

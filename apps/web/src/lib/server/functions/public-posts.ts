@@ -699,39 +699,29 @@ export const getVoteSidebarDataFn = createServerFn({ method: 'GET' })
       return denied
     }
 
-    // Per-post audience gate: portal-granted callers can still be
-    // probing a post on a team-only / segment-restricted board. Treat
-    // a NotFound from assertPostViewable as denial (same shape — the
-    // sidebar UI degrades to the read-only state).
+    // Per-post audience gate and the board matrix the vote tier reads come from
+    // one memoized lookup. The portal post page also resolves this post for its
+    // detail and comments in the same SSR request, so the shared read keeps one
+    // audience query per request instead of one per endpoint.
     const probeAuth = await getOptionalAuth()
     const probeActor = await policyActorFromAuth(probeAuth)
-    try {
-      const { assertPostViewable } = await import('@/lib/server/domains/posts/post.access')
-      await assertPostViewable(postId, probeActor)
-    } catch (err) {
-      if (err instanceof Error && err.name === 'NotFoundError') {
-        log.debug('post not viewable')
-        return denied
-      }
-      throw err
-    }
-
-    // Per-board vote tier gate: a board can be public-to-view but
-    // authenticated-only-to-vote (modern "Public" preset). Resolve the
-    // board.access alongside the post and run canVotePost so the UI
-    // can render the right CTA (sign-in prompt vs. enabled button)
-    // instead of letting an anonymous click learn the truth on submit.
-    // The workspace anonymousVoting flag is composed below as a ceiling.
-    const { loadBoardAccessForPost } = await import('@/lib/server/domains/posts/post.access')
-    const { canVotePost } = await import('@/lib/server/policy')
-    const boardAccess = await loadBoardAccessForPost(postId)
-    if (!boardAccess) {
-      // Race: post or board deleted between assertPostViewable and now.
-      log.debug('post or board vanished mid-call')
+    const { loadViewablePostContext } = await import('@/lib/server/domains/posts/post.access')
+    const probeContext = await loadViewablePostContext(postId, probeActor)
+    if (!probeContext) {
+      log.debug('post not viewable')
       return denied
     }
 
-    // canVotePost composes canViewPost internally, but assertPostViewable
+    // Per-board vote tier gate: a board can be public-to-view but
+    // authenticated-only-to-vote (modern "Public" preset). Run canVotePost off
+    // the board matrix the view check already resolved so the UI can render the
+    // right CTA (sign-in prompt vs. enabled button) instead of letting an
+    // anonymous click learn the truth on submit. The workspace anonymousVoting
+    // flag is composed below as a ceiling.
+    const { canVotePost } = await import('@/lib/server/policy')
+    const boardAccess = probeContext.access
+
+    // canVotePost composes canViewPost internally, but the view context above
     // already proved view-allowed for this actor; pass moderationState=
     // 'published' here so the inner view check is a no-op and the
     // decision reflects the vote tier specifically.
